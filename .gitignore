@@ -101,6 +101,7 @@ captures/
 
 # Google Services (e.g. APIs or Firebase)
 google-services.json
+firebase.json
 
 # Freeline
 freeline.py
@@ -305,5 +306,4 @@ google-services.json
 /macos
 /web
 /test
-/windows
 /ios
