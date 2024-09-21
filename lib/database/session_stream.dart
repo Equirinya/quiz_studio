@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'constants.dart';
 import '../serial_connection.dart';
@@ -29,9 +33,22 @@ class SessionStreamBuilder extends StatelessWidget {
       ) builder;
   final Widget fallback;
 
+  Future<void> downloadTeamSounds() async {
+    final storage = FirebaseStorage.instance.ref().child("session_$session");
+    final Directory appSupportDir = await getApplicationSupportDirectory();
+    var files = await storage.listAll();
+    for(var file in files.items){
+      final localFile = File('${appSupportDir.path}/$session/${file.name}');
+      if (!(await localFile.exists())) {
+        final downloadTask = file.writeToFile(localFile);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (session == null) return Center(child: Text(noSession, style: Theme.of(context).textTheme.headlineSmall));
+    downloadTeamSounds();
     return StreamBuilder(
         stream: FirebaseFirestore.instance.collection(sessions).doc(session!).snapshots(),
         builder: (context, sessionSnapshot) {

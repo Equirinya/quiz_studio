@@ -54,10 +54,17 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
   StreamSubscription? buzzeredSubscription;
 
   void playSound(int teamIndex) async {
-    final Directory appDocumentsDir = await getApplicationSupportDirectory();
-    final File file = File('${appDocumentsDir.path}\\sound$teamIndex.m4a'); //TODO replace with named sound selection
+    String sessionId = prefs.getString("currentSession") ?? "";
+    final Directory appSupportDir = await getApplicationSupportDirectory();
+    final File file = File('${appSupportDir.path}/$sessionId/team_sound$teamIndex');
+
     final player = AudioPlayer();
-    await player.play(DeviceFileSource(file.path));
+    if(await file.exists()) {
+      await player.play(DeviceFileSource(file.path));
+    }
+    else{
+      await player.play(AssetSource("buzzer.mp3"));
+    }
     await player.onPlayerComplete.first;
     await player.dispose();
   }

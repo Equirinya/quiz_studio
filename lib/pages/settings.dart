@@ -79,65 +79,6 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 }
 
-void selectSound(int team, BuildContext context) async {
-  final Directory appDocumentsDir = await getApplicationSupportDirectory();
-  final File file = File('${appDocumentsDir.path}\\sound$team.m4a');
-  await showDialog(
-    context: context,
-    builder: (context) {
-      final record = AudioRecorder();
-      bool recording = false;
-
-      return AlertDialog(
-        title: const Text("Select Sound"),
-        content: StatefulBuilder(
-          builder: (context, setState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (file.existsSync())
-                  ListTile(
-                    title: const Text("Play Sound"),
-                    leading: const Icon(Icons.play_arrow),
-                    onTap: () async {
-                      final player = AudioPlayer();
-                      await player.play(DeviceFileSource(file.path));
-                      await player.onPlayerComplete.first;
-                      await player.dispose();
-                    },
-                  ),
-                if(!recording) ListTile(
-                  title: const Text("Record Sound"),
-                  leading: const Icon(Icons.record_voice_over),
-                  onTap: () async {
-                    if (await record.hasPermission()) {
-                      await record.start(const RecordConfig(), path: file.path);
-                      setState(() {
-                        recording = true;
-                      });
-                    }
-                  },
-                )
-                else
-                  ListTile(
-                    title: const Text("Stop Recording"),
-                    leading: const Icon(Icons.record_voice_over),
-                    onTap: () async {
-                      await record.stop();
-                      setState(() {
-                        recording = false;
-                      });
-                    },
-                  )
-              ],
-            );
-          },
-        ),
-      );
-    },
-  );
-}
-
 class SettingsSubPage extends StatelessWidget {
   final Widget body;
   final String title;

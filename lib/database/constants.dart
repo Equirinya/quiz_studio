@@ -1,3 +1,5 @@
+import 'package:file_selector/file_selector.dart';
+
 enum QuestionType {
   free("Free Question"),
   noBuzzer("No Buzzer"),
@@ -63,6 +65,17 @@ const String lastUsed = 'lastUsed';
 const String playedFields = 'playedFields';
 const String points = 'points';
 const String teams = 'teams';
+
+
+//File Selection
+const XTypeGroup musicExtension = XTypeGroup(
+  label: 'Audio File',
+  extensions: <String>['mp3', 'wav'],
+);
+const XTypeGroup musicUniformFileType = XTypeGroup(
+  label: 'Audio File',
+  uniformTypeIdentifiers: <String>['public.audio'],
+);
 
 //Strings
 const String noSession = 'No session selected';

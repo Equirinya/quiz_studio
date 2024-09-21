@@ -97,14 +97,15 @@ class _GameStreamBuilderState extends State<GameStreamBuilder> {
   }
 
   Future<void> downloadImages() async {
-    final appDocDir = await getApplicationDocumentsDirectory();
+    final Directory appSupportDir = await getApplicationSupportDirectory();
+    await Directory("${appSupportDir.absolute.path}/${widget.gameId}").create(recursive: true);
     for (var (i, questionCategoryDoc) in questionDocs.indexed) {
       for(var questionDoc in questionCategoryDoc!.docs) {
         final imagePath = questionDoc.data()[image] as String?;
         final musicPath = questionDoc.data()[music] as String?;
 
         if (imagePath != null && imagePath.isNotEmpty) {
-          final filePath = "${appDocDir.absolute}/${widget.gameId}/$imagePath";
+          final filePath = "${appSupportDir.absolute.path}/${widget.gameId}/$imagePath";
           final file = File(filePath);
           if (!(await file.exists())) {
             var imageRef = storage.child(widget.gameId!).child(imagePath);
@@ -113,7 +114,7 @@ class _GameStreamBuilderState extends State<GameStreamBuilder> {
         }
 
         if (musicPath != null && musicPath.isNotEmpty) {
-          final filePath = "${appDocDir.absolute}/${widget.gameId}/$musicPath";
+          final filePath = "${appSupportDir.absolute.path}/${widget.gameId}/$musicPath";
           final file = File(filePath);
           if (!(await file.exists())) {
             var musicRef = storage.child(widget.gameId!).child(musicPath);

@@ -203,6 +203,17 @@ class _SessionPageState extends State<SessionPage> {
                             Wrap(
                               spacing: 8,
                               children: [
+                                if(state!=HomePageState.buzzerTest) ElevatedButton(
+                                    onPressed: () {
+                                      sessionRef.update({currentState: HomePageState.buzzerTest.name});
+                                    },
+                                    child: const Text("Buzzer Test"))
+                                else
+                                  ElevatedButton(
+                                      onPressed: () {
+                                        sessionRef.update({currentState: HomePageState.overview.name});
+                                      },
+                                      child: const Text("Stop Buzzer Test")),
                                 if (state == HomePageState.questionBuzzered)
                                   ElevatedButton(
                                       onPressed: () async {
@@ -223,11 +234,11 @@ class _SessionPageState extends State<SessionPage> {
                                       style: ElevatedButton.styleFrom(
                                           backgroundColor:
                                               Colors.green.harmonizeWith(Theme.of(context).colorScheme.primary)),
-                                      child: const Row(
+                                      child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.check),
-                                          Text("Answer right"),
+                                          Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimaryContainer,),
+                                          Text("Answer right", style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer)),
                                         ],
                                       )),
                                 if (state == HomePageState.questionBuzzered)
@@ -248,15 +259,15 @@ class _SessionPageState extends State<SessionPage> {
                                         });
                                       },
                                       style: ElevatedButton.styleFrom(
-                                          backgroundColor: Theme.of(context).colorScheme.error),
-                                      child: const Row(
+                                          backgroundColor: Theme.of(context).colorScheme.errorContainer),
+                                      child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.close),
-                                          Text("Answer wrong"),
+                                          Icon(Icons.close, color: Theme.of(context).colorScheme.onErrorContainer),
+                                          Text("Answer wrong", style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
                                         ],
                                       )),
-                                if (state != HomePageState.overview)
+                                if (state == HomePageState.questionBuzzered || state == HomePageState.question)
                                   ElevatedButton(
                                       onPressed: () async {
                                         sessionRef.update({
