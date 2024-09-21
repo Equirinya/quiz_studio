@@ -48,7 +48,9 @@ class SerialConnection {
     _port = SerialPort(portString);
     _port?.close();
     _port?.openReadWrite();
-
+    if(_port == null || !_port!.isOpen) {
+      return;
+    }
     var config = _port?.config;
     if(config == null) {
       print("Port config is null");

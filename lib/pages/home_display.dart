@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:path_provider/path_provider.dart';
+import 'package:quiz_show/widgets/buzzer_status.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -129,160 +130,171 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
     );
 
     return Scaffold(
-      body: GameStreamBuilder(
-        key: Key(currentGame),
-          gameId: currentGame,
-          fallback: SessionStreamBuilder(
-              session: prefs.getString("currentSession"),
-              builder: (teamsList, pointsList, selectedFieldData, state, buzzeredTeam, playedFieldsList, revealed,
-                  buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
-                if (currentGame != gameRef.id) {
-                  Future.delayed(const Duration(milliseconds: 200), () =>
-                      setState(() {
-                        currentGame = gameRef.id;
-                      }));
-                }
-                return fallbackWidget;
-              }),
-          builder: (categories, gameQuestionPoints, questions, emptyFields) {
-            return SessionStreamBuilder(
-              session: prefs.getString("currentSession"),
-              builder: (teamsList, pointsList, selectedFieldData, state, buzzeredTeam, playedFieldsList, revealed,
-                  buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
-                if (currentGame != gameRef.id) {
-                  Future.delayed(const Duration(milliseconds: 200), () =>
-                      setState(() {currentGame = gameRef.id;}));
-                }
+      body: Stack(
+        children: [
+          const Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: EdgeInsets.all(8.0),
+              child: BuzzerStatusIndicator(),
+            ),
+          ),
+          GameStreamBuilder(
+            key: Key(currentGame),
+              gameId: currentGame,
+              fallback: SessionStreamBuilder(
+                  session: prefs.getString("currentSession"),
+                  builder: (teamsList, pointsList, selectedFieldData, state, buzzeredTeam, playedFieldsList, revealed,
+                      buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
+                    if (currentGame != gameRef.id) {
+                      Future.delayed(const Duration(milliseconds: 200), () =>
+                          setState(() {
+                            currentGame = gameRef.id;
+                          }));
+                    }
+                    return fallbackWidget;
+                  }),
+              builder: (categories, gameQuestionPoints, questions, emptyFields) {
+                return SessionStreamBuilder(
+                  session: prefs.getString("currentSession"),
+                  builder: (teamsList, pointsList, selectedFieldData, state, buzzeredTeam, playedFieldsList, revealed,
+                      buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
+                    if (currentGame != gameRef.id) {
+                      Future.delayed(const Duration(milliseconds: 200), () =>
+                          setState(() {currentGame = gameRef.id;}));
+                    }
 
-                buzzeredSubscription?.cancel();
-                if ((state == HomePageState.question || state == HomePageState.buzzerTest) && SerialConnection().status == SerialStatus.connected) {
-                  buzzeredSubscription = SerialConnection().buzzerPressed.listen(
-                        (event) {
-                      int teamIndex = buzzerTeamMap[event] ?? -1;
-                      if (state == HomePageState.question) {
-                        FirebaseFirestore.instance.collection(sessions).doc(prefs.getString("currentSession")).update({
-                          buzzeredFrom: teamIndex,
-                          currentState: HomePageState.questionBuzzered.name,
-                        });
-                        //TODO check if it would be lower latency when [buzzerTeam] set manually
-                        playSound(teamIndex);
-                      } else if (state == HomePageState.buzzerTest) {
-                        setState(() {
-                          buzzeredTeam = teamIndex;
-                        });
-                        playSound(teamIndex);
-                      }
-                    },
-                  );
-                }
+                    buzzeredSubscription?.cancel();
+                    if ((state == HomePageState.question || state == HomePageState.buzzerTest) && SerialConnection().status == SerialStatus.connected) {
+                      buzzeredSubscription = SerialConnection().buzzerPressed.listen(
+                            (event) {
+                          int teamIndex = buzzerTeamMap[event] ?? -1;
+                          if (state == HomePageState.question) {
+                            FirebaseFirestore.instance.collection(sessions).doc(prefs.getString("currentSession")).update({
+                              buzzeredFrom: teamIndex,
+                              currentState: HomePageState.questionBuzzered.name,
+                            });
+                            //TODO check if it would be lower latency when [buzzerTeam] set manually
+                            playSound(teamIndex);
+                          } else if (state == HomePageState.buzzerTest) {
+                            setState(() {
+                              buzzeredTeam = teamIndex;
+                            });
+                            playSound(teamIndex);
+                          }
+                        },
+                      );
+                    }
 
-                return Column(
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    Row(
+                    return Column(
                       mainAxisSize: MainAxisSize.max,
                       children: [
-                        const SizedBox(width: 32),
-                        Expanded(
-                          child: Center(
-                            child: Wrap(
-                              spacing: 8,
-                              children: [
-                                for (var (index, team) in teamsList.indexed)
-                                  Card(
-                                    color: ((state == HomePageState.questionBuzzered ||
-                                        state == HomePageState.buzzerTest) &&
-                                        buzzeredTeam == index)
-                                        ? Theme
-                                        .of(context)
-                                        .colorScheme
-                                        .primaryContainer
-                                        : null,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: SizedBox(
-                                        width: 200,
-                                        child: Column(
-                                          children: [
-                                            Text(
-                                              team,
-                                              style: Theme
-                                                  .of(context)
-                                                  .textTheme
-                                                  .bodySmall,
+                        Row(
+                          mainAxisSize: MainAxisSize.max,
+                          children: [
+                            const SizedBox(width: 32),
+                            Expanded(
+                              child: Center(
+                                child: Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    for (var (index, team) in teamsList.indexed)
+                                      Card(
+                                        color: ((state == HomePageState.questionBuzzered ||
+                                            state == HomePageState.buzzerTest) &&
+                                            buzzeredTeam == index)
+                                            ? Theme
+                                            .of(context)
+                                            .colorScheme
+                                            .primaryContainer
+                                            : null,
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: SizedBox(
+                                            width: 200,
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  team,
+                                                  style: Theme
+                                                      .of(context)
+                                                      .textTheme
+                                                      .bodySmall,
+                                                ),
+                                                Text(
+                                                  (pointsList.elementAtOrNull(index) ?? 0).toString(),
+                                                  style: Theme
+                                                      .of(context)
+                                                      .textTheme
+                                                      .headlineSmall,
+                                                ),
+                                              ],
                                             ),
-                                            Text(
-                                              (pointsList.elementAtOrNull(index) ?? 0).toString(),
-                                              style: Theme
-                                                  .of(context)
-                                                  .textTheme
-                                                  .headlineSmall,
-                                            ),
-                                          ],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: options,
-                        )
-                      ],
-                    ),
-                    const SizedBox(
-                      height: 8,
-                    ),
-                    if (state != HomePageState.buzzerTest)
-                      Column(
-                        mainAxisSize: MainAxisSize.max,
-                        children: [
-                          if (state == HomePageState.question || state == HomePageState.questionBuzzered)
-                            ConstrainedBox(
-                              constraints: BoxConstraints(maxHeight: MediaQuery
-                                  .of(context)
-                                  .size
-                                  .height * 0.25),
-                              child: QuestionDisplay(
-                                  questionData: questions[selectedFieldData.$1][selectedFieldData.$2], reveal: revealed,),
-                            ),
-                          SizedBox(
-                            height: MediaQuery
-                                .of(context)
-                                .size
-                                .height * (state == HomePageState.overview ? 1 : 0.75) -
-                                136, //TODO
-                            child: CustomPaint(
-                              size: Size(MediaQuery
-                                  .of(context)
-                                  .size
-                                  .width,
-                                  MediaQuery
-                                      .of(context)
-                                      .size
-                                      .height * (state == HomePageState.overview ? 1 : 0.75) - 136),
-                              painter: PlayingFieldPainter(
-                                categories: categories,
-                                pointRings: gameQuestionPoints,
-                                disabledFields: playedFieldsList..addAll(emptyFields),
-                                colorScheme: Theme
-                                    .of(context)
-                                    .colorScheme,
-                                highlightedField: selectedFieldData,
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      )
-                  ],
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: options,
+                            )
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 8,
+                        ),
+                        if (state != HomePageState.buzzerTest)
+                          Column(
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              if (state == HomePageState.question || state == HomePageState.questionBuzzered)
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(maxHeight: MediaQuery
+                                      .of(context)
+                                      .size
+                                      .height * 0.25),
+                                  child: QuestionDisplay(
+                                      questionData: questions[selectedFieldData.$1][selectedFieldData.$2], reveal: revealed,),
+                                ),
+                              SizedBox(
+                                height: MediaQuery
+                                    .of(context)
+                                    .size
+                                    .height * (state == HomePageState.overview ? 1 : 0.75) -
+                                    136, //TODO
+                                child: CustomPaint(
+                                  size: Size(MediaQuery
+                                      .of(context)
+                                      .size
+                                      .width,
+                                      MediaQuery
+                                          .of(context)
+                                          .size
+                                          .height * (state == HomePageState.overview ? 1 : 0.75) - 136),
+                                  painter: PlayingFieldPainter(
+                                    categories: categories,
+                                    pointRings: gameQuestionPoints,
+                                    disabledFields: playedFieldsList..addAll(emptyFields),
+                                    colorScheme: Theme
+                                        .of(context)
+                                        .colorScheme,
+                                    highlightedField: selectedFieldData,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                      ],
+                    );
+                  },
+                  fallback: fallbackWidget,
                 );
-              },
-              fallback: fallbackWidget,
-            );
-          }
+              }
+          ),
+        ],
       ),
     );
   }
