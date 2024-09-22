@@ -49,15 +49,16 @@ class QuestionDisplay extends StatelessWidget {
                   ),
                 )),
           ),
-          if (questionData[type] == QuestionType.progressingReveal)
+          if (questionData[type] == QuestionType.progressingReveal.name)
             Builder(
               builder: (context) {
-                var root = sqrt(questionData[information].length);
+                List<String> informationStrings = List<String>.from(questionData[information]);
+                var root = sqrt(informationStrings.length);
                 int columns = root < 4 ? root.ceil() : root.floor();
                 return Wrap(
                   alignment: WrapAlignment.center,
                   children: [
-                    for (var (i, information) in questionData[information].indexed)
+                    for (var (i, information) in informationStrings.indexed)
                       SizedBox(
                         width: MediaQuery.of(context).size.width / columns - 16,
                         child: Visibility(
@@ -84,15 +85,15 @@ class QuestionDisplay extends StatelessWidget {
                 );
               },
             ),
-          if (questionData[type] == QuestionType.progressingReveal)
+          if (questionData[type] == QuestionType.abcd.name)
             Wrap(
               alignment: WrapAlignment.center,
               children: [
-                for (var (i, answer) in questionData[answers].indexed)
+                for (var (i, answer) in List<String>.from(questionData[answers]).indexed)
                   SizedBox(
                     width: MediaQuery.of(context).size.width / 2 - 16,
                     child: Visibility(
-                      visible: i < reveal,
+                      visible: i < reveal || controllerView,
                       maintainSize: true,
                       maintainAnimation: true,
                       maintainState: true,
@@ -106,7 +107,10 @@ class QuestionDisplay extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               if (controllerView || reveal >= questionData[answers].length)
-                                Icon(questionData[answersCorrect][i] ? Icons.check : Icons.close),
+                                Padding(
+                                  padding: const EdgeInsets.only(right:8.0),
+                                  child: Icon(questionData[answersCorrect][i] ? Icons.check : Icons.close),
+                                ),
                               Text(
                                 answer,
                                 textAlign: TextAlign.center,
@@ -127,11 +131,11 @@ class QuestionDisplay extends StatelessWidget {
                   minWidth: MediaQuery.of(context).size.width * 0.6,
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(8.0),
                   child: Text(
                     textAlign: TextAlign.center,
                     questionData[answerHint] ?? "",
-                    style: Theme.of(context).textTheme.headlineSmall,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ),
               ))

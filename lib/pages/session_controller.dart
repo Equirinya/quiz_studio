@@ -81,231 +81,234 @@ class _SessionPageState extends State<SessionPage> {
               ),
             ],
           ),
-          SessionStreamBuilder(
-            session: prefs.getString("currentSession"),
-            builder: (teamsList, pointsList, selectedFieldData, state, buzzeredTeam, playedFieldsList, revealed,
-                buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
-              return SingleChildScrollView(
-                child: Column(
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        for (var (index, team) in teamsList.indexed)
-                          Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: SizedBox(
-                                width: 200,
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      team,
-                                      style: Theme.of(context).textTheme.bodySmall,
-                                    ),
-                                    Text(
-                                      (pointsList[index] ?? 0).toString(),
-                                      style: Theme.of(context).textTheme.headlineSmall,
-                                    ),
-                                    ElevatedButton(
-                                        onPressed: () async {
-                                          pointsList[index] += 100;
-                                          sessionRef.update({
-                                            points: pointsList,
-                                          });
-                                        },
-                                        child: const Text("+100")),
-                                    ElevatedButton(
-                                        onPressed: () async {
-                                          pointsList[index] -= 100;
-                                          sessionRef.update({
-                                            points: pointsList,
-                                          });
-                                        },
-                                        child: const Text("-100")),
-                                  ],
+          SettingsSubPageCategory(
+            title: "Game Controller",
+            settings:[ SessionStreamBuilder(
+              session: prefs.getString("currentSession"),
+              builder: (teamsList, pointsList, selectedFieldData, state, buzzeredTeam, playedFieldsList, revealed,
+                  buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
+                return SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          for (var (index, team) in teamsList.indexed)
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: SizedBox(
+                                  width: 200,
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        team,
+                                        style: Theme.of(context).textTheme.bodySmall,
+                                      ),
+                                      Text(
+                                        (pointsList[index] ?? 0).toString(),
+                                        style: Theme.of(context).textTheme.headlineSmall,
+                                      ),
+                                      ElevatedButton(
+                                          onPressed: () async {
+                                            pointsList[index] += 100;
+                                            sessionRef.update({
+                                              points: pointsList,
+                                            });
+                                          },
+                                          child: const Text("+100")),
+                                      ElevatedButton(
+                                          onPressed: () async {
+                                            pointsList[index] -= 100;
+                                            sessionRef.update({
+                                              points: pointsList,
+                                            });
+                                          },
+                                          child: const Text("-100")),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(
-                      height: 8,
-                    ),
-                    GameStreamBuilder(
-                      gameId: gameRef.id,
-                      builder: (categories, gameQuestionPoints, questions, emptyFields) {
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (selectedFieldData.$1 != -1 && selectedFieldData.$2 != -1)
-                              QuestionDisplay(
-                                questionData: questions[selectedFieldData.$1][selectedFieldData.$2],
-                                controllerView: true,
-                                reveal: revealed,
-                              ),
-                            Row(
-                              mainAxisSize: MainAxisSize.max,
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                for (var (cIndex, categoryName) in categories.indexed)
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                                        children: <Widget>[
-                                          Center(child: Text(categoryName)),
-                                          for (var (qIndex, questionDoc) in questions[cIndex].indexed)
-                                            Padding(
-                                              padding: const EdgeInsets.all(4.0),
-                                              child: ElevatedButton(
-                                                onPressed: selectedFieldData == (cIndex, qIndex)
-                                                    ? () {
-                                                        sessionRef.update({
-                                                          currentState: HomePageState.overview.name,
-                                                          selectedField: "-1:-1",
-                                                        });
-                                                      }
-                                                    : playedFieldsList.contains((cIndex, qIndex))
-                                                        ? () {
-                                                            sessionRef.update({
-                                                              playedFields: FieldValue.arrayRemove(["$cIndex:$qIndex"])
-                                                            });
-                                                          }
-                                                        : () {
-                                                            sessionRef.update({
-                                                              currentState: HomePageState.question.name,
-                                                              selectedField: "$cIndex:$qIndex",
-                                                              playedFields: FieldValue.arrayUnion([
-                                                                if (selectedFieldData.$1 != -1)
-                                                                  "${selectedFieldData.$1}:${selectedFieldData.$2}"
-                                                              ])
-                                                            });
-                                                          },
-                                                style: ElevatedButton.styleFrom(
-                                                    backgroundColor: selectedFieldData == (cIndex, qIndex)
-                                                        ? Theme.of(context).colorScheme.primaryContainer
-                                                        : playedFieldsList.contains((cIndex, qIndex))
-                                                            ? Theme.of(context).colorScheme.surface
-                                                            : Theme.of(context).colorScheme.surfaceContainerHigh),
-                                                child: Text(questionDoc[pointsPlus].toString()),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: 8,
+                      ),
+                      GameStreamBuilder(
+                        gameId: gameRef.id,
+                        builder: (categories, gameQuestionPoints, questions, emptyFields) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (selectedFieldData.$1 != -1 && selectedFieldData.$2 != -1)
+                                QuestionDisplay(
+                                  questionData: questions[selectedFieldData.$1][selectedFieldData.$2],
+                                  controllerView: true,
+                                  reveal: revealed,
+                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.max,
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  for (var (cIndex, categoryName) in categories.indexed)
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          children: <Widget>[
+                                            Center(child: Text(categoryName)),
+                                            for (var (qIndex, questionDoc) in questions[cIndex].indexed)
+                                              Padding(
+                                                padding: const EdgeInsets.all(4.0),
+                                                child: ElevatedButton(
+                                                  onPressed: selectedFieldData == (cIndex, qIndex)
+                                                      ? () {
+                                                          sessionRef.update({
+                                                            currentState: HomePageState.overview.name,
+                                                            selectedField: "-1:-1",
+                                                          });
+                                                        }
+                                                      : playedFieldsList.contains((cIndex, qIndex))
+                                                          ? () {
+                                                              sessionRef.update({
+                                                                playedFields: FieldValue.arrayRemove(["$cIndex:$qIndex"])
+                                                              });
+                                                            }
+                                                          : () {
+                                                              sessionRef.update({
+                                                                currentState: HomePageState.question.name,
+                                                                selectedField: "$cIndex:$qIndex",
+                                                                playedFields: FieldValue.arrayUnion([
+                                                                  if (selectedFieldData.$1 != -1)
+                                                                    "${selectedFieldData.$1}:${selectedFieldData.$2}"
+                                                                ])
+                                                              });
+                                                            },
+                                                  style: ElevatedButton.styleFrom(
+                                                      backgroundColor: selectedFieldData == (cIndex, qIndex)
+                                                          ? Theme.of(context).colorScheme.primaryContainer
+                                                          : playedFieldsList.contains((cIndex, qIndex))
+                                                              ? Theme.of(context).colorScheme.surface
+                                                              : Theme.of(context).colorScheme.surfaceContainerHigh),
+                                                  child: Text(questionDoc[pointsPlus].toString()),
+                                                ),
                                               ),
-                                            ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                            Wrap(
-                              spacing: 8,
-                              children: [
-                                if(state!=HomePageState.buzzerTest) ElevatedButton(
-                                    onPressed: () {
-                                      sessionRef.update({currentState: HomePageState.buzzerTest.name});
-                                    },
-                                    child: const Text("Buzzer Test"))
-                                else
-                                  ElevatedButton(
-                                      onPressed: () {
-                                        sessionRef.update({currentState: HomePageState.overview.name});
-                                      },
-                                      child: const Text("Stop Buzzer Test")),
-                                if (state == HomePageState.questionBuzzered)
-                                  ElevatedButton(
-                                      onPressed: () async {
-                                        var currentQuestion = questions[selectedFieldData.$1][selectedFieldData.$2];
-                                        if (buzzeredTeam != null && currentQuestion[pointsPlus] != null) {
-                                          pointsList[buzzeredTeam] += (currentQuestion[pointsPlus] as num).toInt();
-                                        }
-                                        sessionRef.update({
-                                          currentState: HomePageState.overview.name,
-                                          selectedField: "-1:-1",
-                                          playedFields: FieldValue.arrayUnion([
-                                            if (selectedFieldData.$1 != -1)
-                                              "${selectedFieldData.$1}:${selectedFieldData.$2}"
-                                          ]),
-                                          points: pointsList
-                                        });
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              Colors.green.harmonizeWith(Theme.of(context).colorScheme.primary)),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimaryContainer,),
-                                          Text("Answer right", style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer)),
-                                        ],
-                                      )),
-                                if (state == HomePageState.questionBuzzered)
-                                  ElevatedButton(
-                                      onPressed: () async {
-                                        var currentQuestion = questions[selectedFieldData.$1][selectedFieldData.$2];
-                                        if (buzzeredTeam != null && currentQuestion[pointsMinus] != null) {
-                                          pointsList[buzzeredTeam] -=
-                                              ((currentQuestion as Map?)![pointsMinus] as num).toInt();
-                                        }
-                                        sessionRef.update({
-                                          currentState: HomePageState.question.name,
-                                          playedFields: FieldValue.arrayUnion([
-                                            if (selectedFieldData.$1 != -1)
-                                              "${selectedFieldData.$1}:${selectedFieldData.$2}"
-                                          ]),
-                                          points: pointsList
-                                        });
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                          backgroundColor: Theme.of(context).colorScheme.errorContainer),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.close, color: Theme.of(context).colorScheme.onErrorContainer),
-                                          Text("Answer wrong", style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
-                                        ],
-                                      )),
-                                if (state == HomePageState.questionBuzzered || state == HomePageState.question)
-                                  ElevatedButton(
-                                      onPressed: () async {
-                                        sessionRef.update({
-                                          currentState: HomePageState.overview.name,
-                                          selectedField: "-1:-1",
-                                          playedFields: FieldValue.arrayUnion([
-                                            if (selectedFieldData.$1 != -1)
-                                              "${selectedFieldData.$1}:${selectedFieldData.$2}"
-                                          ]),
-                                        });
-                                      },
-                                      child: const Text("Close question")),
-                                if (state == HomePageState.questionBuzzered)
-                                  if (selectedFieldData != (-1, -1))
-                                    ElevatedButton(
-                                        onPressed: () {
-                                          sessionRef.update({currentState: HomePageState.question.name});
-                                        },
-                                        child: const Text("Reopen Question")),
-                                if (state == HomePageState.question) ...[
-                                  for (var (index, team) in teamsList.indexed)
-                                    ElevatedButton(
-                                        onPressed: () {
-                                          sessionRef.update(
-                                              {buzzeredFrom: index, currentState: HomePageState.questionBuzzered.name});
-                                        },
-                                        child: Text("Buzzer Team $team"))
                                 ],
-                              ],
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
+                              ),
+                              Wrap(
+                                spacing: 8,
+                                children: [
+                                  if(state==HomePageState.overview) ElevatedButton(
+                                      onPressed: () {
+                                        sessionRef.update({currentState: HomePageState.buzzerTest.name});
+                                      },
+                                      child: const Text("Buzzer Test"))
+                                  else if(state==HomePageState.buzzerTest)
+                                    ElevatedButton(
+                                        onPressed: () {
+                                          sessionRef.update({currentState: HomePageState.overview.name});
+                                        },
+                                        child: const Text("Stop Buzzer Test")),
+                                  if (state == HomePageState.questionBuzzered)
+                                    ElevatedButton(
+                                        onPressed: () async {
+                                          var currentQuestion = questions[selectedFieldData.$1][selectedFieldData.$2];
+                                          if (buzzeredTeam != null && currentQuestion[pointsPlus] != null) {
+                                            pointsList[buzzeredTeam] += (currentQuestion[pointsPlus] as num).toInt();
+                                          }
+                                          sessionRef.update({
+                                            currentState: HomePageState.overview.name,
+                                            selectedField: "-1:-1",
+                                            playedFields: FieldValue.arrayUnion([
+                                              if (selectedFieldData.$1 != -1)
+                                                "${selectedFieldData.$1}:${selectedFieldData.$2}"
+                                            ]),
+                                            points: pointsList
+                                          });
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                Colors.green.harmonizeWith(Theme.of(context).colorScheme.primary)),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimaryContainer,),
+                                            Text("Answer right", style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer)),
+                                          ],
+                                        )),
+                                  if (state == HomePageState.questionBuzzered)
+                                    ElevatedButton(
+                                        onPressed: () async {
+                                          var currentQuestion = questions[selectedFieldData.$1][selectedFieldData.$2];
+                                          if (buzzeredTeam != null && currentQuestion[pointsMinus] != null) {
+                                            pointsList[buzzeredTeam] -=
+                                                ((currentQuestion as Map?)![pointsMinus] as num).toInt();
+                                          }
+                                          sessionRef.update({
+                                            currentState: HomePageState.question.name,
+                                            playedFields: FieldValue.arrayUnion([
+                                              if (selectedFieldData.$1 != -1)
+                                                "${selectedFieldData.$1}:${selectedFieldData.$2}"
+                                            ]),
+                                            points: pointsList
+                                          });
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                            backgroundColor: Theme.of(context).colorScheme.errorContainer),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.close, color: Theme.of(context).colorScheme.onErrorContainer),
+                                            Text("Answer wrong", style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
+                                          ],
+                                        )),
+                                  if (state == HomePageState.questionBuzzered || state == HomePageState.question)
+                                    ElevatedButton(
+                                        onPressed: () async {
+                                          sessionRef.update({
+                                            currentState: HomePageState.overview.name,
+                                            selectedField: "-1:-1",
+                                            playedFields: FieldValue.arrayUnion([
+                                              if (selectedFieldData.$1 != -1)
+                                                "${selectedFieldData.$1}:${selectedFieldData.$2}"
+                                            ]),
+                                          });
+                                        },
+                                        child: const Text("Close question")),
+                                  if (state == HomePageState.questionBuzzered)
+                                    if (selectedFieldData != (-1, -1))
+                                      ElevatedButton(
+                                          onPressed: () {
+                                            sessionRef.update({currentState: HomePageState.question.name});
+                                          },
+                                          child: const Text("Reopen Question")),
+                                  if (state == HomePageState.question) ...[
+                                    for (var (index, team) in teamsList.indexed)
+                                      ElevatedButton(
+                                          onPressed: () {
+                                            sessionRef.update(
+                                                {buzzeredFrom: index, currentState: HomePageState.questionBuzzered.name});
+                                          },
+                                          child: Text("Buzzer Team $team"))
+                                  ],
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            )],
           ),
           SettingsSubPageCategory(
             title: "Teams",

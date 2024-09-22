@@ -58,6 +58,21 @@ class _GamesPageState extends State<GamesPage> {
   @override
   Widget build(BuildContext context) {
     if (!initialized) return const Center(child: CupertinoActivityIndicator());
+    Widget newGameButton = ListTile(
+      leading: const Icon(Icons.add),
+      title: const Text("Create new game"),
+      onTap: () {
+        db.collection(games).add({
+          name: "New Game",
+          locked: false,
+          AccessType.admin.name: [FirebaseAuth.instance.currentUser!.uid],
+          AccessType.full.name: [],
+          AccessType.limited.name: [],
+          createdAt: FieldValue.serverTimestamp(),
+          createdBy: FirebaseAuth.instance.currentUser!.uid,
+        });
+      },
+    );
     return Scaffold(
       body: SessionStreamBuilder(
         session: prefs.getString("currentSession"),
@@ -67,21 +82,7 @@ class _GamesPageState extends State<GamesPage> {
             itemCount: gamesDocs!.docs.length + 1,
             itemBuilder: (context, index) {
               if (index == gamesDocs!.docs.length) {
-                return ListTile(
-                  leading: const Icon(Icons.add),
-                  title: Text("Create new game"),
-                  onTap: () {
-                    db.collection(games).add({
-                      name: "New Game",
-                      locked: false,
-                      AccessType.admin.name: [FirebaseAuth.instance.currentUser!.uid],
-                      AccessType.full.name: [],
-                      AccessType.limited.name: [],
-                      createdAt: FieldValue.serverTimestamp(),
-                      createdBy: FirebaseAuth.instance.currentUser!.uid,
-                    });
-                  },
-                );
+                return newGameButton;
               }
 
               var game = gamesDocs!.docs[index];
@@ -94,6 +95,21 @@ class _GamesPageState extends State<GamesPage> {
             },
           );
         },
+        fallback: ListView.builder(
+      itemCount: gamesDocs!.docs.length + 1,
+        itemBuilder: (context, index) {
+          if (index == gamesDocs!.docs.length) {
+            return newGameButton;
+          }
+
+          var game = gamesDocs!.docs[index];
+          return GamesListTile(
+            gameName: game.data()[name] ?? unnamed,
+            gameId: game.id,
+            selected: false,
+          );
+        },
+      ),
       ),
     );
   }
@@ -101,25 +117,25 @@ class _GamesPageState extends State<GamesPage> {
 
 class GamesListTile extends StatelessWidget {
   const GamesListTile(
-      {super.key, required this.gameName, required this.gameId, required this.selected, required this.sessionRef});
+      {super.key, required this.gameName, required this.gameId, required this.selected, this.sessionRef});
 
   final String gameName;
   final String gameId;
   final bool selected;
-  final DocumentReference sessionRef;
+  final DocumentReference? sessionRef;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       title: Text(gameName),
-      leading: Checkbox(
+      leading: sessionRef != null ?Checkbox(
         value: selected,
         onChanged: (value) {
-          sessionRef.update({
+          sessionRef!.update({
             game: gameId,
           });
         },
-      ),
+      ) : null,
       trailing: const Icon(Icons.arrow_forward_ios),
       tileColor: selected ? Theme.of(context).colorScheme.primaryContainer : null,
       onTap: () {

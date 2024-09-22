@@ -86,7 +86,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
         ),
       ),
       //fullscreen
-      IconButton(
+      if(Platform.isMacOS || Platform.isWindows) IconButton(
         onPressed: () {
           setState(() {
             fullscreen = !fullscreen;

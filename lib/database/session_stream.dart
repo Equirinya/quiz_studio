@@ -14,7 +14,7 @@ class SessionStreamBuilder extends StatelessWidget {
     super.key,
     required this.session,
     required this.builder,
-    this.fallback = const Center(child: CupertinoActivityIndicator()),
+    this.fallback = const Center(child: Text(noSession)),
   });
 
   final String? session;
@@ -47,7 +47,7 @@ class SessionStreamBuilder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (session == null) return Center(child: Text(noSession, style: Theme.of(context).textTheme.headlineSmall));
+    if (session == null) return fallback;
     downloadTeamSounds();
     return StreamBuilder(
         stream: FirebaseFirestore.instance.collection(sessions).doc(session!).snapshots(),
