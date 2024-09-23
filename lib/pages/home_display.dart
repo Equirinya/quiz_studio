@@ -129,6 +129,8 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
       ],
     );
 
+    Size screenSize = MediaQuery.of(context).size;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -186,107 +188,122 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                       );
                     }
 
-                    return Column(
-                      mainAxisSize: MainAxisSize.max,
+                    int estimatedRows = (teamsList.length/((screenSize.width-100) ~/ 232)).ceil();
+                    double playFieldHeight;
+                    double playFieldWidth;
+                    switch(state){
+                      case HomePageState.buzzerTest:
+                      case HomePageState.overview:
+                        playFieldHeight = screenSize.height - 136*estimatedRows;
+                        playFieldWidth = screenSize.width;
+                        break;
+                      case HomePageState.question:
+                      case HomePageState.questionBuzzered:
+                        double questionfactor = 0.15;
+                        if((questions[selectedFieldData.$1][selectedFieldData.$2][image] != null && questions[selectedFieldData.$1][selectedFieldData.$2][image]!.isNotEmpty)|| (questions[selectedFieldData.$1][selectedFieldData.$2][music] != null && questions[selectedFieldData.$1][selectedFieldData.$2][music]!.isNotEmpty)){
+                          questionfactor += 0.25;
+                        }
+                        if(questions[selectedFieldData.$1][selectedFieldData.$2][type] == QuestionType.progressingReveal.name){
+                          List<String> informationStrings = List<String>.from(questions[selectedFieldData.$1][selectedFieldData.$2][information] ?? []);
+                          var root = sqrt(informationStrings.length);
+                          int columns = root < 4 ? root.ceil() : root.floor();
+                          int rows = (informationStrings.length/columns).ceil();
+                          questionfactor += 0.05*rows;
+                        }
+                        else if(questions[selectedFieldData.$1][selectedFieldData.$2][type] == QuestionType.abcd.name){
+                          questionfactor += 0.1;
+                        }
+                        playFieldHeight = screenSize.height - 136*estimatedRows - screenSize.height*questionfactor;
+                        playFieldHeight = max(playFieldHeight, screenSize.height*0.25);
+                        playFieldWidth = playFieldHeight/9*16;
+                    }
+
+                    return Stack(
                       children: [
-                        Row(
+                        Align(
+                          alignment: Alignment.bottomCenter,
+                          child:CustomPaint(
+                            size: Size(playFieldWidth, playFieldHeight),
+                            painter: PlayingFieldPainter(
+                              categories: categories,
+                              pointRings: gameQuestionPoints,
+                              disabledFields: playedFieldsList..addAll(emptyFields),
+                              colorScheme: Theme
+                                  .of(context)
+                                  .colorScheme,
+                              highlightedField: selectedFieldData,
+                            ),
+                          ),
+                        ),
+                        Column(
                           mainAxisSize: MainAxisSize.max,
                           children: [
-                            const SizedBox(width: 32),
-                            Expanded(
-                              child: Center(
-                                child: Wrap(
-                                  spacing: 8,
-                                  children: [
-                                    for (var (index, team) in teamsList.indexed)
-                                      Card(
-                                        color: ((state == HomePageState.questionBuzzered ||
-                                            state == HomePageState.buzzerTest) &&
-                                            buzzeredTeam == index)
-                                            ? Theme
-                                            .of(context)
-                                            .colorScheme
-                                            .primaryContainer
-                                            : null,
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: SizedBox(
-                                            width: 200,
-                                            child: Column(
-                                              children: [
-                                                Text(
-                                                  team,
-                                                  style: Theme
-                                                      .of(context)
-                                                      .textTheme
-                                                      .bodySmall,
+                            Row(
+                              mainAxisSize: MainAxisSize.max,
+                              children: [
+                                const SizedBox(width: 32),
+                                Expanded(
+                                  child: Center(
+                                    child: Wrap(
+                                      spacing: 8,
+                                      children: [
+                                        for (var (index, team) in teamsList.indexed)
+                                          Card(
+                                            color: ((state == HomePageState.questionBuzzered ||
+                                                state == HomePageState.buzzerTest) &&
+                                                buzzeredTeam == index)
+                                                ? Theme
+                                                .of(context)
+                                                .colorScheme
+                                                .primaryContainer
+                                                : null,
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(8.0),
+                                              child: SizedBox(
+                                                width: 200,
+                                                child: Column(
+                                                  children: [
+                                                    Text(
+                                                      team,
+                                                      style: Theme
+                                                          .of(context)
+                                                          .textTheme
+                                                          .bodySmall,
+                                                    ),
+                                                    Text(
+                                                      (pointsList.elementAtOrNull(index) ?? 0).toString(),
+                                                      style: Theme
+                                                          .of(context)
+                                                          .textTheme
+                                                          .headlineSmall,
+                                                    ),
+                                                  ],
                                                 ),
-                                                Text(
-                                                  (pointsList.elementAtOrNull(index) ?? 0).toString(),
-                                                  style: Theme
-                                                      .of(context)
-                                                      .textTheme
-                                                      .headlineSmall,
-                                                ),
-                                              ],
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: options,
-                            )
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 8,
-                        ),
-                        if (state != HomePageState.buzzerTest)
-                          Column(
-                            mainAxisSize: MainAxisSize.max,
-                            children: [
-                              if (state == HomePageState.question || state == HomePageState.questionBuzzered)
-                                ConstrainedBox(
-                                  constraints: BoxConstraints(maxHeight: MediaQuery
-                                      .of(context)
-                                      .size
-                                      .height * 0.25),
-                                  child: QuestionDisplay(
-                                      questionData: questions[selectedFieldData.$1][selectedFieldData.$2], reveal: revealed,),
-                                ),
-                              SizedBox(
-                                height: MediaQuery
-                                    .of(context)
-                                    .size
-                                    .height * (state == HomePageState.overview ? 1 : 0.75) -
-                                    136, //TODO
-                                child: CustomPaint(
-                                  size: Size(MediaQuery
-                                      .of(context)
-                                      .size
-                                      .width,
-                                      MediaQuery
-                                          .of(context)
-                                          .size
-                                          .height * (state == HomePageState.overview ? 1 : 0.75) - 136),
-                                  painter: PlayingFieldPainter(
-                                    categories: categories,
-                                    pointRings: gameQuestionPoints,
-                                    disabledFields: playedFieldsList..addAll(emptyFields),
-                                    colorScheme: Theme
-                                        .of(context)
-                                        .colorScheme,
-                                    highlightedField: selectedFieldData,
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          )
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: options,
+                                )
+                              ],
+                            ),
+                            if (state != HomePageState.buzzerTest)
+                              Column(
+                                mainAxisSize: MainAxisSize.max,
+                                children: [
+                                  if ((state == HomePageState.question || state == HomePageState.questionBuzzered) && selectedFieldData.$1 != -1)
+                                    QuestionDisplay(
+                                        questionData: questions[selectedFieldData.$1][selectedFieldData.$2], reveal: revealed,),
+
+                                ],
+                              )
+                          ],
+                        ),
                       ],
                     );
                   },

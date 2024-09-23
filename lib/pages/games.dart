@@ -133,6 +133,8 @@ class GamesListTile extends StatelessWidget {
         onChanged: (value) {
           sessionRef!.update({
             game: gameId,
+            selectedField: "-1:-1",
+            currentState: HomePageState.overview.name,
           });
         },
       ) : null,

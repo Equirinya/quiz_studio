@@ -48,7 +48,7 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
       prefs = await SharedPreferences.getInstance();
       appSupportDir = await getApplicationSupportDirectory();
       Directory dir = Directory("${appSupportDir.absolute.path}/${widget.gameId}");
-      if(!await dir.exists()) await dir.create(recursive: true);
+      if (!await dir.exists()) await dir.create(recursive: true);
       categoryDocListener = db
           .collection(games)
           .doc(widget.gameId)
@@ -172,6 +172,7 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                 pointsMinus: 0,
                 answersCorrect: [false, false, false, false],
                 answers: ["", "", "", ""],
+                information: [""],
                 answerHint: "",
               });
             },
@@ -194,19 +195,38 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.visibility),
-                          onPressed: () {
+                          onPressed: () async {
+                            var questionData = (await doc.reference.get()).data() ?? {};
                             showDialog(
                                 context: context,
                                 builder: (context) =>
-                                    Center(child: QuestionDisplay(questionData: doc.data(), reveal: 100)));
+                                    Center(child: QuestionDisplay(questionData: questionData, reveal: 100)));
                           },
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete),
-                          onPressed: () {
-                            doc.reference.delete();
-                          },
-                        ),
+                          onPressed: () => showDialog(
+                              context: context,
+                              builder: (context) {
+                                return AlertDialog(
+                                    icon: const Icon(Icons.delete),
+                                    title: const Text("Delete Question"),
+                                    content: const Text("Are you sure you want to delete this question?"),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          doc.reference.delete();
+                                          Navigator.of(context).pop();
+                                        },
+                                        child: const Text("Yes"),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.of(context).pop(),
+                                        child: const Text("No"),
+                                      )
+                                    ]);
+                              }),
+                        )
                       ],
                     ),
                   ),
@@ -273,7 +293,6 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                               ),
                             ),
                             StatefulBuilder(builder: (context, setIconState) {
-                              //TODO add dialog with preview of file
                               return IconButton(
                                 icon: uploadImageLoading
                                     ? const CupertinoActivityIndicator()
@@ -294,8 +313,8 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                                         });
                                         int index = await getGameMediaIndex(widget.gameId);
                                         String filename = "$index.${imageXFile.path.split("/").last.split(".").last}";
-                                        final localFilePath = "${appSupportDir.absolute.path}/${widget.gameId}/$filename";
-                                        imageXFile.saveTo(localFilePath);
+                                        final localFilePath =
+                                            "${appSupportDir.absolute.path}/${widget.gameId}/$filename";
                                         uploadImageStream = storageRef
                                             .child("game_${widget.gameId}/$filename")
                                             .putFile(File(imageXFile.path))
@@ -304,6 +323,7 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                                           switch (event.state) {
                                             case TaskState.success:
                                               doc.reference.update({image: filename});
+                                              imageXFile.saveTo(localFilePath);
                                               setIconState(() {
                                                 uploadImageLoading = false;
                                                 uploadImageSuccess = true;
@@ -345,7 +365,6 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                                   int index = await getGameMediaIndex(widget.gameId);
                                   String filename = "$index.${musicXFile.path.split("/").last.split(".").last}";
                                   final localFilePath = "${appSupportDir.absolute.path}/${widget.gameId}/$filename";
-                                  musicXFile.saveTo(localFilePath);
                                   uploadMusicStream = storageRef
                                       .child("game_${widget.gameId}/$filename")
                                       .putFile(File(musicXFile.path))
@@ -354,6 +373,7 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                                     switch (event.state) {
                                       case TaskState.success:
                                         doc.reference.update({music: filename});
+                                        musicXFile.saveTo(localFilePath);
                                         setIconState(() {
                                           uploadMusicLoading = false;
                                           uploadMusicSuccess = true;
@@ -450,11 +470,12 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                                         labelText: "Answer",
                                         border: OutlineInputBorder(),
                                       ),
-                                      onChanged: (value) {
-                                        List<String> oldList = doc.data()[answers] ?? ["", "", "", ""];
-                                        oldList[i] = value;
+                                      onChanged: (value) async {
+                                        List<String> currentAnswers = List<String>.from(
+                                            (await doc.reference.get()).data()?[answers] ?? ["", "", "", ""]);
+                                        currentAnswers[i] = value;
                                         doc.reference.update({
-                                          answers: oldList,
+                                          answers: currentAnswers,
                                         });
                                       },
                                     ),
@@ -462,6 +483,73 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                                 ],
                               ),
                             ),
+                        ],
+                        if (doc.data()[type] == QuestionType.progressingReveal.name) ...[
+                          const SizedBox(
+                            height: 16,
+                          ),
+                          Text("Information",
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelMedium
+                                  ?.copyWith(color: Theme.of(context).colorScheme.primary)),
+                          for (final (i, String informationString)
+                              in (List<String>.from(doc.data()[information] ?? [])).indexed)
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: TextEditingController(text: informationString),
+                                      decoration: InputDecoration(
+                                        labelText: "Information ${i + 1}",
+                                        border: const OutlineInputBorder(),
+                                      ),
+                                      onChanged: (value) async {
+                                        List<String> currentInfos =
+                                            List<String>.from((await doc.reference.get()).data()?[information] ?? []);
+                                        if (currentInfos.length <= i) {
+                                          setState(() {});
+                                          return;
+                                        }
+                                        currentInfos[i] = value;
+                                        doc.reference.update({
+                                          information: currentInfos,
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    onPressed: () async {
+                                      List<String> currentInfos =
+                                          List<String>.from((await doc.reference.get()).data()?[information] ?? []);
+                                      currentInfos.removeAt(i);
+                                      doc.reference.update({
+                                        information: currentInfos,
+                                      }).then((value) => setState(() {}));
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                List<String> currentInfos =
+                                    List<String>.from((await doc.reference.get()).data()?[information] ?? []);
+                                doc.reference.update({
+                                  information: currentInfos..add(""),
+                                }).then((value) => setState(() {}));
+                              },
+                              child: const Padding(
+                                padding: EdgeInsets.all(8.0),
+                                child: Text("Add Information"),
+                              ),
+                            ),
+                          ),
                         ],
                       ],
                     ),

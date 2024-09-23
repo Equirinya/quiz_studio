@@ -36,11 +36,23 @@ class SessionStreamBuilder extends StatelessWidget {
   Future<void> downloadTeamSounds() async {
     final storage = FirebaseStorage.instance.ref().child("session_$session");
     final Directory appSupportDir = await getApplicationSupportDirectory();
+    final Directory localDir = Directory('${appSupportDir.path}/session_$session');
+    if(!(await localDir.exists())){
+      localDir.create(recursive: true);
+    }
     var files = await storage.listAll();
+    print(storage.fullPath);
+    print(files.items);
     for(var file in files.items){
-      final localFile = File('${appSupportDir.path}/$session/${file.name}');
+      final localFile = File('${localDir.path}/${file.name}');
       if (!(await localFile.exists())) {
         final downloadTask = file.writeToFile(localFile);
+      }
+    }
+    for(var localFile in localDir.listSync()){
+      print(localFile.uri.pathSegments.last);
+      if(!files.items.map((e) => e.name).contains(localFile.uri.pathSegments.last)){
+        localFile.delete();
       }
     }
   }

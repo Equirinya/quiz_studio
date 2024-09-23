@@ -149,7 +149,7 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
                                 DropdownMenu<String>(
                                     dropdownMenuEntries:
                                         teamsList.map((e) => DropdownMenuEntry(label: e, value: e)).toList(),
-                                    initialSelection: buzzerTeamMap.containsKey(entry.key)
+                                    initialSelection: buzzerTeamMap.containsKey(entry.key) && buzzerTeamMap[entry.key]! < teamsList.length
                                         ? teamsList[buzzerTeamMap[entry.key]!]
                                         : teamsList.firstOrNull,
                                     onSelected: (value) {
@@ -177,7 +177,7 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
 void selectSound(int team, BuildContext context) async {
   String sessionId = await SharedPreferences.getInstance().then((value) => value.getString("currentSession") ?? "");
   final Directory appSupportDir = await getApplicationSupportDirectory();
-  final File file = File('${appSupportDir.path}/$sessionId/team_sound$team');
+  final File file = File('${appSupportDir.path}/session_$sessionId/team_sound$team');
   if(!await file.parent.exists()) await file.parent.create(recursive: true);
   InputDevice? selectedDevice;
 
@@ -321,6 +321,14 @@ void selectSound(int team, BuildContext context) async {
                     });
                   },
                 ),
+                ListTile(
+                  title: const Text("Reset to Default"),
+                  leading: const Icon(Icons.restore),
+                  onTap: () async {
+                    if (file.existsSync()) await file.delete();
+                    storageRef.delete();
+                  },
+                )
               ],
             );
           },

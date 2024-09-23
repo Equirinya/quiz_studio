@@ -18,103 +18,108 @@ class QuestionDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Badge(
-            alignment: Alignment.topLeft,
-            isLabelVisible: questionData[description] != null && questionData[description].isNotEmpty,
-            label: (questionData[description]) != null
-                ? Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: Text(questionData[description], style: const TextStyle(fontSize: 16)),
-                  )
-                : null,
-            largeSize: 32,
-            child: Card(
-                color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: MediaQuery.of(context).size.width * 0.6,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Badge(
+          alignment: Alignment.topLeft,
+          isLabelVisible: questionData[description] != null && questionData[description].isNotEmpty,
+          label: (questionData[description]) != null
+              ? Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Text(questionData[description], style: const TextStyle(fontSize: 16)),
+                )
+              : null,
+          largeSize: 32,
+          child: Card(
+              color: Theme.of(context).colorScheme.surfaceContainerHigh,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: MediaQuery.of(context).size.width * 0.6,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    textAlign: TextAlign.center,
+                    questionData[question] ?? "",
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      textAlign: TextAlign.center,
-                      questionData[question] ?? "",
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                  ),
-                )),
-          ),
-          if (questionData[type] == QuestionType.progressingReveal.name)
-            Builder(
-              builder: (context) {
-                List<String> informationStrings = List<String>.from(questionData[information]);
-                var root = sqrt(informationStrings.length);
-                int columns = root < 4 ? root.ceil() : root.floor();
-                return Wrap(
-                  alignment: WrapAlignment.center,
-                  children: [
-                    for (var (i, information) in informationStrings.indexed)
-                      SizedBox(
-                        width: MediaQuery.of(context).size.width / columns - 16,
-                        child: Visibility(
-                          visible: i < reveal,
-                          maintainSize: true,
-                          maintainAnimation: true,
-                          maintainState: true,
-                          child: Card(
-                            color: controllerView && i >= reveal
-                                ? Theme.of(context).colorScheme.surfaceContainerLowest
-                                : Theme.of(context).colorScheme.surfaceContainerLow,
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Text(
-                                information,
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.headlineSmall,
-                              ),
+                ),
+              )),
+        ),
+        if (questionData[type] == QuestionType.progressingReveal.name)
+          Builder(
+            builder: (context) {
+              List<String> informationStrings = List<String>.from(questionData[information] ?? []);
+              var root = sqrt(informationStrings.length);
+              int columns = root < 4 ? root.ceil() : root.floor();
+              return Wrap(
+                alignment: WrapAlignment.center,
+                children: [
+                  for (var (i, information) in informationStrings.indexed)
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width / columns - 16,
+                      child: Visibility(
+                        visible: i < reveal || controllerView,
+                        maintainSize: true,
+                        maintainAnimation: true,
+                        maintainState: true,
+                        child: Card(
+                          color: controllerView && i >= reveal
+                              ? Theme.of(context).colorScheme.surfaceContainerLowest
+                              : Theme.of(context).colorScheme.surfaceContainerLow,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              information,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.headlineSmall, //TODO make proportional to screen size
                             ),
                           ),
                         ),
                       ),
-                  ],
-                );
-              },
-            ),
-          if (questionData[type] == QuestionType.abcd.name)
-            Wrap(
-              alignment: WrapAlignment.center,
-              children: [
-                for (var (i, answer) in List<String>.from(questionData[answers]).indexed)
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width / 2 - 16,
-                    child: Visibility(
-                      visible: i < reveal || controllerView,
-                      maintainSize: true,
-                      maintainAnimation: true,
-                      maintainState: true,
-                      child: Card(
-                        color: controllerView && i >= reveal
-                            ? Theme.of(context).colorScheme.surfaceContainerLowest
-                            : Theme.of(context).colorScheme.surfaceContainerLow,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
+                    ),
+                ],
+              );
+            },
+          ),
+        if (questionData[type] == QuestionType.abcd.name)
+          Wrap(
+            alignment: WrapAlignment.center,
+            children: [
+              for (var (i, answer) in List<String>.from(questionData[answers] ?? []).indexed)
+                SizedBox(
+                  width: MediaQuery.of(context).size.width / 2 - 16,
+                  child: Visibility(
+                    visible: i < reveal || controllerView,
+                    maintainSize: true,
+                    maintainAnimation: true,
+                    maintainState: true,
+                    child: Card(
+                      color: controllerView && i >= reveal
+                          ? Theme.of(context).colorScheme.surfaceContainerLowest
+                          : Theme.of(context).colorScheme.surfaceContainerLow,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Center(
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (controllerView || reveal >= questionData[answers].length)
+                              if (controllerView || reveal > questionData[answers].length)
                                 Padding(
                                   padding: const EdgeInsets.only(right:8.0),
                                   child: Icon(questionData[answersCorrect][i] ? Icons.check : Icons.close),
                                 ),
-                              Text(
-                                answer,
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.headlineSmall,
+                              Expanded(
+                                child: Text(
+                                  answer,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.headlineSmall,
+                                ),
                               ),
                             ],
                           ),
@@ -122,25 +127,25 @@ class QuestionDisplay extends StatelessWidget {
                       ),
                     ),
                   ),
-              ],
-            ),
-          if(controllerView && questionData[answerHint] != null && questionData[answerHint].isNotEmpty) Card(
-              color: Theme.of(context).colorScheme.surfaceContainerLow,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minWidth: MediaQuery.of(context).size.width * 0.6,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    textAlign: TextAlign.center,
-                    questionData[answerHint] ?? "",
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                  ),
+            ],
+          ),
+        if(controllerView && questionData[answerHint] != null && questionData[answerHint].isNotEmpty) Card(
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: MediaQuery.of(context).size.width * 0.6,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  textAlign: TextAlign.center,
+                  questionData[answerHint] ?? "",
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
-              ))
-        ],
-      ),
+              ),
+            ))
+      ],
     );
   }
 }
