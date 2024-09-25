@@ -131,13 +131,15 @@ class _GamesDetailPageState extends State<GamesDetailPage> with TickerProviderSt
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
                   children: [
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 400),
-                      child: TextField(
-                        controller: gameNameController,
-                        decoration: const InputDecoration(
-                          labelText: "Game Name",
-                          border: OutlineInputBorder(),
+                    Flexible(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 400),
+                        child: TextField(
+                          controller: gameNameController,
+                          decoration: const InputDecoration(
+                            labelText: "Game Name",
+                            border: OutlineInputBorder(),
+                          ),
                         ),
                       ),
                     ),

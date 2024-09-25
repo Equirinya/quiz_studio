@@ -23,12 +23,13 @@ class SessionStreamBuilder extends StatelessWidget {
       List<int> pointsList,
       (int, int) selectedFieldData,
       HomePageState state,
+      bool? playing,
       int? buzzeredTeam,
       List<(int, int)> playedFieldsList,
       int revealed,
       Map<int, int> buzzerSensitivityMap,
       Map<int, int> buzzerTeamMap,
-      DocumentReference gameRef,
+      DocumentReference? gameRef,
       DocumentReference sessionRef,
       ) builder;
   final Widget fallback;
@@ -49,7 +50,7 @@ class SessionStreamBuilder extends StatelessWidget {
         final downloadTask = file.writeToFile(localFile);
       }
     }
-    for(var localFile in localDir.listSync()){
+    for(var localFile in localDir.listSync()){ //TODO maybe check if empty beforehand
       print(localFile.uri.pathSegments.last);
       if(!files.items.map((e) => e.name).contains(localFile.uri.pathSegments.last)){
         localFile.delete();
@@ -87,6 +88,8 @@ class SessionStreamBuilder extends StatelessWidget {
           }
           HomePageState state =
           HomePageState.values.firstWhere((element) => element.name == sessionSnapshot.data!.data()![currentState]);
+
+          bool? playing = sessionSnapshot.data!.data()![playingFrom];
           int? buzzeredTeam = sessionSnapshot.data!.data()![buzzeredFrom];
           List<(int, int)> playedFieldsList = sessionSnapshot.data!.data()![playedFields] != null
               ? List.from(sessionSnapshot.data!.data()![playedFields].map((e) {
@@ -94,20 +97,20 @@ class SessionStreamBuilder extends StatelessWidget {
             return (parts[0], parts[1]);
           }))
               : List.empty();
-          Map<int, int> buzzerSensitivityMap = Map.from(sessionSnapshot.data!.data()![buzzerSensitivity]).map(
+          Map<int, int> buzzerSensitivityMap = Map.from(sessionSnapshot.data!.data()![buzzerSensitivity] ?? {}).map(
                 (key, value) => MapEntry(int.tryParse(key)!, value),
           );
           for (MapEntry entry in buzzerSensitivityMap.entries) {
             SerialConnection().buzzerSensitivity[entry.key] = entry.value;
           }
-          Map<int, int> buzzerTeamMap = Map.from(sessionSnapshot.data!.data()![buzzerTeam]).map(
+          Map<int, int> buzzerTeamMap = Map.from(sessionSnapshot.data!.data()![buzzerTeam] ?? {}).map(
                 (key, value) => MapEntry(int.tryParse(key)!, value),
           );
           int reveal = sessionSnapshot.data!.data()![revealed] ?? 0;
 
-          DocumentReference gameRef = FirebaseFirestore.instance.collection(games).doc(sessionSnapshot.data!.data()![game]);
+          DocumentReference? gameRef = sessionSnapshot.data!.data()?[game] != null && sessionSnapshot.data!.data()![game].isNotEmpty ? FirebaseFirestore.instance.collection(games).doc(sessionSnapshot.data!.data()![game]) : null;
 
-          return builder(teamsList, pointsList, selectedFieldData, state, buzzeredTeam, playedFieldsList,reveal,
+          return builder(teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList,reveal,
               buzzerSensitivityMap, buzzerTeamMap, gameRef,sessionSnapshot.data!.reference);
         });
   }

@@ -16,7 +16,10 @@ import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if(Platform.isWindows || Platform.isMacOS) await windowManager.ensureInitialized();
+  if(Platform.isWindows || Platform.isMacOS) {
+    await windowManager.ensureInitialized();
+    windowManager.setTitle("Quiz Studio");
+  }
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

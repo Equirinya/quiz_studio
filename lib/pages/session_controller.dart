@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:quiz_show/database/game_stream.dart';
 import 'package:quiz_show/pages/settings.dart';
 import 'package:quiz_show/widgets/question.dart';
@@ -20,12 +23,15 @@ class SessionPage extends StatefulWidget {
 
 class _SessionPageState extends State<SessionPage> {
   late SharedPreferences prefs;
+  late Directory appSupportDir;
   bool initialized = false;
+  (int, int) preview = (-1, -1);
 
   @override
   void initState() {
     () async {
       prefs = await SharedPreferences.getInstance();
+      appSupportDir = await getApplicationSupportDirectory();
       setState(() {
         initialized = true;
       });
@@ -49,6 +55,10 @@ class _SessionPageState extends State<SessionPage> {
                         setting: "currentSession",
                         title: "Current Session",
                         icon: Icons.workspaces,
+                        fallback: noSession,
+                        callback: (value) => setState(() {
+
+                        }),
                         options: snapshot.data!.docs //TODO improve
                             .map(
                               (e) => e.id,
@@ -86,8 +96,9 @@ class _SessionPageState extends State<SessionPage> {
             title: "Game Controller",
             settings: [
               SessionStreamBuilder(
+                key: ValueKey(prefs.getString("currentSession")),
                 session: prefs.getString("currentSession"),
-                builder: (teamsList, pointsList, selectedFieldData, state, buzzeredTeam, playedFieldsList,
+                builder: (teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList,
                     revealedAnswers, buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
                   return SingleChildScrollView(
                     child: Column(
@@ -109,7 +120,7 @@ class _SessionPageState extends State<SessionPage> {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Padding(
-                                            padding: const EdgeInsets.only(left:16.0),
+                                            padding: const EdgeInsets.only(left: 16.0),
                                             child: Text(
                                               (pointsList[index] ?? 0).toString(),
                                               style: Theme.of(context).textTheme.headlineSmall,
@@ -138,7 +149,6 @@ class _SessionPageState extends State<SessionPage> {
                                           )
                                         ],
                                       ),
-
                                     ],
                                   ),
                                 ),
@@ -148,13 +158,16 @@ class _SessionPageState extends State<SessionPage> {
                         const SizedBox(
                           height: 8,
                         ),
-                        GameStreamBuilder(
+                        if(gameRef == null) const Center(
+                          child: Text("No game selected"),
+                        )
+                        else GameStreamBuilder(
                           key: ValueKey(gameRef.id),
                           gameId: gameRef.id,
                           builder: (categories, gameQuestionPoints, questions, emptyFields) {
                             return Column(
                               mainAxisSize: MainAxisSize.min,
-                              children: [
+                              children: <Widget>[
                                 Row(
                                   mainAxisSize: MainAxisSize.max,
                                   mainAxisAlignment: MainAxisAlignment.start,
@@ -162,48 +175,67 @@ class _SessionPageState extends State<SessionPage> {
                                     for (var (cIndex, categoryName) in categories.indexed)
                                       Expanded(
                                         child: Padding(
-                                          padding: const EdgeInsets.all(8.0),
+                                          padding: const EdgeInsets.all(4.0),
                                           child: Column(
                                             mainAxisSize: MainAxisSize.min,
                                             crossAxisAlignment: CrossAxisAlignment.stretch,
                                             children: <Widget>[
-                                              Center(child: Text(categoryName)),
+                                              Center(
+                                                  child: Text(categoryName, maxLines: 1, overflow: TextOverflow.clip)),
                                               for (var (qIndex, questionDoc) in questions[cIndex].indexed)
                                                 Padding(
-                                                  padding: const EdgeInsets.all(4.0),
+                                                  padding: const EdgeInsets.all(2.0),
                                                   child: ElevatedButton(
-                                                    onPressed: questionDoc.isEmpty? null : selectedFieldData == (cIndex, qIndex)
-                                                        ? () {
-                                                            sessionRef.update({
-                                                              currentState: HomePageState.overview.name,
-                                                              selectedField: "-1:-1",
-                                                              revealed: 0,
-                                                            });
-                                                          }
-                                                        : playedFieldsList.contains((cIndex, qIndex))
+                                                    onPressed: questionDoc.isEmpty
+                                                        ? null
+                                                        : selectedFieldData == (cIndex, qIndex)
                                                             ? () {
                                                                 sessionRef.update({
-                                                                  playedFields:
-                                                                      FieldValue.arrayRemove(["$cIndex:$qIndex"])
+                                                                  currentState: HomePageState.overview.name,
+                                                                  selectedField: "-1:-1",
+                                                                  revealed: 0,
                                                                 });
+                                                                preview = (-1, -1);
                                                               }
-                                                            : () {
-                                                                sessionRef.update({
-                                                                  currentState: HomePageState.question.name,
-                                                                  selectedField: "$cIndex:$qIndex",
-                                                                  playedFields: FieldValue.arrayUnion([
-                                                                    if (selectedFieldData.$1 != -1)
-                                                                      "${selectedFieldData.$1}:${selectedFieldData.$2}"
-                                                                  ])
-                                                                });
-                                                              },
+                                                            : playedFieldsList.contains((cIndex, qIndex))
+                                                                ? () {
+                                                                    sessionRef.update({
+                                                                      playedFields:
+                                                                          FieldValue.arrayRemove(["$cIndex:$qIndex"])
+                                                                    });
+                                                                  }
+                                                                : preview != (cIndex, qIndex)
+                                                                    ? () => setState(() {
+                                                                          preview = (cIndex, qIndex);
+                                                                        })
+                                                                    : () {
+                                                                        preview = (-1, -1);
+                                                                        sessionRef.update({
+                                                                          currentState: HomePageState.question.name,
+                                                                          selectedField: "$cIndex:$qIndex",
+                                                                          revealed: 0,
+                                                                          playingFrom: null,
+                                                                          playedFields: FieldValue.arrayUnion([
+                                                                            if (selectedFieldData.$1 != -1)
+                                                                              "${selectedFieldData.$1}:${selectedFieldData.$2}"
+                                                                          ])
+                                                                        });
+                                                                      },
                                                     style: ElevatedButton.styleFrom(
                                                         backgroundColor: selectedFieldData == (cIndex, qIndex)
                                                             ? Theme.of(context).colorScheme.primaryContainer
-                                                            : playedFieldsList.contains((cIndex, qIndex)) || questionDoc.isEmpty
+                                                            : playedFieldsList.contains((cIndex, qIndex)) ||
+                                                                    questionDoc.isEmpty
                                                                 ? Theme.of(context).colorScheme.surface
-                                                                : Theme.of(context).colorScheme.surfaceContainerHigh),
-                                                    child: Text(questionDoc.isNotEmpty ? questionDoc[pointsPlus].toString() : "-"),
+                                                                : preview != (cIndex, qIndex)
+                                                                    ? Theme.of(context).colorScheme.surfaceContainerHigh
+                                                                    : Theme.of(context)
+                                                                        .colorScheme
+                                                                        .surfaceContainerHighest,
+                                                        padding: const EdgeInsets.all(8)),
+                                                    child: Text(questionDoc.isNotEmpty
+                                                        ? questionDoc[pointsPlus].toString()
+                                                        : "-"),
                                                   ),
                                                 ),
                                             ],
@@ -212,15 +244,22 @@ class _SessionPageState extends State<SessionPage> {
                                       ),
                                   ],
                                 ),
-                                if (selectedFieldData.$1 != -1 && selectedFieldData.$2 != -1)
+                                const SizedBox(
+                                  height: 16,
+                                ),
+                                if ((selectedFieldData.$1 != -1 && selectedFieldData.$2 != -1) ||
+                                    (preview.$1 != -1 && preview.$2 != -1))
                                   QuestionDisplay(
-                                    questionData: questions[selectedFieldData.$1][selectedFieldData.$2],
+                                    gameId: gameRef.id,
+                                    questionData: (selectedFieldData.$1 != -1 && selectedFieldData.$2 != -1)
+                                        ? questions[selectedFieldData.$1][selectedFieldData.$2]
+                                        : questions[preview.$1][preview.$2],
                                     controllerView: true,
                                     reveal: revealedAnswers,
+                                    appSupportDir: appSupportDir,
                                   ),
                                 Wrap(
                                   spacing: 8,
-                                  runSpacing: 8,
                                   children: [
                                     if (state == HomePageState.overview)
                                       ElevatedButton(
@@ -259,8 +298,10 @@ class _SessionPageState extends State<SessionPage> {
                                             });
                                           },
                                           style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                            (Theme.of(context).brightness == Brightness.dark ? Colors.green[800]! : Colors.green[300]!).harmonizeWith(Theme.of(context).colorScheme.primary)),
+                                              backgroundColor: (Theme.of(context).brightness == Brightness.dark
+                                                      ? Colors.green[800]!
+                                                      : Colors.green[300]!)
+                                                  .harmonizeWith(Theme.of(context).colorScheme.primary)),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
@@ -282,11 +323,12 @@ class _SessionPageState extends State<SessionPage> {
                                             }
                                             sessionRef.update({
                                               currentState: HomePageState.question.name,
-                                              playedFields: FieldValue.arrayUnion([
-                                                if (selectedFieldData.$1 != -1)
-                                                  "${selectedFieldData.$1}:${selectedFieldData.$2}"
-                                              ]),
-                                              points: pointsList
+                                              points: pointsList,
+                                              if (questions[selectedFieldData.$1][selectedFieldData.$2][music] !=
+                                                      null &&
+                                                  questions[selectedFieldData.$1][selectedFieldData.$2][music]
+                                                      .isNotEmpty)
+                                                playingFrom: true,
                                             });
                                           },
                                           style: ElevatedButton.styleFrom(
@@ -305,7 +347,14 @@ class _SessionPageState extends State<SessionPage> {
                                       if (selectedFieldData != (-1, -1))
                                         ElevatedButton(
                                             onPressed: () {
-                                              sessionRef.update({currentState: HomePageState.question.name});
+                                              sessionRef.update({
+                                                currentState: HomePageState.question.name,
+                                                if (questions[selectedFieldData.$1][selectedFieldData.$2][music] !=
+                                                        null &&
+                                                    questions[selectedFieldData.$1][selectedFieldData.$2][music]
+                                                        .isNotEmpty)
+                                                  playingFrom: true,
+                                              });
                                             },
                                             child: const Row(
                                               mainAxisSize: MainAxisSize.min,
@@ -323,15 +372,65 @@ class _SessionPageState extends State<SessionPage> {
                                                 currentState: HomePageState.questionBuzzered.name
                                               });
                                             },
+                                            style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(8)),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(MdiIcons.bullseye),
-                                                Text("Buzzer Team $team"),
+                                                Text("Buzzer $team"),
                                               ],
                                             ))
                                     ],
-                                    if ((state == HomePageState.questionBuzzered || state == HomePageState.question) && selectedFieldData.$1 != -1 &&
+                                    if ((state == HomePageState.questionBuzzered || state == HomePageState.question) &&
+                                        selectedFieldData.$1 != -1 &&
+                                        (questions[selectedFieldData.$1][selectedFieldData.$2][music] != null &&
+                                            questions[selectedFieldData.$1][selectedFieldData.$2][music]
+                                                .isNotEmpty)) ...[
+                                      if (playing == null || !playing)
+                                        ElevatedButton(
+                                            onPressed: () {
+                                              sessionRef.update({
+                                                playingFrom: true,
+                                              });
+                                            },
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.play_circle),
+                                                Text("Play"),
+                                              ],
+                                            ))
+                                      else ...[
+                                        ElevatedButton(
+                                            onPressed: () {
+                                              sessionRef.update({
+                                                playingFrom: false,
+                                              });
+                                            },
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.pause_circle),
+                                                Text("Pause"),
+                                              ],
+                                            )),
+                                        ElevatedButton(
+                                            onPressed: () {
+                                              sessionRef.update({
+                                                playingFrom: null,
+                                              });
+                                            },
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.stop_circle),
+                                                Text("Stop"),
+                                              ],
+                                            ))
+                                      ]
+                                    ],
+                                    if ((state == HomePageState.questionBuzzered || state == HomePageState.question) &&
+                                        selectedFieldData.$1 != -1 &&
                                         (questions[selectedFieldData.$1][selectedFieldData.$2][type] ==
                                                 QuestionType.abcd.name ||
                                             questions[selectedFieldData.$1][selectedFieldData.$2][type] ==
@@ -400,7 +499,14 @@ class _SessionPageState extends State<SessionPage> {
           ),
           SettingsSubPageCategory(
             title: "Teams",
-            settings: [
+            settings: prefs.getString("currentSession") == null
+                ? const [
+                    ListTile(
+                      title: Text("No session selected"),
+                    )
+            ]
+                :
+            [
               StreamBuilder(
                 stream:
                     FirebaseFirestore.instance.collection(sessions).doc(prefs.getString("currentSession")).snapshots(),
@@ -415,18 +521,72 @@ class _SessionPageState extends State<SessionPage> {
                             ListTile(
                                 title: Text(team),
                                 subtitle: Text("Points: ${snapshot.data![points][index]}"),
-                                leading: Icon(Icons.group),
+                                leading: const Icon(Icons.group),
+                                onTap: () async {
+                                  await showDialog(
+                                      context: context,
+                                      builder: (context) {
+                                        TextEditingController controller = TextEditingController(text: team);
+                                        return AlertDialog(
+                                          icon: const Icon(Icons.edit),
+                                          title: const Text("Edit team name"),
+                                          content: TextField(
+                                            controller: controller,
+                                            decoration: const InputDecoration(labelText: "Team Name"),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                                onPressed: () {
+                                                  Navigator.of(context).pop();
+                                                },
+                                                child: const Text("Abbrechen")),
+                                            TextButton(
+                                                onPressed: () async {
+                                                  var docRef = FirebaseFirestore.instance
+                                                      .collection(sessions)
+                                                      .doc(prefs.getString("currentSession"));
+                                                  var doc = await docRef.get();
+                                                  if (List.from(doc.data()?[teams] ?? []).contains(controller.text)) return;
+                                                  await docRef.update({
+                                                    teams: doc.data()?[teams] != null
+                                                        ? (List.from(doc.data()![teams])..[index] = controller.text)
+                                                        : [controller.text],
+                                                  });
+                                                  Navigator.of(context).pop();
+                                                },
+                                                child: const Text("Bestätigen")),
+                                          ],
+                                        );
+                                      });
+                                  setState(() {});
+                                },
                                 trailing: IconButton(
-                                  icon: Icon(Icons.delete),
+                                  icon: const Icon(Icons.delete),
                                   onPressed: () async {
-                                    await FirebaseFirestore.instance
-                                        .collection(sessions)
-                                        .doc(prefs.getString("currentSession"))
-                                        .update({
-                                      teams: teamsList..removeAt(index),
-                                      points: List.from(snapshot.data![points])..removeAt(index)
-                                    });
-                                    setState(() {});
+                                    await showDialog(context: context, builder: (context) => AlertDialog(
+                                      icon: const Icon(Icons.warning),
+                                      title: const Text("Delete team"),
+                                      content: Text("Do you really want to delete the team $team?"),
+                                      actions: [
+                                        TextButton(
+                                            onPressed: () async {
+                                              await FirebaseFirestore.instance
+                                                  .collection(sessions)
+                                                  .doc(prefs.getString("currentSession"))
+                                                  .update({
+                                                teams: teamsList..removeAt(index),
+                                                points: List.from(snapshot.data![points])..removeAt(index)
+                                              });
+                                              Navigator.of(context).pop();
+                                            },
+                                            child: const Text("Yes")),
+                                        ElevatedButton(
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                            },
+                                            child: const Text("No")),
+                                      ],
+                                    ));
                                   },
                                 )),
                         ],
