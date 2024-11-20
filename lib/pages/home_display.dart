@@ -170,7 +170,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                     }
 
                     buzzeredSubscription?.cancel();
-                    if ((state == HomePageState.question || state == HomePageState.buzzerTest) && questions[selectedFieldData.$1][selectedFieldData.$2][type] != QuestionType.noBuzzer.name &&
+                    if (((state == HomePageState.question && selectedFieldData.$1 >= 0 && questions[selectedFieldData.$1][selectedFieldData.$2][type] != QuestionType.noBuzzer.name) || state == HomePageState.buzzerTest) &&
                         SerialConnection().status == SerialStatus.connected) {
                       buzzeredSubscription = SerialConnection().buzzerPressed.listen(
                         (event) {
@@ -187,8 +187,11 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                             //TODO check if it would be lower latency when [buzzerTeam] set manually
                             playSound(teamIndex);
                           } else if (state == HomePageState.buzzerTest) {
-                            setState(() {
-                              buzzeredTeam = teamIndex;
+                            FirebaseFirestore.instance
+                                .collection(sessions)
+                                .doc(prefs.getString("currentSession"))
+                                .update({
+                              buzzeredFrom: teamIndex,
                             });
                             playSound(teamIndex);
                           }

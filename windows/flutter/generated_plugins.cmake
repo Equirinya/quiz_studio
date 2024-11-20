@@ -12,7 +12,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   firebase_storage
   flutter_libserialport
   record_windows
-  screen_retriever
+  screen_retriever_windows
   url_launcher_windows
   window_manager
 )
