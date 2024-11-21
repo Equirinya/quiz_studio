@@ -248,7 +248,7 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                         Row(
                           children: [
                             DropdownMenu<QuestionType>(
-                                dropdownMenuEntries: QuestionType.values.map((e) {
+                                dropdownMenuEntries: QuestionType.values.where((e) => e!=QuestionType.unsupported).map((e) {
                                   return DropdownMenuEntry(
                                     value: e,
                                     label: e.name,
@@ -256,7 +256,7 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                                 }).toList(),
                                 initialSelection: QuestionType.values.firstWhere(
                                     (element) => element.name == doc.data()[type],
-                                    orElse: () => QuestionType.free),
+                                    orElse: () => QuestionType.unsupported),
                                 width: min(MediaQuery.of(context).size.width * 0.3, 200),
                                 hintText: "Type",
                                 onSelected: (value) {

@@ -15,9 +15,9 @@ class ABCDQuestion extends Question {
   The Gamemaster can slowly reveal those.""";
 
   @override
-  String asText() => """${super.asText()}
-  Possible answers:
-  ${data[answers] is! List<String> ? "" : (data[answers] as List<String>).indexed.map((e) => "${data[answersCorrect]?[e.$1] is bool && data[answersCorrect]?[e.$1] ? "Correct:" : "Wrong:"} ${e.$2}").join('\n')}""";
+  String asText() => "${super.asText()}"
+  "Possible answers:\n"
+  "${data[answers] is! List ? "" : (List<String>.from(data[answers])).indexed.map((e) => "${data[answersCorrect]?[e.$1] is bool && data[answersCorrect]?[e.$1] ? "Correct:" : "Wrong:"} ${e.$2}\n").join()}";
 
   @override
   List<Widget> controlButtons(gameState) => [];

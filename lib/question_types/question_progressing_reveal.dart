@@ -15,9 +15,9 @@ class ProgressingRevealQuestion extends Question {
   String explainString = """This question type lets the gamemaster piece by piece reveal more information.""";
 
   @override
-  String asText() => """${super.asText()}
-  Information to be revealed:
-  ${data[information] is! List<String> ? "" : (data[information] as List<String>).indexed.map((e) => "(${e.$1 + 1}) ${e.$2}").join('\n')}""";
+  String asText() => "${super.asText()}"
+  "Information to be revealed:\n"
+  "${data[information] is! List ? "" : (List<String>.from(data[information])).indexed.map((e) => "(${e.$1 + 1}) ${e.$2}\n").join()}";
 
   @override
   List<Widget> controlButtons(gameState) => [];

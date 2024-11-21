@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:quiz_show/question_types/abstract_question.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'games_categories.dart';
@@ -78,6 +80,26 @@ class _GamesDetailPageState extends State<GamesDetailPage> with TickerProviderSt
           child: Text(gameDoc!.data()?[name] ?? unnamed, overflow: TextOverflow.ellipsis),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.file_upload_outlined),
+            onPressed: () async {
+              String text = gameDoc?.data()?[name]??'';
+              for(var categoryDoc in categoriesDocs!.docs){
+                text += "\n\n--- Kategorie: "+categoryDoc.data()[name] + ' ---\n';
+                for(var questionDoc in (await db
+                    .collection(games)
+                    .doc(widget.gameId)
+                    .collection(categories)
+                    .doc(categoryDoc.id)
+                    .collection(questions)
+                    .orderBy(pointsPlus).get()).docs){
+                  text += Question.fromData(questionDoc.data()).asText();
+                  text += '\n';
+                }
+              }
+                await Clipboard.setData(ClipboardData(text: text));
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.admin_panel_settings_outlined),
             onPressed: () {

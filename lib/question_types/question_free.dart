@@ -23,16 +23,19 @@ class FreeQuestion extends Question {
 
   @override
   List<Widget> inputWidgets(BuildContext context, void Function(Map<String, dynamic> data) update, VoidCallback refresh) => [
-        StatefulBuilder(
-            builder: (context, setState) => Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text("Disable buzzers"),
-                    Switch(value: (data[noBuzzer] is bool ? data[noBuzzer] : false), onChanged: (value) {
-                      update({noBuzzer: value});
-                      setState(() => data[noBuzzer] = value);
-                    },)
-                  ],
-                ))
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: StatefulBuilder(
+              builder: (context, setState) => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text("Disable buzzers"),
+                      Switch(value: (data[noBuzzer] is bool ? data[noBuzzer] : false), onChanged: (value) {
+                        update({noBuzzer: value});
+                        setState(() => data[noBuzzer] = value);
+                      },)
+                    ],
+                  )),
+        )
       ];
 }
