@@ -19,6 +19,7 @@ class SessionStreamBuilder extends StatelessWidget {
 
   final String? session;
   final Widget Function(
+      Map<String,dynamic> sessionData,
       List<String> teamsList,
       List<int> pointsList,
       (int, int) selectedFieldData,
@@ -110,7 +111,7 @@ class SessionStreamBuilder extends StatelessWidget {
 
           DocumentReference? gameRef = sessionSnapshot.data!.data()?[game] != null && sessionSnapshot.data!.data()![game].isNotEmpty ? FirebaseFirestore.instance.collection(games).doc(sessionSnapshot.data!.data()![game]) : null;
 
-          return builder(teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList,reveal,
+          return builder(sessionSnapshot.data!.data()! ,teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList,reveal,
               buzzerSensitivityMap, buzzerTeamMap, gameRef,sessionSnapshot.data!.reference);
         });
   }

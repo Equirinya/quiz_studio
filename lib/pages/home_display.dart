@@ -18,9 +18,9 @@ import 'package:quiz_show/pages/settings.dart';
 import 'package:quiz_show/serial_connection.dart';
 
 import '../database/game_stream.dart';
+import '../question_types/abstract_question.dart';
 import '../widgets/playing_field.dart';
 import '../database/session_stream.dart';
-import '../widgets/question.dart';
 
 class HomeDisplayPage extends StatefulWidget {
   const HomeDisplayPage({super.key});
@@ -134,25 +134,25 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
               key: Key(currentGame),
               gameId: currentGame,
               fallback: SessionStreamBuilder(
-                  session: prefs.getString("currentSession"),
-                  builder: (teamsList, pointsList, selectedFieldData, state,playing, buzzeredTeam, playedFieldsList, revealed,
-                      buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
-                    if (currentGame != (gameRef?.id ?? "noGame")) {
-                      Future.delayed(
-                          const Duration(milliseconds: 200),
-                          () => setState(() {
-                                currentGame = gameRef?.id ?? "noGame";
-                              }));
-                    }
-                    return fallbackWidget;
-                  },
+                session: prefs.getString("currentSession"),
+                builder: (sessionData, teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList,
+                    revealed, buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
+                  if (currentGame != (gameRef?.id ?? "noGame")) {
+                    Future.delayed(
+                        const Duration(milliseconds: 200),
+                        () => setState(() {
+                              currentGame = gameRef?.id ?? "noGame";
+                            }));
+                  }
+                  return fallbackWidget;
+                },
                 fallback: fallbackWidget,
               ),
               builder: (categories, gameQuestionPoints, questions, emptyFields) {
                 return SessionStreamBuilder(
                   session: prefs.getString("currentSession"),
-                  builder: (teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList, revealed,
-                      buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
+                  builder: (sessionData, teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList,
+                      revealed, buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
                     if (currentGame != (gameRef?.id ?? "noGame")) {
                       Future.delayed(
                           const Duration(milliseconds: 200),
@@ -160,17 +160,26 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                                 currentGame = gameRef?.id ?? "noGame";
                               }));
                     }
-                    if(gameRef == null) return fallbackWidget;
-                    if(mediaPlaying != playing){
-                      if(playing == null) mediaPlayer.stop();
-                      else if(playing && mediaPlaying == null) mediaPlayer.play(DeviceFileSource("${appSupportDir.path}/${gameRef.id}/${questions[selectedFieldData.$1][selectedFieldData.$2][music]}"));
-                      else if(playing) mediaPlayer.resume();
-                      else mediaPlayer.pause();
+                    if (gameRef == null) return fallbackWidget;
+                    if (mediaPlaying != playing) {
+                      if (playing == null)
+                        mediaPlayer.stop();
+                      else if (playing && mediaPlaying == null)
+                        mediaPlayer.play(DeviceFileSource(
+                            "${appSupportDir.path}/${gameRef.id}/${questions[selectedFieldData.$1][selectedFieldData.$2][music]}"));
+                      else if (playing)
+                        mediaPlayer.resume();
+                      else
+                        mediaPlayer.pause();
                       mediaPlaying = playing;
                     }
 
                     buzzeredSubscription?.cancel();
-                    if (((state == HomePageState.question && selectedFieldData.$1 >= 0 && questions[selectedFieldData.$1][selectedFieldData.$2][type] != QuestionType.noBuzzer.name) || state == HomePageState.buzzerTest) &&
+                    if (((state == HomePageState.question &&
+                                selectedFieldData.$1 >= 0 &&
+                                Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2])
+                                    .buzzerable()) ||
+                            state == HomePageState.buzzerTest) &&
                         SerialConnection().status == SerialStatus.connected) {
                       buzzeredSubscription = SerialConnection().buzzerPressed.listen(
                         (event) {
@@ -199,43 +208,22 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                       );
                     }
 
-                    int estimatedRows =
+                    int estimatedScoreRows =
                         (teamsList.length / ((screenSize.width - 64) ~/ (screenSize.height * 0.2 + 8))).ceil();
                     double playFieldHeight;
                     double playFieldWidth;
                     switch (state) {
                       case HomePageState.buzzerTest:
                       case HomePageState.overview:
-                        playFieldHeight = screenSize.height - (screenSize.height * 0.12 + 8) * estimatedRows;
+                        playFieldHeight = screenSize.height - (screenSize.height * 0.12 + 8) * estimatedScoreRows;
                         playFieldWidth = screenSize.width;
                         break;
                       case HomePageState.question:
                       case HomePageState.questionBuzzered:
-                        double questionfactor = 0.1;
-                        questionfactor += 0.12 * estimatedRows; //Punktestände
-                        if (questions[selectedFieldData.$1][selectedFieldData.$2][image] != null &&
-                            questions[selectedFieldData.$1][selectedFieldData.$2][image]!.isNotEmpty) {
-                          questionfactor += 0.4;
-                        }
-                        // else if (questions[selectedFieldData.$1][selectedFieldData.$2][music] != null &&
-                        //     questions[selectedFieldData.$1][selectedFieldData.$2][music]!.isNotEmpty) {
-                        //   questionfactor += 0.2;
-                        // }
-                        if (questions[selectedFieldData.$1][selectedFieldData.$2][type] ==
-                            QuestionType.progressingReveal.name) {
-                          List<String> informationStrings = List<String>.from(
-                              questions[selectedFieldData.$1][selectedFieldData.$2][information] ?? []);
-                          var root = sqrt(informationStrings.length);
-                          int columns = root < 4 ? root.ceil() : root.floor();
-                          int rows = (informationStrings.length / columns).ceil();
-                          questionfactor += 0.08 * rows;
-                        } else if (questions[selectedFieldData.$1][selectedFieldData.$2][type] ==
-                            QuestionType.abcd.name) {
-                          questionfactor += 0.16;
-                        }
+                        double questionHeight = Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2]).questionHeightPercentage();
                         playFieldHeight =
-                            screenSize.height - (estimatedRows + 1) * 8 - screenSize.height * questionfactor;
-                        playFieldHeight = max(playFieldHeight, screenSize.height * 0.25);
+                            screenSize.height - (estimatedScoreRows + 1) * (screenSize.height * 0.12 + 8) - screenSize.height * questionHeight;
+                        playFieldHeight = max(playFieldHeight, screenSize.height * 0.2);
                         playFieldWidth = playFieldHeight / 9 * 16;
                     }
 
@@ -317,12 +305,10 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                                 children: [
                                   if ((state == HomePageState.question || state == HomePageState.questionBuzzered) &&
                                       selectedFieldData.$1 != -1)
-                                    QuestionDisplay(
-                                      gameId: gameRef.id,
-                                      questionData: questions[selectedFieldData.$1][selectedFieldData.$2],
-                                      reveal: revealed,
-                                      appSupportDir: appSupportDir,
-                                    ),
+                                    Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2])
+                                        .questionWidget(context: context,
+                                            gameDir: Directory('${appSupportDir.absolute.path}/${gameRef.id}'),
+                                            sessionData: sessionData)
                                 ],
                               )
                           ],

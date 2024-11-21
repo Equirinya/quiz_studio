@@ -95,7 +95,7 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
         SettingsSubPageCategory(title: "Sensitivity", settings: [
           SessionStreamBuilder(
             session: prefs.getString("currentSession"),
-            builder: (teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList, revealed,
+            builder: (Map<String,dynamic> sessionData, teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList, revealed,
                 buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
               return FutureBuilder(
                 future: SerialConnection().serialStream.first,

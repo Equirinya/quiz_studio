@@ -13,7 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../database/constants.dart';
-import '../widgets/question.dart';
+import '../question_types/abstract_question.dart';
 
 class GamesCategoriesEditPage extends StatefulWidget {
   const GamesCategoriesEditPage({super.key, required this.gameId, required this.categoryId});
@@ -174,9 +174,6 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                 music: null,
                 pointsPlus: 0,
                 pointsMinus: 0,
-                answersCorrect: [false, false, false, false],
-                answers: ["", "", "", ""],
-                information: [""],
                 answerHint: "",
               });
             },
@@ -204,11 +201,11 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                             showDialog(
                                 context: context,
                                 builder: (context) => Center(
-                                        child: QuestionDisplay(
-                                      gameId: widget.gameId,
-                                      questionData: questionData,
-                                      reveal: 100,
-                                      appSupportDir: appSupportDir,
+                                        child: Question.fromData(questionData).questionWidget(
+                                      context: context,
+                                      controllerView: false,
+                                      gameDir: Directory('${appSupportDir.absolute.path}/${widget.gameId}'),
+                                      sessionData: previewSessionConfig,
                                     )));
                           },
                         ),
@@ -405,79 +402,84 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                                 icon: uploadMusicLoading[dIndex]
                                     ? const CupertinoActivityIndicator()
                                     : Icon(uploadMusicSuccess[dIndex] == null &&
-                                    (doc.data()[music] == null || doc.data()[music].isEmpty)
-                                    ? MdiIcons.musicNotePlus
-                                    : uploadMusicSuccess[dIndex] ?? true
-                                    ? Icons.music_note
-                                    : MdiIcons.musicNoteOff),
+                                            (doc.data()[music] == null || doc.data()[music].isEmpty)
+                                        ? MdiIcons.musicNotePlus
+                                        : uploadMusicSuccess[dIndex] ?? true
+                                            ? Icons.music_note
+                                            : MdiIcons.musicNoteOff),
                                 onPressed: uploadMusicLoading[dIndex]
                                     ? null
                                     : uploadMusicSuccess[dIndex] == null &&
-                                    (doc.data()[music] == null || doc.data()[music].isEmpty)
-                                    ? () async {
-                                  final XFile? musicXFile = await openFile(acceptedTypeGroups: <XTypeGroup>[
-                                    Platform.isIOS ? musicUniformFileType : musicExtension
-                                  ]);
-                                  if (musicXFile == null) return;
-                                  setIconState(() {
-                                    uploadMusicSuccess[dIndex] = null;
-                                    uploadMusicLoading[dIndex] = true;
-                                  });
-                                  int index = await getGameMediaIndex(widget.gameId);
-                                  String filename = "$index.${musicXFile.path.split("/").last.split(".").last}";
-                                  final localFilePath = "${appSupportDir.absolute.path}/${widget.gameId}/$filename";
-                                  uploadMusicStream[dIndex] = storageRef
-                                      .child("game_${widget.gameId}/$filename")
-                                      .putFile(File(musicXFile.path))
-                                      .snapshotEvents;
-                                  uploadMusicStream[dIndex]?.listen((event) {
-                                    switch (event.state) {
-                                      case TaskState.success:
-                                        doc.reference.update({music: filename});
-                                        musicXFile.saveTo(localFilePath);
-                                        setIconState(() {
-                                          uploadMusicLoading[dIndex] = false;
-                                          uploadMusicSuccess[dIndex] = true;
-                                        });
-                                        if (doc.data()[music] != null) {
-                                          storageRef.child("game_${widget.gameId}/${doc.data()[music]}").delete();
-                                        }
-                                        break;
-                                      case TaskState.error:
-                                        setIconState(() {
-                                          uploadMusicLoading[dIndex] = false;
-                                          uploadMusicSuccess[dIndex] = false;
-                                        });
-                                        break;
-                                      default:
-                                        break;
-                                    }
-                                  });
-                                }: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) {
-                                      return AlertDialog(
-                                          icon: const Icon(Icons.delete),
-                                          title: const Text("Delete Sound"),
-                                          content: const Text("Are you sure you want to delete this sound?"),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () async {
-                                                await doc.reference.update({music: FieldValue.delete()});
-                                                uploadMusicSuccess[dIndex] = null;
-                                                Navigator.of(context).pop();
+                                            (doc.data()[music] == null || doc.data()[music].isEmpty)
+                                        ? () async {
+                                            final XFile? musicXFile = await openFile(acceptedTypeGroups: <XTypeGroup>[
+                                              Platform.isIOS ? musicUniformFileType : musicExtension
+                                            ]);
+                                            if (musicXFile == null) return;
+                                            setIconState(() {
+                                              uploadMusicSuccess[dIndex] = null;
+                                              uploadMusicLoading[dIndex] = true;
+                                            });
+                                            int index = await getGameMediaIndex(widget.gameId);
+                                            String filename =
+                                                "$index.${musicXFile.path.split("/").last.split(".").last}";
+                                            final localFilePath =
+                                                "${appSupportDir.absolute.path}/${widget.gameId}/$filename";
+                                            uploadMusicStream[dIndex] = storageRef
+                                                .child("game_${widget.gameId}/$filename")
+                                                .putFile(File(musicXFile.path))
+                                                .snapshotEvents;
+                                            uploadMusicStream[dIndex]?.listen((event) {
+                                              switch (event.state) {
+                                                case TaskState.success:
+                                                  doc.reference.update({music: filename});
+                                                  musicXFile.saveTo(localFilePath);
+                                                  setIconState(() {
+                                                    uploadMusicLoading[dIndex] = false;
+                                                    uploadMusicSuccess[dIndex] = true;
+                                                  });
+                                                  if (doc.data()[music] != null) {
+                                                    storageRef
+                                                        .child("game_${widget.gameId}/${doc.data()[music]}")
+                                                        .delete();
+                                                  }
+                                                  break;
+                                                case TaskState.error:
+                                                  setIconState(() {
+                                                    uploadMusicLoading[dIndex] = false;
+                                                    uploadMusicSuccess[dIndex] = false;
+                                                  });
+                                                  break;
+                                                default:
+                                                  break;
+                                              }
+                                            });
+                                          }
+                                        : () {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                    icon: const Icon(Icons.delete),
+                                                    title: const Text("Delete Sound"),
+                                                    content: const Text("Are you sure you want to delete this sound?"),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () async {
+                                                          await doc.reference.update({music: FieldValue.delete()});
+                                                          uploadMusicSuccess[dIndex] = null;
+                                                          Navigator.of(context).pop();
+                                                        },
+                                                        child: const Text("Yes"),
+                                                      ),
+                                                      ElevatedButton(
+                                                        onPressed: () => Navigator.of(context).pop(),
+                                                        child: const Text("No"),
+                                                      )
+                                                    ]);
                                               },
-                                              child: const Text("Yes"),
-                                            ),
-                                            ElevatedButton(
-                                              onPressed: () => Navigator.of(context).pop(),
-                                              child: const Text("No"),
-                                            )
-                                          ]);
-                                    },
-                                  ).then((value) => setState(() {}));
-                                },
+                                            ).then((value) => setState(() {}));
+                                          },
                               );
                             }),
                           ],
@@ -527,117 +529,8 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                           ),
                           onChanged: (value) => doc.reference.update({answerHint: value}),
                         ),
-                        if (doc.data()[type] == QuestionType.abcd.name) ...[
-                          const SizedBox(
-                            height: 16,
-                          ),
-                          for (var i = 0; i < 4; i++)
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                children: [
-                                  Text("Answer ${i + 1}"),
-                                  Checkbox(
-                                    value: doc.data()[answersCorrect]?[i] ?? false,
-                                    onChanged: (value) async {
-                                      List<bool> oldList =
-                                          List<bool>.from(doc.data()[answersCorrect] ?? [false, false, false, false]);
-                                      oldList[i] = value ?? false;
-                                      doc.reference.update({
-                                        answersCorrect: oldList,
-                                      });
-                                      await Future.delayed(const Duration(milliseconds: 10));
-                                      setState(() {});
-                                    },
-                                  ),
-                                  Expanded(
-                                    child: TextField(
-                                      controller: TextEditingController(text: doc.data()[answers]?[i]),
-                                      decoration: const InputDecoration(
-                                        labelText: "Answer",
-                                        border: OutlineInputBorder(),
-                                      ),
-                                      onChanged: (value) async {
-                                        List<String> currentAnswers = List<String>.from(
-                                            (await doc.reference.get()).data()?[answers] ?? ["", "", "", ""]);
-                                        currentAnswers[i] = value;
-                                        doc.reference.update({
-                                          answers: currentAnswers,
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                        if (doc.data()[type] == QuestionType.progressingReveal.name) ...[
-                          const SizedBox(
-                            height: 16,
-                          ),
-                          Text("Information",
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(color: Theme.of(context).colorScheme.primary)),
-                          for (final (i, String informationString)
-                              in (List<String>.from(doc.data()[information] ?? [])).indexed)
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: TextEditingController(text: informationString),
-                                      decoration: InputDecoration(
-                                        labelText: "Information ${i + 1}",
-                                        border: const OutlineInputBorder(),
-                                      ),
-                                      onChanged: (value) async {
-                                        List<String> currentInfos =
-                                            List<String>.from((await doc.reference.get()).data()?[information] ?? []);
-                                        if (currentInfos.length <= i) {
-                                          setState(() {});
-                                          return;
-                                        }
-                                        currentInfos[i] = value;
-                                        doc.reference.update({
-                                          information: currentInfos,
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete),
-                                    onPressed: () async {
-                                      List<String> currentInfos =
-                                          List<String>.from((await doc.reference.get()).data()?[information] ?? []);
-                                      currentInfos.removeAt(i);
-                                      doc.reference.update({
-                                        information: currentInfos,
-                                      }).then((value) => setState(() {}));
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                List<String> currentInfos =
-                                    List<String>.from((await doc.reference.get()).data()?[information] ?? []);
-                                doc.reference.update({
-                                  information: currentInfos..add(""),
-                                }).then((value) => setState(() {}));
-                              },
-                              child: const Padding(
-                                padding: EdgeInsets.all(8.0),
-                                child: Text("Add Information"),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ...Question.fromData(doc.data())
+                            .inputWidgets(context, (data) => doc.reference.update(data), () => setState(() {})),
                       ],
                     ),
                   ),

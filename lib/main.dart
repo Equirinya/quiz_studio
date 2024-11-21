@@ -39,6 +39,7 @@ void main() async {
         default:
           if (kDebugMode) {
             print("Unknown auth error ${e.code} : ${e.message}");
+            //TODO crashes when logged out and no internet
           }
       }
     }

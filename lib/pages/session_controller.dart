@@ -8,11 +8,11 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 import 'package:path_provider/path_provider.dart';
 import 'package:quiz_show/database/game_stream.dart';
 import 'package:quiz_show/pages/settings.dart';
-import 'package:quiz_show/widgets/question.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../database/constants.dart';
 import '../database/session_stream.dart';
+import '../question_types/abstract_question.dart';
 
 class SessionPage extends StatefulWidget {
   const SessionPage({super.key});
@@ -98,7 +98,7 @@ class _SessionPageState extends State<SessionPage> {
               SessionStreamBuilder(
                 key: ValueKey(prefs.getString("currentSession")),
                 session: prefs.getString("currentSession"),
-                builder: (teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList,
+                builder: (Map<String,dynamic> sessionData, teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList,
                     revealedAnswers, buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
                   return SingleChildScrollView(
                     child: Column(
@@ -249,15 +249,11 @@ class _SessionPageState extends State<SessionPage> {
                                 ),
                                 if ((selectedFieldData.$1 != -1 && selectedFieldData.$2 != -1) ||
                                     (preview.$1 != -1 && preview.$2 != -1))
-                                  QuestionDisplay(
-                                    gameId: gameRef.id,
-                                    questionData: (selectedFieldData.$1 != -1 && selectedFieldData.$2 != -1)
-                                        ? questions[selectedFieldData.$1][selectedFieldData.$2]
-                                        : questions[preview.$1][preview.$2],
-                                    controllerView: true,
-                                    reveal: revealedAnswers,
-                                    appSupportDir: appSupportDir,
-                                  ),
+                                  Question.fromData((selectedFieldData.$1 != -1 && selectedFieldData.$2 != -1)
+                            ? questions[selectedFieldData.$1][selectedFieldData.$2]
+                                : questions[preview.$1][preview.$2]).questionWidget(context: context, gameDir: Directory('${appSupportDir.absolute.path}/${gameRef.id}'), sessionData: sessionData, controllerView: true)
+
+                            ,
                                 Wrap(
                                   spacing: 8,
                                   children: [

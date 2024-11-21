@@ -76,7 +76,7 @@ class _GamesPageState extends State<GamesPage> {
     return Scaffold(
       body: SessionStreamBuilder(
         session: prefs.getString("currentSession"),
-        builder: (teamsList, pointsList, selectedFieldData, state,playing, buzzeredTeam, playedFieldsList, revealed,buzzerSensitivityMap,
+        builder: (Map<String,dynamic> sessionData, teamsList, pointsList, selectedFieldData, state,playing, buzzeredTeam, playedFieldsList, revealed,buzzerSensitivityMap,
             buzzerTeamMap, gameRef, sessionRef) {
           return ListView.builder(
             itemCount: gamesDocs!.docs.length + 1,

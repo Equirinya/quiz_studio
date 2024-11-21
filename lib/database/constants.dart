@@ -1,16 +1,5 @@
 import 'package:file_selector/file_selector.dart';
 
-enum QuestionType {
-  free("Free Question"),
-  noBuzzer("No Buzzer"),
-  abcd("ABCD"),
-  progressingReveal("Progressing Reveal");
-
-  final String uiString;
-
-  const QuestionType(this.uiString);
-}
-
 enum HomePageState { overview, question, questionBuzzered, buzzerTest }
 
 //database
@@ -47,6 +36,7 @@ const String description = 'description';
 const String pointsMinus = 'pointsMinus';
 const String pointsPlus = 'pointsPlus';
 const String answerHint = 'answerHint';
+const String noBuzzer = 'noBuzzer';
 const String information = 'information';
 const String answers = 'answers';
 const String answersCorrect = 'answersCorrect';
@@ -65,6 +55,10 @@ const String lastUsed = 'lastUsed';
 const String playedFields = 'playedFields';
 const String points = 'points';
 const String teams = 'teams';
+
+const Map<String, dynamic> previewSessionConfig = {
+  revealed : 100
+};
 
 
 //File Selection
