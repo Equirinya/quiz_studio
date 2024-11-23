@@ -3,13 +3,11 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:file_selector/file_selector.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:quiz_show/widgets/media_upload.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../database/constants.dart';
@@ -183,7 +181,7 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
             ),
           ),
         ),
-        for (var (dIndex, doc) in questionDocs!.docs.indexed)
+        for (var doc in questionDocs!.docs)
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Card(
@@ -248,7 +246,8 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                         Row(
                           children: [
                             DropdownMenu<QuestionType>(
-                                dropdownMenuEntries: QuestionType.values.where((e) => e!=QuestionType.unsupported).map((e) {
+                                dropdownMenuEntries:
+                                    QuestionType.values.where((e) => e != QuestionType.unsupported).map((e) {
                                   return DropdownMenuEntry(
                                     value: e,
                                     label: e.name,
@@ -303,185 +302,18 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                                 ),
                               ),
                             ),
-                            StatefulBuilder(builder: (context, setIconState) {
-                              if (uploadImageStream.length <= dIndex) {
-                                uploadImageStream.add(null);
-                                uploadImageSuccess.add(null);
-                                uploadImageLoading.add(false);
-                              }
-                              return IconButton(
-                                icon: uploadImageLoading[dIndex]
-                                    ? const CupertinoActivityIndicator()
-                                    : Icon(uploadImageSuccess[dIndex] == null &&
-                                            (doc.data()[image] == null || doc.data()[image].isEmpty)
-                                        ? Icons.add_photo_alternate
-                                        : uploadImageSuccess[dIndex] ?? true
-                                            ? Icons.image
-                                            : Icons.image_not_supported),
-                                onPressed: uploadImageLoading[dIndex]
-                                    ? null
-                                    : uploadImageSuccess[dIndex] == null &&
-                                            (doc.data()[image] == null || doc.data()[image].isEmpty)
-                                        ? () async {
-                                            final XFile? imageXFile =
-                                                await ImagePicker().pickImage(source: ImageSource.gallery);
-                                            if (imageXFile == null) return;
-                                            setIconState(() {
-                                              uploadImageSuccess[dIndex] = null;
-                                              uploadImageLoading[dIndex] = true;
-                                            });
-                                            int index = await getGameMediaIndex(widget.gameId);
-                                            String filename =
-                                                "$index.${imageXFile.path.split("/").last.split(".").last}";
-                                            final localFilePath =
-                                                "${appSupportDir.absolute.path}/${widget.gameId}/$filename";
-                                            uploadImageStream[dIndex] = storageRef
-                                                .child("game_${widget.gameId}/$filename")
-                                                .putFile(File(imageXFile.path))
-                                                .snapshotEvents;
-                                            uploadImageStream[dIndex]?.listen((event) {
-                                              switch (event.state) {
-                                                case TaskState.success:
-                                                  doc.reference.update({image: filename});
-                                                  imageXFile.saveTo(localFilePath);
-                                                  setIconState(() {
-                                                    uploadImageLoading[dIndex] = false;
-                                                    uploadImageSuccess[dIndex] = true;
-                                                  });
-                                                  if (doc.data()[image] != null) {
-                                                    storageRef
-                                                        .child("game_${widget.gameId}/${doc.data()[image]}")
-                                                        .delete();
-                                                  }
-                                                  break;
-                                                case TaskState.error:
-                                                  setIconState(() {
-                                                    uploadImageLoading[dIndex] = false;
-                                                    uploadImageSuccess[dIndex] = false;
-                                                  });
-                                                  break;
-                                                default:
-                                                  break;
-                                              }
-                                            });
-                                          }
-                                        : () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) {
-                                                return AlertDialog(
-                                                    icon: const Icon(Icons.delete),
-                                                    title: const Text("Delete Image"),
-                                                    content: const Text("Are you sure you want to delete this image?"),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: () async {
-                                                          await doc.reference.update({image: FieldValue.delete()});
-                                                          uploadImageSuccess[dIndex] = null;
-                                                          Navigator.of(context).pop();
-                                                        },
-                                                        child: const Text("Yes"),
-                                                      ),
-                                                      ElevatedButton(
-                                                        onPressed: () => Navigator.of(context).pop(),
-                                                        child: const Text("No"),
-                                                      )
-                                                    ]);
-                                              },
-                                            ).then((value) => setState(() {}));
-                                          },
-                              );
-                            }),
-                            StatefulBuilder(builder: (context, setIconState) {
-                              if (uploadMusicStream.length <= dIndex) {
-                                uploadMusicStream.add(null);
-                                uploadMusicSuccess.add(null);
-                                uploadMusicLoading.add(false);
-                              }
-                              return IconButton(
-                                icon: uploadMusicLoading[dIndex]
-                                    ? const CupertinoActivityIndicator()
-                                    : Icon(uploadMusicSuccess[dIndex] == null &&
-                                            (doc.data()[music] == null || doc.data()[music].isEmpty)
-                                        ? MdiIcons.musicNotePlus
-                                        : uploadMusicSuccess[dIndex] ?? true
-                                            ? Icons.music_note
-                                            : MdiIcons.musicNoteOff),
-                                onPressed: uploadMusicLoading[dIndex]
-                                    ? null
-                                    : uploadMusicSuccess[dIndex] == null &&
-                                            (doc.data()[music] == null || doc.data()[music].isEmpty)
-                                        ? () async {
-                                            final XFile? musicXFile = await openFile(acceptedTypeGroups: <XTypeGroup>[
-                                              Platform.isIOS ? musicUniformFileType : musicExtension
-                                            ]);
-                                            if (musicXFile == null) return;
-                                            setIconState(() {
-                                              uploadMusicSuccess[dIndex] = null;
-                                              uploadMusicLoading[dIndex] = true;
-                                            });
-                                            int index = await getGameMediaIndex(widget.gameId);
-                                            String filename =
-                                                "$index.${musicXFile.path.split("/").last.split(".").last}";
-                                            final localFilePath =
-                                                "${appSupportDir.absolute.path}/${widget.gameId}/$filename";
-                                            uploadMusicStream[dIndex] = storageRef
-                                                .child("game_${widget.gameId}/$filename")
-                                                .putFile(File(musicXFile.path))
-                                                .snapshotEvents;
-                                            uploadMusicStream[dIndex]?.listen((event) {
-                                              switch (event.state) {
-                                                case TaskState.success:
-                                                  doc.reference.update({music: filename});
-                                                  musicXFile.saveTo(localFilePath);
-                                                  setIconState(() {
-                                                    uploadMusicLoading[dIndex] = false;
-                                                    uploadMusicSuccess[dIndex] = true;
-                                                  });
-                                                  if (doc.data()[music] != null) {
-                                                    storageRef
-                                                        .child("game_${widget.gameId}/${doc.data()[music]}")
-                                                        .delete();
-                                                  }
-                                                  break;
-                                                case TaskState.error:
-                                                  setIconState(() {
-                                                    uploadMusicLoading[dIndex] = false;
-                                                    uploadMusicSuccess[dIndex] = false;
-                                                  });
-                                                  break;
-                                                default:
-                                                  break;
-                                              }
-                                            });
-                                          }
-                                        : () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) {
-                                                return AlertDialog(
-                                                    icon: const Icon(Icons.delete),
-                                                    title: const Text("Delete Sound"),
-                                                    content: const Text("Are you sure you want to delete this sound?"),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: () async {
-                                                          await doc.reference.update({music: FieldValue.delete()});
-                                                          uploadMusicSuccess[dIndex] = null;
-                                                          Navigator.of(context).pop();
-                                                        },
-                                                        child: const Text("Yes"),
-                                                      ),
-                                                      ElevatedButton(
-                                                        onPressed: () => Navigator.of(context).pop(),
-                                                        child: const Text("No"),
-                                                      )
-                                                    ]);
-                                              },
-                                            ).then((value) => setState(() {}));
-                                          },
-                              );
-                            }),
+                            MediaUploadIconButton(
+                                uploadType: MediaUploadType.image,
+                                appSupportDir: appSupportDir,
+                                gameId: widget.gameId,
+                                databaseMediaIndex: doc.data()[image],
+                                updateDB: (value) => doc.reference.update({image: value})),
+                            MediaUploadIconButton(
+                                uploadType: MediaUploadType.music,
+                                appSupportDir: appSupportDir,
+                                gameId: widget.gameId,
+                                databaseMediaIndex: doc.data()[image],
+                                updateDB: (value) => doc.reference.update({music: value})),
                           ],
                         ),
                         Wrap(spacing: 8, children: [
@@ -654,6 +486,7 @@ class _GamesCategoryAccessPageState extends State<GamesCategoryAccessPage> {
   }
 }
 
+//TODO use batch operation
 Future<int> getGameMediaIndex(String gameId) async {
   DocumentReference<Map<String, dynamic>> gameRef = FirebaseFirestore.instance.collection(games).doc(gameId);
   DocumentSnapshot<Map<String, dynamic>> gameDoc = await gameRef.get();
