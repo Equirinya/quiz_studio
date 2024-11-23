@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:mini_music_visualizer/mini_music_visualizer.dart';
 import 'package:quiz_show/question_types/question_abcd.dart';
 import 'package:quiz_show/question_types/question_free.dart';
 import 'package:quiz_show/question_types/question_progressing_reveal.dart';
@@ -34,7 +35,7 @@ abstract class Question {
           required Directory gameDir,
           bool controllerView = false,
           required Map<String, dynamic> sessionData}) =>
-      BaseQuestionCard(questionData: data, controllerView: controllerView, gameDir: gameDir);
+      BaseQuestionCard(questionData: data, sessionData: sessionData, controllerView: controllerView, gameDir: gameDir);
 
   double questionHeightPercentage() {
     double questionfactor = 0.1;
@@ -89,11 +90,13 @@ class BaseQuestionCard extends StatelessWidget {
   const BaseQuestionCard({
     super.key,
     required this.questionData,
+    required this.sessionData,
     required this.controllerView,
     required this.gameDir,
   });
 
   final Map<String, dynamic> questionData;
+  final Map<String, dynamic> sessionData;
   final bool controllerView;
   final Directory gameDir;
 
@@ -145,30 +148,31 @@ class BaseQuestionCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                      if(questionData[music] != null && questionData[music].isNotEmpty)
+                        MiniMusicVisualizer(
+                          animate: sessionData[playingFrom] == true,
+                          color: Theme.of(context).colorScheme.primary,
+                          height: controllerView ? null : size.height * 0.04,
+                          width: controllerView ? null : size.height * 0.015,
+                          radius: 2,
+                        ),
                       Flexible(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                              child: Text(
-                                textAlign: TextAlign.center,
-                                maxLines: controllerView
-                                    ? 10
-                                    : (questionData[image] != null && questionData[image].isNotEmpty)
-                                        ? 4
-                                        : 2,
-                                overflow: TextOverflow.ellipsis,
-                                questionData[question] ?? "",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineSmall
-                                    ?.copyWith(fontSize: controllerView ? null : size.height * 0.04),
-                              ),
-                            ),
-                          ],
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Text(
+                            textAlign: TextAlign.center,
+                            maxLines: controllerView
+                                ? 10
+                                : (questionData[image] != null && questionData[image].isNotEmpty)
+                                    ? 4
+                                    : 2,
+                            overflow: TextOverflow.ellipsis,
+                            questionData[question] ?? "",
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(fontSize: controllerView ? null : size.height * 0.04),
+                          ),
                         ),
                       ),
                     ],

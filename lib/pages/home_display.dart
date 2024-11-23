@@ -36,6 +36,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
   String currentGame = "";
   bool? mediaPlaying;
   final mediaPlayer = AudioPlayer();
+  StreamSubscription? mediaPlayerComplete;
   final musicPlayer = AudioPlayer(); //TODO
   late Directory appSupportDir;
 
@@ -48,12 +49,19 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
         initialized = true;
       });
     }();
+    mediaPlayerComplete = mediaPlayer.onPlayerComplete.listen((event) {
+      FirebaseFirestore.instance
+          .collection(sessions)
+          .doc(prefs.getString("currentSession"))
+          .update({ playingFrom: null});
+    });
     super.initState();
   }
 
   @override
   void dispose() {
     mediaPlayer.dispose();
+    mediaPlayerComplete?.cancel();
     musicPlayer.dispose();
     super.dispose();
   }
@@ -162,11 +170,13 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                     }
                     if (gameRef == null) return fallbackWidget;
                     if (mediaPlaying != playing) {
-                      if (playing == null)
+                      if (playing == null) {
                         mediaPlayer.stop();
-                      else if (playing && mediaPlaying == null)
+                      } else if (playing && mediaPlaying == null){
                         mediaPlayer.play(DeviceFileSource(
                             "${appSupportDir.path}/${gameRef.id}/${questions[selectedFieldData.$1][selectedFieldData.$2][music]}"));
+
+                      }
                       else if (playing)
                         mediaPlayer.resume();
                       else
