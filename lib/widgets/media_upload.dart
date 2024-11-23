@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../database/constants.dart';
 import '../pages/games_categories.dart';
@@ -23,7 +24,6 @@ enum MediaUploadType {
 
 class MediaUploadIconButton extends StatefulWidget {
   final MediaUploadType uploadType;
-  final Directory appSupportDir;
   final String gameId;
   final String? databaseMediaIndex;
   final Future<void> Function(dynamic) updateDB;
@@ -31,7 +31,6 @@ class MediaUploadIconButton extends StatefulWidget {
   const MediaUploadIconButton({
     super.key,
     required this.uploadType,
-    required this.appSupportDir,
     required this.gameId,
     required this.databaseMediaIndex,
     required this.updateDB,
@@ -47,8 +46,21 @@ class _MediaUploadIconButtonState extends State<MediaUploadIconButton> {
   bool? uploadSuccess;
   bool loading = false;
 
+  bool initialized = false;
+  late Directory appSupportDir;
+
+  @override
+  void initState() {
+    () async {
+      appSupportDir = await getApplicationSupportDirectory();
+      setState(() {
+        initialized = true;
+      });
+    }();
+  }
   @override
   Widget build(BuildContext context) {
+    if (!initialized) return CupertinoActivityIndicator();
     return IconButton(
       icon: loading
           ? const CupertinoActivityIndicator()
@@ -70,7 +82,7 @@ class _MediaUploadIconButtonState extends State<MediaUploadIconButton> {
                   });
                   int index = await getGameMediaIndex(widget.gameId);
                   String filename = "$index.${musicXFile.path.split("/").last.split(".").last}";
-                  final localFilePath = "${widget.appSupportDir.absolute.path}/${widget.gameId}/$filename";
+                  final localFilePath = "${appSupportDir.absolute.path}/${widget.gameId}/$filename";
                   uploadStream =
                       storageRef.child("game_${widget.gameId}/$filename").putFile(File(musicXFile.path)).snapshotEvents;
                   uploadStream?.listen((event) {

@@ -33,12 +33,6 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
   late SharedPreferences prefs;
   bool initialized = false;
   late TextEditingController categoryNameController;
-  List<Stream<TaskSnapshot>?> uploadImageStream = [];
-  List<Stream<TaskSnapshot>?> uploadMusicStream = [];
-  List<bool?> uploadImageSuccess = [];
-  List<bool?> uploadMusicSuccess = [];
-  List<bool> uploadImageLoading = [];
-  List<bool> uploadMusicLoading = [];
 
   late Directory appSupportDir;
 
@@ -304,13 +298,11 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                             ),
                             MediaUploadIconButton(
                                 uploadType: MediaUploadType.image,
-                                appSupportDir: appSupportDir,
                                 gameId: widget.gameId,
                                 databaseMediaIndex: doc.data()[image],
                                 updateDB: (value) => doc.reference.update({image: value})),
                             MediaUploadIconButton(
                                 uploadType: MediaUploadType.music,
-                                appSupportDir: appSupportDir,
                                 gameId: widget.gameId,
                                 databaseMediaIndex: doc.data()[image],
                                 updateDB: (value) => doc.reference.update({music: value})),
@@ -362,7 +354,7 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                           onChanged: (value) => doc.reference.update({answerHint: value}),
                         ),
                         ...Question.fromData(doc.data())
-                            .inputWidgets(context, (data) => doc.reference.update(data), () => setState(() {})),
+                            .inputWidgets(context, widget.gameId ,(data) => doc.reference.update(data), () => setState(() {})),
                       ],
                     ),
                   ),

@@ -22,7 +22,7 @@ class FreeQuestion extends Question {
   List<Widget> controlButtons(gameState) => [];
 
   @override
-  List<Widget> inputWidgets(BuildContext context, void Function(Map<String, dynamic> data) update, VoidCallback refresh) => [
+  List<Widget> inputWidgets(BuildContext context, String gameId, void Function(Map<String, dynamic> data) update, VoidCallback refresh) => [
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: StatefulBuilder(

@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:quiz_show/question_types/abstract_question.dart';
+import 'package:quiz_show/widgets/media_upload.dart';
 
 import '../database/constants.dart';
 
@@ -19,12 +20,19 @@ class ProgressingRevealQuestion extends Question {
   "Information to be revealed:\n"
   "${data[information] is! List ? "" : (List<String>.from(data[information])).indexed.map((e) => "(${e.$1 + 1}) ${e.$2}\n").join()}";
 
+  //TODO implement reveal buttons here and then add image scroll buttons
+  //on reveal set image show to newest image
   @override
   List<Widget> controlButtons(gameState) => [];
 
   @override
+  List<String?> mediaPaths() {
+    return super.mediaPaths()..addAll(data[informationImage] as List<String?>? ?? [])..addAll(data[informationMusic] as List<String?>? ?? []);
+  }
+
+  @override
   List<Widget> inputWidgets(
-          BuildContext context, Future<void> Function(Map<String, dynamic> data) update, VoidCallback refresh) =>
+          BuildContext context, String gameId, Future<void> Function(Map<String, dynamic> data) update, VoidCallback refresh) =>
       [
         const SizedBox(
           height: 16,
@@ -63,6 +71,22 @@ class ProgressingRevealQuestion extends Question {
                     },
                   ),
                 ),
+                MediaUploadIconButton(uploadType: MediaUploadType.image, gameId: gameId, databaseMediaIndex: (data[informationImage] as List).elementAtOrNull(i), updateDB: (value) async {
+                  data[informationImage] ??= [];
+                  if (data[informationImage]!.length <= i) {
+                    return;
+                  }
+                  data[informationImage]![i] = value;
+                  return update({informationImage: data[informationImage]});
+                }),
+                MediaUploadIconButton(uploadType: MediaUploadType.music, gameId: gameId, databaseMediaIndex: (data[informationMusic] as List).elementAtOrNull(i), updateDB: (value) async {
+                  data[informationMusic] ??= [];
+                  if (data[informationMusic]!.length <= i) {
+                    return;
+                  }
+                  data[informationMusic]![i] = value;
+                  return update({informationMusic: data[informationMusic]});
+                }),
                 IconButton(
                   icon: const Icon(Icons.delete),
                   onPressed: () async {
@@ -87,9 +111,15 @@ class ProgressingRevealQuestion extends Question {
           child: ElevatedButton(
             onPressed: () async {
               data[information] ??= [];
+              data[informationImage] ??= [];
+              data[informationMusic] ??= [];
               data[information].add("");
+              data[informationImage].add("");
+              data[informationMusic].add("");
               await update({
                 information: data[information],
+                informationImage: data[informationImage],
+                informationMusic: data[informationMusic],
               });
               refresh();
               // List<String> currentInfos = List<String>.from((await doc.reference.get()).data()?[information] ?? []);

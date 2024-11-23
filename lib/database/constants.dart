@@ -20,7 +20,7 @@ enum AccessType {
 
   const AccessType(this.uiString);
 }
-
+//general questions
 const String categories = 'categories';
 const String active = 'active';
 const String createdAt = 'createdAt';
@@ -36,8 +36,13 @@ const String description = 'description';
 const String pointsMinus = 'pointsMinus';
 const String pointsPlus = 'pointsPlus';
 const String answerHint = 'answerHint';
+//free question type
 const String noBuzzer = 'noBuzzer';
+//progressing reveal question type
 const String information = 'information';
+const String informationImage = 'informationImage';
+const String informationMusic = 'informationMusic';
+//abcd question type
 const String answers = 'answers';
 const String answersCorrect = 'answersCorrect';
 

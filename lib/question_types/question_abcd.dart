@@ -19,11 +19,12 @@ class ABCDQuestion extends Question {
   "Possible answers:\n"
   "${data[answers] is! List ? "" : (List<String>.from(data[answers])).indexed.map((e) => "${data[answersCorrect]?[e.$1] is bool && data[answersCorrect]?[e.$1] ? "Correct:" : "Wrong:"} ${e.$2}\n").join()}";
 
+  //TODO make reveal answers seperate button
   @override
   List<Widget> controlButtons(gameState) => [];
 
   @override
-  List<Widget> inputWidgets(BuildContext context, void Function(Map<String, dynamic> data) update, VoidCallback refresh) => [
+  List<Widget> inputWidgets(BuildContext context, String gameId, void Function(Map<String, dynamic> data) update, VoidCallback refresh) => [
         const SizedBox(
           height: 16,
         ),

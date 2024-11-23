@@ -12,7 +12,7 @@ class UnsupportedQuestion extends Question {
 
   @override
   List<Widget> inputWidgets(
-          BuildContext context, Future<void> Function(Map<String, dynamic> data) update, VoidCallback refresh) =>
+          BuildContext context, String gameId, Future<void> Function(Map<String, dynamic> data) update, VoidCallback refresh) =>
       [
         Row(
           mainAxisSize: MainAxisSize.min,

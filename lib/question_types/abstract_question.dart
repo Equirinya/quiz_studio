@@ -49,9 +49,11 @@ abstract class Question {
   }
 
   List<Widget> inputWidgets(
-      BuildContext context, Future<void> Function(Map<String, dynamic> data) update, VoidCallback refresh);
+      BuildContext context, String gameId, Future<void> Function(Map<String, dynamic> data) update, VoidCallback refresh);
 
   bool buzzerable() => true;
+
+  List<String?> mediaPaths() => [data[image], data[music]];
 
   abstract String explainString;
 
