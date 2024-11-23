@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../database/constants.dart';
@@ -60,7 +61,7 @@ class _MediaUploadIconButtonState extends State<MediaUploadIconButton> {
   }
   @override
   Widget build(BuildContext context) {
-    if (!initialized) return CupertinoActivityIndicator();
+    if (!initialized) return const CupertinoActivityIndicator();
     return IconButton(
       icon: loading
           ? const CupertinoActivityIndicator()
@@ -73,23 +74,30 @@ class _MediaUploadIconButtonState extends State<MediaUploadIconButton> {
           ? null
           : uploadSuccess == null && (widget.databaseMediaIndex == null || widget.databaseMediaIndex!.isEmpty)
               ? () async {
-                  final XFile? musicXFile = await openFile(
-                      acceptedTypeGroups: <XTypeGroup>[Platform.isIOS ? musicUniformFileType : musicExtension]);
-                  if (musicXFile == null) return;
+        XFile? xFile;
+                  if(widget.uploadType == MediaUploadType.image){
+                     xFile =
+                    await ImagePicker().pickImage(source: ImageSource.gallery);
+                  }
+                  else if(widget.uploadType == MediaUploadType.music) {
+                     xFile = await openFile(
+                        acceptedTypeGroups: <XTypeGroup>[Platform.isIOS ? musicUniformFileType : musicExtension]);
+                  }
+                  if (xFile == null) return;
                   setState(() {
                     uploadSuccess = null;
                     loading = true;
                   });
                   int index = await getGameMediaIndex(widget.gameId);
-                  String filename = "$index.${musicXFile.path.split("/").last.split(".").last}";
+                  String filename = "$index.${xFile.path.split("/").last.split(".").last}";
                   final localFilePath = "${appSupportDir.absolute.path}/${widget.gameId}/$filename";
                   uploadStream =
-                      storageRef.child("game_${widget.gameId}/$filename").putFile(File(musicXFile.path)).snapshotEvents;
+                      storageRef.child("game_${widget.gameId}/$filename").putFile(File(xFile.path)).snapshotEvents;
                   uploadStream?.listen((event) {
                     switch (event.state) {
                       case TaskState.success:
                         widget.updateDB(filename);
-                        musicXFile.saveTo(localFilePath);
+                        xFile!.saveTo(localFilePath);
                         setState(() {
                           loading = false;
                           uploadSuccess = true;
