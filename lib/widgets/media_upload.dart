@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
@@ -13,16 +12,39 @@ import '../database/constants.dart';
 import '../pages/games_categories.dart';
 
 enum MediaUploadType {
-  image(uiString: "Image",iconAdd: Icons.add_photo_alternate ,iconSuccess: Icons.image, iconError: Icons.image_not_supported,),
-  music(uiString: "Sound", iconAdd: MdiIcons.musicNotePlus,iconSuccess:  Icons.music_note, iconError: MdiIcons.musicNoteOff,);
+  image(
+    uiString: "Image",
+    iconAdd: Icons.add_photo_alternate,
+    iconSuccess: Icons.image,
+    iconError: Icons.image_not_supported,
+    pickFile: _pickImage,
+  ),
+  music(
+    uiString: "Sound",
+    iconAdd: MdiIcons.musicNotePlus,
+    iconSuccess: Icons.music_note,
+    iconError: MdiIcons.musicNoteOff,
+    pickFile: _pickMusic,
+  );
 
   final IconData iconAdd;
   final IconData iconSuccess;
   final IconData iconError;
   final String uiString;
+  final Future<XFile?> Function() pickFile;
 
-  const MediaUploadType({required this.uiString, required this.iconAdd, required this.iconSuccess, required this.iconError});
+  const MediaUploadType(
+      {required this.uiString,
+      required this.iconAdd,
+      required this.iconSuccess,
+      required this.iconError,
+      required this.pickFile});
 }
+
+Future<XFile?> _pickImage() async => await ImagePicker().pickImage(source: ImageSource.gallery);
+
+Future<XFile?> _pickMusic() async =>
+    await openFile(acceptedTypeGroups: <XTypeGroup>[Platform.isIOS ? musicUniformFileType : musicExtension]);
 
 class MediaUploadIconButton extends StatefulWidget {
   final MediaUploadType uploadType;
@@ -53,6 +75,7 @@ class _MediaUploadIconButtonState extends State<MediaUploadIconButton> {
 
   @override
   void initState() {
+    super.initState();
     () async {
       appSupportDir = await getApplicationSupportDirectory();
       setState(() {
@@ -60,6 +83,7 @@ class _MediaUploadIconButtonState extends State<MediaUploadIconButton> {
       });
     }();
   }
+
   @override
   Widget build(BuildContext context) {
     if (!initialized) return const CupertinoActivityIndicator();
@@ -75,15 +99,7 @@ class _MediaUploadIconButtonState extends State<MediaUploadIconButton> {
           ? null
           : uploadSuccess == null && (widget.databaseMediaIndex == null || widget.databaseMediaIndex!.isEmpty)
               ? () async {
-        XFile? xFile;
-                  if(widget.uploadType == MediaUploadType.image){
-                     xFile =
-                    await ImagePicker().pickImage(source: ImageSource.gallery);
-                  }
-                  else if(widget.uploadType == MediaUploadType.music) {
-                     xFile = await openFile(
-                        acceptedTypeGroups: <XTypeGroup>[Platform.isIOS ? musicUniformFileType : musicExtension]);
-                  }
+                  XFile? xFile = await widget.uploadType.pickFile();
                   if (xFile == null) return;
                   setState(() {
                     uploadSuccess = null;
@@ -98,7 +114,7 @@ class _MediaUploadIconButtonState extends State<MediaUploadIconButton> {
                     switch (event.state) {
                       case TaskState.success:
                         widget.updateDB(filename);
-                        xFile!.saveTo(localFilePath);
+                        xFile.saveTo(localFilePath);
                         setState(() {
                           loading = false;
                           uploadSuccess = true;
@@ -133,7 +149,7 @@ class _MediaUploadIconButtonState extends State<MediaUploadIconButton> {
                                 setState(() {
                                   uploadSuccess = null;
                                 });
-                                Navigator.of(context).pop();
+                                if(context.mounted) Navigator.of(context).pop();
                               },
                               child: const Text("Yes"),
                             ),
