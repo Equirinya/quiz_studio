@@ -255,7 +255,6 @@ class ProgressingRevealQuestion extends Question {
       return Column(
         children: [
           BaseQuestionCard(questionData: data, sessionData: sessionData, controllerView: controllerView, gameDir: gameDir, imageOverride: imageOverride),
-          //TODO show image preview for controller
           SizedBox(
             height: MediaQuery
                 .of(context)
@@ -279,10 +278,15 @@ class ProgressingRevealQuestion extends Question {
                           .width / max(informationImages.length+2, 7) / 16 * 9,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8.0),
-                        child: i < reveal ? Image.file(
+                        child: i < reveal || controllerView ? Image.file(
                           File('${gameDir.absolute.path}/$informationImage'),
                           errorBuilder: (context, error, stackTrace) => const SizedBox(),
                           fit: BoxFit.cover,
+                          color: controllerView && i >= reveal ? Theme
+                              .of(context)
+                              .colorScheme
+                              .surfaceContainerLowest.withAlpha(170) : null,
+                          colorBlendMode: controllerView && i >= reveal ? BlendMode.srcOver   : null,
                         ) : Container(
                           color: Theme
                               .of(context)
