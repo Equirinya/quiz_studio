@@ -129,7 +129,7 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
                                   return Slider(
                                     value: buzzerSensitivityMap.containsKey(entry.key)
                                         ? buzzerSensitivityMap[entry.key]!.toDouble()
-                                        : 0,
+                                        : 512,
                                     min: 0,
                                     max: 1023,
                                     onChangeEnd: (value) {
@@ -148,10 +148,10 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
                                 const SizedBox(width: 24),
                                 DropdownMenu<String>(
                                     dropdownMenuEntries:
-                                        teamsList.map((e) => DropdownMenuEntry(label: e, value: e)).toList(),
+                                        teamsList.map((e) => DropdownMenuEntry(label: e, value: e)).toList()..add,
                                     initialSelection: buzzerTeamMap.containsKey(entry.key) && buzzerTeamMap[entry.key]! < teamsList.length
                                         ? teamsList[buzzerTeamMap[entry.key]!]
-                                        : teamsList.firstOrNull,
+                                        : "",
                                     onSelected: (value) {
                                       sessionRef.update({"$buzzerTeam.${entry.key}": teamsList.indexOf(value ?? "")});
                                     }),
