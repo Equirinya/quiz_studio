@@ -19,7 +19,7 @@ class FreeQuestion extends Question {
   String asText() => "${super.asText()}${buzzerable() ? "" : " \nThe buzzers are disabled for this question."}";
 
   @override
-  List<Widget> controlButtons(gameState) => [];
+  List<Widget> controlButtons(Map<String, dynamic> sessionData, Future<void> Function(Map<String, dynamic> data) update) => [];
 
   @override
   List<Widget> inputWidgets(BuildContext context, String gameId, void Function(Map<String, dynamic> data) update, VoidCallback refresh) => [

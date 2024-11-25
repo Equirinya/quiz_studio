@@ -2,6 +2,7 @@
 
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:quiz_show/question_types/abstract_question.dart';
 
@@ -21,7 +22,39 @@ class ABCDQuestion extends Question {
 
   //TODO make reveal answers seperate button
   @override
-  List<Widget> controlButtons(gameState) => [];
+  List<Widget> controlButtons(Map<String, dynamic> sessionData, Future<void> Function(Map<String, dynamic> data) update) {
+    int revealedAnswers = sessionData[revealed];
+    return [
+      ElevatedButton(
+          onPressed: revealedAnswers > 0
+              ? () {
+            update({
+              revealed: FieldValue.increment(-1),
+            });
+          }
+              : null,
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.navigate_before),
+              Text("Unreveal"),
+            ],
+          )),
+      ElevatedButton(
+          onPressed: () {
+            update({
+              revealed: FieldValue.increment(1),
+            });
+          },
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Reveal${revealedAnswers < data[answers].length ? " Answer" : ""}"),
+              Icon(Icons.navigate_next),
+            ],
+          ))
+    ];
+  }
 
   @override
   List<Widget> inputWidgets(BuildContext context, String gameId, void Function(Map<String, dynamic> data) update, VoidCallback refresh) => [

@@ -76,16 +76,15 @@ class _SessionPageState extends State<SessionPage> {
                 subtitle: const Text("Create a new empty session"),
                 onTap: () async {
                   DocumentReference ref = FirebaseFirestore.instance.collection(sessions).doc();
-                  await ref.set({
+                  await ref.set(<String, dynamic>{
                     game: "",
                     teams: [],
                     points: [],
                     currentState: HomePageState.overview.name,
                     selectedField: "-1:-1",
                     playedFields: [],
-                    revealed: 0,
                     information: [],
-                  });
+                  }..addAll(resetSessionConfig));
                   await prefs.setString("currentSession", ref.id);
                   setState(() {});
                 },
@@ -193,8 +192,7 @@ class _SessionPageState extends State<SessionPage> {
                                                                 sessionRef.update({
                                                                   currentState: HomePageState.overview.name,
                                                                   selectedField: "-1:-1",
-                                                                  revealed: 0,
-                                                                });
+                                                                }..addAll(resetSessionConfig));
                                                                 preview = (-1, -1);
                                                               }
                                                             : playedFieldsList.contains((cIndex, qIndex))
@@ -213,13 +211,11 @@ class _SessionPageState extends State<SessionPage> {
                                                                         sessionRef.update({
                                                                           currentState: HomePageState.question.name,
                                                                           selectedField: "$cIndex:$qIndex",
-                                                                          revealed: 0,
-                                                                          playingFrom: null,
                                                                           playedFields: FieldValue.arrayUnion([
                                                                             if (selectedFieldData.$1 != -1)
                                                                               "${selectedFieldData.$1}:${selectedFieldData.$2}"
                                                                           ])
-                                                                        });
+                                                                        }..addAll(resetSessionConfig));
                                                                       },
                                                     style: ElevatedButton.styleFrom(
                                                         backgroundColor: selectedFieldData == (cIndex, qIndex)
@@ -285,13 +281,12 @@ class _SessionPageState extends State<SessionPage> {
                                             sessionRef.update({
                                               currentState: HomePageState.overview.name,
                                               selectedField: "-1:-1",
-                                              revealed: 0,
                                               playedFields: FieldValue.arrayUnion([
                                                 if (selectedFieldData.$1 != -1)
                                                   "${selectedFieldData.$1}:${selectedFieldData.$2}"
                                               ]),
                                               points: pointsList
-                                            });
+                                            }..addAll(resetSessionConfig));
                                           },
                                           style: ElevatedButton.styleFrom(
                                               backgroundColor: (Theme.of(context).brightness == Brightness.dark
@@ -425,53 +420,17 @@ class _SessionPageState extends State<SessionPage> {
                                             ))
                                       ]
                                     ],
-                                    if ((state == HomePageState.questionBuzzered || state == HomePageState.question) &&
-                                        selectedFieldData.$1 != -1 &&
-                                        (questions[selectedFieldData.$1][selectedFieldData.$2][type] ==
-                                                QuestionType.abcd.name ||
-                                            questions[selectedFieldData.$1][selectedFieldData.$2][type] ==
-                                                QuestionType.progressingReveal.name)) ...[
-                                      ElevatedButton(
-                                          onPressed: revealedAnswers > 0
-                                              ? () {
-                                                  sessionRef.update({
-                                                    revealed: FieldValue.increment(-1),
-                                                  });
-                                                }
-                                              : null,
-                                          child: const Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.navigate_before),
-                                              Text("Unreveal"),
-                                            ],
-                                          )),
-                                      ElevatedButton(
-                                          onPressed: () {
-                                            sessionRef.update({
-                                              revealed: FieldValue.increment(1),
-                                            });
-                                          },
-                                          child: const Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text("Reveal"),
-                                              Icon(Icons.navigate_next),
-                                            ],
-                                          ))
-                                    ],
                                     if (state == HomePageState.questionBuzzered || state == HomePageState.question)
                                       ElevatedButton(
                                           onPressed: () async {
                                             sessionRef.update({
                                               currentState: HomePageState.overview.name,
                                               selectedField: "-1:-1",
-                                              revealed: 0,
                                               playedFields: FieldValue.arrayUnion([
                                                 if (selectedFieldData.$1 != -1)
                                                   "${selectedFieldData.$1}:${selectedFieldData.$2}"
                                               ]),
-                                            });
+                                            }..addAll(resetSessionConfig));
                                           },
                                           child: const Row(
                                             mainAxisSize: MainAxisSize.min,
@@ -480,6 +439,7 @@ class _SessionPageState extends State<SessionPage> {
                                               Text("Close question"),
                                             ],
                                           )),
+                                    if(selectedFieldData.$1 != -1) ...Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2]).controlButtons(sessionData, (value) => sessionRef.update(value)),
                                   ],
                                 ),
                               ],

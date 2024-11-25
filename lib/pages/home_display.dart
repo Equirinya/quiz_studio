@@ -34,6 +34,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
   bool initialized = false;
   bool fullscreen = false;
   String currentGame = "";
+  //TODO move mediaPlaying to BaseQuestionCard
   bool? mediaPlaying;
   final mediaPlayer = AudioPlayer();
   StreamSubscription? mediaPlayerComplete;
@@ -194,6 +195,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                       buzzeredSubscription = SerialConnection().buzzerPressed.listen(
                         (event) {
                           int teamIndex = buzzerTeamMap[event] ?? -1;
+                          if (teamIndex == -1) return;
                           if (state == HomePageState.question) {
                             FirebaseFirestore.instance
                                 .collection(sessions)

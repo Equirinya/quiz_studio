@@ -304,7 +304,7 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                             MediaUploadIconButton(
                                 uploadType: MediaUploadType.music,
                                 gameId: widget.gameId,
-                                databaseMediaIndex: doc.data()[image],
+                                databaseMediaIndex: doc.data()[music],
                                 updateDB: (value) => doc.reference.update({music: value})),
                           ],
                         ),

@@ -13,14 +13,15 @@ import '../database/constants.dart';
 import '../pages/games_categories.dart';
 
 enum MediaUploadType {
-  image(iconAdd: Icons.add_photo_alternate ,iconSuccess: Icons.image, iconError: Icons.image_not_supported,),
-  music(iconAdd: MdiIcons.musicNotePlus,iconSuccess:  Icons.music_note, iconError: MdiIcons.musicNoteOff,);
+  image(uiString: "Image",iconAdd: Icons.add_photo_alternate ,iconSuccess: Icons.image, iconError: Icons.image_not_supported,),
+  music(uiString: "Sound", iconAdd: MdiIcons.musicNotePlus,iconSuccess:  Icons.music_note, iconError: MdiIcons.musicNoteOff,);
 
   final IconData iconAdd;
   final IconData iconSuccess;
   final IconData iconError;
+  final String uiString;
 
-  const MediaUploadType({required this.iconAdd, required this.iconSuccess, required this.iconError});
+  const MediaUploadType({required this.uiString, required this.iconAdd, required this.iconSuccess, required this.iconError});
 }
 
 class MediaUploadIconButton extends StatefulWidget {
@@ -123,13 +124,15 @@ class _MediaUploadIconButtonState extends State<MediaUploadIconButton> {
                     builder: (context) {
                       return AlertDialog(
                           icon: const Icon(Icons.delete),
-                          title: const Text("Delete Sound"),
-                          content: const Text("Are you sure you want to delete this sound?"),
+                          title: Text("Delete ${widget.uploadType.uiString}"),
+                          content: Text("Are you sure you want to delete this  ${widget.uploadType.uiString}?"),
                           actions: [
                             TextButton(
                               onPressed: () async {
-                                await widget.updateDB(FieldValue.delete());
-                                uploadSuccess = null;
+                                await widget.updateDB(null);
+                                setState(() {
+                                  uploadSuccess = null;
+                                });
                                 Navigator.of(context).pop();
                               },
                               child: const Text("Yes"),

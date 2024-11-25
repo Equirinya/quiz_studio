@@ -29,7 +29,7 @@ class MediaDownloader {
     await Directory("${appSupportDir.absolute.path}/$gameId").create(recursive: true);
     for (var questionCategoryDoc in questionDocs) {
       for(var questionDoc in questionCategoryDoc!.docs) {
-        for(var mediaPath in Question.fromData(questionDoc.data()).mediaPaths()) {
+        for(var mediaPath in List<String?>.from(Question.fromData(questionDoc.data()).mediaPaths())) {
           if (mediaPath != null && mediaPath.isNotEmpty) {
             final filePath = "${appSupportDir.absolute.path}/$gameId/$mediaPath";
             final file = File(filePath);

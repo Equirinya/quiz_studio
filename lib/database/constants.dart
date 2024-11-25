@@ -52,7 +52,6 @@ const String buzzerSensitivity = 'buzzerSensitivity';
 const String buzzerTeam = 'buzzerTeam';
 const String currentState = 'currentState';
 const String playingFrom = 'playingFrom'; //TODO rename to playing as it currently only is true for playing, false for paused, and null for stopped
-const String revealed = 'revealed';
 const String buzzeredFrom = 'buzzeredFrom';
 const String game = 'game';
 const String selectedField = 'selectedField';
@@ -60,9 +59,18 @@ const String lastUsed = 'lastUsed';
 const String playedFields = 'playedFields';
 const String points = 'points';
 const String teams = 'teams';
+//progressing reveal
+const String informationImageFocus = 'informationImageFocus';
+const String revealed = 'revealed';
 
 const Map<String, dynamic> previewSessionConfig = {
   revealed : 100
+};
+
+const Map<String, dynamic> resetSessionConfig = {
+  revealed : 0,
+  informationImageFocus: 0,
+  playingFrom: null,
 };
 
 

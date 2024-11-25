@@ -28,7 +28,8 @@ enum QuestionType {
 abstract class Question {
   final Map<String, dynamic> data;
 
-  List<Widget> controlButtons(dynamic gameState);
+  List<Widget> controlButtons(
+      Map<String, dynamic> sessionData, Future<void> Function(Map<String, dynamic> data) update);
 
   Widget questionWidget(
           {required BuildContext context,
@@ -49,8 +50,8 @@ abstract class Question {
     return questionfactor;
   }
 
-  List<Widget> inputWidgets(
-      BuildContext context, String gameId, Future<void> Function(Map<String, dynamic> data) update, VoidCallback refresh);
+  List<Widget> inputWidgets(BuildContext context, String gameId,
+      Future<void> Function(Map<String, dynamic> data) update, VoidCallback refresh);
 
   bool buzzerable() => true;
 
@@ -92,13 +93,16 @@ class BaseQuestionCard extends StatelessWidget {
     required this.questionData,
     required this.sessionData,
     required this.controllerView,
-    required this.gameDir,
+    required this.gameDir, this.textOverride, this.imageOverride, this.musicOverride,
   });
 
   final Map<String, dynamic> questionData;
   final Map<String, dynamic> sessionData;
   final bool controllerView;
   final Directory gameDir;
+  final String? textOverride;
+  final String? imageOverride;
+  final String? musicOverride;
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +138,7 @@ class BaseQuestionCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (questionData[image] != null && questionData[image].isNotEmpty)
+                      if ((questionData[image] != null && questionData[image].isNotEmpty) || (imageOverride != null && imageOverride!.isNotEmpty))
                         ConstrainedBox(
                           constraints: BoxConstraints(
                             maxWidth: controllerView ? size.width * 0.5 : size.width * 0.7,
@@ -142,13 +146,14 @@ class BaseQuestionCard extends StatelessWidget {
                           child: ClipRRect(
                             borderRadius: const BorderRadius.all(Radius.circular(12)),
                             child: Image.file(
-                              File('${gameDir.absolute.path}/${questionData[image]}'),
+                              File('${gameDir.absolute.path}/${ (imageOverride != null && imageOverride!.isNotEmpty) ? imageOverride : questionData[image]}'),
                               errorBuilder: (context, error, stackTrace) => const SizedBox(),
                               height: size.height * 0.55,
+                              fit: BoxFit.contain,
                             ),
                           ),
                         ),
-                      if(questionData[music] != null && questionData[music].isNotEmpty)
+                      if ((questionData[music] != null && questionData[music].isNotEmpty) || (musicOverride != null && musicOverride!.isNotEmpty))
                         MiniMusicVisualizer(
                           animate: sessionData[playingFrom] == true,
                           color: Theme.of(context).colorScheme.primary,
@@ -167,7 +172,7 @@ class BaseQuestionCard extends StatelessWidget {
                                     ? 4
                                     : 2,
                             overflow: TextOverflow.ellipsis,
-                            questionData[question] ?? "",
+                            textOverride ?? questionData[question] ?? "",
                             style: Theme.of(context)
                                 .textTheme
                                 .headlineSmall

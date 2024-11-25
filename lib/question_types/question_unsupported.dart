@@ -8,7 +8,7 @@ class UnsupportedQuestion extends Question {
   UnsupportedQuestion(super.data);
 
   @override
-  List<Widget> controlButtons(gameState) => [];
+  List<Widget> controlButtons(Map<String, dynamic> sessionData, Future<void> Function(Map<String, dynamic> data) update) => [];
 
   @override
   List<Widget> inputWidgets(
