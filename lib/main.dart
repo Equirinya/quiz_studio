@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:quiz_show/pages/login_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../database/constants.dart';
 import 'package:quiz_show/pages/home_display.dart';
 import 'package:quiz_show/pages/home_support.dart';
@@ -16,48 +18,48 @@ import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if(Platform.isWindows || Platform.isMacOS) {
+  if (Platform.isWindows || Platform.isMacOS) {
     await windowManager.ensureInitialized();
     windowManager.setTitle("Quiz Studio");
   }
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  if (FirebaseAuth.instance.currentUser == null) {
-    try {
-      await FirebaseAuth.instance.signInAnonymously();
-      if (kDebugMode) {
-        print("Signed in with anonymous account.");
-      }
-    } on FirebaseAuthException catch (e) {
-      switch (e.code) {
-        case "operation-not-allowed":
-          if (kDebugMode) {
-            print("Anonymous auth hasn't been enabled for this project.");
-          }
-          break;
-        default:
-          if (kDebugMode) {
-            print("Unknown auth error ${e.code} : ${e.message}");
-            //TODO crashes when logged out and no internet
-          }
-      }
+  bool signedIn = FirebaseAuth.instance.currentUser != null;
+  await Future.delayed(const Duration(milliseconds: 100));
+  signedIn = FirebaseAuth.instance.currentUser != null;
+  print("Signed in: $signedIn");
+  final prefs = await SharedPreferences.getInstance();
+  final bool userCreated = prefs.getBool('userCreated') ?? false;
+  if((userCreated || signedIn) && userCreated != signedIn){
+    print("User created: $userCreated, signed in: $signedIn");
+    prefs.setBool('userCreated', false);
+    try{
+      await FirebaseAuth.instance.currentUser!.delete();
+    }catch(e){
+      print(e);
+    }
+    try{
+      await FirebaseAuth.instance.signOut();
+    }catch(e){
+      print(e);
     }
   }
-
-  DocumentSnapshot<Map<String, dynamic>> userDoc = await FirebaseFirestore.instance.collection(users).doc(FirebaseAuth.instance.currentUser!.uid).get();
-  bool firstTime = !userDoc.exists;
-  if(!firstTime) {
-    userDoc.reference.update({lastLogin: DateTime.now()});
+  if (signedIn) {
+    DocumentSnapshot<Map<String, dynamic>> userDoc =
+        await FirebaseFirestore.instance.collection(users).doc(FirebaseAuth.instance.currentUser!.uid).get();
+    bool firstTime = !userDoc.exists;
+    if (!firstTime) {
+      userDoc.reference.update({lastLogin: DateTime.now()});
+    }
   }
-
-  runApp(MyApp(firstTime: firstTime));
+  runApp(MyApp(signedIn: signedIn));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, required this.firstTime});
+  const MyApp({super.key, required this.signedIn});
 
-  final bool firstTime;
+  final bool signedIn;
 
   @override
   Widget build(BuildContext context) {
@@ -82,9 +84,6 @@ class MyApp extends StatelessWidget {
     //   );
     // }
 
-
-
-
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -96,11 +95,9 @@ class MyApp extends StatelessWidget {
         colorScheme: darkColorScheme,
       ),
       themeMode: themeMode,
-      home: firstTime? const WelcomePage() : homePage(),
+      home: !signedIn ? WelcomePage(infoText: "",onFinished: () {},) : homePage(),
     );
   }
 }
 
 Widget homePage() => Platform.isAndroid || Platform.isIOS ? const HomeSupportPage() : const HomeDisplayPage();
-
-
