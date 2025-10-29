@@ -28,7 +28,8 @@
 #KEYCHAIN_PASSWORD #can be set freely
 
 ###make sure ios/Runner/ExportOptions-Template.plist exists
-
+###make sure the bundle id in ios/Runner.xcodeproj/project.pbxproj is right and that the signing settings are set to manual and the correct provisioning profile is selected
+#most of that should be set by the ExportOption.plist but are currently not, see https://github.com/flutter/flutter/issues/113977
 
 name: iOS Build and Deploy
 
@@ -112,6 +113,7 @@ jobs:
         run: |
           flutter build ipa \
             --release \
+            --verbose \
             --build-number=$BUILD_NUMBER \
             --build-name=$VERSION \
             --export-options-plist=ios/Runner/ExportOptions.plist
