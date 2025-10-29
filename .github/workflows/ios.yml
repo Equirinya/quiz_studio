@@ -2,7 +2,6 @@
 #https://canopas.com/automate-flutter-ios-app-deployment-with-github-actions-and-codemagic-cli-4d063ea6ef08
 #https://blog.okaryo.studio/en/20240911-flutter-ios-firebase-app-distribution-github-actions-not-auto-signing/
 
-
 ### setup in appstoreconnect:
 #if not exisiting yet, create a distribution certificate: https://mzansibytes.com/2021/08/28/create-apple-developer-certificates-on-windows/, then [Convert]::ToBase64String([IO.File]::ReadAllBytes("ExportedCertificate.pfx")) | Out-File "ExportedCertificate_base64.txt"
 
@@ -27,6 +26,8 @@
 #BUILD_PROVISION_PROFILE_BASE64
 
 #KEYCHAIN_PASSWORD #can be set freely
+
+###make sure ios/Runner/ExportOptions-Template.plist exists
 
 
 name: iOS Build and Deploy
