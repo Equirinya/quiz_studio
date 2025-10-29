@@ -25,34 +25,72 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+
+
+  FirebaseFirestore.instance.settings = Settings(
+    // Curiously, it is necessary to enable persistence to avoid a crash where the database of
+    // this cache is not found. However, it is necessary to clear this same cache to avoid the crash due to it being corrupted.
+    // #12987
+    persistenceEnabled: Platform.isWindows,
+  );
+
+  // Curiously, it is necessary to enable persistence to avoid a crash where the database of
+  // this cache is not found. However, it is necessary to clear this same cache
+  // to avoid the crash due to it being corrupted.
+  if (Platform.isWindows) {
+    await FirebaseFirestore.instance.clearPersistence();
+  }
+
+
   bool signedIn = FirebaseAuth.instance.currentUser != null;
   await Future.delayed(const Duration(milliseconds: 100));
   signedIn = FirebaseAuth.instance.currentUser != null;
   print("Signed in: $signedIn");
+
   final prefs = await SharedPreferences.getInstance();
   final bool userCreated = prefs.getBool('userCreated') ?? false;
-  if((userCreated || signedIn) && userCreated != signedIn){
-    print("User created: $userCreated, signed in: $signedIn");
-    prefs.setBool('userCreated', false);
-    try{
-      await FirebaseAuth.instance.currentUser!.delete();
-    }catch(e){
-      print(e);
+
+  if(!signedIn){
+    try {
+      final userCredential =
+      await FirebaseAuth.instance.signInAnonymously();
+      print("Signed in with temporary account.");
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case "operation-not-allowed":
+          print("Anonymous auth hasn't been enabled for this project.");
+          break;
+        default:
+          print("Unknown error.");
+      }
     }
-    try{
-      await FirebaseAuth.instance.signOut();
-    }catch(e){
-      print(e);
-    }
+
   }
-  if (signedIn) {
-    DocumentSnapshot<Map<String, dynamic>> userDoc =
-        await FirebaseFirestore.instance.collection(users).doc(FirebaseAuth.instance.currentUser!.uid).get();
-    bool firstTime = !userDoc.exists;
-    if (!firstTime) {
-      userDoc.reference.update({lastLogin: DateTime.now()});
-    }
-  }
+
+  // if((userCreated || signedIn) && userCreated != signedIn){
+  //   print("User created: $userCreated, signed in: $signedIn");
+  //   prefs.setBool('userCreated', false);
+  //   signedIn = false;
+  //   try{
+  //     await FirebaseAuth.instance.currentUser!.delete();
+  //   }catch(e){
+  //     print(e);
+  //   }
+  //   try{
+  //     await FirebaseAuth.instance.signOut();
+  //   }catch(e){
+  //     print(e);
+  //   }
+  // }
+  // if (signedIn) {
+  //   DocumentSnapshot<Map<String, dynamic>> userDoc =
+  //       await FirebaseFirestore.instance.collection(users).doc(FirebaseAuth.instance.currentUser!.uid).get();
+  //   bool firstTime = !userDoc.exists;
+  //   if (!firstTime) {
+  //     userDoc.reference.update({lastLogin: DateTime.now()});
+  //   }
+  // }
   runApp(MyApp(signedIn: signedIn));
 }
 

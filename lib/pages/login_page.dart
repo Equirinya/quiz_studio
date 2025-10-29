@@ -96,8 +96,10 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
   }
 
   void signIn() async {
+    return;
     var db = FirebaseFirestore.instance;
     var auth = FirebaseAuth.instance;
+    print("wow");
     var prefs = await SharedPreferences.getInstance();
     if (username.length < 3) {
       setState(() {
@@ -108,12 +110,13 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
         usernameError = 0;
         loading = true;
       });
-      AggregateQuerySnapshot numberOfNameAppearances =
-          await db.collection("users").where("name", isEqualTo: username).count().get();
+      // AggregateQuerySnapshot numberOfNameAppearances =
+      //     await db.collection("users").where("name", isEqualTo: username).count().get();
       setState(() {
         loading = false;
       });
-      if ((numberOfNameAppearances.count ?? 0) > 0) {
+      if (false)//((numberOfNameAppearances.count ?? 0) > 0)
+      {
         setState(() {
           usernameError = 1;
         });
@@ -123,6 +126,13 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
           StringConstants.username: username,
           StringConstants.createdAt: DateTime.now(),
         };
+
+        var currentUser = auth.currentUser;
+        print(currentUser);
+        await Future.delayed(const Duration(seconds: 5));
+
+        currentUser = auth.currentUser;
+        print(currentUser);
 
         db.collection(StringConstants.users).doc(auth.currentUser!.uid).set(userDoc);
 
@@ -159,7 +169,7 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
 
     List<(String, List<Widget>)> loginPages = [
       (
-        "Willkommen zurück!\n Melde dich mit deinem Quiz Studio Account an.",
+        "Willkommen zurück!\nMelde dich mit deinem Quiz Studio Account an.",
         [
           StatefulBuilder(builder: (context, setState) {
             if (Firebase.apps.isEmpty) {
@@ -363,13 +373,18 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
               if (isPortrait)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.max,
                   children: [
+                    SizedBox(height: size.height * 0.1),
+                    SizedBox(
+                        width: size.width * 1,
+                        child: firstHalfWidget),
                     SizedBox(height: size.height * 0.05),
-                    firstHalfWidget,
-                    Expanded(
+                    Flexible(
                       child: SingleChildScrollView(
                         child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: currentPage.$2,
                         ),
                       ),
