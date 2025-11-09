@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:path_provider/path_provider.dart';
+import 'package:quiz_show/pages/games_display/playboard.dart';
 import 'package:quiz_show/widgets/buzzer_status.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,10 +20,7 @@ import 'package:quiz_show/serial_connection.dart';
 
 import '../database/game_stream.dart';
 import '../question_types/abstract_question.dart';
-import '../widgets/playing_field.dart';
 import '../database/session_stream.dart';
-
-
 
 
 class HomeDisplayPage extends StatefulWidget {
@@ -37,6 +35,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
   bool initialized = false;
   bool fullscreen = false;
   String currentGame = "";
+
   //TODO move mediaPlaying to BaseQuestionCard
   bool? mediaPlaying;
   final mediaPlayer = AudioPlayer();
@@ -52,7 +51,8 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
       setState(() {
         initialized = true;
       });
-    }();
+    }
+    ();
     mediaPlayerComplete = mediaPlayer.onPlayerComplete.listen((event) {
       FirebaseFirestore.instance
           .collection(sessions)
@@ -96,7 +96,10 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
         onPressed: () => openSettings(context).then((_) => setState(() {})),
         icon: Icon(
           Icons.settings_rounded,
-          color: Theme.of(context).colorScheme.surfaceContainer,
+          color: Theme
+              .of(context)
+              .colorScheme
+              .surfaceContainer,
         ),
       ),
       //fullscreen
@@ -110,7 +113,10 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
           },
           icon: Icon(
             fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
-            color: Theme.of(context).colorScheme.surfaceContainer,
+            color: Theme
+                .of(context)
+                .colorScheme
+                .surfaceContainer,
           ),
         ),
       IconButton(
@@ -120,7 +126,10 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
         },
         icon: Icon(
           Icons.open_in_new,
-          color: Theme.of(context).colorScheme.surfaceContainer,
+          color: Theme
+              .of(context)
+              .colorScheme
+              .surfaceContainer,
         ),
       ),
     ];
@@ -138,7 +147,9 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
       ],
     );
 
-    Size screenSize = MediaQuery.of(context).size;
+    Size screenSize = MediaQuery
+        .of(context)
+        .size;
     return Scaffold(
       body: Stack(
         children: [
@@ -147,12 +158,13 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
               gameId: currentGame,
               fallback: SessionStreamBuilder(
                 session: prefs.getString("currentSession"),
-                builder: (sessionData, teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList,
-                    revealed, buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
+                builder: (Map<String, dynamic> sessionData, teamsList, pointsList, selectedFieldData, selectedCategoryGroupIndex, state, playing,
+                    enableBuzzerQueue, buzzeredTeam, playedFieldsList, revealed, buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
                   if (currentGame != (gameRef?.id ?? "noGame")) {
                     Future.delayed(
                         const Duration(milliseconds: 200),
-                        () => setState(() {
+                            () =>
+                            setState(() {
                               currentGame = gameRef?.id ?? "noGame";
                             }));
                   }
@@ -160,26 +172,43 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                 },
                 fallback: fallbackWidget,
               ),
-              builder: (categories, gameQuestionPoints, questions, emptyFields) {
+              builder: (categories, questions) {
                 return SessionStreamBuilder(
                   session: prefs.getString("currentSession"),
-                  builder: (sessionData, teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList,
-                      revealed, buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
+                  builder: (Map<String, dynamic> sessionData, teamsList, pointsList, selectedFieldData, selectedCategoryGroupIndex, state, playing,
+                      enableBuzzerQueue, buzzeredTeam, playedFieldsList, revealed, buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
                     if (currentGame != (gameRef?.id ?? "noGame")) {
                       Future.delayed(
                           const Duration(milliseconds: 200),
-                          () => setState(() {
+                              () =>
+                              setState(() {
                                 currentGame = gameRef?.id ?? "noGame";
                               }));
                     }
                     if (gameRef == null) return fallbackWidget;
+
+                    var selectedCategoryType = categories[selectedCategoryGroupIndex].$1;
+                    var selectedCategoryNames = categories[selectedCategoryGroupIndex].$2;
+                    int categoryOffset = categories.sublist(0, selectedCategoryGroupIndex).fold(0, (previousValue, element) => previousValue + element.$2.length);
+                    //limit the arrays to the range of the category group:
+                    var displayedQuestions = questions.sublist(categoryOffset, categoryOffset + selectedCategoryNames.length);
+                    var displayedPlayedFieldsList = playedFieldsList
+                        .where((element) => element.$1 >= categoryOffset && element.$1 < categoryOffset + selectedCategoryNames.length)
+                        .map((e) => (e.$1 - categoryOffset, e.$2))
+                        .toList();
+                    var displayedSelectedFieldData = (selectedFieldData.$1 - categoryOffset, selectedFieldData.$2);
+
+                    if(selectedFieldData.$1 == -1 || selectedFieldData.$1 > questions.length - 1 || selectedFieldData.$2 > questions[selectedFieldData.$1].length - 1) {
+                      selectedFieldData = (-1, -1);
+                      if(state == HomePageState.question || state == HomePageState.questionBuzzered)state = HomePageState.overview;
+                    }
+
                     if (mediaPlaying != playing) {
                       if (playing == null) {
                         mediaPlayer.stop();
-                      } else if (playing && mediaPlaying == null){
+                      } else if (playing && mediaPlaying == null) {
                         mediaPlayer.play(DeviceFileSource(
                             "${appSupportDir.path}/${gameRef.id}/${questions[selectedFieldData.$1][selectedFieldData.$2][music]}"));
-
                       }
                       else if (playing)
                         mediaPlayer.resume();
@@ -190,13 +219,13 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
 
                     buzzeredSubscription?.cancel();
                     if (((state == HomePageState.question &&
-                                selectedFieldData.$1 >= 0 &&
-                                Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2])
-                                    .buzzerable()) ||
-                            state == HomePageState.buzzerTest) &&
+                        selectedFieldData.$1 >= 0 &&
+                        Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2])
+                            .buzzerable()) ||
+                        state == HomePageState.buzzerTest) &&
                         SerialConnection().status == SerialStatus.connected) {
                       buzzeredSubscription = SerialConnection().buzzerPressed.listen(
-                        (event) {
+                            (event) {
                           int teamIndex = buzzerTeamMap[event] ?? -1;
                           if (teamIndex == -1) return;
                           if (state == HomePageState.question) {
@@ -224,7 +253,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                     }
 
                     int estimatedScoreRows =
-                        (teamsList.length / ((screenSize.width - 64) ~/ (screenSize.height * 0.2 + 8))).ceil();
+                    (teamsList.length / ((screenSize.width - 64) ~/ (screenSize.height * 0.2 + 8))).ceil();
                     double playFieldHeight;
                     double playFieldWidth;
                     switch (state) {
@@ -246,15 +275,14 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                       children: [
                         Align(
                           alignment: Alignment.bottomCenter,
-                          child: CustomPaint(
+                          child: Playboard.fromCategoryType(
+                            categoryType: selectedCategoryType,
+                            homePageState: state,
                             size: Size(playFieldWidth, playFieldHeight),
-                            painter: PlayingFieldPainter(
-                              categories: categories,
-                              pointRings: gameQuestionPoints,
-                              disabledFields: playedFieldsList..addAll(emptyFields),
-                              colorScheme: Theme.of(context).colorScheme,
-                              highlightedField: selectedFieldData,
-                            ),
+                            categoryNames: selectedCategoryNames,
+                            questionDocs: displayedQuestions,
+                            selectedFieldData: displayedSelectedFieldData,
+                            playedFieldsList: displayedPlayedFieldsList,
                           ),
                         ),
                         Align(
@@ -281,9 +309,12 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                                         height: screenSize.height * 0.12,
                                         child: Card(
                                           color: ((state == HomePageState.questionBuzzered ||
-                                                      state == HomePageState.buzzerTest) &&
-                                                  buzzeredTeam == index)
-                                              ? Theme.of(context).colorScheme.primaryContainer
+                                              state == HomePageState.buzzerTest) &&
+                                              buzzeredTeam == index)
+                                              ? Theme
+                                              .of(context)
+                                              .colorScheme
+                                              .primaryContainer
                                               : null,
                                           child: Center(
                                             child: Column(
@@ -293,14 +324,16 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                                                   team,
                                                   maxLines: 1,
                                                   overflow: TextOverflow.clip,
-                                                  style: Theme.of(context)
+                                                  style: Theme
+                                                      .of(context)
                                                       .textTheme
                                                       .bodySmall
                                                       ?.copyWith(fontSize: screenSize.height * 0.02),
                                                 ),
                                                 Text(
                                                   (pointsList.elementAtOrNull(index) ?? 0).toString(),
-                                                  style: Theme.of(context)
+                                                  style: Theme
+                                                      .of(context)
                                                       .textTheme
                                                       .headlineSmall
                                                       ?.copyWith(fontSize: screenSize.height * 0.04),
@@ -322,8 +355,8 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                                       selectedFieldData.$1 != -1)
                                     Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2])
                                         .questionWidget(context: context,
-                                            gameDir: Directory('${appSupportDir.absolute.path}/${gameRef.id}'),
-                                            sessionData: sessionData)
+                                        gameDir: Directory('${appSupportDir.absolute.path}/${gameRef.id}'),
+                                        sessionData: sessionData)
                                 ],
                               )
                           ],

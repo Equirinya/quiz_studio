@@ -9,7 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../database/constants.dart';
-import '../pages/games_categories.dart';
+import '../pages/games_edit/games_categories.dart';
 
 enum MediaUploadType {
   image(

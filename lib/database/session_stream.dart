@@ -23,8 +23,10 @@ class SessionStreamBuilder extends StatelessWidget {
       List<String> teamsList,
       List<int> pointsList,
       (int, int) selectedFieldData,
+      int selectedCategoryGroupIndex,
       HomePageState state,
       bool? playing,
+      bool enableBuzzerQueue,
       int? buzzeredTeam,
       List<(int, int)> playedFieldsList,
       int revealed,
@@ -87,10 +89,12 @@ class SessionStreamBuilder extends StatelessWidget {
           } else {
             selectedFieldData = (-1, -1);
           }
+          int selectedCategoryGroupIndex = sessionSnapshot.data!.data()![selectedCategoryGroup] ?? 0;
           HomePageState state =
           HomePageState.values.firstWhere((element) => element.name == sessionSnapshot.data!.data()![currentState]);
 
           bool? playing = sessionSnapshot.data!.data()![playingFrom];
+          bool enableBuzzerQueue = sessionSnapshot.data!.data()![queueBuzzers] ?? false;
           int? buzzeredTeam = sessionSnapshot.data!.data()![buzzeredFrom];
           List<(int, int)> playedFieldsList = sessionSnapshot.data!.data()![playedFields] != null
               ? List.from(sessionSnapshot.data!.data()![playedFields].map((e) {
@@ -101,6 +105,7 @@ class SessionStreamBuilder extends StatelessWidget {
           Map<int, int> buzzerSensitivityMap = Map.from(sessionSnapshot.data!.data()![buzzerSensitivity] ?? {}).map(
                 (key, value) => MapEntry(int.tryParse(key)!, value),
           );
+          //TODO move this to homedisplay or something like that
           for (MapEntry entry in buzzerSensitivityMap.entries) {
             SerialConnection().buzzerSensitivity[entry.key] = entry.value;
           }
@@ -111,7 +116,7 @@ class SessionStreamBuilder extends StatelessWidget {
 
           DocumentReference? gameRef = sessionSnapshot.data!.data()?[game] != null && sessionSnapshot.data!.data()![game].isNotEmpty ? FirebaseFirestore.instance.collection(games).doc(sessionSnapshot.data!.data()![game]) : null;
 
-          return builder(sessionSnapshot.data!.data()! ,teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList,reveal,
+          return builder(sessionSnapshot.data!.data()! ,teamsList, pointsList, selectedFieldData, selectedCategoryGroupIndex, state, playing, enableBuzzerQueue, buzzeredTeam, playedFieldsList,reveal,
               buzzerSensitivityMap, buzzerTeamMap, gameRef,sessionSnapshot.data!.reference);
         });
   }

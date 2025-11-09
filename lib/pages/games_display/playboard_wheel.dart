@@ -3,18 +3,147 @@ import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:quiz_show/pages/games_display/playboard.dart';
 
-class PlayingFieldPainter extends CustomPainter {
+import '../../database/constants.dart';
+
+class WheelPlayboard extends Playboard {
+  const WheelPlayboard({
+    super.key,
+    required super.homePageState,
+    required super.size,
+    required super.categoryNames,
+    required super.questionDocs,
+    required super.selectedFieldData,
+    required super.playedFieldsList,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    var (List<List<Map<String, dynamic>>> newQuestionDocs, List<int> gameQuestionPoints, List<(int, int)> emptyFields) =
+        normalizeQuestionsInPoint(questionDocs);
+    var ((int, int) newSelectedFieldData, List<(int, int)> newPlayedFieldsList) =
+        normalizePlayData(gameQuestionPoints, emptyFields, categoryNames.length , selectedFieldData, playedFieldsList);
+
+    return CustomPaint(
+      size: size,
+      painter: WheelPlayingFieldPainter(
+        categories: categoryNames,
+        pointRings: gameQuestionPoints,
+        disabledFields: newPlayedFieldsList..addAll(emptyFields),
+        colorScheme: Theme.of(context).colorScheme,
+        highlightedField: newSelectedFieldData,
+      ),
+    );
+  }
+}
+
+(List<List<Map<String, dynamic>>> newQuestionDocs, List<int> gameQuestionPoints, List<(int, int)> emptyFields) normalizeQuestionsInPoint(
+      List<List<Map<String, dynamic>>> questionDocs) {
+    // bestimme für jede Punktzahl, wie oft sie maximal in einer Kategorie vorkommt
+    final Set<int> pointValues = {};
+    final Map<int, int> maxCountPerPoint = {};
+    for (var cat in questionDocs) {
+      final Map<int, int> counts = {};
+      for (var q in cat) {
+        final int p = (q[pointsPlus] ?? 0) as int;
+        pointValues.add(p);
+        counts[p] = (counts[p] ?? 0) + 1;
+      }
+      for (var e in counts.entries) {
+        maxCountPerPoint[e.key] = max(maxCountPerPoint[e.key] ?? 0, e.value);
+      }
+    }
+
+    // baue die Ringe: für jede Punktzahl so viele Ringe wie der maximale Vorkommenwert
+    final List<int> sortedPoints = pointValues.toList()..sort((a, b) => a - b);
+    final List<int> rings = [];
+    for (var p in sortedPoints) {
+      final int repeat = maxCountPerPoint[p] ?? 0;
+      for (int i = 0; i < repeat; i++) {
+        rings.add(p);
+      }
+    }
+
+    // initialisiere Ergebnisraster und fülle es, markiere leere Felder
+    final List<List<Map<String, dynamic>>> questions = List.generate(questionDocs.length, (_) => []);
+    final List<(int, int)> empties = [];
+    for (int i = 0; i < questionDocs.length; i++) {
+      final cat = questionDocs[i];
+      // gruppiere Fragen der Kategorie nach Punktzahl (erhält Reihenfolge)
+      final Map<int, List<Map<String, dynamic>>> grouped = {};
+      for (var q in cat) {
+        final int p = (q[pointsPlus] ?? 0) as int;
+        grouped.putIfAbsent(p, () => []).add(q);
+      }
+
+      int ringIndex = 0;
+      for (var p in sortedPoints) {
+        final int repeat = maxCountPerPoint[p] ?? 0;
+        final List<Map<String, dynamic>> bucket = grouped[p] ?? [];
+        for (int k = 0; k < repeat; k++) {
+          if (k < bucket.length) {
+            questions[i].add(bucket[k]);
+          } else {
+            questions[i].add({});
+            empties.add((i, ringIndex));
+          }
+          ringIndex++;
+        }
+      }
+    }
+
+    return (questions, rings, empties);
+  }
+
+//maps the play data to the normalized question data
+((int, int) selectedFieldData, List<(int, int)> playedFieldsList) normalizePlayData(List<int> gameQuestionPoints, List<(int, int)> emptyFields, int categoryCount, (int, int) selectedFieldData, List<(int, int)> playedFieldsList) {
+  List<Map<int,int>> mappedIndices = [];
+  for (int categoryIndex = 0; categoryIndex < categoryCount; categoryIndex++) {
+    int emptyFieldsCount = 0;
+    mappedIndices.add({});
+    for(int ringIndex = 0; ringIndex < gameQuestionPoints.length; ringIndex++) {
+      if (emptyFields.contains((categoryIndex, ringIndex))) {
+        emptyFieldsCount++;
+      }
+      mappedIndices[categoryIndex][ringIndex - emptyFieldsCount] = ringIndex;
+    }
+  }
+  var newSelectedFieldData = selectedFieldData.$1 < 0 ? (-1,-1) : (selectedFieldData.$1, mappedIndices[selectedFieldData.$1][selectedFieldData.$2] ?? selectedFieldData.$2);
+  List<(int, int)> newPlayedFieldsList = playedFieldsList
+      .map((e) => (e.$1, mappedIndices[e.$1][e.$2] ?? e.$2))
+      .toList();
+  return (newSelectedFieldData, newPlayedFieldsList);
+}
+
+((int, int) selectedFieldData, List<(int, int)> playedFieldsList) denormalizePlayData(List<int> gameQuestionPoints, List<(int, int)> emptyFields, int categoryCount, (int, int) selectedFieldData, List<(int, int)> playedFieldsList) {
+  List<Map<int,int>> mappedIndices = [];
+  for (int categoryIndex = 0; categoryIndex < categoryCount; categoryIndex++) {
+    int emptyFieldsCount = 0;
+    mappedIndices.add({});
+    for(int ringIndex = 0; ringIndex < gameQuestionPoints.length; ringIndex++) {
+      if (emptyFields.contains((categoryIndex, ringIndex))) {
+        emptyFieldsCount++;
+      }
+      mappedIndices[categoryIndex][ringIndex] = ringIndex - emptyFieldsCount;
+    }
+  }
+  var newSelectedFieldData = selectedFieldData.$1 < 0 ? (-1,-1) : (selectedFieldData.$1, mappedIndices[selectedFieldData.$1][selectedFieldData.$2] ?? selectedFieldData.$2);
+  List<(int, int)> newPlayedFieldsList = playedFieldsList
+      .map((e) => (e.$1, mappedIndices[e.$1][e.$2] ?? e.$2))
+      .toList();
+  return (newSelectedFieldData, newPlayedFieldsList);
+}
+
+
+class WheelPlayingFieldPainter extends CustomPainter {
   final List<int> pointRings;
   final List<String> categories;
   final (int categoryIndex, int ringIndex) highlightedField;
   final List<(int categoryIndex, int ringIndex)> disabledFields;
   final ColorScheme colorScheme;
-  // final Map<String, int> teamPoints;
-  // final String? question;
-  // final int? buzzered;
 
-  PlayingFieldPainter({
+  WheelPlayingFieldPainter({
     super.repaint,
     required this.pointRings,
     required this.categories,
@@ -42,8 +171,7 @@ class PlayingFieldPainter extends CustomPainter {
 
     double cellPaintStrokeWidth = smallerDimension / (pointRings.length + 2) / 2;
     Paint selectedCellPaint = Paint()
-      ..color = Color.lerp(
-          Color.lerp(colorScheme.primary, colorScheme.secondaryContainer, 0.5), colorScheme.primaryContainer, 0.1)!
+      ..color = Color.lerp(Color.lerp(colorScheme.primary, colorScheme.secondaryContainer, 0.5), colorScheme.primaryContainer, 0.1)!
       ..style = PaintingStyle.stroke
       ..strokeWidth = cellPaintStrokeWidth;
     Paint disabledCellPaint = Paint()
@@ -81,8 +209,8 @@ class PlayingFieldPainter extends CustomPainter {
             cell == highlightedField
                 ? selectedCellPaint
                 : disabledFields.contains(cell)
-                ? disabledCellPaint
-                : cellPaint);
+                    ? disabledCellPaint
+                    : cellPaint);
         textPainter.paint(
           canvas,
           Offset(0, -halfradius) - textPainter.size.center(Offset.zero),
@@ -164,11 +292,10 @@ class PlayingFieldPainter extends CustomPainter {
           textDirection: TextDirection.rtl,
         );
         textPainter.layout(maxWidth: size.width / 5);
-        offset = Offset(size.width * 0.45, -smallerDimension * 0.5 + (index + 0.5) * sideHeightStep) -
-            textPainter.size.centerRight(Offset.zero);
+        offset = Offset(size.width * 0.45, -smallerDimension * 0.5 + (index + 0.5) * sideHeightStep) - textPainter.size.centerRight(Offset.zero);
 
-        canvas.drawLine(textPainter.size.bottomRight(offset).translate(3 * lW, 2 * lW),
-            textPainter.size.topRight(offset).translate(3 * lW, -2 * lW), linePaint);
+        canvas.drawLine(
+            textPainter.size.bottomRight(offset).translate(3 * lW, 2 * lW), textPainter.size.topRight(offset).translate(3 * lW, -2 * lW), linePaint);
       } else if (index == (categories.length - 1) / 2) {
         textPainter = TextPainter(
           text: text,
@@ -185,12 +312,11 @@ class PlayingFieldPainter extends CustomPainter {
           textDirection: TextDirection.ltr,
         );
         textPainter.layout(maxWidth: size.width / 5);
-        offset = Offset(size.width * -0.45,
-            smallerDimension * 0.5 - (index - ((categories.length + 1) ~/ 2) + 0.5) * sideHeightStep) -
+        offset = Offset(size.width * -0.45, smallerDimension * 0.5 - (index - ((categories.length + 1) ~/ 2) + 0.5) * sideHeightStep) -
             textPainter.size.centerLeft(Offset.zero);
 
-        canvas.drawLine(textPainter.size.bottomLeft(offset).translate(-3 * lW, 2 * lW),
-            textPainter.size.topLeft(offset).translate(-3 * lW, -2 * lW), linePaint);
+        canvas.drawLine(
+            textPainter.size.bottomLeft(offset).translate(-3 * lW, 2 * lW), textPainter.size.topLeft(offset).translate(-3 * lW, -2 * lW), linePaint);
       }
       textPainter.paint(
         canvas,

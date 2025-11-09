@@ -1,4 +1,5 @@
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/material.dart';
 
 enum HomePageState { overview, question, questionBuzzered, buzzerTest }
 
@@ -9,6 +10,7 @@ const String lastLogin = 'lastLogin';
 const String games = 'games';
 const String gamesMediaIndex = 'gamesMediaIndex';
 const String locked = 'locked';
+const String documentId = 'documentId'; //currently only used for the questionDocuments to add id to data
 
 enum AccessType {
   admin("Admin"),
@@ -22,6 +24,21 @@ enum AccessType {
 }
 //general questions
 const String categories = 'categories';
+const String categoryType = 'categoryType';
+const String categoryIndex = 'categoryIndex'; //index within group
+const String categoryGroup = 'categoryGroup'; //groups are created as 1,2,3,... and therefore also act as order
+
+enum CategoryType {
+  noboard('No Board', Icons.crop_square_outlined),
+  wheel('Wheel Playboard', Icons.pie_chart_outline);
+
+  final String uiString;
+  final IconData icon;
+  String databaseString() => 'category_${this.name}';
+
+  const CategoryType(this.uiString, this.icon);
+}
+
 const String active = 'active';
 const String createdAt = 'createdAt';
 const String createdBy = 'createdBy';
@@ -49,11 +66,13 @@ const String answersCorrect = 'answersCorrect';
 const String sessions = 'sessions';
 
 const String buzzerSensitivity = 'buzzerSensitivity';
+const String queueBuzzers = 'queueBuzzers'; //bool: if true, buzzers are queued, otherwise only first buzzer counts until reset
 const String buzzerTeam = 'buzzerTeam';
 const String currentState = 'currentState';
 const String playingFrom = 'playingFrom'; //TODO rename to playing as it currently only is true for playing, false for paused, and null for stopped
 const String buzzeredFrom = 'buzzeredFrom';
 const String game = 'game';
+const String selectedCategoryGroup = 'selectedCategoryGroup';
 const String selectedField = 'selectedField';
 const String lastUsed = 'lastUsed';
 const String playedFields = 'playedFields';

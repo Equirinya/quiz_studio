@@ -59,8 +59,7 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: ConstrainedBox(
-              constraints:
-                  BoxConstraints(minWidth: MediaQuery.of(context).size.width - 16, minHeight: 100, maxHeight: 200),
+              constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 16, minHeight: 100, maxHeight: 200),
               child: Card(
                 color: Color.lerp(Theme.of(context).colorScheme.surface, Colors.black, 0.5),
                 child: Padding(
@@ -95,8 +94,8 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
         SettingsSubPageCategory(title: "Sensitivity", settings: [
           SessionStreamBuilder(
             session: prefs.getString("currentSession"),
-            builder: (Map<String,dynamic> sessionData, teamsList, pointsList, selectedFieldData, state, playing, buzzeredTeam, playedFieldsList, revealed,
-                buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
+            builder: (Map<String, dynamic> sessionData, teamsList, pointsList, selectedFieldData, selectedCategoryGroupIndex, state, playing,
+                enableBuzzerQueue, buzzeredTeam, playedFieldsList, revealed, buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
               return FutureBuilder(
                 future: SerialConnection().serialStream.first,
                 builder: (context, snapshot) {
@@ -127,9 +126,7 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
                               children: [
                                 StatefulBuilder(builder: (context, setSliderState) {
                                   return Slider(
-                                    value: buzzerSensitivityMap.containsKey(entry.key)
-                                        ? buzzerSensitivityMap[entry.key]!.toDouble()
-                                        : 512,
+                                    value: buzzerSensitivityMap.containsKey(entry.key) ? buzzerSensitivityMap[entry.key]!.toDouble() : 512,
                                     min: 0,
                                     max: 1023,
                                     onChangeEnd: (value) {
@@ -142,13 +139,10 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
                                     },
                                   );
                                 }),
-                                Text(buzzerSensitivityMap.containsKey(entry.key)
-                                    ? buzzerSensitivityMap[entry.key]!.toString()
-                                    : "0"),
+                                Text(buzzerSensitivityMap.containsKey(entry.key) ? buzzerSensitivityMap[entry.key]!.toString() : "0"),
                                 const SizedBox(width: 24),
                                 DropdownMenu<String>(
-                                    dropdownMenuEntries:
-                                        teamsList.map((e) => DropdownMenuEntry(label: e, value: e)).toList()..add,
+                                    dropdownMenuEntries: teamsList.map((e) => DropdownMenuEntry(label: e, value: e)).toList()..add,
                                     initialSelection: buzzerTeamMap.containsKey(entry.key) && buzzerTeamMap[entry.key]! < teamsList.length
                                         ? teamsList[buzzerTeamMap[entry.key]!]
                                         : "",
@@ -156,8 +150,7 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
                                       sessionRef.update({"$buzzerTeam.${entry.key}": teamsList.indexOf(value ?? "")});
                                     }),
                                 const SizedBox(width: 24),
-                                TextButton(
-                                    onPressed: () => selectSound(entry.key, context), child: const Text("Select Sound"))
+                                TextButton(onPressed: () => selectSound(entry.key, context), child: const Text("Select Sound"))
                               ],
                             ),
                           ),
@@ -178,7 +171,7 @@ void selectSound(int team, BuildContext context) async {
   String sessionId = await SharedPreferences.getInstance().then((value) => value.getString("currentSession") ?? "");
   final Directory appSupportDir = await getApplicationSupportDirectory();
   final File file = File('${appSupportDir.path}/session_$sessionId/team_sound$team');
-  if(!await file.parent.exists()) await file.parent.create(recursive: true);
+  if (!await file.parent.exists()) await file.parent.create(recursive: true);
   InputDevice? selectedDevice;
 
   FirebaseFirestore db = FirebaseFirestore.instance;
@@ -236,8 +229,7 @@ void selectSound(int team, BuildContext context) async {
                       builder: (context, snapshot) {
                         if (snapshot.hasData && snapshot.data != null) {
                           return DropdownMenu<InputDevice>(
-                            dropdownMenuEntries:
-                                snapshot.data!.map((e) => DropdownMenuEntry(label: e.label, value: e)).toList(),
+                            dropdownMenuEntries: snapshot.data!.map((e) => DropdownMenuEntry(label: e.label, value: e)).toList(),
                             initialSelection: selectedDevice,
                             onSelected: (value) {
                               selectedDevice = value;
@@ -292,8 +284,8 @@ void selectSound(int team, BuildContext context) async {
                               : Icons.cloud_off),
                   title: const Text("Select File"),
                   onTap: () async {
-                    final XFile? musicXFile = await openFile(
-                        acceptedTypeGroups: <XTypeGroup>[Platform.isIOS ? musicUniformFileType : musicExtension]);
+                    final XFile? musicXFile =
+                        await openFile(acceptedTypeGroups: <XTypeGroup>[Platform.isIOS ? musicUniformFileType : musicExtension]);
                     if (musicXFile == null) return;
                     setState(() {
                       uploadFileMusicSuccess = null;

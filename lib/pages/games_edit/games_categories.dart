@@ -10,8 +10,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:quiz_show/widgets/media_upload.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../database/constants.dart';
-import '../question_types/abstract_question.dart';
+import '../../database/constants.dart';
+import '../../question_types/abstract_question.dart';
 
 class GamesCategoriesEditPage extends StatefulWidget {
   const GamesCategoriesEditPage({super.key, required this.gameId, required this.categoryId});
@@ -189,7 +189,8 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
                         IconButton(
                           icon: const Icon(Icons.visibility),
                           onPressed: () async {
-                            var questionData = (await doc.reference.get()).data() ?? {};
+                            var updatedDoc = await doc.reference.get();
+                            var questionData = (updatedDoc.data() ?? {})..[documentId] = doc.id;
                             showDialog(
                                 context: context,
                                 builder: (context) => Center(
