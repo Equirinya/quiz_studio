@@ -17,10 +17,9 @@ class ABCDQuestion extends Question {
 
   @override
   String asText() => "${super.asText()}"
-  "Possible answers:\n"
-  "${data[answers] is! List ? "" : (List<String>.from(data[answers])).indexed.map((e) => "${data[answersCorrect]?[e.$1] is bool && data[answersCorrect]?[e.$1] ? "Correct:" : "Wrong:"} ${e.$2}\n").join()}";
+      "Possible answers:\n"
+      "${data[answers] is! List ? "" : (List<String>.from(data[answers])).indexed.map((e) => "${data[answersCorrect]?[e.$1] is bool && data[answersCorrect]?[e.$1] ? "Correct:" : "Wrong:"} ${e.$2}\n").join()}";
 
-  //TODO make reveal answers seperate button
   @override
   List<Widget> controlButtons(Map<String, dynamic> sessionData, Future<void> Function(Map<String, dynamic> data) update) {
     int revealedAnswers = sessionData[revealed];
@@ -28,10 +27,10 @@ class ABCDQuestion extends Question {
       ElevatedButton(
           onPressed: revealedAnswers > 0
               ? () {
-            update({
-              revealed: FieldValue.increment(-1),
-            });
-          }
+                  update({
+                    revealed: FieldValue.increment(-1),
+                  });
+                }
               : null,
           child: const Row(
             mainAxisSize: MainAxisSize.min,
@@ -41,15 +40,32 @@ class ABCDQuestion extends Question {
             ],
           )),
       ElevatedButton(
-          onPressed: () {
-            update({
-              revealed: FieldValue.increment(1),
-            });
-          },
+          onPressed: revealedAnswers < data[answers].length
+              ? () {
+                  update({
+                    revealed: FieldValue.increment(1),
+                  });
+                }
+              : null,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Reveal${revealedAnswers < data[answers].length ? " Answer" : ""}"),
+              Text("Reveal"),
+              Icon(Icons.navigate_next),
+            ],
+          )),
+      ElevatedButton(
+          onPressed: revealedAnswers == data[answers].length
+              ? () {
+                  update({
+                    revealed: FieldValue.increment(1),
+                  });
+                }
+              : null,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Reveal Answer"),
               Icon(Icons.navigate_next),
             ],
           ))
@@ -57,16 +73,28 @@ class ABCDQuestion extends Question {
   }
 
   @override
-  List<Widget> inputWidgets(BuildContext context, String gameId, void Function(Map<String, dynamic> data) update, VoidCallback refresh) => [
+  List<Widget> inputWidgets(BuildContext context, String gameId, Future<void> Function(Map<String, dynamic> data) update, VoidCallback refresh) => [
         const SizedBox(
           height: 16,
         ),
-        for (var i = 0; i < 4; i++)
-          Padding(
+        ReorderableListView.builder(
+          physics: NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+          buildDefaultDragHandles: false,
+          itemCount: 4,
+          itemBuilder: (context, i) => Padding(
+            key: ValueKey("information_${data[documentId]}_$i"),
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
-                Text("Answer ${i + 1}"),
+                ReorderableDragStartListener(
+                  index: i,
+                  child: Icon(
+                    Icons.drag_indicator,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(String.fromCharCode(("A").codeUnitAt(0) + i)),
                 StatefulBuilder(builder: (context, setState) {
                   return Checkbox(
                     value: data[answersCorrect]?[i] ?? false,
@@ -107,6 +135,19 @@ class ABCDQuestion extends Question {
               ],
             ),
           ),
+          onReorder: (oldIndex, newIndex) async {
+            if (oldIndex < newIndex) {
+              newIndex -= 1;
+            }
+
+            data[answers].insert(newIndex, (data[answers] as List?)?.removeAt(oldIndex) ?? "");
+            data[answersCorrect].insert(newIndex, (data[answersCorrect] as List?)?.removeAt(oldIndex) ?? false);
+            await update({
+              answers: data[answers],
+              answersCorrect: data[answersCorrect],
+            });
+          },
+        )
       ];
 
   @override
