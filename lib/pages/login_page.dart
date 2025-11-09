@@ -22,11 +22,6 @@ import '../main.dart';
 
 //TODO what happens when logged in on multiple devices
 
-//nicht verschlüsselte daten:
-//namen
-//anzahl der uploads
-//freunde + freundschaftsanfragen
-//anzahl der einträge in backup
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key, required this.onFinished, required this.infoText});
@@ -95,11 +90,10 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => homePage()));
   }
 
+  //TODO check username availability, but create rules to avoid listing attacks
   void signIn() async {
-    return;
     var db = FirebaseFirestore.instance;
     var auth = FirebaseAuth.instance;
-    print("wow");
     var prefs = await SharedPreferences.getInstance();
     if (username.length < 3) {
       setState(() {
@@ -183,6 +177,8 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
                 if (FirebaseAuth.instance.currentUser != null) {
                   close();
                   streamSub?.cancel();
+                  var prefs = await SharedPreferences.getInstance();
+                  prefs.setBool("userCreated", true);
                 }
               });
             }
@@ -207,6 +203,9 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
               streamSub?.cancel();
               streamSub = FirebaseAuth.instance.authStateChanges().listen((User? user) async {
                 if (FirebaseAuth.instance.currentUser != null) {
+                  if(kDebugMode) {
+                    print("User logged in: ${FirebaseAuth.instance.currentUser}");
+                  }
                   setState(() => stage = 1);
                   streamSub?.cancel();
                 }

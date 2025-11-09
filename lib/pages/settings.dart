@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
@@ -58,6 +60,34 @@ class _SettingsPageState extends State<SettingsPage> {
               subtitle: "Sensitivity and team-mapping",
               icon: MdiIcons.bullseye,
               body: const BuzzerConnectionPage()),
+          SettingsSubPage(title: "Account", subtitle: "Nutzername, Profilbild, Ausloggen", icon: Icons.person_outline, categories: [
+            SettingsSubPageCategory(
+              title: null,
+              settings: [
+                //TODO account settings
+                // StringSetting(
+                //     setting: "username",
+                //     title: "Nutzername",
+                //     icon: Icons.person_outline,
+                //     fallback: "Gast"),
+                // ListTile(
+                //   title: Text("Profilbild ändern"),
+                //   leading: Icon(Icons.image_outlined),
+                //   onTap: () {
+                //     //TODO change profile picture
+                //   },
+                // ),
+                ListTile(
+                  title: const Text("Ausloggen"),
+                  leading: const Icon(Icons.logout),
+                  onTap: () {
+                    FirebaseAuth.instance.signOut();
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                ),
+              ],
+            ),
+          ]),
           const SettingsSubPage.fullPage(
             title: "Über",
             subtitle: "Lizenzen, Information und Feedback",
