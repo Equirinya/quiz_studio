@@ -52,9 +52,9 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       body: ListView(
         children: [
-          const SettingsSubPage.fullPage(
+          if(!(Platform.isAndroid || Platform.isIOS)) const SettingsSubPage.fullPage(
               title: "Games", subtitle: "Edit and create new Quizzes", icon: Icons.quiz, body: GamesPage()),
-          const SettingsSubPage.fullPage(title: "Session", subtitle: "Game, Teams", icon: Icons.gamepad_outlined, body: SessionPage()),
+          if(!Platform.isAndroid || Platform.isIOS) const SettingsSubPage.fullPage(title: "Session", subtitle: "Game, Teams", icon: Icons.gamepad_outlined, body: SessionPage()),
           if(Platform.isWindows) SettingsSubPage.fullPage(
               title: "Buzzer",
               subtitle: "Sensitivity and team-mapping",

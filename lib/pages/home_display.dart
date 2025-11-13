@@ -173,6 +173,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                     if (gameRef == null) return fallbackWidget;
 
                     //map categoryGroup data
+                    selectedCategoryGroupIndex = selectedCategoryGroupIndex.clamp(0, categories.length - 1);
                     var selectedCategoryType = categories[selectedCategoryGroupIndex].$1;
                     var selectedCategoryNames = categories[selectedCategoryGroupIndex].$2;
                     int categoryOffset =

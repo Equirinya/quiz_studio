@@ -89,7 +89,7 @@ class _GameStreamBuilderState extends State<GameStreamBuilder> {
 
     List<(CategoryType, List<String>)> categories =
         sortedCategories.map((e) => (e.$1, e.$2.map((e2) => e2.data()[name] as String).toList())).toList();
-    List<List<Map<String, dynamic>>> questions = questionDocs.map((e) => e!.docs.map((e2) => e2.data()..[documentId] = e2.id).toList()).toList();
+    List<List<Map<String, dynamic>>> questions = questionDocs.map((e) => (e!.docs..sort((a, b) => (a[pointsPlus] as int? ?? 0).compareTo(b[pointsPlus] ?? 0))).map((e2) => e2.data()..[documentId] = e2.id).toList()).toList();
     return widget.builder(categories, questions);
   }
 }

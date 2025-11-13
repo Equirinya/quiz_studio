@@ -261,6 +261,7 @@ class _SessionPageState extends State<SessionPage> {
                             key: ValueKey(gameRef.id),
                             gameId: gameRef.id,
                             builder: (categories, questions) {
+                              selectedCategoryGroupIndex = selectedCategoryGroupIndex.clamp(0, categories.length - 1);
                               var selectedCategoryType = categories[selectedCategoryGroupIndex].$1;
                               var selectedCategoryNames = categories[selectedCategoryGroupIndex].$2;
                               int categoryOffset = categories

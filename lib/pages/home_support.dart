@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:quiz_show/pages/about.dart';
 import 'package:quiz_show/pages/games.dart';
 import 'package:quiz_show/pages/session_controller.dart';
+import 'package:quiz_show/pages/settings.dart';
 
 class HomeSupportPage extends StatefulWidget {
   const HomeSupportPage({super.key});
@@ -20,13 +21,8 @@ class _HomeSupportPageState extends State<HomeSupportPage> {
         title: const Text("Quiz Studio"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.info),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => Scaffold(appBar: AppBar(), body: const AboutPage()),
-              ),
-            ),
+            icon: const Icon(Icons.settings),
+            onPressed: () => openSettings(context),
           ),
         ],
       ),
