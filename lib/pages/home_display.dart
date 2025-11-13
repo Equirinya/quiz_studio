@@ -22,7 +22,6 @@ import '../database/game_stream.dart';
 import '../question_types/abstract_question.dart';
 import '../database/session_stream.dart';
 
-
 class HomeDisplayPage extends StatefulWidget {
   const HomeDisplayPage({super.key});
 
@@ -43,6 +42,9 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
   final musicPlayer = AudioPlayer(); //TODO
   late Directory appSupportDir;
 
+  StreamSubscription? buzzeredSubscription;
+  StreamSubscription? buzzerHistorySubscription;
+
   @override
   void initState() {
     () async {
@@ -51,26 +53,22 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
       setState(() {
         initialized = true;
       });
-    }
-    ();
+    }();
     mediaPlayerComplete = mediaPlayer.onPlayerComplete.listen((event) {
-      FirebaseFirestore.instance
-          .collection(sessions)
-          .doc(prefs.getString("currentSession"))
-          .update({ playingFrom: null});
+      FirebaseFirestore.instance.collection(sessions).doc(prefs.getString("currentSession")).update({playingFrom: null});
     });
     super.initState();
   }
 
   @override
   void dispose() {
+    buzzeredSubscription?.cancel();
+    buzzerHistorySubscription?.cancel();
     mediaPlayer.dispose();
     mediaPlayerComplete?.cancel();
     musicPlayer.dispose();
     super.dispose();
   }
-
-  StreamSubscription? buzzeredSubscription;
 
   void playSound(int teamIndex) async {
     String sessionId = prefs.getString("currentSession") ?? "";
@@ -96,10 +94,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
         onPressed: () => openSettings(context).then((_) => setState(() {})),
         icon: Icon(
           Icons.settings_rounded,
-          color: Theme
-              .of(context)
-              .colorScheme
-              .surfaceContainer,
+          color: Theme.of(context).colorScheme.surfaceContainer,
         ),
       ),
       //fullscreen
@@ -113,10 +108,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
           },
           icon: Icon(
             fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
-            color: Theme
-                .of(context)
-                .colorScheme
-                .surfaceContainer,
+            color: Theme.of(context).colorScheme.surfaceContainer,
           ),
         ),
       IconButton(
@@ -126,10 +118,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
         },
         icon: Icon(
           Icons.open_in_new,
-          color: Theme
-              .of(context)
-              .colorScheme
-              .surfaceContainer,
+          color: Theme.of(context).colorScheme.surfaceContainer,
         ),
       ),
     ];
@@ -147,9 +136,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
       ],
     );
 
-    Size screenSize = MediaQuery
-        .of(context)
-        .size;
+    Size screenSize = MediaQuery.of(context).size;
     return Scaffold(
       body: Stack(
         children: [
@@ -163,8 +150,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                   if (currentGame != (gameRef?.id ?? "noGame")) {
                     Future.delayed(
                         const Duration(milliseconds: 200),
-                            () =>
-                            setState(() {
+                        () => setState(() {
                               currentGame = gameRef?.id ?? "noGame";
                             }));
                   }
@@ -180,16 +166,17 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                     if (currentGame != (gameRef?.id ?? "noGame")) {
                       Future.delayed(
                           const Duration(milliseconds: 200),
-                              () =>
-                              setState(() {
+                          () => setState(() {
                                 currentGame = gameRef?.id ?? "noGame";
                               }));
                     }
                     if (gameRef == null) return fallbackWidget;
 
+                    //map categoryGroup data
                     var selectedCategoryType = categories[selectedCategoryGroupIndex].$1;
                     var selectedCategoryNames = categories[selectedCategoryGroupIndex].$2;
-                    int categoryOffset = categories.sublist(0, selectedCategoryGroupIndex).fold(0, (previousValue, element) => previousValue + element.$2.length);
+                    int categoryOffset =
+                        categories.sublist(0, selectedCategoryGroupIndex).fold(0, (previousValue, element) => previousValue + element.$2.length);
                     //limit the arrays to the range of the category group:
                     var displayedQuestions = questions.sublist(categoryOffset, categoryOffset + selectedCategoryNames.length);
                     var displayedPlayedFieldsList = playedFieldsList
@@ -198,62 +185,26 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                         .toList();
                     var displayedSelectedFieldData = (selectedFieldData.$1 - categoryOffset, selectedFieldData.$2);
 
-                    if(selectedFieldData.$1 == -1 || selectedFieldData.$1 > questions.length - 1 || selectedFieldData.$2 > questions[selectedFieldData.$1].length - 1) {
+                    if (selectedFieldData.$1 == -1 ||
+                        selectedFieldData.$1 > questions.length - 1 ||
+                        selectedFieldData.$2 > questions[selectedFieldData.$1].length - 1) {
                       selectedFieldData = (-1, -1);
-                      if(state == HomePageState.question || state == HomePageState.questionBuzzered)state = HomePageState.overview;
+                      if (state == HomePageState.question || state == HomePageState.questionBuzzered) state = HomePageState.overview;
                     }
 
-                    if (mediaPlaying != playing) {
-                      if (playing == null) {
-                        mediaPlayer.stop();
-                      } else if (playing && mediaPlaying == null) {
-                        mediaPlayer.play(DeviceFileSource(
-                            "${appSupportDir.path}/${gameRef.id}/${questions[selectedFieldData.$1][selectedFieldData.$2][music]}"));
-                      }
-                      else if (playing)
-                        mediaPlayer.resume();
-                      else
-                        mediaPlayer.pause();
-                      mediaPlaying = playing;
-                    }
+                    //execute all the game Logic, like buzzers, sound etc
+                    gameLogic(
+                        playing: playing,
+                        gameRef: gameRef,
+                        questions: questions,
+                        selectedFieldData: selectedFieldData,
+                        state: state,
+                        buzzerTeamMap: buzzerTeamMap,
+                        enableBuzzerQueue: enableBuzzerQueue,
+                        sessionUpdate: FirebaseFirestore.instance.collection(sessions).doc(prefs.getString("currentSession")).update);
 
-                    buzzeredSubscription?.cancel();
-                    if (((state == HomePageState.question &&
-                        selectedFieldData.$1 >= 0 &&
-                        Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2])
-                            .buzzerable()) ||
-                        state == HomePageState.buzzerTest) &&
-                        SerialConnection().status == SerialStatus.connected) {
-                      buzzeredSubscription = SerialConnection().buzzerPressed.listen(
-                            (event) {
-                          int teamIndex = buzzerTeamMap[event] ?? -1;
-                          if (teamIndex == -1) return;
-                          if (state == HomePageState.question) {
-                            FirebaseFirestore.instance
-                                .collection(sessions)
-                                .doc(prefs.getString("currentSession"))
-                                .update({
-                              buzzeredFrom: teamIndex,
-                              currentState: HomePageState.questionBuzzered.name,
-                              playingFrom: false
-                            });
-                            //TODO check if it would be lower latency when [buzzerTeam] set manually
-                            playSound(teamIndex);
-                          } else if (state == HomePageState.buzzerTest) {
-                            FirebaseFirestore.instance
-                                .collection(sessions)
-                                .doc(prefs.getString("currentSession"))
-                                .update({
-                              buzzeredFrom: teamIndex,
-                            });
-                            playSound(teamIndex);
-                          }
-                        },
-                      );
-                    }
-
-                    int estimatedScoreRows =
-                    (teamsList.length / ((screenSize.width - 64) ~/ (screenSize.height * 0.2 + 8))).ceil();
+                    //calculate playingField Size
+                    int estimatedScoreRows = (teamsList.length / ((screenSize.width - 64) ~/ (screenSize.height * 0.2 + 8))).ceil();
                     double playFieldHeight;
                     double playFieldWidth;
                     switch (state) {
@@ -269,6 +220,17 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                             screenSize.height - (estimatedScoreRows + 1) * (screenSize.height * 0.12 + 8) - screenSize.height * questionHeight;
                         playFieldHeight = max(playFieldHeight, screenSize.height * 0.2);
                         playFieldWidth = playFieldHeight / 9 * 16;
+                    }
+
+                    Color? pointCardColor(int teamIndex) {
+                      if (state == HomePageState.questionBuzzered || state == HomePageState.buzzerTest) {
+                        if (buzzeredTeam.firstOrNull == teamIndex) return Theme.of(context).colorScheme.primaryContainer;
+                        if (enableBuzzerQueue && buzzeredTeam.contains(teamIndex)) {
+                          return Color.lerp(Theme.of(context).colorScheme.primaryContainer, Theme.of(context).colorScheme.surfaceContainerLow,
+                              buzzeredTeam.indexOf(teamIndex) / buzzeredTeam.length);
+                        }
+                      }
+                      return null;
                     }
 
                     return Stack(
@@ -308,14 +270,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                                         width: screenSize.height * 0.2,
                                         height: screenSize.height * 0.12,
                                         child: Card(
-                                          color: ((state == HomePageState.questionBuzzered ||
-                                              state == HomePageState.buzzerTest) &&
-                                              buzzeredTeam == index)
-                                              ? Theme
-                                              .of(context)
-                                              .colorScheme
-                                              .primaryContainer
-                                              : null,
+                                          color: pointCardColor(index),
                                           child: Center(
                                             child: Column(
                                               mainAxisSize: MainAxisSize.min,
@@ -324,19 +279,11 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                                                   team,
                                                   maxLines: 1,
                                                   overflow: TextOverflow.clip,
-                                                  style: Theme
-                                                      .of(context)
-                                                      .textTheme
-                                                      .bodySmall
-                                                      ?.copyWith(fontSize: screenSize.height * 0.02),
+                                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: screenSize.height * 0.02),
                                                 ),
                                                 Text(
                                                   (pointsList.elementAtOrNull(index) ?? 0).toString(),
-                                                  style: Theme
-                                                      .of(context)
-                                                      .textTheme
-                                                      .headlineSmall
-                                                      ?.copyWith(fontSize: screenSize.height * 0.04),
+                                                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontSize: screenSize.height * 0.04),
                                                 ),
                                               ],
                                             ),
@@ -351,10 +298,9 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                               Column(
                                 mainAxisSize: MainAxisSize.max,
                                 children: [
-                                  if ((state == HomePageState.question || state == HomePageState.questionBuzzered) &&
-                                      selectedFieldData.$1 != -1)
-                                    Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2])
-                                        .questionWidget(context: context,
+                                  if ((state == HomePageState.question || state == HomePageState.questionBuzzered) && selectedFieldData.$1 != -1)
+                                    Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2]).questionWidget(
+                                        context: context,
                                         gameDir: Directory('${appSupportDir.absolute.path}/${gameRef.id}'),
                                         sessionData: sessionData)
                                 ],
@@ -377,5 +323,63 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
         ],
       ),
     );
+  }
+
+  Future<void> gameLogic(
+      {required bool? playing,
+      required DocumentReference<Object?> gameRef,
+      required List<List<Map<String, dynamic>>> questions,
+      required (int, int) selectedFieldData,
+      required HomePageState state,
+      required Map<int, int> buzzerTeamMap,
+      required bool enableBuzzerQueue,
+      required Future<void> sessionUpdate(Map<Object, Object?> data)}) async {
+    if (mediaPlaying != playing) {
+      if (playing == null) {
+        mediaPlayer.stop();
+      } else if (playing && mediaPlaying == null) {
+        mediaPlayer.play(DeviceFileSource("${appSupportDir.path}/${gameRef.id}/${questions[selectedFieldData.$1][selectedFieldData.$2][music]}"));
+      } else if (playing)
+        mediaPlayer.resume();
+      else
+        mediaPlayer.pause();
+      mediaPlaying = playing;
+    }
+
+    buzzeredSubscription?.cancel();
+    buzzerHistorySubscription?.cancel();
+    if (SerialConnection().status == SerialStatus.connected) {
+      bool questionBuzzerable = selectedFieldData.$1 >= 0 && Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2]).buzzerable();
+
+      //listen to the buzzer if in buzzer test or an open question or a question already buzzered with buzzerqueue enabled
+      if (state == HomePageState.buzzerTest ||
+          (questionBuzzerable && (state == HomePageState.question || (state == HomePageState.questionBuzzered && enableBuzzerQueue)))) {
+        buzzeredSubscription = SerialConnection().buzzerPressed.listen(
+          (event) {
+            int teamIndex = buzzerTeamMap[event] ?? -1;
+            if (teamIndex == -1) return;
+            if (state == HomePageState.question) {
+              //TODO check if it would be lower latency when [buzzerTeam] set manually
+              sessionUpdate({
+                buzzeredFrom: [teamIndex],
+                currentState: HomePageState.questionBuzzered.name,
+                playingFrom: false
+              });
+              playSound(teamIndex);
+            } else if (state == HomePageState.questionBuzzered && enableBuzzerQueue) {
+              sessionUpdate({
+                buzzeredFrom: FieldValue.arrayUnion([teamIndex]),
+              });
+              playSound(teamIndex);
+            } else if (state == HomePageState.buzzerTest) {
+              sessionUpdate({
+                buzzeredFrom: [teamIndex],
+              });
+              playSound(teamIndex);
+            }
+          },
+        );
+      }
+    }
   }
 }

@@ -27,7 +27,7 @@ class SessionStreamBuilder extends StatelessWidget {
       HomePageState state,
       bool? playing,
       bool enableBuzzerQueue,
-      int? buzzeredTeam,
+      List<int> buzzeredTeam,
       List<(int, int)> playedFieldsList,
       int revealed,
       Map<int, int> buzzerSensitivityMap,
@@ -95,7 +95,7 @@ class SessionStreamBuilder extends StatelessWidget {
 
           bool? playing = sessionSnapshot.data!.data()![playingFrom];
           bool enableBuzzerQueue = sessionSnapshot.data!.data()![queueBuzzers] ?? false;
-          int? buzzeredTeam = sessionSnapshot.data!.data()![buzzeredFrom];
+          List<int> buzzeredTeam = sessionSnapshot.data!.data()![buzzeredFrom] != null ? List<int>.from(sessionSnapshot.data!.data()![buzzeredFrom]) : <int>[];
           List<(int, int)> playedFieldsList = sessionSnapshot.data!.data()![playedFields] != null
               ? List.from(sessionSnapshot.data!.data()![playedFields].map((e) {
             List<int> parts = e.split(":").map<int>((e) => int.tryParse(e) ?? -1).toList();

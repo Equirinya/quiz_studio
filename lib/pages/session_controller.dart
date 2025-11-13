@@ -105,6 +105,7 @@ class _SessionPageState extends State<SessionPage> {
                             title: Text("Queue Buzzers"),
                             value: enableBuzzerQueue,
                             onChanged: (value) => sessionRef.update({queueBuzzers: value})),
+                        //Punktestände
                         Wrap(
                           spacing: 8,
                           children: [
@@ -266,7 +267,9 @@ class _SessionPageState extends State<SessionPage> {
                                   .sublist(0, selectedCategoryGroupIndex)
                                   .fold(0, (previousValue, element) => previousValue + element.$2.length);
 
-                              if(selectedFieldData.$1 == -1 || selectedFieldData.$1 > questions.length - 1 || selectedFieldData.$2 > questions[selectedFieldData.$1].length - 1) {
+                              if (selectedFieldData.$1 == -1 ||
+                                  selectedFieldData.$1 > questions.length - 1 ||
+                                  selectedFieldData.$2 > questions[selectedFieldData.$1].length - 1) {
                                 selectedFieldData = (-1, -1);
                               }
 
@@ -385,8 +388,8 @@ class _SessionPageState extends State<SessionPage> {
                                         ElevatedButton(
                                             onPressed: () async {
                                               var currentQuestion = questions[selectedFieldData.$1][selectedFieldData.$2];
-                                              if (buzzeredTeam != null && currentQuestion[pointsPlus] != null) {
-                                                pointsList[buzzeredTeam] += (currentQuestion[pointsPlus] as num).toInt();
+                                              if (buzzeredTeam.isNotEmpty && currentQuestion[pointsPlus] != null) {
+                                                pointsList[buzzeredTeam.first] += (currentQuestion[pointsPlus] as num).toInt();
                                               }
                                               sessionRef.update({
                                                 currentState: HomePageState.overview.name,
@@ -413,16 +416,24 @@ class _SessionPageState extends State<SessionPage> {
                                         ElevatedButton(
                                             onPressed: () async {
                                               var currentQuestion = questions[selectedFieldData.$1][selectedFieldData.$2];
-                                              if (buzzeredTeam != null && currentQuestion[pointsMinus] != null) {
-                                                pointsList[buzzeredTeam] -= ((currentQuestion as Map?)![pointsMinus] as num).toInt();
+                                              if (buzzeredTeam.isNotEmpty && currentQuestion[pointsMinus] != null) {
+                                                pointsList[buzzeredTeam.first] -= ((currentQuestion as Map?)![pointsMinus] as num).toInt();
                                               }
-                                              sessionRef.update({
-                                                currentState: HomePageState.question.name,
-                                                points: pointsList,
-                                                if (questions[selectedFieldData.$1][selectedFieldData.$2][music] != null &&
-                                                    questions[selectedFieldData.$1][selectedFieldData.$2][music].isNotEmpty)
-                                                  playingFrom: true,
-                                              });
+                                              if (enableBuzzerQueue && buzzeredTeam.length > 1) {
+                                                sessionRef.update({
+                                                  buzzeredFrom: buzzeredTeam.sublist(1),
+                                                  currentState: HomePageState.questionBuzzered.name,
+                                                  points: pointsList,
+                                                });
+                                              } else {
+                                                sessionRef.update({
+                                                  currentState: HomePageState.question.name,
+                                                  points: pointsList,
+                                                  if (questions[selectedFieldData.$1][selectedFieldData.$2][music] != null &&
+                                                      questions[selectedFieldData.$1][selectedFieldData.$2][music].isNotEmpty)
+                                                    playingFrom: true,
+                                                });
+                                              }
                                             },
                                             style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.errorContainer),
                                             child: Row(
@@ -435,27 +446,42 @@ class _SessionPageState extends State<SessionPage> {
                                       ],
                                       if (state == HomePageState.questionBuzzered)
                                         if (selectedFieldData != (-1, -1))
+                                          if (enableBuzzerQueue && buzzeredTeam.length > 1)
+                                            ElevatedButton(
+                                                onPressed: () {
+                                                  sessionRef.update({
+                                                    buzzeredFrom: buzzeredTeam.sublist(1),
+                                                  });
+                                                },
+                                                child: const Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.skip_next),
+                                                    Text("Skip to next Buzzer"),
+                                                  ],
+                                                ))
+                                          else
+                                            ElevatedButton(
+                                                onPressed: () {
+                                                  sessionRef.update({
+                                                    currentState: HomePageState.question.name,
+                                                    if (questions[selectedFieldData.$1][selectedFieldData.$2][music] != null &&
+                                                        questions[selectedFieldData.$1][selectedFieldData.$2][music].isNotEmpty)
+                                                      playingFrom: true,
+                                                  });
+                                                },
+                                                child: const Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.undo),
+                                                    Text("Reopen Question"),
+                                                  ],
+                                                )),
+                                      if (state == HomePageState.question || (state == HomePageState.questionBuzzered && enableBuzzerQueue)) ...[
+                                        for (var (index, team) in teamsList.indexed.where((element) => !enableBuzzerQueue || !buzzeredTeam.contains(element.$1)))
                                           ElevatedButton(
                                               onPressed: () {
-                                                sessionRef.update({
-                                                  currentState: HomePageState.question.name,
-                                                  if (questions[selectedFieldData.$1][selectedFieldData.$2][music] != null &&
-                                                      questions[selectedFieldData.$1][selectedFieldData.$2][music].isNotEmpty)
-                                                    playingFrom: true,
-                                                });
-                                              },
-                                              child: const Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(Icons.undo),
-                                                  Text("Reopen Question"),
-                                                ],
-                                              )),
-                                      if (state == HomePageState.question) ...[
-                                        for (var (index, team) in teamsList.indexed)
-                                          ElevatedButton(
-                                              onPressed: () {
-                                                sessionRef.update({buzzeredFrom: index, currentState: HomePageState.questionBuzzered.name});
+                                                sessionRef.update({buzzeredFrom: FieldValue.arrayUnion([index]), currentState: HomePageState.questionBuzzered.name});
                                               },
                                               style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(8)),
                                               child: Row(

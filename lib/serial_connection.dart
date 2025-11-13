@@ -26,6 +26,7 @@ class SerialConnection {
   late Stream<List<int>> activeBuzzerStream;
   late Stream<int> buzzerPressed;
 
+
   String _partialSerial = "";
   SerialPort? _port;
 
@@ -100,6 +101,10 @@ class SerialConnection {
       _previouslyBuzzered = data;
     })).asBroadcastStream();
     status = SerialStatus.connected;
+  }
+
+  void dispose() {
+    _port?.close();
   }
 
 //TODO include methods to send color data to different buzzers

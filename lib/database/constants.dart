@@ -90,6 +90,7 @@ const Map<String, dynamic> resetSessionConfig = {
   revealed : 0,
   informationImageFocus: 0,
   playingFrom: null,
+  buzzeredFrom: [],
 };
 
 
