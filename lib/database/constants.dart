@@ -1,7 +1,7 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
-enum HomePageState { overview, question, questionBuzzered, buzzerTest }
+enum HomePageState { overview, question, questionBuzzered, answerRevealed, buzzerTest }
 
 //database
 const String users = 'users';
@@ -59,6 +59,10 @@ const String noBuzzer = 'noBuzzer';
 const String information = 'information';
 const String informationImage = 'informationImage';
 const String informationMusic = 'informationMusic';
+//familyfeud
+const String informationPercentage = 'informationMusic';
+const String wrongAttempts = 'wrongAttempts';
+const String revealedList = 'revealedList';
 //abcd question type
 const String answers = 'answers';
 const String answersCorrect = 'answersCorrect';
