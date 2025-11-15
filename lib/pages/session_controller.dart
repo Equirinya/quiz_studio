@@ -95,15 +95,21 @@ class _SessionPageState extends State<SessionPage> {
               SessionStreamBuilder(
                 key: ValueKey(prefs.getString("currentSession")),
                 session: prefs.getString("currentSession"),
-                builder: (Map<String, dynamic> sessionData, teamsList, pointsList, selectedFieldData, selectedCategoryGroupIndex, state, playing,
-                    enableBuzzerQueue, buzzeredTeam, playedFieldsList, revealed, buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
+                builder: (sessionData) {
+                  var sessionRef = sessionData.sessionRef;
+                  var teamsList = sessionData.teamsList;
+                  var pointsList = sessionData.pointsList;
+                  var selectedFieldData = sessionData.selectedFieldData;
+                  var state = sessionData.state;
+                  var gameRef = sessionData.gameRef;
+                  var buzzeredTeam = sessionData.buzzeredTeam;
                   return SingleChildScrollView(
                     child: Column(
                       children: [
                         SwitchListTile(
                             dense: true,
                             title: Text("Queue Buzzers"),
-                            value: enableBuzzerQueue,
+                            value: sessionData.enableBuzzerQueue,
                             onChanged: (value) => sessionRef.update({queueBuzzers: value})),
                         //Punktestände
                         Wrap(
@@ -261,7 +267,7 @@ class _SessionPageState extends State<SessionPage> {
                             key: ValueKey(gameRef.id),
                             gameId: gameRef.id,
                             builder: (categories, questions) {
-                              selectedCategoryGroupIndex = selectedCategoryGroupIndex.clamp(0, categories.length - 1);
+                              var selectedCategoryGroupIndex = sessionData.selectedCategoryGroupIndex.clamp(0, categories.length - 1);
                               var selectedCategoryType = categories[selectedCategoryGroupIndex].$1;
                               var selectedCategoryNames = categories[selectedCategoryGroupIndex].$2;
                               int categoryOffset = categories
@@ -313,7 +319,7 @@ class _SessionPageState extends State<SessionPage> {
                                                                   }..addAll(resetSessionConfig));
                                                                   preview = (-1, -1);
                                                                 }
-                                                              : playedFieldsList.contains((cIndex, qIndex))
+                                                              : sessionData.playedFieldsList.contains((cIndex, qIndex))
                                                                   ? () {
                                                                       sessionRef.update({
                                                                         playedFields: FieldValue.arrayRemove(["$cIndex:$qIndex"])
@@ -337,7 +343,7 @@ class _SessionPageState extends State<SessionPage> {
                                                       style: ElevatedButton.styleFrom(
                                                           backgroundColor: selectedFieldData == (cIndex, qIndex)
                                                               ? Theme.of(context).colorScheme.primaryContainer
-                                                              : playedFieldsList.contains((cIndex, qIndex)) || questionDoc.isEmpty
+                                                              : sessionData.playedFieldsList.contains((cIndex, qIndex)) || questionDoc.isEmpty
                                                                   ? Theme.of(context).colorScheme.surface
                                                                   : preview != (cIndex, qIndex)
                                                                       ? Theme.of(context).colorScheme.surfaceContainerHigh
@@ -362,7 +368,7 @@ class _SessionPageState extends State<SessionPage> {
                                         .questionWidget(
                                             context: context,
                                             gameDir: Directory('${appSupportDir.absolute.path}/${gameRef.id}'),
-                                            sessionData: sessionData,
+                                            sessionData: sessionData.sessionData,
                                             controllerView: true),
                                   Wrap(
                                     spacing: 8,
@@ -385,7 +391,7 @@ class _SessionPageState extends State<SessionPage> {
                                               sessionRef.update({currentState: HomePageState.overview.name});
                                             },
                                             child: const Text("Stop Buzzer Test")),
-                                      if (state == HomePageState.questionBuzzered) ...[
+                                      if (state == HomePageState.questionBuzzered && Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2]).showDefaultAnswerButtons()) ...[
                                         ElevatedButton(
                                             onPressed: () async {
                                               var currentQuestion = questions[selectedFieldData.$1][selectedFieldData.$2];
@@ -420,7 +426,7 @@ class _SessionPageState extends State<SessionPage> {
                                               if (buzzeredTeam.isNotEmpty && currentQuestion[pointsMinus] != null) {
                                                 pointsList[buzzeredTeam.first] -= ((currentQuestion as Map?)![pointsMinus] as num).toInt();
                                               }
-                                              if (enableBuzzerQueue && buzzeredTeam.length > 1) {
+                                              if (sessionData.enableBuzzerQueue && buzzeredTeam.length > 1) {
                                                 sessionRef.update({
                                                   buzzeredFrom: buzzeredTeam.sublist(1),
                                                   currentState: HomePageState.questionBuzzered.name,
@@ -447,7 +453,7 @@ class _SessionPageState extends State<SessionPage> {
                                       ],
                                       if (state == HomePageState.questionBuzzered)
                                         if (selectedFieldData != (-1, -1))
-                                          if (enableBuzzerQueue && buzzeredTeam.length > 1)
+                                          if (sessionData.enableBuzzerQueue && buzzeredTeam.length > 1)
                                             ElevatedButton(
                                                 onPressed: () {
                                                   sessionRef.update({
@@ -469,6 +475,7 @@ class _SessionPageState extends State<SessionPage> {
                                                     if (questions[selectedFieldData.$1][selectedFieldData.$2][music] != null &&
                                                         questions[selectedFieldData.$1][selectedFieldData.$2][music].isNotEmpty)
                                                       playingFrom: true,
+                                                      buzzeredFrom: [],
                                                   });
                                                 },
                                                 child: const Row(
@@ -478,8 +485,8 @@ class _SessionPageState extends State<SessionPage> {
                                                     Text("Reopen Question"),
                                                   ],
                                                 )),
-                                      if (state == HomePageState.question || (state == HomePageState.questionBuzzered && enableBuzzerQueue)) ...[
-                                        for (var (index, team) in teamsList.indexed.where((element) => !enableBuzzerQueue || !buzzeredTeam.contains(element.$1)))
+                                      if (state == HomePageState.question || (state == HomePageState.questionBuzzered && sessionData.enableBuzzerQueue)) ...[
+                                        for (var (index, team) in teamsList.indexed.where((element) => !sessionData.enableBuzzerQueue || !buzzeredTeam.contains(element.$1)))
                                           ElevatedButton(
                                               onPressed: () {
                                                 sessionRef.update({buzzeredFrom: FieldValue.arrayUnion([index]), currentState: HomePageState.questionBuzzered.name});
@@ -497,7 +504,7 @@ class _SessionPageState extends State<SessionPage> {
                                           selectedFieldData.$1 != -1 &&
                                           (questions[selectedFieldData.$1][selectedFieldData.$2][music] != null &&
                                               questions[selectedFieldData.$1][selectedFieldData.$2][music].isNotEmpty)) ...[
-                                        if (playing == null || !playing)
+                                        if (sessionData.playing == null || !sessionData.playing!)
                                           ElevatedButton(
                                               onPressed: () {
                                                 sessionRef.update({
@@ -540,7 +547,7 @@ class _SessionPageState extends State<SessionPage> {
                                               ))
                                         ]
                                       ],
-                                      if (state == HomePageState.questionBuzzered || state == HomePageState.question)
+                                      if (state == HomePageState.questionBuzzered || state == HomePageState.question || state == HomePageState.answerRevealed)
                                         ElevatedButton(
                                             onPressed: () async {
                                               sessionRef.update({
@@ -559,7 +566,7 @@ class _SessionPageState extends State<SessionPage> {
                                             )),
                                       if (selectedFieldData.$1 != -1)
                                         ...Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2])
-                                            .controlButtons(sessionData, (value) => sessionRef.update(value)),
+                                            .controlButtons(context, sessionData, (value) => sessionRef.update(value)),
                                     ],
                                   ),
                                 ],

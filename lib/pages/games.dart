@@ -76,8 +76,7 @@ class _GamesPageState extends State<GamesPage> {
     return Scaffold(
       body: SessionStreamBuilder(
         session: prefs.getString("currentSession"),
-        builder: (Map<String, dynamic> sessionData, teamsList, pointsList, selectedFieldData, selectedCategoryGroupIndex, state, playing,
-            enableBuzzerQueue, buzzeredTeam, playedFieldsList, revealed, buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
+        builder: (sessionData) {
           return ListView.builder(
             itemCount: gamesDocs!.docs.length + 1,
             itemBuilder: (context, index) {
@@ -89,7 +88,7 @@ class _GamesPageState extends State<GamesPage> {
               return GamesListTile(
                 gameName: game.data()[name] ?? unnamed,
                 gameId: game.id,
-                selected: game.id == gameRef?.id,
+                selected: game.id == sessionData.gameRef?.id,
                 sessionRef: db.collection(sessions).doc(prefs.getString("currentSession")!),
               );
             },

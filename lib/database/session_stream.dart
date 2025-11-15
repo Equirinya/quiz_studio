@@ -9,6 +9,26 @@ import 'package:path_provider/path_provider.dart';
 import 'constants.dart';
 import '../serial_connection.dart';
 
+class SessionData{
+  final Map<String,dynamic> sessionData;
+  final List<String> teamsList;
+  final List<int> pointsList;
+  final (int, int) selectedFieldData;
+  final int selectedCategoryGroupIndex;
+  final HomePageState state;
+  final bool? playing;
+  final bool enableBuzzerQueue;
+  final List<int> buzzeredTeam;
+  final List<(int, int)> playedFieldsList;
+  final int revealed;
+  final Map<int, int> buzzerSensitivityMap;
+  final Map<int, int> buzzerTeamMap;
+  final DocumentReference? gameRef;
+  final DocumentReference sessionRef;
+
+  SessionData(this.sessionData, this.teamsList, this.pointsList, this.selectedFieldData, this.selectedCategoryGroupIndex, this.state, this.playing, this.enableBuzzerQueue, this.buzzeredTeam, this.playedFieldsList, this.revealed, this.buzzerSensitivityMap, this.buzzerTeamMap, this.gameRef, this.sessionRef);
+}
+
 class SessionStreamBuilder extends StatelessWidget {
   const SessionStreamBuilder({
     super.key,
@@ -19,22 +39,7 @@ class SessionStreamBuilder extends StatelessWidget {
 
   final String? session;
   final Widget Function(
-      Map<String,dynamic> sessionData,
-      List<String> teamsList,
-      List<int> pointsList,
-      (int, int) selectedFieldData,
-      int selectedCategoryGroupIndex,
-      HomePageState state,
-      bool? playing,
-      bool enableBuzzerQueue,
-      List<int> buzzeredTeam,
-      List<(int, int)> playedFieldsList,
-      int revealed,
-      Map<int, int> buzzerSensitivityMap,
-      Map<int, int> buzzerTeamMap,
-      DocumentReference? gameRef,
-      DocumentReference sessionRef,
-      ) builder;
+      SessionData sessionData) builder;
   final Widget fallback;
 
   Future<void> downloadTeamSounds() async {
@@ -116,8 +121,24 @@ class SessionStreamBuilder extends StatelessWidget {
 
           DocumentReference? gameRef = sessionSnapshot.data!.data()?[game] != null && sessionSnapshot.data!.data()![game].isNotEmpty ? FirebaseFirestore.instance.collection(games).doc(sessionSnapshot.data!.data()![game]) : null;
 
-          return builder(sessionSnapshot.data!.data()! ,teamsList, pointsList, selectedFieldData, selectedCategoryGroupIndex, state, playing, enableBuzzerQueue, buzzeredTeam, playedFieldsList,reveal,
-              buzzerSensitivityMap, buzzerTeamMap, gameRef,sessionSnapshot.data!.reference);
+          var sesData = SessionData(
+              sessionSnapshot.data!.data()!,
+              teamsList,
+              pointsList,
+              selectedFieldData,
+              selectedCategoryGroupIndex,
+              state,
+              playing,
+              enableBuzzerQueue,
+              buzzeredTeam,
+              playedFieldsList,
+              reveal,
+              buzzerSensitivityMap,
+              buzzerTeamMap,
+              gameRef,
+              sessionSnapshot.data!.reference
+          );
+          return builder(sesData);
         });
   }
 }

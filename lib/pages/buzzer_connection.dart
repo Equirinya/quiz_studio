@@ -94,8 +94,7 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
         SettingsSubPageCategory(title: "Sensitivity", settings: [
           SessionStreamBuilder(
             session: prefs.getString("currentSession"),
-            builder: (Map<String, dynamic> sessionData, teamsList, pointsList, selectedFieldData, selectedCategoryGroupIndex, state, playing,
-                enableBuzzerQueue, buzzeredTeam, playedFieldsList, revealed, buzzerSensitivityMap, buzzerTeamMap, gameRef, sessionRef) {
+            builder: (sessionData) {
               return FutureBuilder(
                 future: SerialConnection().serialStream.first,
                 builder: (context, snapshot) {
@@ -126,28 +125,28 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
                               children: [
                                 StatefulBuilder(builder: (context, setSliderState) {
                                   return Slider(
-                                    value: buzzerSensitivityMap.containsKey(entry.key) ? buzzerSensitivityMap[entry.key]!.toDouble() : 512,
+                                    value: sessionData.buzzerSensitivityMap.containsKey(entry.key) ? sessionData.buzzerSensitivityMap[entry.key]!.toDouble() : 512,
                                     min: 0,
                                     max: 1023,
                                     onChangeEnd: (value) {
-                                      sessionRef.update({"$buzzerSensitivity.${entry.key}": value.round()});
+                                      sessionData.sessionRef.update({"$buzzerSensitivity.${entry.key}": value.round()});
                                     },
                                     onChanged: (double value) {
                                       setSliderState(() {
-                                        buzzerSensitivityMap[entry.key] = value.round();
+                                        sessionData.buzzerSensitivityMap[entry.key] = value.round();
                                       });
                                     },
                                   );
                                 }),
-                                Text(buzzerSensitivityMap.containsKey(entry.key) ? buzzerSensitivityMap[entry.key]!.toString() : "0"),
+                                Text(sessionData.buzzerSensitivityMap.containsKey(entry.key) ? sessionData.buzzerSensitivityMap[entry.key]!.toString() : "0"),
                                 const SizedBox(width: 24),
                                 DropdownMenu<String>(
-                                    dropdownMenuEntries: teamsList.map((e) => DropdownMenuEntry(label: e, value: e)).toList()..add,
-                                    initialSelection: buzzerTeamMap.containsKey(entry.key) && buzzerTeamMap[entry.key]! < teamsList.length
-                                        ? teamsList[buzzerTeamMap[entry.key]!]
+                                    dropdownMenuEntries: sessionData.teamsList.map((e) => DropdownMenuEntry(label: e, value: e)).toList()..add,
+                                    initialSelection: sessionData.buzzerTeamMap.containsKey(entry.key) && sessionData.buzzerTeamMap[entry.key]! < sessionData.teamsList.length
+                                        ? sessionData.teamsList[sessionData.buzzerTeamMap[entry.key]!]
                                         : "",
                                     onSelected: (value) {
-                                      sessionRef.update({"$buzzerTeam.${entry.key}": teamsList.indexOf(value ?? "")});
+                                      sessionData.sessionRef.update({"$buzzerTeam.${entry.key}": sessionData.teamsList.indexOf(value ?? "")});
                                     }),
                                 const SizedBox(width: 24),
                                 TextButton(onPressed: () => selectSound(entry.key, context), child: const Text("Select Sound"))

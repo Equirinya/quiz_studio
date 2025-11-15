@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:quiz_show/question_types/abstract_question.dart';
 
 import '../database/constants.dart';
+import '../database/session_stream.dart';
 
 class ABCDQuestion extends Question {
   ABCDQuestion(super.data);
@@ -21,8 +22,8 @@ class ABCDQuestion extends Question {
       "${data[answers] is! List ? "" : (List<String>.from(data[answers])).indexed.map((e) => "${data[answersCorrect]?[e.$1] is bool && data[answersCorrect]?[e.$1] ? "Correct:" : "Wrong:"} ${e.$2}\n").join()}";
 
   @override
-  List<Widget> controlButtons(Map<String, dynamic> sessionData, Future<void> Function(Map<String, dynamic> data) update) {
-    int revealedAnswers = sessionData[revealed];
+  List<Widget> controlButtons(BuildContext context, SessionData sessionData, Future<void> Function(Map<String, dynamic> data) update) {
+    int revealedAnswers = sessionData.revealed;
     return [
       ElevatedButton(
           onPressed: revealedAnswers > 0
@@ -77,6 +78,7 @@ class ABCDQuestion extends Question {
         const SizedBox(
           height: 16,
         ),
+    //TODO integreate the informationWidget from progressing reveal question instead
         ReorderableListView.builder(
           physics: NeverScrollableScrollPhysics(),
           shrinkWrap: true,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:quiz_show/question_types/abstract_question.dart';
 
+import '../database/session_stream.dart';
+
 class UnsupportedQuestion extends Question {
   @override
   String explainString = "The loaded question type is not supported by this version.\nTry updating quiz studio.";
@@ -8,7 +10,7 @@ class UnsupportedQuestion extends Question {
   UnsupportedQuestion(super.data);
 
   @override
-  List<Widget> controlButtons(Map<String, dynamic> sessionData, Future<void> Function(Map<String, dynamic> data) update) => [];
+  List<Widget> controlButtons(BuildContext context, SessionData sessionData, Future<void> Function(Map<String, dynamic> data) update) => [];
 
   @override
   List<Widget> inputWidgets(

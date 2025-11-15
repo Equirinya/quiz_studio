@@ -3,16 +3,19 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:mini_music_visualizer/mini_music_visualizer.dart';
 import 'package:quiz_show/question_types/question_abcd.dart';
+import 'package:quiz_show/question_types/question_familyfeud.dart';
 import 'package:quiz_show/question_types/question_free.dart';
 import 'package:quiz_show/question_types/question_progressing_reveal.dart';
 import 'package:quiz_show/question_types/question_unsupported.dart';
 
 import '../database/constants.dart';
+import '../database/session_stream.dart';
 
 enum QuestionType {
   free("Free Question"),
   abcd("ABCD"),
   progressingReveal("Progressing Reveal"),
+  feud("Feud"),
   unsupported("Unsupported");
 
   final String uiString;
@@ -28,8 +31,8 @@ enum QuestionType {
 abstract class Question {
   final Map<String, dynamic> data;
 
-  List<Widget> controlButtons(
-      Map<String, dynamic> sessionData, Future<void> Function(Map<String, dynamic> data) update);
+  List<Widget> controlButtons(BuildContext context,
+      SessionData sessionData, Future<void> Function(Map<String, dynamic> data) update);
 
   Widget questionWidget(
           {required BuildContext context,
@@ -55,6 +58,8 @@ abstract class Question {
 
   bool buzzerable() => true;
 
+  bool showDefaultAnswerButtons() => true;
+
   List<String?> mediaPaths() => [data[image], data[music]];
 
   abstract String explainString;
@@ -75,6 +80,8 @@ abstract class Question {
         return ABCDQuestion(data);
       case QuestionType.progressingReveal:
         return ProgressingRevealQuestion(data);
+      case QuestionType.feud:
+        return FamilyFeudQuestion(data);
       default:
         return UnsupportedQuestion(data);
     }

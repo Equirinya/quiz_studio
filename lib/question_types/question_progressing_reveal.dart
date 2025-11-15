@@ -1,15 +1,15 @@
-//TODO add music and images
-//TODO if images are revealed show add option to show them large as diashow
 import 'dart:io';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:quiz_show/pages/session_controller.dart';
 import 'package:quiz_show/question_types/abstract_question.dart';
 import 'package:quiz_show/widgets/media_upload.dart';
 
 import '../database/constants.dart';
+import '../database/session_stream.dart';
 
 class ProgressingRevealQuestion extends Question {
   ProgressingRevealQuestion(super.data);
@@ -22,12 +22,10 @@ class ProgressingRevealQuestion extends Question {
       "Information to be revealed:\n"
       "${data[information] is! List ? "" : (List<String>.from(data[information])).indexed.map((e) => "(${e.$1 + 1}) ${e.$2}\n").join()}";
 
-  //TODO implement reveal buttons here and then add image scroll buttons
-  //on reveal set image show to newest image
   @override
-  List<Widget> controlButtons(Map<String, dynamic> sessionData, Future<void> Function(Map<String, dynamic> data) update) {
-    int revealedInfos = sessionData[revealed];
-    int imageFocus = sessionData[informationImageFocus] ?? 0;
+  List<Widget> controlButtons(BuildContext context, SessionData sessionData, Future<void> Function(Map<String, dynamic> data) update) {
+    int revealedInfos = sessionData.revealed;
+    int imageFocus = sessionData.sessionData[informationImageFocus] ?? 0;
     return [
       ElevatedButton(
           onPressed: revealedInfos > 0
@@ -133,16 +131,6 @@ class ProgressingRevealQuestion extends Question {
                     border: const OutlineInputBorder(),
                   ),
                   onChanged: (value) async {
-                    // List<String> currentInfos =
-                    // List<String>.from((await doc.reference.get()).data()?[information] ?? []);
-                    // if (currentInfos.length <= i) {
-                    //   setState(() {});
-                    //   return;
-                    // }
-                    // currentInfos[i] = value;
-                    // doc.reference.update({
-                    //   information: currentInfos,
-                    // });
                     data[information] ??= [];
                     if (data[information]!.length <= i) {
                       return;
@@ -181,15 +169,13 @@ class ProgressingRevealQuestion extends Question {
               IconButton(
                 icon: const Icon(Icons.delete),
                 onPressed: () async {
-                  // List<String> currentInfos =
-                  //     List<String>.from((await doc.reference.get()).data()?[information] ?? []);
-                  // currentInfos.removeAt(i);
-                  // doc.reference.update({
-                  //   information: currentInfos,
-                  // }).then((value) => setState(() {}));
                   data[information].removeAt(i);
+                  data[informationImage].removeAt(i);
+                  data[informationMusic].removeAt(i);
                   await update({
                     information: data[information],
+                    informationImage: data[informationImage],
+                    informationMusic: data[informationMusic],
                   });
                   refresh();
                 },
@@ -213,31 +199,27 @@ class ProgressingRevealQuestion extends Question {
             informationMusic: data[informationMusic],
           });
         },
-      ),
-      Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: ElevatedButton(
-          onPressed: () async {
-            data[information] ??= [];
-            data[informationImage] ??= [];
-            data[informationMusic] ??= [];
-            data[information].add("");
-            data[informationImage].add("");
-            data[informationMusic].add("");
-            await update({
-              information: data[information],
-              informationImage: data[informationImage],
-              informationMusic: data[informationMusic],
-            });
-            refresh();
-            // List<String> currentInfos = List<String>.from((await doc.reference.get()).data()?[information] ?? []);
-            // doc.reference.update({
-            //   information: currentInfos..add(""),
-            // }).then((value) => setState(() {}));
-          },
-          child: const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text("Add Information"),
+        footer: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: ElevatedButton(
+            onPressed: () async {
+              data[information] ??= [];
+              data[informationImage] ??= [];
+              data[informationMusic] ??= [];
+              data[information].add("");
+              data[informationImage].add("");
+              data[informationMusic].add("");
+              await update({
+                information: data[information],
+                informationImage: data[informationImage],
+                informationMusic: data[informationMusic],
+              });
+              refresh();
+            },
+            child: const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text("Add Information"),
+            ),
           ),
         ),
       ),
