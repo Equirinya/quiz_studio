@@ -22,28 +22,42 @@ enum AccessType {
 
   const AccessType(this.uiString);
 }
-//general questions
+
+
+//categories
 const String categories = 'categories';
-const String categoryType = 'categoryType';
+const String categoryGroup = 'categoryGroup';
+const String categoryGroupId = 'categoryGroupId';
 const String categoryIndex = 'categoryIndex'; //index within group
-const String categoryGroup = 'categoryGroup'; //groups are created as 1,2,3,... and therefore also act as order
-
-enum CategoryType {
-  noboard('No Board', Icons.crop_square_outlined),
-  wheel('Wheel Playboard', Icons.pie_chart_outline);
-
-  final String uiString;
-  final IconData icon;
-  String databaseString() => 'category_${this.name}';
-
-  const CategoryType(this.uiString, this.icon);
-}
-
 const String active = 'active';
 const String createdAt = 'createdAt';
 const String createdBy = 'createdBy';
 const String access = 'access';
 const String name = 'name';
+
+//category groups
+const String categoryGroups = 'categoryGroups';
+const String categoryGroupType = 'categoryGroupType';
+const String categoryGroupIndex = 'categoryGroupIndex';
+enum CategoryGroupType {
+  display('Display Board', Icons.art_track_rounded),
+  wheel('Wheel Playboard', Icons.pie_chart_outline),
+  map('Map Playboard', Icons.route);
+
+  final String uiString;
+  final IconData icon;
+  String databaseString() => 'category_${this.name}';
+
+  const CategoryGroupType(this.uiString, this.icon);
+}
+const String text = 'text';
+const String imagePath = 'imagePath';
+const String musicPath = 'musicPath';
+const String color = 'color';
+const String accentColor = 'accentColor';
+const String connections = 'connections';
+
+//questions
 const String questions = 'questions';
 const String type = 'type';
 const String question = 'question';
@@ -67,6 +81,7 @@ const String revealedList = 'revealedList';
 const String answers = 'answers';
 const String answersCorrect = 'answersCorrect';
 
+//sessions
 const String sessions = 'sessions';
 
 const String buzzerSensitivity = 'buzzerSensitivity';

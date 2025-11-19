@@ -360,7 +360,7 @@ class FamilyFeudQuestion extends Question {
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodyLarge
-                                      ?.copyWith(fontWeight: FontWeight.bold, fontSize: controllerView ? null : size.height * 0.03 - 2),
+                                      ?.copyWith(fontWeight: FontWeight.bold, fontSize: controllerView ? null : size.height * 0.03 - 2, color: Theme.of(context).colorScheme.tertiary),
                                 ),
                               ),
                             ),

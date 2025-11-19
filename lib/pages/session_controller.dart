@@ -269,7 +269,7 @@ class _SessionPageState extends State<SessionPage> {
                             builder: (categories, questions) {
                               var selectedCategoryGroupIndex = sessionData.selectedCategoryGroupIndex.clamp(0, categories.length - 1);
                               var selectedCategoryType = categories[selectedCategoryGroupIndex].$1;
-                              var selectedCategoryNames = categories[selectedCategoryGroupIndex].$2;
+                              List<String> selectedCategoryNames = categories[selectedCategoryGroupIndex].$2.map((e) => e.data()[name] as String).toList();
                               int categoryOffset = categories
                                   .sublist(0, selectedCategoryGroupIndex)
                                   .fold(0, (previousValue, element) => previousValue + element.$2.length);
@@ -286,7 +286,7 @@ class _SessionPageState extends State<SessionPage> {
                                   SegmentedButton(
                                       segments: categories.indexed
                                           .map((e) =>
-                                              ButtonSegment(value: e.$1, label: Text("${e.$1}. ${e.$2.$1.uiString}"), icon: Icon(e.$2.$1.icon)))
+                                              ButtonSegment(value: e.$1, label: Text("${e.$1}. ${e.$2.$1?.name ?? "BaseCategory"}"), icon: Icon((e.$2.$1?.type ?? CategoryGroupType.wheel).icon)))
                                           .toList(),
                                       selected: {selectedCategoryGroupIndex},
                                       multiSelectionEnabled: false,
