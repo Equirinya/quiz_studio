@@ -380,7 +380,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                 playingFrom: false
               });
               playSound(teamIndex);
-            } else if (state == HomePageState.questionBuzzered && sessionData.enableBuzzerQueue) {
+            } else if (state == HomePageState.questionBuzzered && sessionData.enableBuzzerQueue && !sessionData.buzzeredTeam.contains(teamIndex)) {
               sessionUpdate({
                 buzzeredFrom: FieldValue.arrayUnion([teamIndex]),
               });
