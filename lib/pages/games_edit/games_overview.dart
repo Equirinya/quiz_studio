@@ -13,9 +13,8 @@ class GamesOverview extends StatelessWidget {
   final DocumentSnapshot<Map<String, dynamic>> gameDoc;
   final List<(CategoryGroupData?, List<QueryDocumentSnapshot<Map<String, dynamic>>>)> categoriesDocs;
   final TabController tabController;
-  final VoidCallback refresh;
 
-  const GamesOverview({super.key, required this.gameDoc, required this.tabController, required this.categoriesDocs, required this.refresh});
+  const GamesOverview({super.key, required this.gameDoc, required this.tabController, required this.categoriesDocs});
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +173,6 @@ class GamesOverview extends StatelessWidget {
                                 IconButton(
                                     onPressed: () async {
                                       await groupData?.reference.delete();
-                                      refresh();
                                     },
                                     icon: Icon(Icons.delete)),
                             ],
@@ -385,7 +383,6 @@ class GamesOverview extends StatelessWidget {
             categoryGroupDoc.$1!.reference.update({categoryGroupIndex: currentIndex - 1});
           }
         }
-        refresh();
       },
       footer: Center(
         child: Padding(
@@ -405,7 +402,6 @@ class GamesOverview extends StatelessWidget {
                       createdBy: FirebaseAuth.instance.currentUser!.uid,
                       createdAt: FieldValue.serverTimestamp(),
                     });
-                    refresh();
                   },
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -427,10 +423,10 @@ class GamesOverview extends StatelessWidget {
 
 extension OptionWidgets on CategoryGroupData {
   Widget getOptionWidget() {
+    print("Getting option widget for category group of data type ${this.name}");
     switch (this.type) {
       case CategoryGroupType.display:
         return Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Expanded(
               child: TextField(
@@ -439,14 +435,29 @@ extension OptionWidgets on CategoryGroupData {
                   border: OutlineInputBorder(),
                 ),
                 controller: TextEditingController(text: this.text ?? "" ),
-                onChanged: (value) => reference.update({text:value}),
+                onChanged: (value) {
+                  reference.update({text:value});
+                  this.text = value;
+                },
               ),
             ),
-
+            // MediaUploadIconButton(
+            //   uploadType: MediaUploadType.image,
+            //
+            // )
           ],
         );
       case CategoryGroupType.wheel:
-        return SizedBox();
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return SwitchListTile(value: data[splitPointFields] ?? false, onChanged: (value) {
+              setState(() {
+                data[splitPointFields] = value;
+              });
+              reference.update({splitPointFields: value});
+            }, title: Text("Split Point Fields when value appears multiple times"));
+          }
+        );
       case CategoryGroupType.map:
         return SizedBox();
     }

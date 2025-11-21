@@ -56,6 +56,7 @@ const String musicPath = 'musicPath';
 const String color = 'color';
 const String accentColor = 'accentColor';
 const String connections = 'connections';
+const String splitPointFields = 'splitPointFields';
 
 //questions
 const String questions = 'questions';
