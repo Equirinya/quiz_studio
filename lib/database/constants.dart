@@ -75,7 +75,7 @@ const String information = 'information';
 const String informationImage = 'informationImage';
 const String informationMusic = 'informationMusic';
 //familyfeud
-const String informationPercentage = 'informationMusic';
+const String informationPercentage = 'informationPercentage';
 const String wrongAttempts = 'wrongAttempts';
 const String revealedList = 'revealedList';
 //abcd question type
@@ -111,6 +111,8 @@ const Map<String, dynamic> resetSessionConfig = {
   informationImageFocus: 0,
   playingFrom: null,
   buzzeredFrom: [],
+  revealedList: [],
+  wrongAttempts: 0,
 };
 
 

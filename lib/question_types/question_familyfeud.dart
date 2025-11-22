@@ -69,7 +69,7 @@ class FamilyFeudQuestion extends Question {
             ...[ElevatedButton(
                 onPressed: () {
                   double accumulatedAnswerPercentage = revealedInfos.map((e) => infoPercentageList[e]).fold(0.0, (previousValue, element) => previousValue + element);
-                  int pointsToAward = (accumulatedAnswerPercentage*data[pointsPlus]).round();
+                  int pointsToAward = (accumulatedAnswerPercentage*data[pointsPlus]/100).round();
                   var pointsList = sessionData.pointsList;
                   pointsList[sessionData.buzzeredTeam.first] = (pointsList[sessionData.buzzeredTeam.first]) + pointsToAward;
                   update({
@@ -77,7 +77,7 @@ class FamilyFeudQuestion extends Question {
                     revealedList: List<int>.generate(informationLength, (index) => index),
                     currentState: HomePageState.answerRevealed.name,
                     points: pointsList,
-                  });
+                  }..addAll(resetSessionConfig));
                 },
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -89,7 +89,7 @@ class FamilyFeudQuestion extends Question {
               ElevatedButton(
                   onPressed: () {
                     double accumulatedAnswerPercentage = revealedInfos.map((e) => infoPercentageList[e]).fold(0.0, (previousValue, element) => previousValue + element);
-                    int pointsToAward = (accumulatedAnswerPercentage*data[pointsPlus]).round();
+                    int pointsToAward = (accumulatedAnswerPercentage*data[pointsPlus]/100).round();
                     var pointsList = sessionData.pointsList;
                     int opponentTeamIndex = sessionData.buzzeredTeam.elementAtOrNull(1) ?? (sessionData.teamsList.length == 2 ? (1 - sessionData.buzzeredTeam.first) : -1);
                     if(opponentTeamIndex != -1) pointsList[opponentTeamIndex] = (pointsList[opponentTeamIndex]) + pointsToAward;
@@ -99,7 +99,7 @@ class FamilyFeudQuestion extends Question {
                       revealedList: List<int>.generate(informationLength, (index) => index),
                       currentState: HomePageState.answerRevealed.name,
                       points: pointsList,
-                    });
+                    }..addAll(resetSessionConfig));
                   },
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -150,13 +150,14 @@ class FamilyFeudQuestion extends Question {
                                 revealedList: revealedInfos,
                               };
                               double accumulatedAnswerPercentage = revealedInfos.map((e) => infoPercentageList[e]).fold(0.0, (previousValue, element) => previousValue + element);
-                              int pointsToAward = (accumulatedAnswerPercentage*data[pointsPlus]).round();
+                              int pointsToAward = (accumulatedAnswerPercentage*data[pointsPlus]/100).round();
                               var pointsList = sessionData.pointsList;
 
                               if(infoList.indexed.every((element) => revealedInfos.contains(element.$1))){
                                 pointsList[sessionData.buzzeredTeam.first] = (pointsList[sessionData.buzzeredTeam.first]) + pointsToAward;
                                 updateData[currentState] = HomePageState.answerRevealed.name;
                                 updateData[points] = pointsList;
+                                updateData.updateAll((key, value) => resetSessionConfig[key] ?? value);
                               }
                               update(updateData);
                             },
