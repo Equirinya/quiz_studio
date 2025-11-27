@@ -27,7 +27,7 @@ class FamilyFeudQuestion extends Question {
   @override
   List<Widget> controlButtons(BuildContext context, SessionData sessionData, Future<void> Function(Map<String, dynamic> data) update) {
     List<String> infoList = List<String>.from(data[information] ?? []);
-    List<double> infoPercentageList = List<double>.from(data[informationPercentage] ?? []);
+    List<double> infoPercentageList = List<num>.from(data[informationPercentage] ?? []).map((e) => e.toDouble()).toList();
     List<int> revealedInfos = List<int>.from(sessionData.sessionData[revealedList] ?? []);
     int _wrongAttempts = sessionData.sessionData[wrongAttempts] ?? 0;
     HomePageState state = sessionData.state;
@@ -42,6 +42,7 @@ class FamilyFeudQuestion extends Question {
             onPressed: () {
               update({
                 wrongAttempts: FieldValue.increment(1),
+                playEffect: musicEffectAnswerWrong
               });
             },
             child: const Row(
@@ -56,6 +57,7 @@ class FamilyFeudQuestion extends Question {
           onPressed: () {
             update({
               wrongAttempts: FieldValue.increment(1),
+              playEffect: musicEffectAnswerWrong
             });
           },
           child: const Row(
@@ -77,7 +79,8 @@ class FamilyFeudQuestion extends Question {
                     revealedList: List<int>.generate(informationLength, (index) => index),
                     currentState: HomePageState.answerRevealed.name,
                     points: pointsList,
-                  }..addAll(resetSessionConfig));
+                    playEffect: musicEffectAnswerWrong
+                  });
                 },
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -99,7 +102,8 @@ class FamilyFeudQuestion extends Question {
                       revealedList: List<int>.generate(informationLength, (index) => index),
                       currentState: HomePageState.answerRevealed.name,
                       points: pointsList,
-                    }..addAll(resetSessionConfig));
+                      playEffect: musicEffectAnswerCorrect
+                    });
                   },
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -148,6 +152,7 @@ class FamilyFeudQuestion extends Question {
                               revealedInfos.add(i);
                               Map<String,dynamic> updateData = {
                                 revealedList: revealedInfos,
+                                playEffect: musicEffectReveal
                               };
                               double accumulatedAnswerPercentage = revealedInfos.map((e) => infoPercentageList[e]).fold(0.0, (previousValue, element) => previousValue + element);
                               int pointsToAward = (accumulatedAnswerPercentage*data[pointsPlus]/100).round();
@@ -157,7 +162,6 @@ class FamilyFeudQuestion extends Question {
                                 pointsList[sessionData.buzzeredTeam.first] = (pointsList[sessionData.buzzeredTeam.first]) + pointsToAward;
                                 updateData[currentState] = HomePageState.answerRevealed.name;
                                 updateData[points] = pointsList;
-                                updateData.updateAll((key, value) => resetSessionConfig[key] ?? value);
                               }
                               update(updateData);
                             },
@@ -191,7 +195,7 @@ class FamilyFeudQuestion extends Question {
   @override
   List<Widget> inputWidgets(BuildContext context, String gameId, Future<void> Function(Map<String, dynamic> data) update, VoidCallback refresh) {
     List<String> infoList = List<String>.from(data[information] ?? []);
-    List<double> infoPercentageList = List<double>.from(data[informationPercentage] ?? []);
+    List<double> infoPercentageList = List<num>.from(data[informationPercentage] ?? []).map((e) => e.toDouble()).toList();
     return [
       const SizedBox(
         height: 16,
@@ -266,14 +270,13 @@ class FamilyFeudQuestion extends Question {
           if (oldIndex < newIndex) {
             newIndex -= 1;
           }
-          final String item = infoList.removeAt(oldIndex);
-          infoList.insert(newIndex, item);
-          data[information] = infoList;
+          data[information].insert(newIndex, (data[information] as List?)?.removeAt(oldIndex) ?? 0.0);
           data[informationPercentage].insert(newIndex, (data[informationPercentage] as List?)?.removeAt(oldIndex) ?? 0.0);
           await update({
             information: data[information],
-            informationImage: data[informationPercentage],
+            informationPercentage: data[informationPercentage],
           });
+          refresh();
         },
         footer: Padding(
           padding: const EdgeInsets.all(8.0),
@@ -315,7 +318,7 @@ class FamilyFeudQuestion extends Question {
   Widget questionWidget(
       {required BuildContext context, required Directory gameDir, bool controllerView = false, required Map<String, dynamic> sessionData}) {
     List<String> informationStrings = List<String>.from(data[information] ?? []);
-    List<double> infoPercentages = List<double>.from(data[informationPercentage] ?? []);
+    List<double> infoPercentages = List<num>.from(data[informationPercentage] ?? []).map((e) => e.toDouble()).toList();
     int columns = informationStrings.length <= 5 ? 1 : 2;
     int rows = (informationStrings.length / columns).ceil();
     var size = MediaQuery.of(context).size;

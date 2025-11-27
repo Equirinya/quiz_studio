@@ -30,6 +30,7 @@ class _GameStreamBuilderState extends State<GameStreamBuilder> {
   FirebaseFirestore db = FirebaseFirestore.instance;
   StreamSubscription? categoryDocsListener;
   List<QueryDocumentSnapshot<Map<String, dynamic>>>? categoryDocs;
+  List<CategoryGroupData>? categoryGroupData;
   List<(CategoryGroupData?, List<QueryDocumentSnapshot<Map<String, dynamic>>>)> sortedCategories = [];
   List<StreamSubscription?> questionDocsListeners = [];
   List<QuerySnapshot<Map<String, dynamic>>?> questionDocs = [];
@@ -42,7 +43,11 @@ class _GameStreamBuilderState extends State<GameStreamBuilder> {
       categoryDocsListener =
           db.collection(games).doc(widget.gameId).collection(categories).where(active, isEqualTo: true).snapshots().listen((event) async {
         var categoryGroupDocs = await db.collection(games).doc(widget.gameId).collection(categoryGroups).get();
-        sortedCategories = sortCategories(event.docs, categoryGroupDocs.docs);
+        categoryGroupData = categoryGroupDocs.docs
+            .map((e) => CategoryGroupData(e.data(), e.reference))
+            .toList()
+          ..sort((a, b) => a.index.compareTo(b.index));
+        sortedCategories = sortCategories(event.docs, categoryGroupData!);
         categoryDocs = sortedCategories.expand((tuple) => tuple.$2).toList();
         for (var listener in questionDocsListeners) {
           listener?.cancel();
@@ -86,9 +91,9 @@ class _GameStreamBuilderState extends State<GameStreamBuilder> {
 
   @override
   Widget build(BuildContext context) {
-    MediaDownloader().downloadGameMedia(widget.gameId!, questionDocs);
     if (widget.gameId == null || widget.gameId!.isEmpty) return widget.fallback;
     if (!initialized) return widget.fallback;
+    MediaDownloader().downloadGameMedia(widget.gameId!, categoryGroupData!, questionDocs);
 
     List<List<Map<String, dynamic>>> questions = questionDocs
         .map((e) => (e!.docs..sort((a, b) => (a[pointsPlus] as int? ?? 0).compareTo(b[pointsPlus] ?? 0)))
@@ -102,7 +107,7 @@ class _GameStreamBuilderState extends State<GameStreamBuilder> {
 class CategoryGroupData {
   final dbString.CategoryGroupType type;
   final String id;
-  final DocumentReference reference;
+  final DocumentReference<Map<String,dynamic>> reference;
   int index;
   String name;
   Color? color;
@@ -111,7 +116,6 @@ class CategoryGroupData {
 
   String? text;
   String? imagePath;
-  String? musicPath;
 
   String? connections;
 
@@ -124,22 +128,20 @@ class CategoryGroupData {
         color = data[dbString.color] != null ? Color(data[dbString.color]) : null,
         accentColor = data[dbString.accentColor] != null ? Color(data[dbString.accentColor]) : null,
         imagePath = data[dbString.imagePath],
-        musicPath = data[dbString.musicPath],
         text = data[dbString.text],
         connections = data[dbString.connections],
-        mediaPaths = [data[dbString.imagePath], data[dbString.musicPath]].whereType<String>().toList(),
+        mediaPaths = [data[dbString.imagePath]].whereType<String>().toList(),
         type = dbString.CategoryGroupType.values
             .firstWhere((e) => e.databaseString() == data[dbString.categoryGroupType], orElse: () => dbString.CategoryGroupType.wheel);
 }
 
 List<(CategoryGroupData?, List<QueryDocumentSnapshot<Map<String, dynamic>>>)> sortCategories(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> categoriesDocs, List<QueryDocumentSnapshot<Map<String, dynamic>>> categoryGroupDocs) {
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> categoriesDocs, List<CategoryGroupData> categoryGroupData) {
   //first group by categoryGroup ascending, making sure that the categoryType is the same and use that as the String in tuple
   // then within the groups sort by categoryIndex ascending, then by createdAt ascending
   Map<CategoryGroupData?, List<QueryDocumentSnapshot<Map<String, dynamic>>>> grouped = {null:[]};
-  for(var groupDoc in categoryGroupDocs){
-    CategoryGroupData categoryGroupData = CategoryGroupData(groupDoc.data(), groupDoc.reference);
-    grouped[categoryGroupData] = [];
+  for(var groupData in categoryGroupData){
+    grouped[groupData] = [];
   }
   for (var doc in categoriesDocs) {
     dynamic group = doc.data()[categoryGroup];

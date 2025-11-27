@@ -52,7 +52,6 @@ enum CategoryGroupType {
 }
 const String text = 'text';
 const String imagePath = 'imagePath';
-const String musicPath = 'musicPath';
 const String color = 'color';
 const String accentColor = 'accentColor';
 const String connections = 'connections';
@@ -98,6 +97,8 @@ const String lastUsed = 'lastUsed';
 const String playedFields = 'playedFields';
 const String points = 'points';
 const String teams = 'teams';
+const String playEffect = 'playEffect';
+const String playMusic = 'playMusic';
 //progressing reveal
 const String informationImageFocus = 'informationImageFocus';
 const String revealed = 'revealed';
@@ -125,6 +126,20 @@ const XTypeGroup musicUniformFileType = XTypeGroup(
   label: 'Audio File',
   uniformTypeIdentifiers: <String>['public.audio'],
 );
+
+
+//Music Types
+const String musicBackground = 'musicBackground';
+const String musicCalm = 'musicCalm';
+const String musicExciting = 'musicExciting';
+
+
+const String musicEffects = 'musicEffects';
+const String musicEffectReveal = 'musicEffectReveal';
+const String musicEffectAnswerCorrect = 'musicEffectAnswerCorrect';
+const String musicEffectAnswerWrong = 'musicEffectAnswerWrong';
+const String musicEffectAnswerClosed = 'musicEffectAnswerClosed';
+const String musicCustomEffect = 'musicCustomEffect';
 
 //Strings
 const String noSession = 'No session selected';

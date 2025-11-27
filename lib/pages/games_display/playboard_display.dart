@@ -19,6 +19,7 @@ class DisplayPlayboard extends Playboard {
       width: size.width,
       height: size.height,
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(categoryGroupData?.text ?? "", style: TextStyle(fontSize: size.height * 0.05)),
         ],

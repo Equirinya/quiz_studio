@@ -55,9 +55,11 @@ class _GamesDetailPageState extends State<GamesDetailPage> with TickerProviderSt
         checkIfReadyAndSetState();
       });
 
-      categoryGroupsListener = db.collection(games).doc(widget.gameId).collection(categoryGroups).orderBy(categoryGroupIndex).snapshots().listen((event) {
+      categoryGroupsListener = db.collection(games).doc(widget.gameId).collection(categoryGroups).orderBy(categoryGroupIndex).snapshots().listen((
+        event,
+      ) {
         categoryGroupsDocs = event.docs;
-        if(event.docChanges.any((change) => change.oldIndex != change.newIndex || change.type != DocumentChangeType.modified)) {
+        if (event.docChanges.any((change) => change.oldIndex != change.newIndex || change.type != DocumentChangeType.modified)) {
           checkIfReadyAndSetState();
         }
       });
@@ -67,7 +69,9 @@ class _GamesDetailPageState extends State<GamesDetailPage> with TickerProviderSt
 
   void checkIfReadyAndSetState() {
     if (gameDoc == null || categoriesDocs == null || categoryGroupsDocs == null) return;
-    sortedCategoriesDocs = sortCategories(categoriesDocs!, categoryGroupsDocs!);
+    var categoryGroupData = categoryGroupsDocs!.map((e) => CategoryGroupData(e.data(), e.reference)).toList()
+      ..sort((a, b) => a.index.compareTo(b.index));
+    sortedCategoriesDocs = sortCategories(categoriesDocs!, categoryGroupData);
     flattenedCategoriesDocs = sortedCategoriesDocs!.expand((tuple) => tuple.$2).toList();
     int index = tabController?.index ?? 0;
     if (index >= flattenedCategoriesDocs!.length + 1) {
@@ -158,11 +162,7 @@ class _GamesDetailPageState extends State<GamesDetailPage> with TickerProviderSt
       body: TabBarView(
         controller: tabController,
         children: [
-          GamesOverview(
-            gameDoc: gameDoc!,
-            categoriesDocs: sortedCategoriesDocs!,
-            tabController: tabController!,
-          ),
+          GamesOverview(gameDoc: gameDoc!, categoriesDocs: sortedCategoriesDocs!, tabController: tabController!),
           for (var category in flattenedCategoriesDocs!) GamesCategoriesEditPage(gameId: widget.gameId, categoryId: category.id),
         ],
       ),

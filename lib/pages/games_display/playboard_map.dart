@@ -15,6 +15,6 @@ class MapPlayboard extends Playboard {
 
   @override
   Widget build(BuildContext context) {
-    return Text("Map");
+    return SizedBox();
   }
 }
