@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "640235060469",
+    "project_id": "quiz-8541e",
+    "storage_bucket": "quiz-8541e.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:640235060469:android:488bef3eb91b3a430019bc",
+        "android_client_info": {
+          "package_name": "de.equirinya.quiz_show"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "640235060469-tt6r8ojqferalnsbbhfgk6n6q9l4dttu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXox7v4pVOPdjXNWnyFBmUgiu43AgDDTg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "640235060469-tt6r8ojqferalnsbbhfgk6n6q9l4dttu.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "640235060469-huev8lhnrk75ijsqfguhdre1dm8ob920.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "de.equirinya.quizShow"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
