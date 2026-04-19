@@ -56,7 +56,7 @@ class GamesOverview extends StatelessWidget {
                 );
               },
             ),
-            if (gameDoc.data()?[AccessType.admin.name].contains(FirebaseAuth.instance.currentUser?.uid))
+            if (gameDoc.data()?[AccessType.admin.name]?.contains(FirebaseAuth.instance.currentUser?.uid) ?? false)
               IconButton(
                 icon: const Icon(Icons.delete),
                 onPressed: () {
@@ -410,7 +410,7 @@ class GamesOverview extends StatelessWidget {
                   onPressed: () {
                     FirebaseFirestore.instance.collection(games).doc(gameDoc.id).collection(categoryGroups).add({
                       name: "New ${type.uiString}",
-                      categoryGroupIndex: categoriesDocs.length + (categoriesDocs.first.$1 == null ? 0 : 1),
+                      categoryGroupIndex: categoriesDocs.length + (categoriesDocs.firstOrNull?.$1 == null ? 0 : 1),
                       categoryGroupType: type.databaseString(),
                       createdBy: FirebaseAuth.instance.currentUser!.uid,
                       createdAt: FieldValue.serverTimestamp(),

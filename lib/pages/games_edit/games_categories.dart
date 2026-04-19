@@ -78,9 +78,11 @@ class _GamesCategoriesEditPageState extends State<GamesCategoriesEditPage> {
   void checkIfReadyAndSetState() {
     if (categoryDoc == null || questionDocs == null) return;
     categoryNameController = TextEditingController(text: categoryDoc!.data()?[name]);
-    setState(() {
+    if(mounted) {
+      setState(() {
       initialized = true;
     });
+    }
   }
 
   @override

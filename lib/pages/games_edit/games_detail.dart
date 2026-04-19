@@ -30,9 +30,9 @@ class _GamesDetailPageState extends State<GamesDetailPage> with TickerProviderSt
   StreamSubscription? gameDocListener;
   DocumentSnapshot<Map<String, dynamic>>? gameDoc;
   StreamSubscription? categoriesListener;
-  List<QueryDocumentSnapshot<Map<String, dynamic>>>? categoriesDocs;
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> categoriesDocs = [];
   StreamSubscription? categoryGroupsListener;
-  List<QueryDocumentSnapshot<Map<String, dynamic>>>? categoryGroupsDocs;
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> categoryGroupsDocs = [];
   List<(CategoryGroupData?, List<QueryDocumentSnapshot<Map<String, dynamic>>>)>? sortedCategoriesDocs;
   List<QueryDocumentSnapshot<Map<String, dynamic>>>? flattenedCategoriesDocs;
   late SharedPreferences prefs;

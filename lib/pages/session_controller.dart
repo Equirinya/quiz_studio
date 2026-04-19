@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dynamic_color/dynamic_color.dart';
@@ -251,6 +252,9 @@ class _SessionPageState extends State<SessionPage> {
                             key: ValueKey(gameRef.id),
                             gameId: gameRef.id,
                             builder: (categories, questions) {
+                              if(questions.isEmpty) return const SizedBox();
+
+
                               var selectedCategoryGroupIndex = sessionData.selectedCategoryGroupIndex.clamp(0, categories.length - 1);
                               var selectedCategoryType = categories[selectedCategoryGroupIndex].$1;
                               List<String> selectedCategoryNames = categories[selectedCategoryGroupIndex].$2
