@@ -95,6 +95,12 @@ class _BuzzerConnectionPageState extends State<BuzzerConnectionPage> {
           SessionStreamBuilder(
             session: prefs.getString("currentSession"),
             builder: (sessionData) {
+              if (SerialConnection().status == SerialStatus.notConfigured) {
+                return Center(child: const Text("Serial port not configured"));
+              }
+              if (SerialConnection().status == SerialStatus.disconnected) {
+                return Center(child: const Text("Serial port disconnected"));
+              }
               return FutureBuilder(
                 future: SerialConnection().serialStream.first,
                 builder: (context, snapshot) {

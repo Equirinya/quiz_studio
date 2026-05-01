@@ -68,42 +68,21 @@ class QRPayload {
 }
 
 class CompanionPage extends StatefulWidget {
-  const CompanionPage({super.key});
+  const CompanionPage({super.key, required this.controller});
+  final MobileScannerController controller;
 
   @override
   State<CompanionPage> createState() => _CompanionPageState();
 }
 
-class _CompanionPageState extends State<CompanionPage>
-    with SingleTickerProviderStateMixin {
-  final MobileScannerController _controller = MobileScannerController(
-    detectionSpeed: DetectionSpeed.noDuplicates,
-    returnImage: false,
-  );
+class _CompanionPageState extends State<CompanionPage> {
 
   bool _processing = false;
 
-  late final AnimationController _pulseController;
-  late final Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-
-    _pulseAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _pulseController.dispose();
-    super.dispose();
   }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
@@ -112,7 +91,7 @@ class _CompanionPageState extends State<CompanionPage>
     if (raw == null) return;
 
     setState(() => _processing = true);
-    _controller.stop();
+    widget.controller.stop();
 
     final payload = QRPayload.tryParse(raw);
 
@@ -128,7 +107,7 @@ class _CompanionPageState extends State<CompanionPage>
     // Resume scanner when returning
     if (mounted) {
       setState(() => _processing = false);
-      _controller.start();
+      widget.controller.start();
     }
   }
 
@@ -145,22 +124,7 @@ class _CompanionPageState extends State<CompanionPage>
     }
 
     await Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (_, animation, __) => destination,
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.08),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-              child: child,
-            ),
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 350),
-      ),
+      MaterialPageRoute(builder: (_) => destination),
     );
   }
 
@@ -177,7 +141,7 @@ class _CompanionPageState extends State<CompanionPage>
       ),
     );
     setState(() => _processing = false);
-    _controller.start();
+    widget.controller.start();
   }
 
   @override
@@ -188,11 +152,11 @@ class _CompanionPageState extends State<CompanionPage>
         fit: StackFit.expand,
         children: [
           MobileScanner(
-            controller: _controller,
+            controller: widget.controller,
             onDetect: _onDetect,
           ),
 
-          _ScannerOverlay(pulseAnimation: _pulseAnimation),
+          _ScannerOverlay(),
 
           SafeArea(
             child: Align(
@@ -204,13 +168,13 @@ class _CompanionPageState extends State<CompanionPage>
                     const Spacer(),
                     IconButton(
                       icon: Icon(Icons.flash_on_rounded),
-                      onPressed: _controller.toggleTorch,
+                      onPressed: widget.controller.toggleTorch,
                       tooltip: 'Toggle torch',
                     ),
                     const SizedBox(width: 8),
                     IconButton(
                       icon: Icon(Icons.flip_camera_ios_rounded),
-                      onPressed: _controller.switchCamera,
+                      onPressed: widget.controller.switchCamera,
                       tooltip: 'Flip camera',
                     ),
                   ],
@@ -229,16 +193,10 @@ class _CompanionPageState extends State<CompanionPage>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.qr_code_scanner_rounded,
-                        color: Colors.white54, size: 28),
+                    const Icon(Icons.qr_code_scanner_rounded),
                     const SizedBox(height: 10),
                     Text(
                       'Point at a Quiz Studio QR code',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 14,
-                        letterSpacing: 0.3,
-                      ),
                     ),
                   ],
                 ),
@@ -246,13 +204,7 @@ class _CompanionPageState extends State<CompanionPage>
             ),
           ),
 
-          if (_processing)
-            Container(
-              color: Colors.black54,
-              child: const Center(
-                child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
-              ),
-            ),
+          if (_processing) CircularProgressIndicator(),
         ],
       ),
     );
@@ -262,41 +214,33 @@ class _CompanionPageState extends State<CompanionPage>
 // ─── Scanner Overlay (cutout + corners) ──────────────────────────────────────
 
 class _ScannerOverlay extends StatelessWidget {
-  const _ScannerOverlay({required this.pulseAnimation});
-  final Animation<double> pulseAnimation;
+  const _ScannerOverlay();
 
   @override
   Widget build(BuildContext context) {
     const cutoutSize = 260.0;
 
-    return AnimatedBuilder(
-      animation: pulseAnimation,
-      builder: (context, _) {
-        return CustomPaint(
-          painter: _OverlayPainter(
-            cutoutSize: cutoutSize,
-            cornerOpacity: pulseAnimation.value,
+    return CustomPaint(
+      painter: _OverlayPainter(
+        cutoutSize: cutoutSize,
+      ),
+      child: SizedBox.expand(
+        child: Center(
+          child: SizedBox(
+            width: cutoutSize,
+            height: cutoutSize,
+            child: _ScanCorners(),
           ),
-          child: SizedBox.expand(
-            child: Center(
-              child: SizedBox(
-                width: cutoutSize,
-                height: cutoutSize,
-                child: _ScanCorners(opacity: pulseAnimation.value),
-              ),
-            ),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
 class _OverlayPainter extends CustomPainter {
   final double cutoutSize;
-  final double cornerOpacity;
 
-  _OverlayPainter({required this.cutoutSize, required this.cornerOpacity});
+  _OverlayPainter({required this.cutoutSize});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -319,12 +263,13 @@ class _OverlayPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_OverlayPainter old) => old.cornerOpacity != cornerOpacity;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
+  }
 }
 
 class _ScanCorners extends StatelessWidget {
-  const _ScanCorners({required this.opacity});
-  final double opacity;
+  const _ScanCorners();
 
   @override
   Widget build(BuildContext context) {
@@ -336,17 +281,14 @@ class _ScanCorners extends StatelessWidget {
     Widget corner({required Alignment align}) {
       return Align(
         alignment: align,
-        child: Opacity(
-          opacity: opacity,
-          child: CustomPaint(
-            size: const Size(len, len),
-            painter: _CornerPainter(
-              alignment: align,
-              color: accent,
-              length: len,
-              thickness: thick,
-              radius: r,
-            ),
+        child: CustomPaint(
+          size: const Size(len, len),
+          painter: _CornerPainter(
+            alignment: align,
+            color: accent,
+            length: len,
+            thickness: thick,
+            radius: r,
           ),
         ),
       );

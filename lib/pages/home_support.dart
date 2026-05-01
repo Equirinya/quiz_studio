@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:quiz_show/pages/about.dart';
 import 'package:quiz_show/pages/companion.dart';
 import 'package:quiz_show/pages/games.dart';
@@ -13,7 +14,18 @@ class HomeSupportPage extends StatefulWidget {
 }
 
 class _HomeSupportPageState extends State<HomeSupportPage> {
+  final MobileScannerController _controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    returnImage: false,
+    autoStart: false,
+  );
   int _selectedIndex = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,10 +41,10 @@ class _HomeSupportPageState extends State<HomeSupportPage> {
       ),
       body: IndexedStack(
         index: _selectedIndex,
-        children: const [
+        children: [
           GamesPage(),
           SessionPage(),
-          CompanionPage(),
+          CompanionPage(controller: _controller),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -41,6 +53,11 @@ class _HomeSupportPageState extends State<HomeSupportPage> {
           setState(() {
             _selectedIndex = index;
           });
+          if(index == 2) {
+            _controller.start();
+          } else {
+            _controller.stop();
+          }
         },
         destinations: const [
           NavigationDestination(

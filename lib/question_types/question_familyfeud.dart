@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'dart:convert';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -32,6 +33,7 @@ class FamilyFeudQuestion extends Question {
     List<double> infoPercentageList = List<num>.from(data[informationPercentage] ?? []).map((e) => e.toDouble()).toList();
     List<int> revealedInfos = List<int>.from(sessionData.sessionData[revealedList] ?? []);
     int _wrongAttempts = sessionData.sessionData[wrongAttempts] ?? 0;
+    bool showAbsoluteValues = data[absoluteValues] ?? false;
     HomePageState state = sessionData.state;
     int informationLength = infoList.length;
     int columns = informationLength <= 5 ? 1 : 2;
@@ -167,20 +169,19 @@ class FamilyFeudQuestion extends Question {
                               }
                               update(updateData);
                             },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Row(
-                          children: [
-                            Text(
-                              '${infoPercentageList[i]}%',
+                      child: Row(
+                        children: [
+                          Text(
+                            showAbsoluteValues ? (infoPercentageList[i] % 1 == 0 ? infoPercentageList[i].toInt().toString() : infoPercentageList[i].toStringAsFixed(1)): '${infoPercentageList[i].toStringAsFixed(1)}%',
+                          ),
+                          SizedBox(width: 2),
+                          Expanded(
+                            child: Text(
+                              information,
+                              maxLines: 2,
                             ),
-                            Expanded(
-                              child: Text(
-                                information,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -395,7 +396,7 @@ class FamilyFeudQuestion extends Question {
                               visible: revealedInfos.contains(i),
                               child: Center(
                                 child: Text(
-                                  showAbsoluteValues ? (infoPercentages[i] % 1 == 0 ? infoPercentages[i].toInt().toString() : infoPercentages[i].toString()): '${infoPercentages[i]}%',
+                                  showAbsoluteValues ? (infoPercentages[i] % 1 == 0 ? infoPercentages[i].toInt().toString() : infoPercentages[i].toStringAsFixed(1)): '${infoPercentages[i].toStringAsFixed(1)}%',
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodyLarge
@@ -411,10 +412,11 @@ class FamilyFeudQuestion extends Question {
                           Expanded(
                             child: Visibility(
                               visible: revealedInfos.contains(i),
-                              child: Text(
+                              child: AutoSizeText(
                                 information,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
+                                minFontSize: 8,
                                 textAlign: TextAlign.center,
                                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: controllerView ? null : size.height * 0.04 - 2),
                               ),
