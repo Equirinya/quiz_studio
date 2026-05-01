@@ -192,7 +192,7 @@ class ABCDQuestion extends Question {
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 8.0),
                               child: Icon(
-                                data[answersCorrect][i] ? Icons.check : Icons.close,
+                                (data[answersCorrect]?[i] ?? false) ? Icons.check : Icons.close,
                                 color: controllerView && sessionData[revealed] <= data[answers].length
                                     ? Theme.of(context).colorScheme.surfaceContainerHighest
                                     : null,

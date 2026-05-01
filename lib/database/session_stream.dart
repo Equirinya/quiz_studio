@@ -17,6 +17,7 @@ class SessionData{
   final int selectedCategoryGroupIndex;
   final HomePageState state;
   final bool? playing;
+  final bool? playBuzzer;
   final bool enableBuzzerQueue;
   final List<int> buzzeredTeam;
   final List<(int, int)> playedFieldsList;
@@ -26,7 +27,7 @@ class SessionData{
   final DocumentReference? gameRef;
   final DocumentReference sessionRef;
 
-  SessionData(this.sessionData, this.teamsList, this.pointsList, this.selectedFieldData, this.selectedCategoryGroupIndex, this.state, this.playing, this.enableBuzzerQueue, this.buzzeredTeam, this.playedFieldsList, this.revealed, this.buzzerSensitivityMap, this.buzzerTeamMap, this.gameRef, this.sessionRef);
+  SessionData(this.sessionData, this.teamsList, this.pointsList, this.selectedFieldData, this.selectedCategoryGroupIndex, this.state, this.playing, this.playBuzzer, this.enableBuzzerQueue, this.buzzeredTeam, this.playedFieldsList, this.revealed, this.buzzerSensitivityMap, this.buzzerTeamMap, this.gameRef, this.sessionRef);
 }
 
 class SessionStreamBuilder extends StatelessWidget {
@@ -74,6 +75,7 @@ class SessionStreamBuilder extends StatelessWidget {
         stream: FirebaseFirestore.instance.collection(sessions).doc(session!).snapshots(),
         builder: (context, sessionSnapshot) {
           if (!sessionSnapshot.hasData || sessionSnapshot.data == null || sessionSnapshot.data!.data() == null) {
+            print("No session data found for session $session");
             return fallback;
           }
 
@@ -99,6 +101,7 @@ class SessionStreamBuilder extends StatelessWidget {
           HomePageState.values.firstWhere((element) => element.name == sessionSnapshot.data!.data()![currentState]);
 
           bool? playing = sessionSnapshot.data!.data()![playingFrom];
+          bool? playBuzzer2 = sessionSnapshot.data!.data()![playBuzzer];
           bool enableBuzzerQueue = sessionSnapshot.data!.data()![queueBuzzers] ?? false;
           List<int> buzzeredTeam = sessionSnapshot.data!.data()![buzzeredFrom] != null ? List<int>.from(sessionSnapshot.data!.data()![buzzeredFrom]) : <int>[];
           List<(int, int)> playedFieldsList = sessionSnapshot.data!.data()![playedFields] != null
@@ -129,6 +132,7 @@ class SessionStreamBuilder extends StatelessWidget {
               selectedCategoryGroupIndex,
               state,
               playing,
+              playBuzzer2,
               enableBuzzerQueue,
               buzzeredTeam,
               playedFieldsList,

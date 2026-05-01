@@ -77,6 +77,7 @@ const String informationMusic = 'informationMusic';
 const String informationPercentage = 'informationPercentage';
 const String wrongAttempts = 'wrongAttempts';
 const String revealedList = 'revealedList';
+const String absoluteValues = 'absoluteValues';
 //abcd question type
 const String answers = 'answers';
 const String answersCorrect = 'answersCorrect';
@@ -89,6 +90,7 @@ const String queueBuzzers = 'queueBuzzers'; //bool: if true, buzzers are queued,
 const String buzzerTeam = 'buzzerTeam';
 const String currentState = 'currentState';
 const String playingFrom = 'playingFrom'; //TODO rename to playing as it currently only is true for playing, false for paused, and null for stopped
+const String playBuzzer = 'playBuzzer';
 const String buzzeredFrom = 'buzzeredFrom';
 const String game = 'game';
 const String selectedCategoryGroup = 'selectedCategoryGroup';

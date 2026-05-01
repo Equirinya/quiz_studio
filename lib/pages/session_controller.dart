@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -7,6 +8,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:quiz_show/database/audio_controller.dart';
 import 'package:quiz_show/database/game_stream.dart';
 import 'package:quiz_show/pages/settings.dart';
@@ -15,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../database/constants.dart';
 import '../database/session_stream.dart';
 import '../question_types/abstract_question.dart';
+import 'companion.dart';
 
 class SessionPage extends StatefulWidget {
   const SessionPage({super.key});
@@ -88,6 +91,103 @@ class _SessionPageState extends State<SessionPage> {
                   await prefs.setString("currentSession", ref.id);
                   setState(() {});
                 },
+              ),
+              ListTile(
+                leading: const Icon(Icons.qr_code),
+                title: Text("Add companion devices"),
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (context) => SessionStreamBuilder(
+                    session: prefs.getString("currentSession"),
+                    builder: (sessionData) {
+                      var sessionRef = sessionData.sessionRef;
+                      String encodedSessionId = base64Url.encode(utf8.encode(sessionRef.id));
+                      var teamsList = sessionData.teamsList;
+
+                      QRFunction selectedFunction = QRFunction.buzzer;
+                      int? selectedTeamIndex;
+
+                      String qrLink() {
+                        final segments = [
+                          "session",
+                          encodedSessionId,
+                          selectedFunction.name,
+                        ];
+
+                        if (selectedFunction.teamRequired && selectedTeamIndex != null) {
+                          segments.add(selectedTeamIndex.toString());
+                        }
+
+                        final uri = Uri(
+                          scheme: "quiz-studio",
+                          pathSegments: segments,
+                        );
+
+                        return uri.toString();
+                      }
+                      double size = MediaQuery.of(context).size.shortestSide * 0.5;
+
+                      return AlertDialog(
+                        title: const Text("QR Code"),
+                        content: StatefulBuilder(
+                          builder: (context, setState) {
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                /// QR Code
+                                SizedBox(
+                                  width: size,
+                                  height: size,
+                                  child: QrImageView(
+                                    data: qrLink(),
+                                    size: size,
+                                    eyeStyle: QrEyeStyle(color: Theme.of(context).colorScheme.primary),
+                                    dataModuleStyle: QrDataModuleStyle(color: (selectedFunction.teamRequired && selectedTeamIndex == null) ? Colors.transparent : Theme.of(context).colorScheme.primary),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 16),
+
+                                /// Function selector
+                                DropdownButtonFormField<QRFunction>(
+                                  initialValue: selectedFunction,
+                                  decoration: const InputDecoration(labelText: "Function"),
+                                  items: QRFunction.values
+                                      .where((f) => f != QRFunction.unknown)
+                                      .map((f) => DropdownMenuItem(value: f, child: Text(f.name)))
+                                      .toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      selectedFunction = value!;
+                                      selectedTeamIndex = null;
+                                    });
+                                  },
+                                ),
+
+                                const SizedBox(height: 12),
+
+                                /// Team selector (only if required)
+                                if (selectedFunction.teamRequired)
+                                  DropdownButtonFormField<int>(
+                                    initialValue: selectedTeamIndex,
+                                    decoration: const InputDecoration(labelText: "Team"),
+                                    items: List.generate(teamsList.length, (index) => DropdownMenuItem(value: index, child: Text(teamsList[index]))),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        selectedTeamIndex = value;
+                                      });
+                                    },
+                                  ),
+                              ],
+                            );
+                          }
+                        ),
+
+                        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close"))],
+                      );
+                    },
+                  ),
+                ),
               ),
             ],
           ),
@@ -252,8 +352,7 @@ class _SessionPageState extends State<SessionPage> {
                             key: ValueKey(gameRef.id),
                             gameId: gameRef.id,
                             builder: (categories, questions) {
-                              if(questions.isEmpty) return const SizedBox();
-
+                              if (questions.isEmpty) return const SizedBox();
 
                               var selectedCategoryGroupIndex = sessionData.selectedCategoryGroupIndex.clamp(0, categories.length - 1);
                               var selectedCategoryType = categories[selectedCategoryGroupIndex].$1;
@@ -276,8 +375,17 @@ class _SessionPageState extends State<SessionPage> {
                               AudioController audioController = AudioController();
                               audioController.setGameId(sessionData.gameRef!.id);
                               audioController.setSelectedCategoryGroupId(selectedCategoryGroupData?.id);
-                              audioController.setSelectedCategoryId((selectedFieldData.$1-categoryOffset) >= 0 && (selectedFieldData.$1-categoryOffset) < categories[selectedCategoryGroupIndex].$2.length ? categories[selectedCategoryGroupIndex].$2[selectedFieldData.$1-categoryOffset].id : null);
-                              audioController.setSelectedQuestionId(selectedFieldData.$1 >= 0 && selectedFieldData.$2 >= 0 ?questions[selectedFieldData.$1][selectedFieldData.$2][documentId] : null);
+                              audioController.setSelectedCategoryId(
+                                (selectedFieldData.$1 - categoryOffset) >= 0 &&
+                                        (selectedFieldData.$1 - categoryOffset) < categories[selectedCategoryGroupIndex].$2.length
+                                    ? categories[selectedCategoryGroupIndex].$2[selectedFieldData.$1 - categoryOffset].id
+                                    : null,
+                              );
+                              audioController.setSelectedQuestionId(
+                                selectedFieldData.$1 >= 0 && selectedFieldData.$2 >= 0
+                                    ? questions[selectedFieldData.$1][selectedFieldData.$2][documentId]
+                                    : null,
+                              );
 
                               return Column(
                                 mainAxisSize: MainAxisSize.min,
@@ -440,7 +548,7 @@ class _SessionPageState extends State<SessionPage> {
                                                 buzzeredFrom: buzzeredTeam.sublist(1),
                                                 currentState: HomePageState.questionBuzzered.name,
                                                 points: pointsList,
-                                                playEffect: musicEffectAnswerWrong
+                                                playEffect: musicEffectAnswerWrong,
                                               });
                                             } else {
                                               sessionRef.update({
@@ -542,7 +650,7 @@ class _SessionPageState extends State<SessionPage> {
                                                 playedFields: FieldValue.arrayUnion([
                                                   if (selectedFieldData.$1 != -1) "${selectedFieldData.$1}:${selectedFieldData.$2}",
                                                 ]),
-                                                playEffect: musicEffectAnswerClosed
+                                                playEffect: musicEffectAnswerClosed,
                                               }..addAll(resetSessionConfig),
                                             );
                                           },
@@ -555,30 +663,45 @@ class _SessionPageState extends State<SessionPage> {
                                     ],
                                   ),
                                   SizedBox(height: 16),
-                              if(sessionData.sessionData[playMusic] != null) ElevatedButton(onPressed: () {
-                                sessionRef.update({playMusic: null});
-                              }, child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.stop), Text("Stop Music")]))
-                              else for(String music in [musicCalm, musicExciting, musicBackground]) ElevatedButton(onPressed: () {
-                                sessionRef.update({playMusic: music});
-                              }, child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.music_note), Text("Play $music")])),
-                              FutureBuilder(future: audioController.getAvailableEffects(), builder: (context, snapshot) {
-                                if (!snapshot.hasData) {
-                                  return CircularProgressIndicator();
-                                }
-                                List<String> effects = snapshot.data!;
-                                return Wrap(
-                                  spacing: 8,
-                                  children: [
-                                    for (String effect in effects)
+                                  if (sessionData.sessionData[playMusic] != null)
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        sessionRef.update({playMusic: null});
+                                      },
+                                      child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.stop), Text("Stop Music")]),
+                                    )
+                                  else
+                                    for (String music in [musicCalm, musicExciting, musicBackground])
                                       ElevatedButton(
                                         onPressed: () {
-                                          sessionRef.update({playEffect: effect});
+                                          sessionRef.update({playMusic: music});
                                         },
-                                        child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.volume_up), Text("Play $effect")]),
+                                        child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.music_note), Text("Play $music")]),
                                       ),
-                                  ],
-                                );
-                              },),
+                                  FutureBuilder(
+                                    future: audioController.getAvailableEffects(),
+                                    builder: (context, snapshot) {
+                                      if (!snapshot.hasData) {
+                                        return CircularProgressIndicator();
+                                      }
+                                      List<String> effects = snapshot.data!;
+                                      return Wrap(
+                                        spacing: 8,
+                                        children: [
+                                          for (String effect in effects)
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                sessionRef.update({playEffect: effect});
+                                              },
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [const Icon(Icons.volume_up), Text("Play $effect")],
+                                              ),
+                                            ),
+                                        ],
+                                      );
+                                    },
+                                  ),
                                 ],
                               );
                             },

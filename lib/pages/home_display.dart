@@ -70,13 +70,13 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
     super.dispose();
   }
 
-  void playSound(int teamIndex) async {
+  void playSound(int? teamIndex) async {
     String sessionId = prefs.getString("currentSession") ?? "";
     final Directory appSupportDir = await getApplicationSupportDirectory();
     final File file = File('${appSupportDir.path}/$sessionId/team_sound$teamIndex');
 
     final player = AudioPlayer();
-    if (await file.exists()) {
+    if (teamIndex != null && await file.exists()) {
       await player.play(DeviceFileSource(file.path));
     } else {
       await player.play(AssetSource("buzzer.mp3"));
@@ -189,8 +189,14 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
                   AudioController audioController = AudioController();
                   audioController.setGameId(sessionData.gameRef!.id);
                   audioController.setSelectedCategoryGroupId(selectedCategoryGroupData?.id);
-                  audioController.setSelectedCategoryId(displayedSelectedFieldData.$1 >= 0 && displayedSelectedFieldData.$1 < categories[selectedCategoryGroupIndex].$2.length ? categories[selectedCategoryGroupIndex].$2[displayedSelectedFieldData.$1].id : null);
-                  audioController.setSelectedQuestionId(selectedFieldData.$1 >= 0 && selectedFieldData.$2 >= 0 ?questions[selectedFieldData.$1][selectedFieldData.$2][documentId] : null);
+                  audioController.setSelectedCategoryId(
+                    displayedSelectedFieldData.$1 >= 0 && displayedSelectedFieldData.$1 < categories[selectedCategoryGroupIndex].$2.length
+                        ? categories[selectedCategoryGroupIndex].$2[displayedSelectedFieldData.$1].id
+                        : null,
+                  );
+                  audioController.setSelectedQuestionId(
+                    selectedFieldData.$1 >= 0 && selectedFieldData.$2 >= 0 ? questions[selectedFieldData.$1][selectedFieldData.$2][documentId] : null,
+                  );
                   audioController.setFiles();
 
                   //execute all the game Logic, like buzzers, sound etc
@@ -353,7 +359,7 @@ class _HomeDisplayPageState extends State<HomeDisplayPage> {
     var playing = sessionData.playing;
     var state = sessionData.state;
     var selectedFieldData = sessionData.selectedFieldData;
-AudioController audioController = AudioController();
+    AudioController audioController = AudioController();
 
     if (mediaPlaying != playing) {
       if (playing == null) {
@@ -363,13 +369,17 @@ AudioController audioController = AudioController();
           DeviceFileSource("${appSupportDir.path}/${sessionData.gameRef!.id}/${questions[selectedFieldData.$1][selectedFieldData.$2][music]}"),
         );
         audioController.stopAllMusic();
-      } else if (playing){
+      } else if (playing) {
         mediaPlayer.resume();
-audioController.stopAllMusic();
-      }
-      else
+        audioController.stopAllMusic();
+      } else
         mediaPlayer.pause();
       mediaPlaying = playing;
+    }
+
+    if(sessionData.playBuzzer ?? false){
+      playSound(sessionData.buzzeredTeam.lastOrNull);
+      FirebaseFirestore.instance.collection(sessions).doc(prefs.getString("currentSession")).update({playBuzzer: false});
     }
 
     String? playMusicEffect = sessionData.sessionData[playEffect];
@@ -377,8 +387,7 @@ audioController.stopAllMusic();
       print("Playing effect $playMusicEffect");
       audioController.playEffect(playMusicEffect);
       FirebaseFirestore.instance.collection(sessions).doc(prefs.getString("currentSession")).update({playEffect: null});
-    }
-    else {
+    } else {
       audioController.stopAllMusic();
     }
 
@@ -407,29 +416,47 @@ audioController.stopAllMusic();
           (questionBuzzerable && (state == HomePageState.question || (state == HomePageState.questionBuzzered && sessionData.enableBuzzerQueue)))) {
         buzzeredSubscription = SerialConnection().buzzerPressed.listen((event) {
           int teamIndex = sessionData.buzzerTeamMap[event] ?? -1;
-          if (teamIndex == -1) return;
-          if (state == HomePageState.question) {
-            //TODO check if it would be lower latency when [buzzerTeam] set manually
-            sessionUpdate({
-              buzzeredFrom: [teamIndex],
-              currentState: HomePageState.questionBuzzered.name,
-              playingFrom: false,
-              playMusic: null,
-            });
-            playSound(teamIndex);
-          } else if (state == HomePageState.questionBuzzered && sessionData.enableBuzzerQueue && !sessionData.buzzeredTeam.contains(teamIndex)) {
-            sessionUpdate({
-              buzzeredFrom: FieldValue.arrayUnion([teamIndex]),
-            });
-            playSound(teamIndex);
-          } else if (state == HomePageState.buzzerTest) {
-            sessionUpdate({
-              buzzeredFrom: [teamIndex],
-            });
-            playSound(teamIndex);
-          }
+          buzzer(teamIndex: teamIndex, questions: questions, sessionData: sessionData, sessionUpdate: sessionUpdate, playSound: playSound);
         });
       }
+    }
+  }
+}
+
+Future<void> buzzer({
+  required int teamIndex,
+  required List<List<Map<String, dynamic>>> questions,
+  required SessionData sessionData,
+  required Future<void> sessionUpdate(Map<Object, Object?> data),
+  required void playSound(int teamIndex)
+}) async {
+  var state = sessionData.state;
+  var selectedFieldData = sessionData.selectedFieldData;
+  bool questionBuzzerable = selectedFieldData.$1 >= 0 && Question.fromData(questions[selectedFieldData.$1][selectedFieldData.$2]).buzzerable();
+
+  //listen to the buzzer if in buzzer test or an open question or a question already buzzered with buzzerqueue enabled
+  if (state == HomePageState.buzzerTest ||
+      (questionBuzzerable && (state == HomePageState.question || (state == HomePageState.questionBuzzered && sessionData.enableBuzzerQueue)))) {
+    if (teamIndex == -1) return;
+    if (state == HomePageState.question) {
+      //TODO check if it would be lower latency when [buzzerTeam] set manually
+      sessionUpdate({
+        buzzeredFrom: [teamIndex],
+        currentState: HomePageState.questionBuzzered.name,
+        playingFrom: false,
+        playMusic: null,
+      });
+      playSound(teamIndex);
+    } else if (state == HomePageState.questionBuzzered && sessionData.enableBuzzerQueue && !sessionData.buzzeredTeam.contains(teamIndex)) {
+      sessionUpdate({
+        buzzeredFrom: FieldValue.arrayUnion([teamIndex]),
+      });
+      playSound(teamIndex);
+    } else if (state == HomePageState.buzzerTest) {
+      sessionUpdate({
+        buzzeredFrom: [teamIndex],
+      });
+      playSound(teamIndex);
     }
   }
 }

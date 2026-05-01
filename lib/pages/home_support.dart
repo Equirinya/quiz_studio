@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:quiz_show/pages/about.dart';
+import 'package:quiz_show/pages/companion.dart';
 import 'package:quiz_show/pages/games.dart';
 import 'package:quiz_show/pages/session_controller.dart';
 import 'package:quiz_show/pages/settings.dart';
@@ -30,7 +31,8 @@ class _HomeSupportPageState extends State<HomeSupportPage> {
         index: _selectedIndex,
         children: const [
           GamesPage(),
-          SessionPage()
+          SessionPage(),
+          CompanionPage(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -50,6 +52,11 @@ class _HomeSupportPageState extends State<HomeSupportPage> {
             selectedIcon: Icon(Icons.gamepad),
             icon: Icon(Icons.gamepad_outlined),
             label: "Session",
+          ),
+          NavigationDestination(
+            selectedIcon: Icon(Icons.phone_android),
+            icon: Icon(Icons.phone_android_outlined),
+            label: "Companion",
           ),
         ],
       ),
