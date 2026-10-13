@@ -6,7 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'core/version_gate.dart';
+import 'core/widgets/dialogs.dart';
 import 'features/auth/auth_gate.dart';
+import 'features/games/media_service.dart';
+import 'features/games/pages/games_page.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -16,6 +19,7 @@ void main() async {
     windowManager.setTitle("Quiz Studio");
   }
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await MediaService.instance.init();
   runApp(const MyApp());
 }
 
@@ -65,25 +69,33 @@ ThemeData _buildTheme(Brightness brightness) {
   );
 }
 
-/// Placeholder until the games, session and presenter pages exist.
+/// The games list for now; session and presenter pages join it later.
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
+  Future<void> _signOut(BuildContext context) async {
+    final guest = FirebaseAuth.instance.currentUser?.isAnonymous ?? false;
+    final sure = await confirm(
+      context,
+      title: "Sign out",
+      message: guest
+          ? "You are signed in as a guest. Signing out loses this account and the games only it can access."
+          : "You can sign in again with your email address and password.",
+      action: "Sign out",
+    );
+    if (sure) await FirebaseAuth.instance.signOut();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
-      appBar: AppBar(title: const Text("Quiz Studio")),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(user == null ? "" : (user.isAnonymous ? "Signed in as guest" : "Signed in as ${user.email}")),
-            const SizedBox(height: 16),
-            OutlinedButton(onPressed: FirebaseAuth.instance.signOut, child: const Text("Sign out")),
-          ],
-        ),
+      appBar: AppBar(
+        title: const Text("Quiz Studio"),
+        actions: [
+          IconButton(icon: const Icon(Icons.logout), tooltip: "Sign out", onPressed: () => _signOut(context)),
+        ],
       ),
+      body: const GamesPage(),
     );
   }
 }
