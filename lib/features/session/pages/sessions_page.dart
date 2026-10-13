@@ -5,6 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:quiz_show/core/widgets/dialogs.dart';
+import 'package:quiz_show/features/audio/audio_director.dart';
+import 'package:quiz_show/features/audio/audioplayers_backend.dart';
+import 'package:quiz_show/features/games/media_service.dart';
+import 'package:quiz_show/features/player/pages/join_session_page.dart';
+import 'package:quiz_show/features/session/pages/connect_devices_page.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
@@ -62,10 +67,24 @@ class _SessionsPageState extends State<SessionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _create,
-        icon: const Icon(Icons.add),
-        label: const Text("New session"),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'joinSession',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const JoinSessionPage())),
+            tooltip: "Join a session with a code",
+            child: const Icon(Icons.qr_code_scanner),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: 'createSession',
+            onPressed: _create,
+            icon: const Icon(Icons.add),
+            label: const Text("New session"),
+          ),
+        ],
       ),
       body: StreamBuilder<List<SessionSummary>>(
         stream: _sessions,
@@ -120,10 +139,13 @@ class _SessionsPageState extends State<SessionsPage> {
 
 /// Controls a session that another device presents.
 class ControlPage extends StatefulWidget {
-  const ControlPage({super.key, required this.sessionId, required this.title});
+  const ControlPage({super.key, required this.sessionId, required this.title, this.asMember = false});
 
   final String sessionId;
   final String title;
+
+  /// Joined with a code rather than hosting: no join codes to hand out.
+  final bool asMember;
 
   @override
   State<ControlPage> createState() => _ControlPageState();
@@ -161,11 +183,25 @@ class _ControlPageState extends State<ControlPage> {
                   )
                 : const SizedBox(),
           ),
-          Expanded(child: ControllerView(connection: _connection)),
+          Expanded(
+            child: ControllerView(
+              connection: _connection,
+              onConnectDevices: widget.asMember ? null : () => openConnectDevices(context, _connection),
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+void openConnectDevices(BuildContext context, SessionConnection connection) {
+  Navigator.of(context).push(MaterialPageRoute(
+    builder: (_) => ConnectDevicesPage(
+      sessionId: connection.sessionId,
+      teams: connection.state.value?.teams ?? const [],
+    ),
+  ));
 }
 
 /// Makes this device the presenter: it runs the show and displays it.
@@ -180,6 +216,7 @@ class PresentPage extends StatefulWidget {
 
 class _PresentPageState extends State<PresentPage> {
   SessionConnection? _connection;
+  AudioDirector? _audio;
   Object? _error;
   bool _fullscreen = false;
 
@@ -194,7 +231,21 @@ class _PresentPageState extends State<PresentPage> {
         return;
       }
       connection.displaced!.addListener(_onDisplaced);
-      setState(() => _connection = connection);
+      // Sound comes out of the presenting device only.
+      final audio = AudioDirector(
+        host: connection.host!,
+        backend: AudioplayersBackend(),
+        resolve: (gameId, name) {
+          final file = MediaService.instance.localFile(gameId, name);
+          return file.existsSync() ? file.path : null;
+        },
+      );
+      // Files still downloading when a sound was asked for start once they are in.
+      connection.missingMedia.addListener(audio.sync);
+      setState(() {
+        _connection = connection;
+        _audio = audio;
+      });
     }, onError: (Object error) {
       if (mounted) setState(() => _error = error);
     });
@@ -223,6 +274,9 @@ class _PresentPageState extends State<PresentPage> {
   @override
   void dispose() {
     _connection?.displaced?.removeListener(_onDisplaced);
+    final audio = _audio;
+    if (audio != null) _connection?.missingMedia.removeListener(audio.sync);
+    audio?.dispose();
     _connection?.dispose();
     if (_fullscreen) windowManager.setFullScreen(false);
     super.dispose();
@@ -239,7 +293,12 @@ class _PresentPageState extends State<PresentPage> {
     return Scaffold(
       endDrawer: Drawer(
         width: 460,
-        child: SafeArea(child: ControllerView(connection: connection)),
+        child: SafeArea(
+          child: ControllerView(
+            connection: connection,
+            onConnectDevices: () => openConnectDevices(context, connection),
+          ),
+        ),
       ),
       body: Stack(
         children: [

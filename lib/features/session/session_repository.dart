@@ -118,6 +118,30 @@ class SessionRepository {
     return SessionJoinLink(sessionId: sessionId, token: token, role: role, teamId: teamId);
   }
 
+  /// The join links for a controller and for each team, reusing tokens that
+  /// exist already so codes shown earlier keep working. Host only.
+  Future<({SessionJoinLink controller, Map<String, SessionJoinLink> players})> joinLinks(
+    String sessionId,
+    Iterable<String> teamIds,
+  ) async {
+    final existing = await session(sessionId).collection('tokens').get();
+    SessionJoinLink? controller;
+    final players = <String, SessionJoinLink>{};
+    for (final doc in existing.docs) {
+      final teamId = doc.data()['teamId'];
+      if (doc.data()['role'] == 'controller') {
+        controller ??= SessionJoinLink(sessionId: sessionId, token: doc.id, role: Role.controller);
+      } else if (teamId is String) {
+        players.putIfAbsent(teamId, () => SessionJoinLink(sessionId: sessionId, token: doc.id, role: Role.player, teamId: teamId));
+      }
+    }
+    controller ??= await createJoinLink(sessionId, Role.controller);
+    for (final teamId in teamIds) {
+      players[teamId] ??= await createJoinLink(sessionId, Role.player, teamId: teamId);
+    }
+    return (controller: controller, players: players);
+  }
+
   /// Joins someone else's session with a scanned link.
   Future<void> join(SessionJoinLink link, {String name = ''}) =>
       session(link.sessionId).collection('members').doc(_uid).set({

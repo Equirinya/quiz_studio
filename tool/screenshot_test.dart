@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
+import 'package:quiz_show/features/player/pages/player_page.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
@@ -139,5 +140,39 @@ void main() {
   testWidgets('presenter: feud', (tester) async {
     await screen(tester, const [OpenQuestion(feud), Buzz('blue'), FeudToggle(0), FeudToggle(2), FeudWrong()]);
     await shot('presenter_feud');
+  });
+
+  Future<void> player(WidgetTester tester, List<Command> commands) async {
+    tester.view.physicalSize = const Size(412, 892);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    host = SessionHost(initial: fixtureState(), game: fixtureGame());
+    addTearDown(host.dispose);
+    for (final command in commands) {
+      host.dispatch(command);
+    }
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        body: SafeArea(child: PlayerView(view: PublicView(host.publicState), teamId: 'red', send: (_) {}, onLeave: () {})),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
+  testWidgets('player: buzzer', (tester) async {
+    await player(tester, const [AdjustPoints('red', 300), OpenQuestion(free)]);
+    await shot('player_buzzer');
+  });
+
+  testWidgets('player: waiting', (tester) async {
+    await player(tester, const [OpenQuestion(free), Buzz('blue')]);
+    await shot('player_waiting');
+  });
+
+  testWidgets('player: choice', (tester) async {
+    await player(tester, const [OpenQuestion(abcd), Reveal(1), Reveal(1), OpenAnswers(AnswerKind.choice)]);
+    await shot('player_choice');
   });
 }

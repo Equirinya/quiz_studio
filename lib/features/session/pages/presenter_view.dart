@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/features/games/media_service.dart';
+import 'package:quiz_show/features/session/boards/wheel_board.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
 
@@ -58,7 +59,12 @@ class PresenterView extends StatelessWidget {
                               ? _QuestionDisplay(game: game, state: state, question: question, unit: unit)
                               : group == null
                                   ? const SizedBox()
-                                  : _BoardGrid(group: group, state: state, unit: unit),
+                                  : group.type == BoardType.wheel
+                                      ? LayoutBuilder(
+                                          builder: (context, box) =>
+                                              WheelBoard(group: group, state: state, size: box.biggest),
+                                        )
+                                      : _BoardGrid(group: group, state: state, unit: unit),
                         ),
                       ],
                     ),
@@ -115,8 +121,8 @@ class _Scores extends StatelessWidget {
   }
 }
 
-/// A plain grid of categories and point fields. Stands in for every board
-/// type until the wheel, map and graph renderers are in.
+/// A plain grid of categories and point fields. Stands in for the map and
+/// graph boards until those renderers are in.
 class _BoardGrid extends StatelessWidget {
   const _BoardGrid({required this.group, required this.state, required this.unit});
 
