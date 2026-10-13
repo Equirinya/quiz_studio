@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
@@ -27,7 +26,7 @@ void main() {
           children: [
             SizedBox(
               width: 460,
-              child: ControllerView(connection: connection, games: const Stream<List<GameSummary>>.empty()),
+              child: ControllerView(connection: connection),
             ),
             Expanded(child: PresenterView(connection: connection)),
           ],

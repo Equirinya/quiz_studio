@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/core/widgets/dialogs.dart';
-import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/pages/game_editor_page.dart' show BoardTypeIcon;
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
@@ -18,12 +17,9 @@ import 'package:quiz_show/game/game.dart';
 /// It only ever sends commands. What it shows comes back from the presenting
 /// device, so two controllers can never disagree about the state.
 class ControllerView extends StatefulWidget {
-  const ControllerView({super.key, required this.connection, this.games, this.onConnectDevices, this.onBuzzerSetup});
+  const ControllerView({super.key, required this.connection, this.onConnectDevices, this.onBuzzerSetup});
 
   final SessionConnection connection;
-
-  /// The games to offer; the signed-in user's when left out.
-  final Stream<List<GameSummary>>? games;
 
   /// Opens the screen with the join codes; hidden when null.
   final VoidCallback? onConnectDevices;
@@ -36,9 +32,6 @@ class ControllerView extends StatefulWidget {
 }
 
 class _ControllerViewState extends State<ControllerView> {
-  late final Stream<List<GameSummary>> _games =
-      (widget.games ?? GameRepository.instance.watchMyGames()).asBroadcastStream();
-
   SessionConnection get _c => widget.connection;
 
   void _send(Command command) => _c.send(command);
@@ -88,7 +81,7 @@ class _ControllerViewState extends State<ControllerView> {
               boardSuggested: game != null && state.current == null && state.phase != Phase.buzzerTest,
               answersActive: state.answerRound != null,
               musicActive: state.music != null,
-              onBoard: game == null ? _openSetup : _openBoard,
+              onBoard: _openBoard,
               onSounds: _openSounds,
               onAnswers: _openAnswers,
               onSetup: _openSetup,
@@ -189,7 +182,7 @@ class _ControllerViewState extends State<ControllerView> {
   // ── sheets ─────────────────────────────────────────────────────────────────
 
   void _openBoard() => _sheet((context, state, game) => game == null
-      ? const SizedBox(height: 120, child: Center(child: Text("Pick a game first.")))
+      ? const SizedBox(height: 120, child: Center(child: Text("This session has no game yet.")))
       : _BoardSheet(state: state, game: game, send: _send));
 
   void _openSounds() => _sheet((context, state, game) => _SoundsSheet(state: state, game: game, send: _send));
@@ -203,7 +196,6 @@ class _ControllerViewState extends State<ControllerView> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _gamePicker(state),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text("Queue buzzers"),
@@ -252,32 +244,6 @@ class _ControllerViewState extends State<ControllerView> {
           ),
         );
       });
-
-  Widget _gamePicker(SessionState state) => StreamBuilder<List<GameSummary>>(
-        stream: _games,
-        builder: (context, snapshot) {
-          final games = (snapshot.data ?? const <GameSummary>[]).where((g) => g.role.seesEverything).toList();
-          return DropdownMenu<String>(
-            key: ValueKey('${state.gameId}/${games.length}'),
-            expandedInsets: EdgeInsets.zero,
-            label: const Text("Game"),
-            leadingIcon: const Icon(Icons.quiz_outlined),
-            initialSelection: games.any((g) => g.id == state.gameId) ? state.gameId : null,
-            dropdownMenuEntries: [for (final game in games) DropdownMenuEntry(value: game.id, label: game.name)],
-            onSelected: (gameId) async {
-              if (gameId == null || gameId == state.gameId) return;
-              final sure = state.played.isEmpty && state.current == null ||
-                  await confirm(
-                    context,
-                    title: "Switch game",
-                    message: "The board starts over. Teams and points stay.",
-                    action: "Switch",
-                  );
-              if (sure) _send(SetGame(gameId));
-            },
-          );
-        },
-      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -391,7 +357,7 @@ class _NowPanel extends StatelessWidget {
     if (game == null) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [status, const SizedBox(height: 24), const Center(child: Text("No game picked yet. Open Setup below."))],
+        children: [status, const SizedBox(height: 24), const Center(child: Text("No game picked yet. Choose one for this session in the sessions list.", textAlign: TextAlign.center))],
       );
     }
     if (q == null) {

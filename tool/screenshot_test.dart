@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/player/pages/player_page.dart';
+import 'package:quiz_show/features/session/pages/sessions_page.dart';
+import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
@@ -54,7 +56,6 @@ void main() {
         appBar: AppBar(title: const Text("Quiz night")),
         body: ControllerView(
           connection: connection,
-          games: const Stream<List<GameSummary>>.empty(),
           onConnectDevices: () {},
         ),
       ),
@@ -174,5 +175,54 @@ void main() {
   testWidgets('player: choice', (tester) async {
     await player(tester, const [OpenQuestion(abcd), Reveal(1), Reveal(1), OpenAnswers(AnswerKind.choice)]);
     await shot('player_choice');
+  });
+
+  const games = [
+    GameSummary(id: 'g1', name: 'Christmas quiz 2026', role: GameRole.admin),
+    GameSummary(id: 'g2', name: 'Pub quiz', role: GameRole.full),
+  ];
+
+  Future<void> page(WidgetTester tester, Widget body) async {
+    tester.view.physicalSize = const Size(412, 892);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(appBar: AppBar(title: const Text("Quiz Studio")), body: body),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
+  testWidgets('sessions: list', (tester) async {
+    await page(
+      tester,
+      SessionsList(
+        sessions: const [
+          SessionSummary(id: 's1', name: 'Quiz night', gameId: 'g1'),
+          SessionSummary(id: 's2', name: 'Birthday', gameId: null),
+        ],
+        gameNames: {for (final game in games) game.id: game.name},
+        onControl: (_) {},
+        onPresent: (_) {},
+        onChangeGame: (_) {},
+        onDelete: (_) {},
+      ),
+    );
+    await shot('sessions_list');
+  });
+
+  testWidgets('sessions: new', (tester) async {
+    await page(
+      tester,
+      Builder(
+        builder: (context) => Center(
+          child: TextButton(onPressed: () => showNewSessionSheet(context, games: games), child: const Text("open")),
+        ),
+      ),
+    );
+    await tapText(tester, find.text('open'));
+    await tapText(tester, find.text('Pub quiz'));
+    await shot('sessions_new');
   });
 }

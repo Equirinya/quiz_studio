@@ -11,6 +11,7 @@ import 'package:quiz_show/features/buzzers/buzzers_page.dart';
 import 'package:quiz_show/features/buzzers/serial_buzzers.dart';
 import 'package:quiz_show/game/game.dart';
 import 'dart:async';
+import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/player/pages/join_session_page.dart';
 import 'package:quiz_show/features/session/pages/connect_devices_page.dart';
@@ -29,13 +30,41 @@ class SessionsPage extends StatefulWidget {
 
 class _SessionsPageState extends State<SessionsPage> {
   late final Stream<List<SessionSummary>> _sessions = SessionRepository.instance.watchMySessions();
+  late final Stream<List<GameSummary>> _games = GameRepository.instance.watchMyGames().asBroadcastStream();
+  List<GameSummary> _playable = const [];
+  StreamSubscription<List<GameSummary>>? _gamesSub;
 
   SessionRepository get _repo => SessionRepository.instance;
 
+  @override
+  void initState() {
+    super.initState();
+    // A session can only play games its host may read in full.
+    _gamesSub = _games.listen((games) {
+      if (mounted) setState(() => _playable = games.where((g) => g.role.seesEverything).toList());
+    }, onError: (_) {});
+  }
+
+  @override
+  void dispose() {
+    _gamesSub?.cancel();
+    super.dispose();
+  }
+
   Future<void> _create() async {
-    final name = await promptText(context, title: "New session", label: "Name", initial: "Quiz night");
-    if (name == null || !mounted) return;
-    await guarded(context, () => _repo.createSession(name: name), failure: "Could not create the session.");
+    final result = await showNewSessionSheet(context, games: _playable);
+    if (result == null || !mounted) return;
+    await guarded(
+      context,
+      () => _repo.createSession(name: result.name, gameId: result.gameId),
+      failure: "Could not create the session.",
+    );
+  }
+
+  Future<void> _changeGame(SessionSummary session) async {
+    final gameId = await showGamePicker(context, games: _playable, selected: session.gameId);
+    if (gameId == null || gameId == session.gameId || !mounted) return;
+    await guarded(context, () => _repo.setGame(session.id, gameId));
   }
 
   Future<void> _present(SessionSummary session) async {
@@ -96,46 +125,222 @@ class _SessionsPageState extends State<SessionsPage> {
           if (snapshot.hasError) return const Center(child: Text("Could not load your sessions."));
           final sessions = snapshot.data;
           if (sessions == null) return const Center(child: CupertinoActivityIndicator());
-          if (sessions.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Text(
-                  "A session is one evening's show: its teams, points and progress. "
-                  "Create one, present it on the big screen and control it from your phone.",
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            );
-          }
-          return ListView(
-            padding: const EdgeInsets.only(bottom: 96),
-            children: [
-              for (final session in sessions)
-                ListTile(
-                  leading: const Icon(Icons.live_tv_outlined),
-                  title: Text(session.name.isEmpty ? "Unnamed" : session.name),
-                  subtitle: Text(session.gameId == null ? "No game picked yet" : "Tap to control"),
-                  onTap: () => _control(session),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+          return SessionsList(
+            sessions: sessions,
+            gameNames: {for (final game in _playable) game.id: game.name},
+            onControl: _control,
+            onPresent: _present,
+            onChangeGame: _changeGame,
+            onDelete: _delete,
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// The session cards. Takes plain data so it can be shown without a backend.
+class SessionsList extends StatelessWidget {
+  const SessionsList({
+    super.key,
+    required this.sessions,
+    required this.gameNames,
+    required this.onControl,
+    required this.onPresent,
+    required this.onChangeGame,
+    required this.onDelete,
+  });
+
+  final List<SessionSummary> sessions;
+  final Map<String, String> gameNames;
+  final ValueChanged<SessionSummary> onControl;
+  final ValueChanged<SessionSummary> onPresent;
+  final ValueChanged<SessionSummary> onChangeGame;
+  final ValueChanged<SessionSummary> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (sessions.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text(
+            "A session is one evening's show: its teams, points and progress. "
+            "Create one, present it on the big screen and control it from your phone.",
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 140),
+      children: [
+        for (final session in sessions)
+          Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      FilledButton.tonalIcon(
-                        onPressed: () => _present(session),
-                        icon: const Icon(Icons.tv),
-                        label: const Text("Present"),
+                      Expanded(
+                        child: Text(session.name.isEmpty ? "Unnamed" : session.name, style: theme.textTheme.titleMedium),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        tooltip: "Delete",
-                        onPressed: () => _delete(session),
+                      PopupMenuButton<VoidCallback>(
+                        onSelected: (action) => action(),
+                        itemBuilder: (context) => [
+                          PopupMenuItem(value: () => onChangeGame(session), child: const Text("Change game")),
+                          PopupMenuItem(value: () => onDelete(session), child: const Text("Delete")),
+                        ],
                       ),
                     ],
                   ),
-                ),
-            ],
-          );
-        },
+                  // The game is part of the card, so it is picked here and
+                  // not somewhere inside the running show.
+                  ActionChip(
+                    avatar: const Icon(Icons.quiz_outlined, size: 18),
+                    label: Text(
+                      session.gameId == null ? "Choose a game" : (gameNames[session.gameId] ?? "A game you cannot open"),
+                    ),
+                    onPressed: () => onChangeGame(session),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () => onPresent(session),
+                          icon: const Icon(Icons.tv),
+                          label: const Text("Present"),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                          onPressed: () => onControl(session),
+                          icon: const Icon(Icons.tune),
+                          label: const Text("Control"),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Lets the user pick one of [games]; returns its id.
+Future<String?> showGamePicker(BuildContext context, {required List<GameSummary> games, String? selected}) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (context) => _GameChoices(
+      games: games,
+      selected: selected,
+      onPicked: (id) => Navigator.of(context).pop(id),
+    ),
+  );
+}
+
+class _GameChoices extends StatelessWidget {
+  const _GameChoices({required this.games, required this.selected, required this.onPicked});
+
+  final List<GameSummary> games;
+  final String? selected;
+  final ValueChanged<String> onPicked;
+
+  @override
+  Widget build(BuildContext context) {
+    if (games.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Text("You have no games yet. Create one in the Games tab first.", textAlign: TextAlign.center),
+      );
+    }
+    return ListView(
+      shrinkWrap: true,
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+      children: [
+        for (final game in games)
+          ListTile(
+            leading: Icon(game.id == selected ? Icons.radio_button_checked : Icons.radio_button_off),
+            title: Text(game.name.isEmpty ? "Unnamed" : game.name),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            onTap: () => onPicked(game.id),
+          ),
+      ],
+    );
+  }
+}
+
+/// Name and game for a new session, in one step.
+Future<({String name, String? gameId})?> showNewSessionSheet(BuildContext context, {required List<GameSummary> games}) {
+  return showModalBottomSheet<({String name, String? gameId})>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (context) => _NewSessionSheet(games: games),
+  );
+}
+
+class _NewSessionSheet extends StatefulWidget {
+  const _NewSessionSheet({required this.games});
+
+  final List<GameSummary> games;
+
+  @override
+  State<_NewSessionSheet> createState() => _NewSessionSheetState();
+}
+
+class _NewSessionSheetState extends State<_NewSessionSheet> {
+  final TextEditingController _name = TextEditingController(text: "Quiz night");
+  late String? _gameId = widget.games.length == 1 ? widget.games.first.id : null;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text("New session", style: theme.textTheme.titleLarge),
+          const SizedBox(height: 12),
+          TextField(controller: _name, decoration: const InputDecoration(labelText: "Name")),
+          const SizedBox(height: 16),
+          Text("Game", style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.35),
+            child: _GameChoices(games: widget.games, selected: _gameId, onPicked: (id) => setState(() => _gameId = id)),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 52,
+            child: FilledButton(
+              onPressed: () {
+                final name = _name.text.trim();
+                Navigator.of(context).pop((name: name.isEmpty ? "Quiz night" : name, gameId: _gameId));
+              },
+              child: Text(_gameId == null ? "Create without a game" : "Create"),
+            ),
+          ),
+        ],
       ),
     );
   }

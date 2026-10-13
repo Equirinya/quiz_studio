@@ -89,6 +89,11 @@ class SessionRepository {
 
   Future<void> renameSession(String sessionId, String name) => session(sessionId).update({'name': name});
 
+  /// Chooses the game a session plays. The presenting device picks the change
+  /// up from the document and resets the board; if none is presenting, the
+  /// next one to start does.
+  Future<void> setGame(String sessionId, String? gameId) => session(sessionId).update({'gameId': gameId});
+
   /// Deletes the session and what belongs to it. Best effort for the
   /// subcollections: a document that slips through is unreachable anyway.
   Future<void> deleteSession(String sessionId) async {
@@ -250,8 +255,13 @@ class FirestoreHostLink {
     _states = host.states.listen((_) => _publish());
 
     _session = _ref.snapshots().listen((doc) {
-      final presenting = doc.data()?['hostDevice'];
+      final data = doc.data();
+      if (data == null) return;
+      final presenting = data['hostDevice'];
       if (!doc.metadata.hasPendingWrites && presenting is String && presenting != deviceId) displaced.value = true;
+      // The game is chosen on the session document, outside the show.
+      final gameId = data['gameId'] as String?;
+      if (gameId != host.state.gameId) host.dispatch(SetGame(gameId));
     });
 
     _commands = _ref.collection('commands').orderBy('createdAt').snapshots().listen((snapshot) {
@@ -294,7 +304,6 @@ class FirestoreHostLink {
         final batch = SessionRepository.instance._db.batch()
           ..update(_ref, {
             'state': state.toJson(),
-            'gameId': state.gameId,
             'updatedAt': FieldValue.serverTimestamp(),
           })
           ..set(_ref.collection('public').doc('state'), host.publicState);
