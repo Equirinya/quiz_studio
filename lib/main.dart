@@ -10,6 +10,7 @@ import 'core/widgets/dialogs.dart';
 import 'features/auth/auth_gate.dart';
 import 'features/games/media_service.dart';
 import 'features/games/pages/games_page.dart';
+import 'features/session/pages/sessions_page.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -69,11 +70,18 @@ ThemeData _buildTheme(Brightness brightness) {
   );
 }
 
-/// The games list for now; session and presenter pages join it later.
-class HomePage extends StatelessWidget {
+/// Games to write, sessions to run.
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
-  Future<void> _signOut(BuildContext context) async {
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _tab = 0;
+
+  Future<void> _signOut() async {
     final guest = FirebaseAuth.instance.currentUser?.isAnonymous ?? false;
     final sure = await confirm(
       context,
@@ -91,11 +99,17 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Quiz Studio"),
-        actions: [
-          IconButton(icon: const Icon(Icons.logout), tooltip: "Sign out", onPressed: () => _signOut(context)),
+        actions: [IconButton(icon: const Icon(Icons.logout), tooltip: "Sign out", onPressed: _signOut)],
+      ),
+      body: IndexedStack(index: _tab, children: const [GamesPage(), SessionsPage()]),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: (index) => setState(() => _tab = index),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz), label: "Games"),
+          NavigationDestination(icon: Icon(Icons.live_tv_outlined), selectedIcon: Icon(Icons.live_tv), label: "Sessions"),
         ],
       ),
-      body: const GamesPage(),
     );
   }
 }
