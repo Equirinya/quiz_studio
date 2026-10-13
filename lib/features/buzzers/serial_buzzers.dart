@@ -1,146 +1,146 @@
-import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:quiz_show/features/buzzers/serial_protocol.dart';
+import 'package:quiz_show/features/buzzers/buzzer_link.dart';
+import 'package:quiz_show/game/game.dart';
 
-enum SerialStatus { unsupported, notConfigured, disconnected, connected }
+/// The buzzer box's serial port through libserialport.
+class LibSerialBuzzerPort implements BuzzerPort {
+  SerialPort? _port;
 
-/// The buzzer box on a USB serial port of the presenting device. Port,
-/// thresholds and the buzzer-to-team mapping are remembered per device,
-/// because they describe hardware plugged into it.
-class SerialBuzzers {
-  SerialBuzzers._();
+  @override
+  List<String> listPorts() => SerialPort.availablePorts;
 
-  static final SerialBuzzers instance = SerialBuzzers._();
+  @override
+  bool open(String name) {
+    close();
+    final port = SerialPort(name);
+    if (!port.openReadWrite()) {
+      port.dispose();
+      return false;
+    }
+    final config = port.config
+      ..baudRate = 9600
+      ..bits = 8
+      ..stopBits = 1
+      ..parity = 0;
+    port.config = config;
+    // Whatever piled up before the app was listening is old news.
+    port.flush();
+    _port = port;
+    return true;
+  }
+
+  @override
+  Uint8List readAvailable() {
+    final port = _port;
+    if (port == null || !port.isOpen) throw StateError('port closed');
+    final waiting = port.bytesAvailable;
+    if (waiting < 0) throw StateError('port lost');
+    if (waiting == 0) return Uint8List(0);
+    // A negative timeout makes this return at once with what is there. Zero
+    // or more would block the whole app until that many bytes had arrived.
+    return port.read(waiting > 4096 ? 4096 : waiting, timeout: -1);
+  }
+
+  @override
+  void close() {
+    final port = _port;
+    _port = null;
+    if (port == null) return;
+    try {
+      port.close();
+    } catch (_) {}
+    try {
+      port.dispose();
+    } catch (_) {}
+  }
+}
+
+/// Assigns a pressed buzzer to a team. Pure, so it can be tested.
+///
+/// A buzzer that was assigned by hand belongs to that team for as long as
+/// the team exists. Any other buzzer falls back to position: buzzer 1 is the
+/// first team, buzzer 2 the second, and so on, which is right for a box whose
+/// buzzers are handed out in order.
+String? teamForBuzzer(int buzzerId, List<Team> teams, Map<int, String> assigned) {
+  final teamId = assigned[buzzerId];
+  if (teamId != null && teams.any((team) => team.id == teamId)) return teamId;
+  // A team with a buzzer of its own does not also answer to one by position.
+  final taken = {for (final entry in assigned.entries) if (teams.any((t) => t.id == entry.value)) entry.value};
+  final team = teams.elementAtOrNull(buzzerId);
+  return team == null || taken.contains(team.id) ? null : team.id;
+}
+
+/// The buzzer box plugged into this device, with everything remembered about
+/// it: the port, how hard a press has to be, and which buzzer is whose.
+class Buzzers {
+  Buzzers._();
+
+  static final Buzzers instance = Buzzers._();
 
   static bool get supported => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
-  final ValueNotifier<SerialStatus> status =
-      ValueNotifier(supported ? SerialStatus.notConfigured : SerialStatus.unsupported);
-
-  /// The latest reading of every buzzer seen so far.
-  final ValueNotifier<Map<int, int>> values = ValueNotifier(const {});
-
-  final StreamController<int> _pressed = StreamController<int>.broadcast();
-  final BuzzerEdgeDetector _detector = BuzzerEdgeDetector();
-  final SerialLineBuffer _lines = SerialLineBuffer();
+  final BuzzerLink link = BuzzerLink(supported ? LibSerialBuzzerPort() : null);
 
   SharedPreferences? _prefs;
-  SerialPort? _port;
-  Timer? _poll;
+  bool _started = false;
 
-  /// Ids of buzzers as they are pressed.
-  Stream<int> get pressed => _pressed.stream;
-
-  List<String> get availablePorts {
-    if (!supported) return const [];
-    try {
-      return SerialPort.availablePorts;
-    } catch (error) {
-      if (kDebugMode) print('Serial: could not list ports: $error');
-      return const [];
-    }
-  }
-
-  String? get portName => _prefs?.getString('serial_port');
-
-  int thresholdOf(int id) => _detector.thresholdOf(id);
-
-  /// Position of the team this buzzer belongs to; by default buzzer n is
-  /// team n.
-  int teamIndexOf(int id) => _prefs?.getInt('buzzer_team.$id') ?? id;
-
-  Future<void> setThreshold(int id, int threshold) async {
-    _detector.thresholds[id] = threshold;
-    await _prefs?.setInt('buzzer_threshold.$id', threshold);
-  }
-
-  Future<void> setTeamIndex(int id, int teamIndex) async => _prefs?.setInt('buzzer_team.$id', teamIndex);
-
-  /// Loads the settings and connects to the remembered port, if any.
+  /// Loads the settings and connects to the remembered port. If none was
+  /// chosen and exactly one port exists, that one is used.
   Future<void> start() async {
-    if (!supported) return;
+    if (!supported || _started) return;
+    _started = true;
     final prefs = _prefs ??= await SharedPreferences.getInstance();
     for (final key in prefs.getKeys()) {
       if (!key.startsWith('buzzer_threshold.')) continue;
       final id = int.tryParse(key.substring('buzzer_threshold.'.length));
       final value = prefs.getInt(key);
-      if (id != null && value != null) _detector.thresholds[id] = value;
+      if (id != null && value != null) link.detector.thresholds[id] = value;
     }
-    connect();
+    var port = prefs.getString('serial_port');
+    if (port == null) {
+      final ports = link.availablePorts;
+      if (ports.length == 1) port = ports.single;
+    }
+    link.use(port);
   }
 
   Future<void> selectPort(String? name) async {
     final prefs = _prefs ??= await SharedPreferences.getInstance();
     name == null ? await prefs.remove('serial_port') : await prefs.setString('serial_port', name);
-    connect();
+    link.use(name);
   }
 
-  /// (Re)opens the remembered port.
-  void connect() {
-    _close();
-    final name = portName;
-    if (name == null) {
-      status.value = SerialStatus.notConfigured;
-      return;
+  Future<void> setThreshold(int id, int threshold) async {
+    link.detector.thresholds[id] = threshold;
+    await (_prefs ??= await SharedPreferences.getInstance()).setInt('buzzer_threshold.$id', threshold);
+  }
+
+  /// Buzzers assigned by hand in [sessionId], as buzzer id to team id.
+  Map<int, String> assignments(String sessionId) {
+    final prefs = _prefs;
+    if (prefs == null) return const {};
+    final prefix = 'buzzer_team.$sessionId.';
+    final result = <int, String>{};
+    for (final key in prefs.getKeys().where((key) => key.startsWith(prefix))) {
+      final id = int.tryParse(key.substring(prefix.length));
+      final teamId = prefs.getString(key);
+      if (id != null && teamId != null) result[id] = teamId;
     }
-    try {
-      final port = SerialPort(name);
-      if (!port.openReadWrite()) {
-        status.value = SerialStatus.disconnected;
-        return;
-      }
-      final config = port.config
-        ..baudRate = 9600
-        ..bits = 8
-        ..stopBits = 1
-        ..parity = 0;
-      port.config = config;
-      _port = port;
-      status.value = SerialStatus.connected;
-      _poll = Timer.periodic(const Duration(milliseconds: 10), (_) => _read());
-    } catch (error) {
-      if (kDebugMode) print('Serial: could not open $name: $error');
-      status.value = SerialStatus.disconnected;
-    }
+    return result;
   }
 
-  void _read() {
-    final port = _port;
-    if (port == null) return;
-    try {
-      if (!port.isOpen) throw StateError('port closed');
-      final data = port.read(256, timeout: 0);
-      if (data.isEmpty) return;
-      for (final line in _lines.add(String.fromCharCodes(data))) {
-        final reading = parseBuzzerLine(line);
-        if (reading == null) continue;
-        values.value = {...values.value, ...reading};
-        _detector.update(reading).forEach(_pressed.add);
-      }
-    } catch (error) {
-      // Unplugged mid-show: say so instead of polling a dead port.
-      if (kDebugMode) print('Serial: read failed: $error');
-      _close();
-      status.value = SerialStatus.disconnected;
-    }
+  /// Gives [buzzerId] to [teamId], taking it from whoever had it; null frees it.
+  Future<void> assign(String sessionId, int buzzerId, String? teamId) async {
+    final prefs = _prefs ??= await SharedPreferences.getInstance();
+    final key = 'buzzer_team.$sessionId.$buzzerId';
+    teamId == null ? await prefs.remove(key) : await prefs.setString(key, teamId);
   }
 
-  void _close() {
-    _poll?.cancel();
-    _poll = null;
-    try {
-      _port?.close();
-    } catch (_) {}
-    _port = null;
-  }
-
-  void stop() {
-    _close();
-    if (supported) status.value = portName == null ? SerialStatus.notConfigured : SerialStatus.disconnected;
-  }
+  String? teamFor(String sessionId, int buzzerId, List<Team> teams) =>
+      teamForBuzzer(buzzerId, teams, assignments(sessionId));
 }

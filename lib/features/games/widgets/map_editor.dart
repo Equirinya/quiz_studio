@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -47,8 +48,41 @@ class _MapEditorState extends State<MapEditor> {
   /// the slider below it, so that dragging on the stage always moves things.
   final ScrollController _scroll = ScrollController();
 
+  /// While something is held against the left or right edge of the stage,
+  /// the stage scrolls that way and the thing travels with it.
+  Timer? _edgeScroll;
+  final GlobalKey _stageKey = GlobalKey();
+
+  void _dragNearEdge(Offset pointer, double canvasWidth, void Function(double dx, double dy) move) {
+    final box = _stageKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !_scroll.hasClients) return;
+    final x = box.globalToLocal(pointer).dx;
+    const margin = 48.0;
+    final direction = x < margin ? -1 : (x > box.size.width - margin ? 1 : 0);
+    if (direction == 0) {
+      _edgeScroll?.cancel();
+      _edgeScroll = null;
+      return;
+    }
+    _edgeScroll ??= Timer.periodic(const Duration(milliseconds: 16), (_) {
+      if (!mounted || !_scroll.hasClients) return;
+      final before = _scroll.offset;
+      final after = (before + direction * 14).clamp(0.0, _scroll.position.maxScrollExtent).toDouble();
+      if (after == before) return;
+      _scroll.jumpTo(after);
+      // Keep it under the finger: it moves on the canvas by what scrolled.
+      setState(() => move((after - before) / canvasWidth, 0));
+    });
+  }
+
+  void _stopEdgeScroll() {
+    _edgeScroll?.cancel();
+    _edgeScroll = null;
+  }
+
   @override
   void dispose() {
+    _edgeScroll?.cancel();
     _scroll.dispose();
     super.dispose();
   }
@@ -222,6 +256,7 @@ class _MapEditorState extends State<MapEditor> {
                         // what is on it.
                         final canvas = Size(box.maxWidth * layoutMap(_draft).widthFactor, box.maxHeight);
                         return SingleChildScrollView(
+                          key: _stageKey,
                           controller: _scroll,
                           scrollDirection: Axis.horizontal,
                           physics: const NeverScrollableScrollPhysics(),
@@ -388,10 +423,18 @@ class _MapEditorState extends State<MapEditor> {
             behavior: HitTestBehavior.opaque,
             onTap: onTap,
             onPanStart: (_) => _dragging = true,
-            onPanUpdate: (d) => setState(() => onMove(d.delta.dx / size.width, d.delta.dy / size.height)),
+            onPanUpdate: (d) {
+              setState(() => onMove(d.delta.dx / size.width, d.delta.dy / size.height));
+              _dragNearEdge(d.globalPosition, size.width, onMove);
+            },
             onPanEnd: (_) {
               _dragging = false;
+              _stopEdgeScroll();
               _save();
+            },
+            onPanCancel: () {
+              _dragging = false;
+              _stopEdgeScroll();
             },
             child: DecoratedBox(
               decoration: BoxDecoration(

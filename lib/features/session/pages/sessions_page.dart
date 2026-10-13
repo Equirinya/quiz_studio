@@ -8,6 +8,7 @@ import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/audio/audio_director.dart';
 import 'package:quiz_show/features/audio/audioplayers_backend.dart';
 import 'package:quiz_show/features/audio/team_sounds.dart';
+import 'package:quiz_show/features/buzzers/buzzer_link.dart';
 import 'package:quiz_show/features/buzzers/buzzers_page.dart';
 import 'package:quiz_show/features/buzzers/serial_buzzers.dart';
 import 'package:quiz_show/game/game.dart';
@@ -480,10 +481,13 @@ class _PresentPageState extends State<PresentPage> {
       connection.missingMedia.addListener(audio.sync);
       // The buzzer box is plugged into this device, so its presses go
       // straight into the host: no network in between.
-      SerialBuzzers.instance.start();
-      _buzzers = SerialBuzzers.instance.pressed.listen((id) {
-        final team = connection.host!.state.teams.elementAtOrNull(SerialBuzzers.instance.teamIndexOf(id));
-        if (team != null) connection.host!.dispatch(Buzz(team.id));
+      // Subscribed once, for as long as this device presents. Whether a
+      // press counts right now is decided by the host, not by listening or
+      // not listening.
+      Buzzers.instance.start();
+      _buzzers = Buzzers.instance.link.pressed.listen((id) {
+        final teamId = Buzzers.instance.teamFor(widget.sessionId, id, connection.host!.state.teams);
+        if (teamId != null) connection.host!.dispatch(Buzz(teamId));
       });
       setState(() {
         _connection = connection;
@@ -518,7 +522,6 @@ class _PresentPageState extends State<PresentPage> {
   void dispose() {
     _connection?.displaced?.removeListener(_onDisplaced);
     _buzzers?.cancel();
-    SerialBuzzers.instance.stop();
     final audio = _audio;
     if (audio != null) _connection?.missingMedia.removeListener(audio.sync);
     audio?.dispose();
@@ -580,6 +583,20 @@ class _PresentPageState extends State<PresentPage> {
                   ),
                 ],
               ),
+            ),
+          ),
+          // Says so on screen when a buzzer box was set up but is not talking.
+          Positioned(
+            left: 8,
+            top: 8,
+            child: ValueListenableBuilder<BuzzerStatus>(
+              valueListenable: Buzzers.instance.link.status,
+              builder: (context, status, _) => status == BuzzerStatus.disconnected || status == BuzzerStatus.silent
+                  ? Chip(
+                      avatar: Icon(Icons.usb_off, size: 18, color: Theme.of(context).colorScheme.error),
+                      label: const Text("Buzzer box not connected · retrying"),
+                    )
+                  : const SizedBox(),
             ),
           ),
           Positioned(

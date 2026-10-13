@@ -8,6 +8,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:quiz_show/core/theme.dart';
+import 'package:quiz_show/features/buzzers/buzzer_link.dart';
+import 'package:quiz_show/features/buzzers/buzzers_page.dart';
 import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/pages/category_editor_page.dart';
@@ -23,6 +25,7 @@ import 'package:quiz_show/features/session/pages/presenter_view.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
 
+import '../test/fake_buzzer_port.dart';
 import '../test/game/fixture.dart';
 
 const _fonts = '/home/jacob/development/flutter/bin/cache/artifacts/material_fonts';
@@ -672,5 +675,90 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 100));
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/map_editor_wide.png'));
+  });
+
+  testWidgets('buzzers: test and teams', (tester) async {
+    tester.view.physicalSize = const Size(900, 1080);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var now = 1000;
+    final port = FakePort();
+    final link = BuzzerLink(port, clock: () => now);
+    link.use('COM3');
+    const teams = [Team(id: 'red', name: 'Red'), Team(id: 'blue', name: 'Blue'), Team(id: 'green', name: 'Green'), Team(id: 'gold', name: 'Gold')];
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        appBar: AppBar(title: const Text("Buzzers")),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            BuzzersView(
+              link: link,
+              teams: teams,
+              assignments: const {3: 'red'},
+              onPort: (_) {},
+              onAssign: (_, _) {},
+              onThreshold: (_, _) {},
+            ),
+          ],
+        ),
+      ),
+    ));
+    Future<void> send(String line, {int millis = 80}) async {
+      port.send('$line\n');
+      for (var i = 0; i < millis ~/ 10; i++) {
+        now += 10;
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+    }
+
+    // A minute of readings, then three presses in a row; the last still held.
+    for (var i = 0; i < 12; i++) {
+      await send('0:12,1:20,2:8,3:15,4:10', millis: 250);
+    }
+    await send('0:12,1:870,2:8,3:15,4:10');
+    await send('0:12,1:20,2:8,3:15,4:10');
+    await send('0:12,1:20,2:8,3:910,4:10');
+    await send('0:12,1:20,2:8,3:15,4:10');
+    await send('0:640,1:20,2:260,3:15,4:10', millis: 300);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/buzzers_page.png'));
+    await tester.pumpWidget(const SizedBox());
+    link.dispose();
+  });
+
+  testWidgets('buzzers: assigning', (tester) async {
+    tester.view.physicalSize = const Size(900, 1080);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var now = 1000;
+    final port = FakePort()..plugged = true;
+    final link = BuzzerLink(port, clock: () => now);
+    link.use('COM3');
+    const teams = [Team(id: 'red', name: 'Red'), Team(id: 'blue', name: 'Blue'), Team(id: 'green', name: 'Green')];
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.dark),
+      home: Scaffold(
+        appBar: AppBar(title: const Text("Buzzers")),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            BuzzersView(link: link, teams: teams, assignments: const {}, onPort: (_) {}, onAssign: (_, _) {}, onThreshold: (_, _) {}),
+          ],
+        ),
+      ),
+    ));
+    port.send('0:12,1:20,2:8\n');
+    for (var i = 0; i < 10; i++) {
+      now += 10;
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    await tester.tap(find.text('Assign all by pressing'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/buzzers_assigning.png'));
+    await tester.pumpWidget(const SizedBox());
+    link.dispose();
   });
 }
