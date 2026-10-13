@@ -18,7 +18,7 @@ import 'package:quiz_show/game/game.dart';
 /// It only ever sends commands. What it shows comes back from the presenting
 /// device, so two controllers can never disagree about the state.
 class ControllerView extends StatefulWidget {
-  const ControllerView({super.key, required this.connection, this.games, this.onConnectDevices});
+  const ControllerView({super.key, required this.connection, this.games, this.onConnectDevices, this.onBuzzerSetup});
 
   final SessionConnection connection;
 
@@ -27,6 +27,9 @@ class ControllerView extends StatefulWidget {
 
   /// Opens the screen with the join codes; hidden when null.
   final VoidCallback? onConnectDevices;
+
+  /// Opens the setup of the USB buzzer box; hidden when null.
+  final VoidCallback? onBuzzerSetup;
 
   @override
   State<ControllerView> createState() => _ControllerViewState();
@@ -232,6 +235,17 @@ class _ControllerViewState extends State<ControllerView> {
                   onTap: () {
                     Navigator.of(context).pop();
                     widget.onConnectDevices!();
+                  },
+                ),
+              if (widget.onBuzzerSetup != null)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.usb),
+                  title: const Text("USB buzzers"),
+                  subtitle: const Text("Port, sensitivity and teams"),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    widget.onBuzzerSetup!();
                   },
                 ),
             ],

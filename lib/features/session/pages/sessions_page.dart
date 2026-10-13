@@ -7,6 +7,10 @@ import 'package:window_manager/window_manager.dart';
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/audio/audio_director.dart';
 import 'package:quiz_show/features/audio/audioplayers_backend.dart';
+import 'package:quiz_show/features/buzzers/buzzers_page.dart';
+import 'package:quiz_show/features/buzzers/serial_buzzers.dart';
+import 'package:quiz_show/game/game.dart';
+import 'dart:async';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/player/pages/join_session_page.dart';
 import 'package:quiz_show/features/session/pages/connect_devices_page.dart';
@@ -217,6 +221,7 @@ class PresentPage extends StatefulWidget {
 class _PresentPageState extends State<PresentPage> {
   SessionConnection? _connection;
   AudioDirector? _audio;
+  StreamSubscription<int>? _buzzers;
   Object? _error;
   bool _fullscreen = false;
 
@@ -242,6 +247,13 @@ class _PresentPageState extends State<PresentPage> {
       );
       // Files still downloading when a sound was asked for start once they are in.
       connection.missingMedia.addListener(audio.sync);
+      // The buzzer box is plugged into this device, so its presses go
+      // straight into the host: no network in between.
+      SerialBuzzers.instance.start();
+      _buzzers = SerialBuzzers.instance.pressed.listen((id) {
+        final team = connection.host!.state.teams.elementAtOrNull(SerialBuzzers.instance.teamIndexOf(id));
+        if (team != null) connection.host!.dispatch(Buzz(team.id));
+      });
       setState(() {
         _connection = connection;
         _audio = audio;
@@ -274,6 +286,8 @@ class _PresentPageState extends State<PresentPage> {
   @override
   void dispose() {
     _connection?.displaced?.removeListener(_onDisplaced);
+    _buzzers?.cancel();
+    SerialBuzzers.instance.stop();
     final audio = _audio;
     if (audio != null) _connection?.missingMedia.removeListener(audio.sync);
     audio?.dispose();
@@ -297,6 +311,11 @@ class _PresentPageState extends State<PresentPage> {
           child: ControllerView(
             connection: connection,
             onConnectDevices: () => openConnectDevices(context, connection),
+            onBuzzerSetup: SerialBuzzers.supported
+                ? () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => BuzzersPage(teams: connection.state.value?.teams ?? const []),
+                    ))
+                : null,
           ),
         ),
       ),
