@@ -277,6 +277,22 @@ void main() {
       expect(copy.single.last.$1, closeTo(1, 0.001));
     });
 
+    test('an upright board says so, and a sideways one stays as short as before', () {
+      final strokes = <Stroke>[
+        [(0.1, 0.2), (0.3, 0.4)],
+      ];
+      final sideways = encodeDrawing(strokes);
+      final upright = encodeDrawing(strokes, aspect: 3 / 4);
+      expect(sideways.startsWith('a'), isFalse);
+      expect(upright.startsWith('a750|'), isTrue);
+      expect(drawingAspect(sideways), kDefaultDrawingAspect);
+      expect(drawingAspect(upright), 0.75);
+      expect(decodeDrawing(upright), decodeDrawing(sideways));
+      expect(drawingAspect('a5|1,1'), kDefaultDrawingAspect);
+      expect(drawingAspect('abc|1,1'), kDefaultDrawingAspect);
+      expect(drawingAspect(null), kDefaultDrawingAspect);
+    });
+
     test('points outside the board are pulled onto it', () {
       expect(decodeDrawing(encodeDrawing([[(-0.5, 2.0)]])), [[(0.0, 1.0)]]);
     });

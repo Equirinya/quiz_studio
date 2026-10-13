@@ -478,4 +478,13 @@ void main() {
   testWidgets('companion: list whiteboard', (tester) async {
     await companion(tester, 'companion_list', const CompanionSpec(kind: CompanionKind.whiteboard, background: 'list', listRows: 5));
   });
+
+  testWidgets('scenario: phone whiteboard', (tester) async {
+    await companion(
+      tester,
+      'scenario_phone',
+      const CompanionSpec(kind: CompanionKind.whiteboard, timerSeconds: 30),
+      answer: PlayerAnswer(drawing: eight()),
+    );
+  });
 }

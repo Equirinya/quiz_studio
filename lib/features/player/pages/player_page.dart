@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:quiz_show/features/companion/answer_inputs.dart';
 import 'package:quiz_show/features/companion/answer_view.dart';
+import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/features/player/widgets/buzzer_button.dart';
 import 'package:quiz_show/features/session/session_client.dart';
 import 'package:quiz_show/features/session/session_links.dart';
@@ -155,131 +156,205 @@ class _PlayerViewState extends State<PlayerView> {
                 ? "Your answer is being shown"
                 : "Answers are in";
 
+    final teamLine = Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(team.name, style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text("${team.points} points", style: theme.textTheme.bodyMedium),
+            ],
+          ),
+        ),
+        if (widget.link != null) LinkStatusIcon(widget.link!),
+        if (widget.onLeave != null) IconButton(icon: const Icon(Icons.logout), tooltip: "Leave", onPressed: widget.onLeave),
+      ],
+    );
+    final highlighted = position == 0 && view.phase == Phase.buzzered;
+    final statusBox = AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: highlighted ? scheme.primary : scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        headline,
+        textAlign: TextAlign.center,
+        style: theme.textTheme.titleMedium?.copyWith(color: highlighted ? scheme.onPrimary : null),
+      ),
+    );
+    final questionText = view.question == null
+        ? null
+        : Text(
+            view.question!['text'] as String? ?? '',
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyLarge,
+          );
+
+    // A whiteboard gets every pixel that can be spared: on a tablet held
+    // sideways everything else moves into a narrow column beside it, and on
+    // a phone the header shrinks to one line.
+    if (kind == CompanionKind.whiteboard) {
+      return LayoutBuilder(
+        builder: (context, box) {
+          final sideways = box.maxWidth > box.maxHeight * 1.15;
+          if (sideways) {
+            return Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: _input(team)),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 228,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        teamLine,
+                        const SizedBox(height: 8),
+                        statusBox,
+                        if (questionText != null) Padding(padding: const EdgeInsets.only(top: 12), child: questionText),
+                        ?_countdown(top: 16),
+                        const Spacer(),
+                        _lockButton(team),
+                        const SizedBox(height: 6),
+                        _note(team),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+            child: Column(
+              children: [
+                teamLine,
+                ?questionText,
+                ?_countdown(top: 6),
+                const SizedBox(height: 6),
+                Expanded(child: _input(team)),
+                const SizedBox(height: 6),
+                _lockButton(team),
+                const SizedBox(height: 4),
+                _note(team),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(team.name, style: theme.textTheme.titleMedium),
-                    Text("${team.points} points", style: theme.textTheme.bodyMedium),
-                  ],
+          teamLine,
+          const SizedBox(height: 12),
+          statusBox,
+          if (questionText != null) Padding(padding: const EdgeInsets.only(top: 12), child: questionText),
+          if (kind == null)
+            Expanded(
+              child: Center(
+                child: LayoutBuilder(
+                  builder: (context, box) => BuzzerButton(
+                    size: box.biggest.shortestSide * 0.8,
+                    onPressed: canBuzz ? _buzz : null,
+                  ),
                 ),
               ),
-              if (widget.link != null) LinkStatusIcon(widget.link!),
-              if (widget.onLeave != null) IconButton(icon: const Icon(Icons.logout), tooltip: "Leave", onPressed: widget.onLeave),
-            ],
-          ),
-          const SizedBox(height: 12),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: position == 0 && view.phase == Phase.buzzered ? scheme.primary : scheme.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(16),
+            )
+          else ...[
+            ?_countdown(top: 12),
+            Expanded(
+              child: Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Center(child: _input(team))),
             ),
-            child: Text(
-              headline,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: position == 0 && view.phase == Phase.buzzered ? scheme.onPrimary : null,
-              ),
-            ),
-          ),
-          if (view.question != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                view.question!['text'] as String? ?? '',
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyLarge,
-              ),
-            ),
-          Expanded(
-            child: kind == null
-                ? Center(
-                    child: LayoutBuilder(
-                      builder: (context, box) => BuzzerButton(
-                        size: box.biggest.shortestSide * 0.8,
-                        onPressed: canBuzz ? _buzz : null,
-                      ),
-                    ),
-                  )
-                : _answerArea(team),
-          ),
+            _lockButton(team),
+            const SizedBox(height: 4),
+            _note(team),
+          ],
         ],
       ),
     );
   }
 
-  Widget _answerArea(Team team) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+  bool _editable(Team team) => widget.view.answersOpen && !widget.view.hasLocked(team.id);
+
+  Widget? _countdown({required double top}) {
     final view = widget.view;
-    final locked = view.hasLocked(team.id);
-    final editable = view.answersOpen && !locked;
-    final verdict = view.verdictOf(team.id);
     final endsAt = view.answersEndAt;
-    return Column(
-      children: [
-        if (view.answersOpen && endsAt != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: RoundCountdown(openedAt: view.answersOpenedAt, endsAt: endsAt),
-          ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Center(
-              // Kept alive across the round, so the answer stays on screen
-              // after it is locked.
-              child: CompanionInput(
-                key: ValueKey('${view.answersOpenedAt}/${view.question?['text']}'),
-                spec: view.companion!,
-                enabled: editable,
-                onChanged: (answer) => widget.send(SubmitAnswer(team.id, answer)),
-              ),
-            ),
-          ),
-        ),
-        if (verdict != null)
-          Chip(
-            avatar: Icon(verdict ? Icons.check_circle : Icons.cancel, color: verdict ? Colors.green : scheme.error),
-            label: Text(verdict ? "Right!" : "Not this time"),
-          )
-        else
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: FilledButton.icon(
-              onPressed: editable && view.hasSubmitted(team.id) ? () => widget.send(LockAnswer(team.id)) : null,
-              icon: Icon(editable ? Icons.lock_open : Icons.lock),
-              label: Text(
-                locked
-                    ? "Locked in"
-                    : !view.answersOpen
-                        ? "Time is up"
-                        : view.hasSubmitted(team.id)
-                            ? "Lock in answer"
-                            : "Answer first",
-              ),
-            ),
-          ),
-        const SizedBox(height: 4),
-        Text(
-          view.isRevealed(team.id) ? "Your answer is on the big screen." : "Only the gamemaster sees this until it is shown.",
-          style: theme.textTheme.bodySmall,
-        ),
-      ],
+    if (!view.answersOpen || endsAt == null) return null;
+    return Padding(
+      padding: EdgeInsets.only(top: top),
+      child: RoundCountdown(openedAt: view.answersOpenedAt, endsAt: endsAt),
     );
   }
+
+  /// Kept alive across the round, so the answer stays on screen after it is
+  /// locked.
+  Widget _input(Team team) {
+    final view = widget.view;
+    if (view.answerKind == CompanionKind.whiteboard) {
+      // Shaped after the room there is; the board keeps that shape once made.
+      return LayoutBuilder(
+        builder: (context, box) => CompanionInput(
+          key: ValueKey('${view.answersOpenedAt}/${view.question?['text']}'),
+          spec: view.companion!,
+          enabled: _editable(team),
+          whiteboardAspect: whiteboardAspectFor(box.biggest),
+          onChanged: (answer) => widget.send(SubmitAnswer(team.id, answer)),
+        ),
+      );
+    }
+    return CompanionInput(
+      key: ValueKey('${view.answersOpenedAt}/${view.question?['text']}'),
+      spec: view.companion!,
+      enabled: _editable(team),
+      onChanged: (answer) => widget.send(SubmitAnswer(team.id, answer)),
+    );
+  }
+
+  Widget _lockButton(Team team) {
+    final view = widget.view;
+    final verdict = view.verdictOf(team.id);
+    if (verdict != null) {
+      return Chip(
+        avatar: Icon(verdict ? Icons.check_circle : Icons.cancel, color: verdict ? Colors.green : Theme.of(context).colorScheme.error),
+        label: Text(verdict ? "Right!" : "Not this time"),
+      );
+    }
+    final editable = _editable(team);
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: FilledButton.icon(
+        onPressed: editable && view.hasSubmitted(team.id) ? () => widget.send(LockAnswer(team.id)) : null,
+        icon: Icon(editable ? Icons.lock_open : Icons.lock),
+        label: Text(
+          view.hasLocked(team.id)
+              ? "Locked in"
+              : !view.answersOpen
+                  ? "Time is up"
+                  : view.hasSubmitted(team.id)
+                      ? "Lock in answer"
+                      : "Answer first",
+        ),
+      ),
+    );
+  }
+
+  Widget _note(Team team) => Text(
+        widget.view.isRevealed(team.id) ? "Your answer is on the big screen." : "Only the gamemaster sees this until it is shown.",
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall,
+      );
 }
 
 /// Wi-Fi when the presenter is reached directly, a cloud when not.

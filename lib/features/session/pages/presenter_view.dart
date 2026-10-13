@@ -585,7 +585,11 @@ class _AnswerRoundDisplay extends StatelessWidget {
                                   child: ConstrainedBox(
                                     constraints: BoxConstraints(maxWidth: unit * 60),
                                     child: SizedBox(
-                                      width: round.kind == CompanionKind.whiteboard ? unit * 60 : null,
+                                      // Wide enough to fill the tile; an upright
+                                      // board is scaled down to its height.
+                                      width: round.kind == CompanionKind.whiteboard
+                                          ? unit * 60 * (drawingAspect(round.answers[team.id]?.drawing) < 1 ? 0.6 : 1)
+                                          : null,
                                       child: AnswerView(spec: round.spec, answer: round.answers[team.id], fontSize: unit * 3.4),
                                     ),
                                   ),

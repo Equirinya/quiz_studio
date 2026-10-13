@@ -2,9 +2,18 @@ import 'package:flutter/material.dart';
 
 import 'package:quiz_show/game/game.dart';
 
-/// Every whiteboard has this shape, so a drawing looks the same on the
-/// tablet it was made on, on the controller and on the big screen.
-const double kWhiteboardAspect = 4 / 3;
+/// The shape of a whiteboard on a device held sideways, and upright. A
+/// drawing remembers which it was made on, so it looks the same on the
+/// controller and on the big screen.
+const double kWhiteboardAspect = kDefaultDrawingAspect;
+
+/// The board shape that makes the most of [space] without getting so long
+/// or so tall that it no longer fits a tile on the big screen.
+double whiteboardAspectFor(Size space) {
+  if (space.height <= 0) return kWhiteboardAspect;
+  final ratio = space.width / space.height;
+  return ratio >= 1 ? ratio.clamp(1.2, 1.6).toDouble() : ratio.clamp(0.62, 0.85).toDouble();
+}
 
 /// Paper, guides and ink of a whiteboard.
 class WhiteboardPainter extends CustomPainter {
@@ -100,7 +109,7 @@ class DrawingView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: kWhiteboardAspect,
+      aspectRatio: drawingAspect(drawing),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: CustomPaint(
@@ -120,7 +129,12 @@ class WhiteboardPad extends StatefulWidget {
     this.enabled = true,
     this.background = 'blank',
     this.listRows = 5,
+    this.aspect = kWhiteboardAspect,
   });
+
+  /// Width / height of the board. Read once: a board keeps its shape even
+  /// if the device is turned while drawing.
+  final double aspect;
 
   /// Called with the encoded drawing after every stroke, undo and clear.
   final ValueChanged<String> onChanged;
@@ -135,8 +149,9 @@ class WhiteboardPad extends StatefulWidget {
 
 class _WhiteboardPadState extends State<WhiteboardPad> {
   late final List<Stroke> _strokes = decodeDrawing(widget.initial);
+  late final double _aspect = widget.initial == null ? widget.aspect : drawingAspect(widget.initial);
 
-  void _emit() => widget.onChanged(encodeDrawing(_strokes));
+  void _emit() => widget.onChanged(encodeDrawing(_strokes, aspect: _aspect));
 
   InkPoint _point(Offset local, Size size) =>
       ((local.dx / size.width).clamp(0.0, 1.0).toDouble(), (local.dy / size.height).clamp(0.0, 1.0).toDouble());
@@ -144,18 +159,20 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Flexible(
-          child: AspectRatio(
-            aspectRatio: kWhiteboardAspect,
-            child: LayoutBuilder(
-              builder: (context, box) {
-                final size = box.biggest;
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: GestureDetector(
+    final canEdit = widget.enabled && _strokes.isNotEmpty;
+    // The board takes all the room it is given; undo and clear sit on it
+    // rather than below it, so none of that room goes to a toolbar.
+    return Center(
+      child: AspectRatio(
+        aspectRatio: _aspect,
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final size = box.biggest;
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
+                children: [
+                  GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onPanStart: !widget.enabled ? null : (d) => setState(() => _strokes.add([_point(d.localPosition, size)])),
                     onPanUpdate: !widget.enabled ? null : (d) => setState(() => _strokes.last.add(_point(d.localPosition, size))),
@@ -172,39 +189,48 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
                       painter: WhiteboardPainter(strokes: _strokes, background: widget.background, listRows: widget.listRows),
                     ),
                   ),
-                );
-              },
-            ),
-          ),
+                  if (widget.enabled)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Material(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(24),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: "Undo",
+                              icon: const Icon(Icons.undo),
+                              color: Colors.black87,
+                              onPressed: canEdit
+                                  ? () {
+                                      setState(_strokes.removeLast);
+                                      _emit();
+                                    }
+                                  : null,
+                            ),
+                            IconButton(
+                              tooltip: "Clear",
+                              icon: const Icon(Icons.delete_outline),
+                              color: scheme.error,
+                              onPressed: canEdit
+                                  ? () {
+                                      setState(_strokes.clear);
+                                      _emit();
+                                    }
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextButton.icon(
-              onPressed: widget.enabled && _strokes.isNotEmpty
-                  ? () {
-                      setState(_strokes.removeLast);
-                      _emit();
-                    }
-                  : null,
-              icon: const Icon(Icons.undo),
-              label: const Text("Undo"),
-            ),
-            const SizedBox(width: 16),
-            TextButton.icon(
-              onPressed: widget.enabled && _strokes.isNotEmpty
-                  ? () {
-                      setState(_strokes.clear);
-                      _emit();
-                    }
-                  : null,
-              icon: Icon(Icons.delete_outline, color: widget.enabled && _strokes.isNotEmpty ? scheme.error : null),
-              label: const Text("Clear"),
-            ),
-          ],
-        ),
-      ],
+      ),
     );
   }
 }

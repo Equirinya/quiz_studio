@@ -13,7 +13,16 @@ import 'package:quiz_show/game/game.dart';
 /// [onChanged] fires with the answer as it stands whenever it changes, so
 /// the gamemaster can watch along; typing is held back for a moment first.
 class CompanionInput extends StatefulWidget {
-  const CompanionInput({super.key, required this.spec, required this.onChanged, this.enabled = true});
+  const CompanionInput({
+    super.key,
+    required this.spec,
+    required this.onChanged,
+    this.enabled = true,
+    this.whiteboardAspect = kWhiteboardAspect,
+  });
+
+  /// Whiteboards only: the board's width / height, chosen to fit the device.
+  final double whiteboardAspect;
 
   final Map<String, dynamic> spec;
   final ValueChanged<PlayerAnswer> onChanged;
@@ -74,6 +83,7 @@ class _CompanionInputState extends State<CompanionInput> {
       case CompanionKind.whiteboard:
         return WhiteboardPad(
           enabled: enabled,
+          aspect: widget.whiteboardAspect,
           background: widget.spec['background'] as String? ?? 'blank',
           listRows: (widget.spec['listRows'] as num?)?.toInt() ?? 5,
           onChanged: (drawing) => widget.onChanged(PlayerAnswer(drawing: drawing)),
