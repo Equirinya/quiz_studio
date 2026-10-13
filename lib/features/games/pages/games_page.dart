@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
+import 'package:quiz_show/features/games/pages/game_access_page.dart';
 import 'package:quiz_show/features/games/pages/game_editor_page.dart';
 
 /// The user's games: open one to edit it, or create a new one.
@@ -29,13 +30,32 @@ class _GamesPageState extends State<GamesPage> {
     }, failure: "Could not create the game.");
   }
 
+  Future<void> _join() async {
+    final gameId = await showJoinGameDialog(context);
+    if (gameId != null && mounted) _open(gameId);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _create,
-        icon: const Icon(Icons.add),
-        label: const Text("New game"),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'join',
+            onPressed: _join,
+            tooltip: "Join with an invite link",
+            child: const Icon(Icons.group_add_outlined),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: 'create',
+            onPressed: _create,
+            icon: const Icon(Icons.add),
+            label: const Text("New game"),
+          ),
+        ],
       ),
       body: StreamBuilder<List<GameSummary>>(
         stream: _games,

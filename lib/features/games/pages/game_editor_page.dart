@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/pages/category_editor_page.dart';
+import 'package:quiz_show/features/games/pages/game_access_page.dart';
+import 'package:quiz_show/features/games/widgets/group_colors_dialog.dart';
+import 'package:quiz_show/features/games/widgets/sounds_dialog.dart';
 import 'package:quiz_show/game/game.dart';
 
 extension BoardTypeIcon on BoardType {
@@ -89,7 +92,27 @@ class _GameEditorPageState extends State<GameEditorPage> {
             title: Text(game.name.isEmpty ? "Unnamed" : game.name),
             actions: [
               if (canEditStructure)
+                IconButton(
+                  icon: const Icon(Icons.queue_music),
+                  tooltip: "Music and effects",
+                  onPressed: () => showSoundsDialog(
+                    context,
+                    gameId: game.id,
+                    title: "Sounds for the whole game",
+                    data: data.data,
+                    save: (update) => guarded(context, () => _repo.updateGame(game.id, update)),
+                  ),
+                ),
+              if (canEditStructure)
                 IconButton(icon: const Icon(Icons.edit_outlined), tooltip: "Rename", onPressed: () => _rename(game)),
+              if (data.role == GameRole.admin)
+                IconButton(
+                  icon: const Icon(Icons.group_outlined),
+                  tooltip: "Access",
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => GameAccessPage(gameId: game.id)),
+                  ),
+                ),
               if (data.role == GameRole.admin)
                 IconButton(icon: const Icon(Icons.delete_outline), tooltip: "Delete game", onPressed: () => _delete(game))
               else
@@ -203,6 +226,31 @@ class _GroupCard extends StatelessWidget {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (editable)
+                  IconButton(
+                    icon: const Icon(Icons.queue_music),
+                    tooltip: "Music and effects",
+                    onPressed: () => showSoundsDialog(
+                      context,
+                      gameId: game.id,
+                      title: "Sounds for this group",
+                      data: group.data,
+                      save: (update) => guarded(context, () => _repo.updateGroup(game.id, group.id, update)),
+                    ),
+                  ),
+                if (editable)
+                  IconButton(
+                    icon: Icon(Icons.palette_outlined, color: group.color == null ? null : Color(group.color!)),
+                    tooltip: "Board colours",
+                    onPressed: () => showGroupColorsDialog(
+                      context,
+                      group: group,
+                      save: (color, accent) => guarded(
+                        context,
+                        () => _repo.updateGroup(game.id, group.id, {'color': color, 'accentColor': accent}),
+                      ),
+                    ),
+                  ),
                 if (editable && group.categories.isEmpty)
                   IconButton(
                     icon: const Icon(Icons.delete_outline),

@@ -8,6 +8,9 @@ import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/features/games/widgets/question_type_editors.dart';
+import 'package:quiz_show/features/games/widgets/sounds_dialog.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:quiz_show/features/auth/widgets/user_name.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// One category and its questions.
@@ -33,6 +36,50 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
     final name = await promptText(context, title: "Rename category", initial: category.name, label: "Name");
     if (name == null || !mounted) return;
     await guarded(context, () => _repo.updateCategory(widget.gameId, category.id, {'name': name}));
+  }
+
+  /// Full members and the category's creator decide who else sees it.
+  bool _canShare(GameSnapshot game, Category category) {
+    final limited = game.data[GameRole.limited.name];
+    if (limited is! List || limited.isEmpty) return false;
+    return game.role.seesEverything || category.data['createdBy'] == FirebaseAuth.instance.currentUser?.uid;
+  }
+
+  Future<void> _share(GameSnapshot game, Category category) {
+    final limited = List<String>.from(game.data[GameRole.limited.name] as List);
+    final shared = {...(category.data['access'] as List? ?? const []).whereType<String>()};
+    final creator = category.data['createdBy'];
+    return showDialog<void>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text("Share category"),
+          content: SizedBox(
+            width: 360,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                const Text("Members with limited access only see the categories switched on here."),
+                for (final uid in limited)
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: UserName(uid),
+                    subtitle: uid == creator ? const Text("Created this category") : null,
+                    value: uid == creator || shared.contains(uid),
+                    onChanged: uid == creator
+                        ? null
+                        : (value) {
+                            setState(() => value ? shared.add(uid) : shared.remove(uid));
+                            guarded(context, () => _repo.shareCategory(widget.gameId, category.id, uid, value));
+                          },
+                  ),
+              ],
+            ),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Done"))],
+        ),
+      ),
+    );
   }
 
   Future<void> _addQuestion(Category category) async {
@@ -67,6 +114,23 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
           appBar: AppBar(
             title: Text(category.name.isEmpty ? "Unnamed" : category.name),
             actions: [
+              if (_canShare(snapshot.data!, category))
+                IconButton(
+                  icon: const Icon(Icons.person_add_alt),
+                  tooltip: "Share with limited members",
+                  onPressed: () => _share(snapshot.data!, category),
+                ),
+              IconButton(
+                icon: const Icon(Icons.queue_music),
+                tooltip: "Music and effects",
+                onPressed: () => showSoundsDialog(
+                  context,
+                  gameId: widget.gameId,
+                  title: "Sounds for this category",
+                  data: category.data,
+                  save: (update) => guarded(context, () => _repo.updateCategory(widget.gameId, category.id, update)),
+                ),
+              ),
               IconButton(icon: const Icon(Icons.edit_outlined), tooltip: "Rename", onPressed: () => _rename(category)),
             ],
           ),
@@ -222,6 +286,17 @@ class _QuestionCardState extends State<QuestionCard> {
                 name: _q.music,
                 onChanged: (name) => _save({'music': name}),
               ),
+              IconButton(
+                icon: const Icon(Icons.queue_music),
+                tooltip: "Music and effects",
+                onPressed: () => showSoundsDialog(
+                  context,
+                  gameId: widget.gameId,
+                  title: "Sounds for this question",
+                  data: _q.data,
+                  save: _save,
+                ),
+              ),
               IconButton(icon: const Icon(Icons.delete_outline), tooltip: "Delete question", onPressed: _delete),
             ],
           ),
@@ -249,7 +324,16 @@ class _QuestionCardState extends State<QuestionCard> {
           ),
           const SizedBox(height: 12),
           Text(questionTypeExplanation(_q.type), style: theme.textTheme.bodySmall),
-          QuestionTypeEditor(key: ValueKey(_q.type), gameId: widget.gameId, question: _q, save: _save),
+          QuestionTypeEditor(
+            key: ValueKey(_q.type),
+            gameId: widget.gameId,
+            question: _q,
+            save: _save,
+            onImported: (text, answerHint) {
+              _text.text = text;
+              _hint.text = answerHint;
+            },
+          ),
         ],
       ),
     );

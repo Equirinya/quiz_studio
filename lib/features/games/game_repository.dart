@@ -49,6 +49,35 @@ class GameSnapshot {
   final Map<String, dynamic> data;
 }
 
+/// An invite link as its creator sees it.
+class GameInvite {
+  const GameInvite({required this.gameId, required this.id, required this.role, required this.gameName, this.expiresAtMillis});
+
+  final String gameId;
+  final String id;
+  final GameRole role;
+  final String gameName;
+  final int? expiresAtMillis;
+
+  bool isExpired(DateTime now) => expiresAtMillis != null && expiresAtMillis! <= now.millisecondsSinceEpoch;
+
+  /// What gets shared. The app's own scheme, as for the companion QR codes.
+  String get link => buildInviteLink(gameId, id);
+}
+
+String buildInviteLink(String gameId, String inviteId) => 'quiz-studio://join/$gameId/$inviteId';
+
+/// Reads an invite from a pasted link, or from a bare `gameId/inviteId`.
+({String gameId, String inviteId})? parseInviteLink(String input) {
+  var text = input.trim();
+  const prefix = 'quiz-studio://join/';
+  if (text.startsWith(prefix)) text = text.substring(prefix.length);
+  final parts = text.split('/');
+  final valid = RegExp(r'^[A-Za-z0-9_-]+$');
+  if (parts.length != 2 || !parts.every(valid.hasMatch)) return null;
+  return (gameId: parts[0], inviteId: parts[1]);
+}
+
 /// A position for [GameRepository.moveCategory].
 typedef CategoryOrder = Map<String, ({String? groupId, int index})>;
 
@@ -190,6 +219,63 @@ class GameRepository {
         GameRole.limited.name: FieldValue.arrayRemove([_uid]),
       });
 
+  // ── access and invites ─────────────────────────────────────────────────────
+
+  /// Moves [uid] to [role], or out of the game when [role] is null. Admins only.
+  Future<void> setRole(String gameId, String uid, GameRole? role) => _game(gameId).update({
+        for (final other in GameRole.values)
+          other.name: other == role ? FieldValue.arrayUnion([uid]) : FieldValue.arrayRemove([uid]),
+      });
+
+  Stream<List<GameInvite>> watchInvites(String gameId) =>
+      _game(gameId).collection('invites').orderBy('createdAt').snapshots().map((snapshot) => [
+            for (final doc in snapshot.docs) ?_invite(gameId, doc.id, doc.data()),
+          ]);
+
+  Future<GameInvite> createInvite(String gameId, String gameName, GameRole role, {int validDays = 14}) async {
+    final ref = _game(gameId).collection('invites').doc();
+    final expires = DateTime.now().add(Duration(days: validDays));
+    await ref.set({
+      'role': role.name,
+      'gameName': gameName,
+      'createdAt': FieldValue.serverTimestamp(),
+      'createdBy': _uid,
+      'expiresAt': Timestamp.fromDate(expires),
+    });
+    return GameInvite(
+        gameId: gameId, id: ref.id, role: role, gameName: gameName, expiresAtMillis: expires.millisecondsSinceEpoch);
+  }
+
+  Future<void> revokeInvite(String gameId, String inviteId) => _game(gameId).collection('invites').doc(inviteId).delete();
+
+  /// Looks an invite up before joining; null when it does not exist.
+  Future<GameInvite?> loadInvite(String gameId, String inviteId) async {
+    final doc = await _game(gameId).collection('invites').doc(inviteId).get();
+    final data = doc.data();
+    return data == null ? null : _invite(gameId, inviteId, data);
+  }
+
+  /// Joins with an invite. The claim and the membership go in one batch; the
+  /// rules accept the membership only alongside a claim for a valid invite.
+  Future<void> joinGame(GameInvite invite) {
+    final batch = _db.batch()
+      ..set(_game(invite.gameId).collection('joins').doc(_uid), {
+        'invite': invite.id,
+        'role': invite.role.name,
+        'joinedAt': FieldValue.serverTimestamp(),
+      })
+      ..update(_game(invite.gameId), {
+        invite.role.name: FieldValue.arrayUnion([_uid]),
+      });
+    return batch.commit();
+  }
+
+  /// Lets a limited member see and edit a category, or takes that away.
+  Future<void> shareCategory(String gameId, String categoryId, String uid, bool share) =>
+      _categories(gameId).doc(categoryId).update({
+        'access': share ? FieldValue.arrayUnion([uid]) : FieldValue.arrayRemove([uid]),
+      });
+
   /// Live content of one game. With [activeOnly] false (the editor) inactive
   /// categories are included.
   Stream<GameSnapshot> watchGame(String gameId, {bool activeOnly = false}) {
@@ -284,6 +370,18 @@ class GameRepository {
 
   Future<void> deleteQuestion(String gameId, String categoryId, String questionId) =>
       _questions(gameId, categoryId).doc(questionId).delete();
+}
+
+GameInvite? _invite(String gameId, String id, Map<String, dynamic> data) {
+  final role = GameRole.values.where((role) => role.name == data['role']).firstOrNull;
+  if (role == null || role == GameRole.admin) return null;
+  return GameInvite(
+    gameId: gameId,
+    id: id,
+    role: role,
+    gameName: data['gameName'] is String ? data['gameName'] as String : '',
+    expiresAtMillis: _millis(data['expiresAt']),
+  );
 }
 
 int? _millis(Object? value) => value is Timestamp ? value.millisecondsSinceEpoch : null;

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/media_service.dart';
+import 'package:quiz_show/features/games/widgets/ranker_import.dart';
 import 'package:quiz_show/game/game.dart';
 
 import 'game/fixture.dart';
@@ -68,5 +69,63 @@ void main() {
     expect(GameRole.of(game, 'x'), isNull);
     expect(GameRole.of({}, 'a'), isNull);
     expect(GameRole.limited.seesEverything, isFalse);
+  });
+
+  group('invite links', () {
+    test('round-trip, and a bare gameId/inviteId works too', () {
+      final link = buildInviteLink('Game123', 'Invite_456-x');
+      expect(parseInviteLink(link), (gameId: 'Game123', inviteId: 'Invite_456-x'));
+      expect(parseInviteLink('  Game123/Invite456 \n'), (gameId: 'Game123', inviteId: 'Invite456'));
+    });
+
+    test('anything else is rejected', () {
+      expect(parseInviteLink(''), isNull);
+      expect(parseInviteLink('quiz-studio://join/onlygame'), isNull);
+      expect(parseInviteLink('a/b/c'), isNull);
+      expect(parseInviteLink('game/../invite'), isNull);
+      expect(parseInviteLink('https://example.com/a/b'), isNull);
+    });
+
+    test('expiry', () {
+      const invite = GameInvite(gameId: 'g', id: 'i', role: GameRole.limited, gameName: 'G', expiresAtMillis: 1000);
+      expect(invite.isExpired(DateTime.fromMillisecondsSinceEpoch(999)), isFalse);
+      expect(invite.isExpired(DateTime.fromMillisecondsSinceEpoch(1000)), isTrue);
+    });
+  });
+
+  group('ranker import', () {
+    test('recognises list URLs and finds the list id', () {
+      expect(isRankerListUrl('https://www.ranker.com/list/best-smells/jacob-shelton'), isTrue);
+      expect(isRankerListUrl('https://ranker.com/crowdranked-list/best-movies'), isTrue);
+      expect(isRankerListUrl('https://example.com/list/a/b'), isFalse);
+      expect(rankerListId('<script>{"listId": 12345,"x":1}</script>'), '12345');
+      expect(rankerListId('<img src="https://imgix.ranker.com/list_img_v2/77/9876/original/x">'), '9876');
+      expect(rankerListId('<html></html>'), isNull);
+    });
+
+    test('top ten become answers, weighted by score above the eleventh', () {
+      final result = buildRankerImport(
+        title: 'Best things',
+        source: 'Ranker: url',
+        items: [for (var i = 0; i < 12; i++) (name: 'item $i', score: 120.0 - i * 10)],
+      );
+      expect(result.answers, [for (var i = 0; i < 10; i++) 'item $i']);
+      expect(result.percentages.reduce((a, b) => a + b), closeTo(100, 1e-9));
+      // scores above the baseline of 20: 100, 90, ... 10
+      expect(result.percentages.first, closeTo(100 / 550 * 100, 1e-9));
+      expect(result.percentages.last, closeTo(10 / 550 * 100, 1e-9));
+      expect(result.answerHint, contains('11. item 10'));
+      expect(result.answerHint, contains('12. item 11'));
+    });
+
+    test('short lists keep one entry back as the baseline; equal scores split evenly', () {
+      final result = buildRankerImport(
+        title: 't',
+        source: 's',
+        items: [for (var i = 0; i < 4; i++) (name: 'n$i', score: 5.0)],
+      );
+      expect(result.answers, ['n0', 'n1', 'n2']);
+      expect(result.percentages, everyElement(closeTo(100 / 3, 1e-9)));
+    });
   });
 }

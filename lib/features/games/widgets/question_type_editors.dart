@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/features/games/widgets/media_button.dart';
+import 'package:quiz_show/features/games/widgets/ranker_import.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// Queues a partial update of the question document.
@@ -17,19 +18,30 @@ String questionTypeExplanation(QuestionType type) => switch (type) {
 
 /// The inputs that only one question type has.
 class QuestionTypeEditor extends StatelessWidget {
-  const QuestionTypeEditor({super.key, required this.gameId, required this.question, required this.save});
+  const QuestionTypeEditor({
+    super.key,
+    required this.gameId,
+    required this.question,
+    required this.save,
+    required this.onImported,
+  });
 
   final String gameId;
   final Question question;
   final SaveQuestion save;
+
+  /// An import replaced the question text and answer hint as well.
+  final void Function(String text, String answerHint) onImported;
 
   @override
   Widget build(BuildContext context) {
     return switch (question.type) {
       QuestionType.free => _FreeEditor(question: question, save: save),
       QuestionType.abcd => _AbcdEditor(question: question, save: save),
-      QuestionType.progressingReveal => _InformationEditor(gameId: gameId, question: question, save: save, feud: false),
-      QuestionType.feud => _InformationEditor(gameId: gameId, question: question, save: save, feud: true),
+      QuestionType.progressingReveal =>
+        _InformationEditor(gameId: gameId, question: question, save: save, feud: false, onImported: onImported),
+      QuestionType.feud =>
+        _InformationEditor(gameId: gameId, question: question, save: save, feud: true, onImported: onImported),
       QuestionType.unsupported => const SizedBox(),
     };
   }
@@ -148,12 +160,19 @@ class _InformationRow {
 /// (value and text per answer). The lists are stored index-aligned, so every
 /// change writes all of them.
 class _InformationEditor extends StatefulWidget {
-  const _InformationEditor({required this.gameId, required this.question, required this.save, required this.feud});
+  const _InformationEditor({
+    required this.gameId,
+    required this.question,
+    required this.save,
+    required this.feud,
+    required this.onImported,
+  });
 
   final String gameId;
   final Question question;
   final SaveQuestion save;
   final bool feud;
+  final void Function(String text, String answerHint) onImported;
 
   @override
   State<_InformationEditor> createState() => _InformationEditorState();
@@ -193,6 +212,29 @@ class _InformationEditorState extends State<_InformationEditor> {
     setState(change);
     _write();
   }
+
+  Future<void> _importFromRanker() async {
+    final result = await showRankerImportDialog(context);
+    if (result == null || !mounted) return;
+    final old = List.of(_rows);
+    setState(() {
+      _rows
+        ..clear()
+        ..addAll([
+          for (final (i, answer) in result.answers.indexed) _InformationRow(text: answer, value: _round(result.percentages[i])),
+        ]);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final row in old) {
+        row.dispose();
+      }
+    });
+    _write();
+    widget.save({'question': result.title, 'answerHint': result.answerHint});
+    widget.onImported(result.title, result.answerHint);
+  }
+
+  static double _round(double value) => (value * 10).roundToDouble() / 10;
 
   @override
   Widget build(BuildContext context) {
@@ -280,13 +322,21 @@ class _InformationEditorState extends State<_InformationEditor> {
           },
         ),
         const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => _change(() => _rows.add(_InformationRow())),
-            icon: const Icon(Icons.add),
-            label: Text("Add ${noun.toLowerCase()}"),
-          ),
+        Wrap(
+          spacing: 8,
+          children: [
+            TextButton.icon(
+              onPressed: () => _change(() => _rows.add(_InformationRow())),
+              icon: const Icon(Icons.add),
+              label: Text("Add ${noun.toLowerCase()}"),
+            ),
+            if (widget.feud)
+              TextButton.icon(
+                onPressed: _importFromRanker,
+                icon: const Icon(Icons.link),
+                label: const Text("Import from Ranker"),
+              ),
+          ],
         ),
       ],
     );

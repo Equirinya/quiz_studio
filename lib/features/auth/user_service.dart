@@ -29,6 +29,21 @@ class UserService {
     return username is String && username.trim().length >= kUsernameMinLength ? username : null;
   }
 
+  final Map<String, Future<String?>> _names = {};
+
+  /// The public display name of any user, cached for the session. Null when
+  /// they have none yet, which is the case for a v1 account that has not
+  /// opened v2 so far.
+  Future<String?> usernameOf(String uid) => _names.putIfAbsent(uid, () async {
+        try {
+          final name = (await _public(uid).get()).data()?['username'];
+          return name is String && name.isNotEmpty ? name : null;
+        } catch (_) {
+          _names.remove(uid);
+          return null;
+        }
+      });
+
   /// Creates both profile documents for a user who has none.
   Future<void> createProfile(String username) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
