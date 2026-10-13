@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'core/theme.dart';
 import 'core/version_gate.dart';
 import 'core/widgets/dialogs.dart';
 import 'features/auth/auth_gate.dart';
@@ -31,43 +32,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: _buildTheme(Brightness.light),
-      darkTheme: _buildTheme(Brightness.dark),
+      theme: buildAppTheme(Brightness.light),
+      darkTheme: buildAppTheme(Brightness.dark),
       // An installed version below `config/app.minRequiredVersion` never
       // reaches onboarding or the app.
       home: const VersionGate(child: AuthGate(child: HomePage())),
     );
   }
-}
-
-/// App-wide look: orange-seeded tonal palette with soft, rounded surfaces.
-/// Pages keep using default widgets, so the feel is set here once.
-ThemeData _buildTheme(Brightness brightness) {
-  final scheme = ColorScheme.fromSeed(seedColor: Colors.deepOrangeAccent, brightness: brightness);
-  return ThemeData(
-    colorScheme: scheme,
-    splashFactory: InkSparkle.splashFactory,
-    cardTheme: CardThemeData(
-      elevation: 0,
-      color: scheme.surfaceContainerLow,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: scheme.surfaceContainerHighest,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-    ),
-    bottomSheetTheme: const BottomSheetThemeData(
-      showDragHandle: true,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-    ),
-    snackBarTheme: SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    ),
-  );
 }
 
 /// Games to write, sessions to run.
