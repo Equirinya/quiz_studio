@@ -58,8 +58,7 @@ class MediaService {
   /// Whether [localFile] can be used yet.
   bool get ready => _root != null;
 
-  /// Points the cache at [directory], for rendering screens in tests.
-  @visibleForTesting
+  /// Points the cache at [directory]. Only for rendering screens in tests.
   set debugRoot(Directory directory) => _root = directory;
 
   /// Call once before using [localFile]; cheap to call again.
