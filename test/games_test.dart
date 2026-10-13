@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/games/widgets/ranker_import.dart';
+import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/game/game.dart';
 
 import 'game/fixture.dart';
@@ -126,6 +127,27 @@ void main() {
       );
       expect(result.answers, ['n0', 'n1', 'n2']);
       expect(result.percentages, everyElement(closeTo(100 / 3, 1e-9)));
+    });
+  });
+
+  group('session join links', () {
+    test('round-trip for controllers and players', () {
+      const controller = SessionJoinLink(sessionId: 'S1', token: 'tok', role: Role.controller);
+      const player = SessionJoinLink(sessionId: 'S1', token: 'tok', role: Role.player, teamId: 'red');
+      expect(controller.link, 'quiz-studio://session/S1/controller/tok');
+      expect(player.link, 'quiz-studio://session/S1/player/tok/red');
+      final parsed = SessionJoinLink.tryParse(player.link)!;
+      expect((parsed.sessionId, parsed.token, parsed.role, parsed.teamId), ('S1', 'tok', Role.player, 'red'));
+      expect(SessionJoinLink.tryParse(controller.link)!.teamId, isNull);
+    });
+
+    test('rejects other links, unknown roles and a missing or surplus team', () {
+      expect(SessionJoinLink.tryParse('quiz-studio://join/g/i'), isNull);
+      expect(SessionJoinLink.tryParse('quiz-studio://session/S1/host/tok'), isNull);
+      expect(SessionJoinLink.tryParse('quiz-studio://session/S1/player/tok'), isNull);
+      expect(SessionJoinLink.tryParse('quiz-studio://session/S1/controller/tok/red'), isNull);
+      expect(SessionJoinLink.tryParse('quiz-studio://session/S1/player/t ok/red'), isNull);
+      expect(SessionJoinLink.tryParse(''), isNull);
     });
   });
 }

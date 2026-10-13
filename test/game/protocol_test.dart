@@ -92,8 +92,9 @@ void main() {
     expect(mayIssue(const Sender.host(), const SetGame('g')), isTrue);
   });
 
-  group('player view', () {
-    String view(SessionState s, [String team = 'red']) => jsonEncode(playerView(s, game, team));
+  group('public view', () {
+    String view(SessionState s) => jsonEncode(publicView(s, game));
+    PublicView parsed(SessionState s) => PublicView(jsonDecode(view(s)) as Map<String, dynamic>);
 
     test('never contains the answer hint or other questions', () {
       final s = run(fixtureState(), [const OpenQuestion(free)]);
@@ -105,12 +106,10 @@ void main() {
 
     test('abcd answers appear as revealed, correctness only at the end', () {
       var s = run(fixtureState(), [const OpenQuestion(abcd), const Reveal(1), const Reveal(1)]);
-      var q = playerView(s, game, 'red')['question'] as Map<String, dynamic>;
-      expect(q['answers'], ['a', 'b']);
-      expect(q.containsKey('answersCorrect'), isFalse);
+      expect(parsed(s).question!['answers'], ['a', 'b']);
+      expect(parsed(s).question!.containsKey('answersCorrect'), isFalse);
       s = run(s, [const Reveal(1), const Reveal(1), const Reveal(1)]);
-      q = playerView(s, game, 'red')['question'] as Map<String, dynamic>;
-      expect(q['answersCorrect'], [false, true, false, false]);
+      expect(parsed(s).question!['answersCorrect'], [false, true, false, false]);
     });
 
     test('progressing reveal and feud only show what is uncovered', () {
@@ -122,27 +121,96 @@ void main() {
       expect(view(s), isNot(contains('apple')));
     });
 
-    test('other teams answers stay hidden until revealed', () {
+    test('submissions stay hidden until revealed; who has submitted does not', () {
       var s = run(fixtureState(), [
         const OpenQuestion(estimate),
         const OpenAnswers(AnswerKind.text),
         const SubmitAnswer('red', PlayerAnswer(text: 'red-secret')),
-        const SubmitAnswer('blue', PlayerAnswer(text: 'blue-secret')),
       ]);
-      expect(view(s, 'red'), contains('red-secret'));
-      expect(view(s, 'red'), isNot(contains('blue-secret')));
-      expect((playerView(s, game, 'red')['answerRound'] as Map)['submitted'], ['red', 'blue']);
+      expect(view(s), isNot(contains('red-secret')));
+      expect(parsed(s).answerKind, AnswerKind.text);
+      expect(parsed(s).answersOpen, isTrue);
+      expect(parsed(s).hasSubmitted('red'), isTrue);
+      expect(parsed(s).hasSubmitted('blue'), isFalse);
       s = run(s, [const RevealAnswers()]);
-      expect(view(s, 'red'), contains('blue-secret'));
+      expect(view(s), contains('red-secret'));
+      expect(parsed(s).answersOpen, isFalse);
     });
 
-    test('canBuzz reflects the rules for this team', () {
+    test('canBuzz follows the rules for each team', () {
       var s = run(fixtureState(), [const SetQueueBuzzers(true), const OpenQuestion(free)]);
-      expect(playerView(s, game, 'red')['canBuzz'], isTrue);
+      expect(parsed(s).canBuzz('red'), isTrue);
+      expect(parsed(s).canBuzz('green'), isFalse);
       s = run(s, [const Buzz('red')]);
-      expect(playerView(s, game, 'red')['canBuzz'], isFalse);
-      expect(playerView(s, game, 'blue')['canBuzz'], isTrue);
-      expect(playerView(fixtureState(), game, 'red')['canBuzz'], isFalse);
+      expect(parsed(s).phase, Phase.buzzered);
+      expect(parsed(s).canBuzz('red'), isFalse);
+      expect(parsed(s).canBuzz('blue'), isTrue);
+      expect(parsed(fixtureState()).canBuzz('red'), isFalse);
+      expect(parsed(run(fixtureState(), [const OpenQuestion(estimate)])).canBuzz('red'), isFalse);
+    });
+  });
+
+  group('session host', () {
+    test('applies commands, emits states in order and passes effects on', () async {
+      final host = SessionHost(initial: fixtureState(), game: game);
+      final seqs = <int>[];
+      final effects = <Effect>[];
+      host.states.listen((s) => seqs.add(s.seq));
+      host.effects.listen(effects.add);
+
+      expect(host.dispatch(const OpenQuestion(free)), isTrue);
+      expect(host.dispatch(const Buzz('red')), isTrue);
+      expect(host.dispatch(const Judge(correct: true)), isTrue);
+      expect(seqs, [1, 2, 3]);
+      expect(effects.map((e) => e.runtimeType), [BuzzerSound, SoundEffect]);
+      expect(host.state.team('red')!.points, 100);
+      await host.dispose();
+    });
+
+    test('enforces who may send what', () async {
+      final host = SessionHost(initial: fixtureState(), game: game);
+      const red = Sender(Role.player, teamId: 'red');
+      expect(host.dispatch(const OpenQuestion(free), sender: red), isFalse);
+      expect(host.dispatch(const OpenQuestion(free), sender: const Sender(Role.controller)), isTrue);
+      expect(host.dispatch(const Buzz('blue'), sender: red), isFalse);
+      expect(host.dispatch(const Buzz('red'), sender: red), isTrue);
+      expect(host.dispatch(const AdjustPoints('red', 500), sender: red), isFalse);
+      expect(host.state.buzzQueue, ['red']);
+      await host.dispose();
+    });
+
+    test('rejected commands and pure effects emit no state', () async {
+      final host = SessionHost(initial: fixtureState(), game: game);
+      var states = 0;
+      var effects = 0;
+      host.states.listen((_) => states++);
+      host.effects.listen((_) => effects++);
+      expect(host.dispatch(const Judge(correct: true)), isFalse);
+      expect(host.dispatch(const PlayEffect('airhorn')), isTrue);
+      expect((states, effects), (0, 1));
+      await host.dispose();
+    });
+
+    test('new content republishes; a question that vanished is closed unplayed', () async {
+      final host = SessionHost(initial: fixtureState(), game: game)..dispatch(const OpenQuestion(free));
+      var states = 0;
+      host.states.listen((_) => states++);
+      host.setGame(game);
+      expect(states, 1);
+      expect(host.state.current, free);
+
+      host.setGame(GameContent(id: 'game'));
+      expect(host.state.current, isNull);
+      expect(host.state.phase, Phase.overview);
+      expect(host.state.played, isEmpty);
+      expect(host.publicState['question'], isNull);
+      await host.dispose();
+    });
+
+    test('ignores commands after dispose', () async {
+      final host = SessionHost(initial: fixtureState(), game: game);
+      await host.dispose();
+      expect(host.dispatch(const OpenQuestion(free)), isFalse);
     });
   });
 }
