@@ -47,21 +47,25 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
       _error = null;
     });
     try {
-      await SessionRepository.instance.join(link);
+      await SessionRepository.instance.join(link).timeout(const Duration(seconds: 6));
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-          _error = "Could not join. The code may no longer be valid.";
-        });
+      // Without the internet the code still works on the presenter's own
+      // network; only a code without a local address is a dead end.
+      if (link.lan.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _error = "Could not join. The code may no longer be valid.";
+          });
+        }
+        return;
       }
-      return;
     }
     if (!mounted) return;
     Navigator.of(context).pushReplacement(MaterialPageRoute(
       builder: (_) => link.role == Role.player
-          ? PlayerPage(sessionId: link.sessionId, teamId: link.teamId!)
-          : ControlPage(sessionId: link.sessionId, title: "Session", asMember: true),
+          ? PlayerPage(link: link)
+          : ControlPage(sessionId: link.sessionId, title: "Session", joinLink: link),
     ));
   }
 

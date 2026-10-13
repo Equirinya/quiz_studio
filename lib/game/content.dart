@@ -18,6 +18,19 @@ const String effectAnswerWrong = 'musicEffectAnswerWrong';
 const String effectAnswerClosed = 'musicEffectAnswerClosed';
 const List<String> builtInEffects = [effectAnswerCorrect, effectAnswerWrong, effectAnswerClosed, effectReveal];
 
+/// A copy of [value] holding only what JSON can represent.
+Object? _jsonSafe(Object? value) {
+  if (value == null || value is num || value is String || value is bool) return value;
+  if (value is List) return [for (final item in value) _jsonSafe(item)];
+  if (value is Map) {
+    return <String, dynamic>{
+      for (final entry in value.entries)
+        if (entry.key is String) entry.key as String: _jsonSafe(entry.value),
+    };
+  }
+  return null;
+}
+
 String? _str(Object? v) => v is String && v.isNotEmpty ? v : null;
 
 int _int(Object? v, [int fallback = 0]) => v is num ? v.toInt() : fallback;
@@ -316,10 +329,19 @@ class QuestionRef {
 }
 
 class GameContent {
-  GameContent({required this.id, this.name = '', this.groups = const [], this.sounds = MusicConfig.empty});
+  GameContent({
+    required this.id,
+    this.name = '',
+    this.groups = const [],
+    this.sounds = MusicConfig.empty,
+    this.data = const {},
+  });
 
   final String id;
   final String name;
+
+  /// The stored game document.
+  final Map<String, dynamic> data;
 
   /// Sorted by [CategoryGroup.index]; ungrouped categories come first, in a
   /// group with [CategoryGroup.ungroupedId].
@@ -398,6 +420,48 @@ class GameContent {
       name: game['name'] is String ? game['name'] as String : '',
       groups: result,
       sounds: MusicConfig.fromMap(game),
+      data: game,
+    );
+  }
+
+  /// The game as plain JSON, to hand to a controller over the local network.
+  /// It is the input of [GameContent.assemble] again, so [GameContent.fromJson]
+  /// rebuilds exactly this content. Values JSON cannot carry (database
+  /// timestamps and the like) are dropped; nothing the show needs is among
+  /// them.
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'game': _jsonSafe(data),
+        'groups': {
+          for (final group in groups)
+            if (!group.isUngrouped) group.id: _jsonSafe(group.data),
+        },
+        'categories': {
+          for (final group in groups)
+            for (final category in group.categories) category.id: _jsonSafe(category.data),
+        },
+        'questions': {
+          for (final group in groups)
+            for (final category in group.categories)
+              category.id: {for (final question in category.questions) question.id: _jsonSafe(question.data)},
+        },
+      };
+
+  factory GameContent.fromJson(Map<String, dynamic> json) {
+    Map<String, Map<String, dynamic>> docs(Object? value) => {
+          for (final entry in (value as Map? ?? const {}).entries)
+            entry.key as String: Map<String, dynamic>.from(entry.value as Map),
+        };
+    return GameContent.assemble(
+      id: json['id'] as String,
+      game: Map<String, dynamic>.from(json['game'] as Map? ?? const {}),
+      groups: docs(json['groups']),
+      categories: docs(json['categories']),
+      questions: {
+        for (final entry in (json['questions'] as Map? ?? const {}).entries) entry.key as String: docs(entry.value),
+      },
+      // Whatever was filtered out is not in the JSON to begin with.
+      activeOnly: false,
     );
   }
 

@@ -10,10 +10,14 @@ import 'package:quiz_show/game/game.dart';
 /// The codes other devices scan to join: one per team for the players'
 /// phones, and one for a second controller.
 class ConnectDevicesPage extends StatefulWidget {
-  const ConnectDevicesPage({super.key, required this.sessionId, required this.teams});
+  const ConnectDevicesPage({super.key, required this.sessionId, required this.teams, this.lanEndpoints = const []});
 
   final String sessionId;
   final List<Team> teams;
+
+  /// Where the presenter listens on the local network; put into every code
+  /// so a device on the same network joins without the internet.
+  final List<String> lanEndpoints;
 
   @override
   State<ConnectDevicesPage> createState() => _ConnectDevicesPageState();
@@ -38,7 +42,8 @@ class _ConnectDevicesPageState extends State<ConnectDevicesPage> {
           final links = snapshot.data;
           if (links == null) return const Center(child: CupertinoActivityIndicator());
           final forController = _selected >= widget.teams.length;
-          final link = forController ? links.controller : links.players[widget.teams[_selected].id]!;
+          final link = (forController ? links.controller : links.players[widget.teams[_selected].id]!)
+              .withLan(widget.lanEndpoints);
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -73,6 +78,22 @@ class _ConnectDevicesPageState extends State<ConnectDevicesPage> {
                     : "Scan in Quiz Studio to use a phone as the buzzer of ${widget.teams[_selected].name}.",
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(widget.lanEndpoints.isEmpty ? Icons.cloud_outlined : Icons.wifi, size: 18),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      widget.lanEndpoints.isEmpty
+                          ? "Devices connect through the internet."
+                          : "Devices on this network connect directly; others through the internet.",
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               Center(

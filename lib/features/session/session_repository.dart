@@ -147,6 +147,30 @@ class SessionRepository {
     return (controller: controller, players: players);
   }
 
+  /// The join tokens as the LAN server needs them, kept up to date. Host only.
+  Stream<Map<String, ({Role role, String? teamId})>> watchTokens(String sessionId) =>
+      session(sessionId).collection('tokens').snapshots().map((snapshot) => {
+            for (final doc in snapshot.docs)
+              doc.id: (
+                role: doc.data()['role'] == 'controller' ? Role.controller : Role.player,
+                teamId: doc.data()['teamId'] as String?,
+              ),
+          });
+
+  /// Tells the session's devices where the presenter listens on the local
+  /// network. Host only.
+  Future<void> publishLanEndpoints(String sessionId, List<String> endpoints) =>
+      session(sessionId).collection('public').doc('lan').set({
+        'endpoints': endpoints,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+  Stream<List<String>> watchLanEndpoints(String sessionId) => session(sessionId)
+      .collection('public')
+      .doc('lan')
+      .snapshots()
+      .map((doc) => (doc.data()?['endpoints'] as List? ?? const []).whereType<String>().toList());
+
   /// Joins someone else's session with a scanned link.
   Future<void> join(SessionJoinLink link, {String name = ''}) =>
       session(link.sessionId).collection('members').doc(_uid).set({

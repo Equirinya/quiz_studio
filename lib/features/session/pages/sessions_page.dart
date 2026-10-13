@@ -14,6 +14,9 @@ import 'dart:async';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/player/pages/join_session_page.dart';
+import 'package:quiz_show/features/player/pages/player_page.dart' show LinkStatusIcon;
+import 'package:quiz_show/features/session/session_client.dart';
+import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/features/session/pages/connect_devices_page.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
@@ -348,13 +351,14 @@ class _NewSessionSheetState extends State<_NewSessionSheet> {
 
 /// Controls a session that another device presents.
 class ControlPage extends StatefulWidget {
-  const ControlPage({super.key, required this.sessionId, required this.title, this.asMember = false});
+  const ControlPage({super.key, required this.sessionId, required this.title, this.joinLink});
 
   final String sessionId;
   final String title;
 
-  /// Joined with a code rather than hosting: no join codes to hand out.
-  final bool asMember;
+  /// Set when this device joined with a code rather than hosting; it has no
+  /// join codes to hand out then.
+  final SessionJoinLink? joinLink;
 
   @override
   State<ControlPage> createState() => _ControlPageState();
@@ -363,6 +367,7 @@ class ControlPage extends StatefulWidget {
 class _ControlPageState extends State<ControlPage> {
   late final SessionConnection _connection = SessionConnection.control(
     widget.sessionId,
+    joinLink: widget.joinLink,
     onSendError: (_) {
       if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text("That did not reach the presenter.")));
     },
@@ -378,12 +383,20 @@ class _ControlPageState extends State<ControlPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          ValueListenableBuilder<LinkStatus>(
+            valueListenable: _connection.link!,
+            builder: (context, status, _) => LinkStatusIcon(status),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // Commands only take effect on the presenting device.
           StreamBuilder<SessionSummary?>(
-            stream: _session,
+            stream: widget.joinLink == null ? _session : null,
             builder: (context, snapshot) => snapshot.hasData && snapshot.data!.hostDevice == null
                 ? MaterialBanner(
                     content: const Text("No device is presenting this session yet. Nothing happens until one does."),
@@ -395,7 +408,7 @@ class _ControlPageState extends State<ControlPage> {
           Expanded(
             child: ControllerView(
               connection: _connection,
-              onConnectDevices: widget.asMember ? null : () => openConnectDevices(context, _connection),
+              onConnectDevices: widget.joinLink != null ? null : () => openConnectDevices(context, _connection),
             ),
           ),
         ],
@@ -404,11 +417,21 @@ class _ControlPageState extends State<ControlPage> {
   }
 }
 
-void openConnectDevices(BuildContext context, SessionConnection connection) {
-  Navigator.of(context).push(MaterialPageRoute(
+Future<void> openConnectDevices(BuildContext context, SessionConnection connection) async {
+  final navigator = Navigator.of(context);
+  // The presenter knows its own addresses; any other device asks for them.
+  final endpoints = connection.isPresenting
+      ? connection.lanEndpoints.value
+      : await SessionRepository.instance
+          .watchLanEndpoints(connection.sessionId)
+          .first
+          .timeout(const Duration(seconds: 2), onTimeout: () => const <String>[])
+          .catchError((Object _) => const <String>[]);
+  navigator.push(MaterialPageRoute(
     builder: (_) => ConnectDevicesPage(
       sessionId: connection.sessionId,
       teams: connection.state.value?.teams ?? const [],
+      lanEndpoints: endpoints,
     ),
   ));
 }

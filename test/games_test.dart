@@ -150,4 +150,21 @@ void main() {
       expect(SessionJoinLink.tryParse(''), isNull);
     });
   });
+
+  group('session join links with local addresses', () {
+    test('carry them and read them back', () {
+      const link = SessionJoinLink(sessionId: 'S1', token: 'tok', role: Role.player, teamId: 'red');
+      final withLan = link.withLan(['192.168.1.5:47800', '10.0.0.2:47800']);
+      expect(withLan.link, 'quiz-studio://session/S1/player/tok/red?lan=192.168.1.5:47800,10.0.0.2:47800');
+      final parsed = SessionJoinLink.tryParse(withLan.link)!;
+      expect(parsed.lan, ['192.168.1.5:47800', '10.0.0.2:47800']);
+      expect((parsed.sessionId, parsed.token, parsed.teamId), ('S1', 'tok', 'red'));
+    });
+
+    test('ignore anything that is not ip:port', () {
+      final parsed = SessionJoinLink.tryParse('quiz-studio://session/S1/controller/tok?lan=evil.example.com:80,192.168.1.5:47800,x')!;
+      expect(parsed.lan, ['192.168.1.5:47800']);
+      expect(SessionJoinLink.tryParse('quiz-studio://session/S1/controller/tok?other=1')!.lan, isEmpty);
+    });
+  });
 }
