@@ -21,6 +21,11 @@ const Map<String, String> _contentTypes = {
   'aac': 'audio/aac',
   'ogg': 'audio/ogg',
   'flac': 'audio/flac',
+  'mp4': 'video/mp4',
+  'm4v': 'video/mp4',
+  'mov': 'video/quicktime',
+  'webm': 'video/webm',
+  'mkv': 'video/x-matroska',
 };
 
 String? contentTypeForPath(String path) {

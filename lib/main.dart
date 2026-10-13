@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'core/theme.dart';
@@ -20,6 +21,8 @@ void main() async {
     await windowManager.ensureInitialized();
     windowManager.setTitle("Quiz Studio");
   }
+  // The video player's native side, for video cards on the presenter.
+  MediaKit.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await MediaService.instance.init();
   runApp(const MyApp());

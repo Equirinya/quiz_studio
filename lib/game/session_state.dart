@@ -40,10 +40,11 @@ class Team {
       Team(id: json['id'] as String, name: json['name'] as String, points: (json['points'] as num?)?.toInt() ?? 0);
 }
 
-/// Something the gamemaster puts on top of the screen: a text card, an image,
-/// or both. Stays until it is hidden.
+/// Something the gamemaster puts on top of the screen: a text card, an
+/// image, a video, or text with a picture. A card stays until it is hidden;
+/// a video takes itself off when it has played to the end.
 class OverlayCard {
-  const OverlayCard({this.title, this.text, this.image});
+  const OverlayCard({this.title, this.text, this.image, this.video});
 
   final String? title;
   final String? text;
@@ -51,18 +52,24 @@ class OverlayCard {
   /// A media file of the game.
   final String? image;
 
-  bool get isEmpty => (title ?? '').trim().isEmpty && (text ?? '').trim().isEmpty && (image ?? '').isEmpty;
+  /// A media file of the game; shown full screen, without the text.
+  final String? video;
+
+  bool get isEmpty =>
+      (title ?? '').trim().isEmpty && (text ?? '').trim().isEmpty && (image ?? '').isEmpty && (video ?? '').isEmpty;
 
   Map<String, dynamic> toJson() => {
         if (title != null) 'title': title,
         if (text != null) 'text': text,
         if (image != null) 'image': image,
+        if (video != null) 'video': video,
       };
 
   factory OverlayCard.fromJson(Map<String, dynamic> json) => OverlayCard(
         title: json['title'] as String?,
         text: json['text'] as String?,
         image: json['image'] as String?,
+        video: json['video'] as String?,
       );
 }
 

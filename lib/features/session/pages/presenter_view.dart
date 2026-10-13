@@ -8,6 +8,7 @@ import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/session/boards/map_board.dart';
 import 'package:quiz_show/features/session/boards/wheel_board.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
+import 'package:quiz_show/features/session/pages/video_card.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
 
@@ -15,9 +16,13 @@ import 'package:quiz_show/game/game.dart';
 /// as the gamemaster has revealed it. Everything scales with the screen
 /// height, so it reads the same on a laptop and on a projector.
 class PresenterView extends StatelessWidget {
-  const PresenterView({super.key, required this.connection});
+  const PresenterView({super.key, required this.connection, this.videoCards = false});
 
   final SessionConnection connection;
+
+  /// Whether video cards are played. Off by default, so the view can be
+  /// shown where there is no video player, as in tests.
+  final bool videoCards;
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +60,19 @@ class PresenterView extends StatelessWidget {
             children: [
               _screen(state, game, group, question),
               // Cards and effects lie over whatever is on screen.
-              CardOverlay(card: state.overlay, imageFile: mediaFile),
+              CardOverlay(
+                card: state.overlay,
+                imageFile: mediaFile,
+                // Only the presenting device plays video, and takes the card
+                // off again when the clip is over.
+                videoBuilder: connection.host == null || !videoCards
+                    ? null
+                    : (file) => VideoCard(
+                          key: ValueKey(file.path),
+                          file: file,
+                          onFinished: () => connection.host?.dispatch(const HideCard()),
+                        ),
+              ),
               ScreenEffectLayer(effects: connection.host?.effects),
             ],
           ),

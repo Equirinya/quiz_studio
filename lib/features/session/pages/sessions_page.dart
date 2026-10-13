@@ -551,7 +551,7 @@ class _PresentPageState extends State<PresentPage> {
       ),
       body: Stack(
         children: [
-          Positioned.fill(child: PresenterView(connection: connection)),
+          Positioned.fill(child: PresenterView(connection: connection, videoCards: true)),
           // Kept faint: the audience is looking at this screen.
           Positioned(
             top: 4,

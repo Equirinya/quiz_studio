@@ -11,9 +11,13 @@ import 'package:quiz_show/features/games/media_service.dart';
 const XTypeGroup _audioByExtension = XTypeGroup(label: 'Audio', extensions: <String>['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac']);
 const XTypeGroup _audioByUniformType = XTypeGroup(label: 'Audio', uniformTypeIdentifiers: <String>['public.audio']);
 
+const XTypeGroup _videoByExtension = XTypeGroup(label: 'Video', extensions: <String>['mp4', 'm4v', 'mov', 'webm', 'mkv']);
+const XTypeGroup _videoByUniformType = XTypeGroup(label: 'Video', uniformTypeIdentifiers: <String>['public.movie']);
+
 enum MediaKind {
   image("image", Icons.add_photo_alternate_outlined, Icons.image),
-  audio("sound", Icons.music_note_outlined, Icons.music_note);
+  audio("sound", Icons.music_note_outlined, Icons.music_note),
+  video("video", Icons.video_call_outlined, Icons.movie);
 
   const MediaKind(this.noun, this.addIcon, this.presentIcon);
 
@@ -28,6 +32,9 @@ enum MediaKind {
         return (await ImagePicker().pickImage(source: ImageSource.gallery))?.path;
       case MediaKind.audio:
         final group = Platform.isIOS || Platform.isMacOS ? _audioByUniformType : _audioByExtension;
+        return (await openFile(acceptedTypeGroups: [group]))?.path;
+      case MediaKind.video:
+        final group = Platform.isIOS || Platform.isMacOS ? _videoByUniformType : _videoByExtension;
         return (await openFile(acceptedTypeGroups: [group]))?.path;
     }
   }

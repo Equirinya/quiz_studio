@@ -329,6 +329,12 @@ void main() {
       expect(s.overlay, isNull);
     });
 
+    test('a card can be just a video', () {
+      final s = run(fixtureState(), [const ShowCard(OverlayCard(video: 'intro.mp4'))]);
+      expect(s.overlay!.video, 'intro.mp4');
+      expect(SessionState.fromJson(s.toJson()).overlay!.video, 'intro.mp4');
+    });
+
     test('empty cards and hiding nothing are rejected', () {
       expect(apply(fixtureState(), const ShowCard(OverlayCard(text: '  '))).accepted, isFalse);
       expect(apply(fixtureState(), const ShowCard(OverlayCard())).accepted, isFalse);
@@ -356,6 +362,7 @@ void main() {
         'cards': [
           {'title': 'Rules', 'text': 'No phones', 'image': null},
           {'title': '', 'text': '', 'image': 'sponsor.png'},
+          {'title': 'Intro', 'video': 'intro.mp4'},
           'junk',
         ],
       },
@@ -363,8 +370,12 @@ void main() {
       categories: {},
       questions: {},
     );
-    expect(withCards.cards.map((c) => (c.title, c.text, c.image)), [('Rules', 'No phones', null), ('', '', 'sponsor.png')]);
-    expect(withCards.mediaPaths, {'sponsor.png'});
+    expect(withCards.cards.map((c) => (c.title, c.text, c.image, c.video)), [
+      ('Rules', 'No phones', null, null),
+      ('', '', 'sponsor.png', null),
+      ('Intro', '', null, 'intro.mp4'),
+    ]);
+    expect(withCards.mediaPaths, {'sponsor.png', 'intro.mp4'});
     expect(fixtureGame().cards, isEmpty);
   });
 }

@@ -9,12 +9,16 @@ import 'package:quiz_show/game/game.dart';
 /// The card the gamemaster put over the screen: a title, a text, an image,
 /// in any combination. Fades in and out.
 class CardOverlay extends StatelessWidget {
-  const CardOverlay({super.key, required this.card, required this.imageFile});
+  const CardOverlay({super.key, required this.card, required this.imageFile, this.videoBuilder});
 
   final OverlayCard? card;
 
   /// Resolves a media file name to a local file, or null when it is missing.
   final File? Function(String name) imageFile;
+
+  /// Builds the player for a video file. Left out where video cannot play
+  /// (tests, devices that are not presenting); the card's text shows instead.
+  final Widget Function(File file)? videoBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +33,10 @@ class CardOverlay extends StatelessWidget {
                 builder: (context, box) {
                   final unit = box.maxHeight / 100;
                   final scheme = Theme.of(context).colorScheme;
+                  final video = card.video == null || videoBuilder == null ? null : imageFile(card.video!);
+                  if (video != null) {
+                    return ColoredBox(color: Colors.black, child: Center(child: videoBuilder!(video)));
+                  }
                   final image = card.image == null ? null : imageFile(card.image!);
                   final hasText = (card.title ?? '').isNotEmpty || (card.text ?? '').isNotEmpty;
                   return ColoredBox(

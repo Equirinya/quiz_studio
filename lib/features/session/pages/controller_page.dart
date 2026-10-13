@@ -948,12 +948,23 @@ class _EffectsSheetState extends State<_EffectsSheet> {
               ),
               for (final card in cards)
                 ActionChip(
-                  avatar: Icon(card.image == null ? Icons.article_outlined : Icons.image_outlined, size: 18),
-                  label: Text(card.title.isNotEmpty ? card.title : (card.text.isNotEmpty ? card.text : "Image"), overflow: TextOverflow.ellipsis),
+                  avatar: Icon(
+                    card.video != null
+                        ? Icons.movie_outlined
+                        : card.image == null
+                            ? Icons.article_outlined
+                            : Icons.image_outlined,
+                    size: 18,
+                  ),
+                  label: Text(
+                    card.title.isNotEmpty ? card.title : (card.text.isNotEmpty ? card.text : (card.video != null ? "Video" : "Image")),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   onPressed: () => send(ShowCard(OverlayCard(
                     title: card.title.isEmpty ? null : card.title,
                     text: card.text.isEmpty ? null : card.text,
                     image: card.image,
+                    video: card.video,
                   ))),
                 ),
             ],

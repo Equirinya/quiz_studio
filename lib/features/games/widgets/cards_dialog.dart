@@ -29,11 +29,13 @@ class _CardRow {
   _CardRow(CueCard card)
       : title = TextEditingController(text: card.title),
         text = TextEditingController(text: card.text),
-        image = card.image;
+        image = card.image,
+        video = card.video;
 
   final TextEditingController title;
   final TextEditingController text;
   String? image;
+  String? video;
 
   void dispose() {
     title.dispose();
@@ -53,7 +55,7 @@ class _CardsDialogState extends State<_CardsDialog> {
   }
 
   void _save() => widget.save([
-        for (final row in _rows) CueCard(title: row.title.text.trim(), text: row.text.text.trim(), image: row.image).toMap(),
+        for (final row in _rows) CueCard(title: row.title.text.trim(), text: row.text.text.trim(), image: row.image, video: row.video).toMap(),
       ]);
 
   @override
@@ -69,7 +71,8 @@ class _CardsDialogState extends State<_CardsDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                "Text or pictures you can put over the screen at any time during the show.",
+"Text, pictures or video clips you can put over the screen at any time during the show. "
+                "A card with a video plays it full screen and disappears when it ends.",
                 style: theme.textTheme.bodySmall,
               ),
               for (final row in _rows)
@@ -105,6 +108,15 @@ class _CardsDialogState extends State<_CardsDialog> {
                             name: row.image,
                             onChanged: (name) {
                               setState(() => row.image = name);
+                              _save();
+                            },
+                          ),
+                          MediaButton(
+                            gameId: widget.gameId,
+                            kind: MediaKind.video,
+                            name: row.video,
+                            onChanged: (name) {
+                              setState(() => row.video = name);
                               _save();
                             },
                           ),
