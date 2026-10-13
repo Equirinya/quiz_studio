@@ -163,4 +163,68 @@ void main() {
     await tester.pump();
     expect(thresholds, {0: 420});
   });
+
+  testBuzzers('raw data is hidden until switched on, then shows what the box sends', (tester) async {
+    await pumpView(tester);
+    await send(tester, '0:5,1:5,2:5');
+    await send(tester, 'garbage!');
+    expect(find.byKey(const ValueKey('serial-console')), findsNothing);
+    expect(find.textContaining('garbage!'), findsNothing);
+
+    await tester.tap(find.byType(Switch));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('serial-console')), findsOneWidget);
+    expect(find.textContaining('0:5,1:5,2:5\ngarbage!'), findsOneWidget);
+
+    // It follows along.
+    await send(tester, '0:900,1:5,2:5');
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.textContaining('0:900,1:5,2:5'), findsOneWidget);
+
+    await tester.tap(find.byType(Switch));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('serial-console')), findsNothing);
+  });
+
+  test('only the last lines are kept', () {
+    final port = FakePort();
+    var now = 1000;
+    final link = BuzzerLink(port, clock: () => now);
+    link.use('COM3');
+    for (var i = 0; i < 500; i++) {
+      port.send('0:$i\n');
+      now += 10;
+      link.poll();
+    }
+    expect(link.recentLines.length, lessThanOrEqualTo(40));
+    expect(link.recentLines.last, '0:499');
+    link.dispose();
+  });
+
+  testWidgets('team sounds: who has one, who is uploading, and the buttons', (tester) async {
+    final chosen = <String>[];
+    final cleared = <String>[];
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: TeamSoundsList(
+          teams: const [
+            Team(id: 'red', name: 'Red', sound: 'horn.mp3'),
+            Team(id: 'blue', name: 'Blue'),
+            Team(id: 'green', name: 'Green'),
+          ],
+          uploading: const {'green'},
+          onChoose: (team) => chosen.add(team.id),
+          onClear: (team) => cleared.add(team.id),
+        ),
+      ),
+    ));
+    expect(find.text('Own sound'), findsOneWidget);
+    expect(find.text('Built-in buzzer'), findsOneWidget);
+    expect(find.text('Uploading…'), findsOneWidget);
+    await tester.tap(find.text('Change'));
+    await tester.tap(find.text('Choose'));
+    await tester.tap(find.byTooltip('Back to the built-in buzzer'));
+    expect(chosen, ['red', 'blue']);
+    expect(cleared, ['red']);
+  });
 }

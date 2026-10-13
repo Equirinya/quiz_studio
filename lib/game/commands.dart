@@ -86,6 +86,8 @@ sealed class Command {
       'renameTeam' => RenameTeam(j['teamId'] as String, j['name'] as String),
       'removeTeam' => RemoveTeam(j['teamId'] as String),
       'setQueueBuzzers' => SetQueueBuzzers(j['on'] as bool),
+      'setThumbnails' => SetThumbnails(j['on'] as bool),
+      'setTeamSound' => SetTeamSound(j['teamId'] as String, j['sound'] as String?),
       'openAnswers' => OpenAnswers(CompanionSpec.fromMap(j['spec'])!),
       'submitAnswer' =>
         SubmitAnswer(j['teamId'] as String, PlayerAnswer.fromJson(Map<String, dynamic>.from(j['answer'] as Map))),
@@ -327,6 +329,18 @@ class RenameTeam extends Command {
   Map<String, dynamic> get _args => {'teamId': teamId, 'name': name};
 }
 
+/// Gives a team its own buzzer sound, a file among the session's files, or
+/// takes it away again with null.
+class SetTeamSound extends Command {
+  const SetTeamSound(this.teamId, this.sound);
+  final String teamId;
+  final String? sound;
+  @override
+  String get type => 'setTeamSound';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId, 'sound': sound};
+}
+
 class RemoveTeam extends Command {
   const RemoveTeam(this.teamId);
   final String teamId;
@@ -341,6 +355,16 @@ class SetQueueBuzzers extends Command {
   final bool on;
   @override
   String get type => 'setQueueBuzzers';
+  @override
+  Map<String, dynamic> get _args => {'on': on};
+}
+
+/// Shows or hides the row of small pictures under a progressing reveal.
+class SetThumbnails extends Command {
+  const SetThumbnails(this.on);
+  final bool on;
+  @override
+  String get type => 'setThumbnails';
   @override
   Map<String, dynamic> get _args => {'on': on};
 }

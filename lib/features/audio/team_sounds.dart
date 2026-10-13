@@ -1,52 +1,89 @@
 import 'dart:io';
 
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-/// A buzzer sound of its own for a team. The files live on the presenting
-/// device, which is the only one that plays them, so nothing is uploaded.
+import 'package:quiz_show/features/games/media_service.dart';
+
+/// A buzzer sound of its own for a team. The file lives with the session in
+/// storage under `session_{sessionId}/`, so whichever device presents can
+/// fetch it; the team carries its name (see `Team.sound`). The presenting
+/// device plays its local copy, and the built-in buzzer for as long as it
+/// has none.
 class TeamSounds {
   TeamSounds._();
 
   static final TeamSounds instance = TeamSounds._();
 
-  SharedPreferences? _prefs;
-  final Map<String, String> _paths = {};
+  /// Storage refuses anything bigger; a buzzer sound is a few seconds.
+  static const int maxBytes = 5 * 1024 * 1024;
 
-  static String _key(String sessionId, String teamId) => 'team_sound.$sessionId.$teamId';
+  Directory? _root;
+  final Map<String, Future<void>> _downloads = {};
 
-  /// Loads what was chosen for [sessionId] earlier on this device.
-  Future<void> load(String sessionId) async {
-    final prefs = _prefs ??= await SharedPreferences.getInstance();
-    final prefix = 'team_sound.$sessionId.';
-    _paths.removeWhere((key, _) => key.startsWith(prefix));
-    for (final key in prefs.getKeys().where((key) => key.startsWith(prefix))) {
-      final path = prefs.getString(key);
-      if (path != null && File(path).existsSync()) _paths[key] = path;
+  /// Call once before using [pathFor]; cheap to call again.
+  Future<void> init() async => _root ??= await getApplicationSupportDirectory();
+
+  Reference _remote(String sessionId, String name) => FirebaseStorage.instance.ref('session_$sessionId/$name');
+
+  File _local(String sessionId, String name) => File('${_root!.path}/session_$sessionId/$name');
+
+  /// The local copy of a team's sound, or null while this device has none:
+  /// not chosen, still downloading, or out of reach.
+  String? pathFor(String sessionId, String? name) {
+    if (name == null || name.isEmpty || _root == null) return null;
+    final file = _local(sessionId, name);
+    return file.existsSync() ? file.path : null;
+  }
+
+  /// Uploads the sound at [sourcePath] and returns the name to give the
+  /// team. Throws [UnsupportedError] for files that are no sound or too big.
+  Future<String> upload(String sessionId, String sourcePath) async {
+    await init();
+    final contentType = contentTypeForPath(sourcePath);
+    if (contentType == null || !contentType.startsWith('audio/')) {
+      throw UnsupportedError('This is not a sound file the app can play.');
     }
+    final source = File(sourcePath);
+    if (await source.length() >= maxBytes) throw UnsupportedError('This file is too big; a buzzer sound can be up to 5 MB.');
+    final name = newMediaName(sourcePath);
+    await _remote(sessionId, name).putFile(source, SettableMetadata(contentType: contentType));
+    final local = _local(sessionId, name);
+    await local.parent.create(recursive: true);
+    await source.copy(local.path);
+    return name;
   }
 
-  /// The sound file for a team, or null for the default buzzer.
-  String? pathFor(String sessionId, String teamId) => _paths[_key(sessionId, teamId)];
-
-  /// Copies [sourcePath] into the app's own storage and makes it the team's
-  /// sound; the original may be moved or deleted afterwards.
-  Future<void> set(String sessionId, String teamId, String sourcePath) async {
-    final prefs = _prefs ??= await SharedPreferences.getInstance();
-    final root = await getApplicationSupportDirectory();
-    final dot = sourcePath.lastIndexOf('.');
-    final extension = dot < 0 ? '' : sourcePath.substring(dot).toLowerCase();
-    final target = File('${root.path}/session_$sessionId/team_$teamId$extension');
-    await target.parent.create(recursive: true);
-    await File(sourcePath).copy(target.path);
-    _paths[_key(sessionId, teamId)] = target.path;
-    await prefs.setString(_key(sessionId, teamId), target.path);
+  /// Fetches [name] unless this device has it already.
+  Future<void> ensureCached(String sessionId, String name) {
+    return _downloads.putIfAbsent('$sessionId/$name', () async {
+      try {
+        await init();
+        final local = _local(sessionId, name);
+        if (await local.exists()) return;
+        await local.parent.create(recursive: true);
+        final partial = File('${local.path}.part');
+        await _remote(sessionId, name).writeToFile(partial);
+        await partial.rename(local.path);
+      } catch (error) {
+        // The team keeps the default sound; the next change tries again.
+        if (kDebugMode) print('Team sound $name: $error');
+      } finally {
+        _downloads.remove('$sessionId/$name');
+      }
+    });
   }
 
-  Future<void> clear(String sessionId, String teamId) async {
-    final prefs = _prefs ??= await SharedPreferences.getInstance();
-    final path = _paths.remove(_key(sessionId, teamId));
-    await prefs.remove(_key(sessionId, teamId));
-    if (path != null && File(path).existsSync()) await File(path).delete();
+  /// Removes a sound no team uses any more. Best effort.
+  Future<void> delete(String sessionId, String name) async {
+    await init();
+    try {
+      await _remote(sessionId, name).delete();
+    } catch (error) {
+      if (kDebugMode) print('Team sound $name: $error');
+    }
+    final local = _local(sessionId, name);
+    if (await local.exists()) await local.delete();
   }
 }

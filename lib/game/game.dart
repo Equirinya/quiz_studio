@@ -6,6 +6,7 @@ export 'commands.dart';
 export 'companion.dart';
 export 'drawing.dart';
 export 'content.dart';
+export 'content_text.dart';
 export 'map_layout.dart';
 export 'public_view.dart';
 export 'reducer.dart';

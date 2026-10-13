@@ -411,6 +411,11 @@ class _ControlPageState extends State<ControlPage> {
             child: ControllerView(
               connection: _connection,
               onConnectDevices: widget.joinLink != null ? null : () => openConnectDevices(context, _connection),
+              // No buzzer box on a controller, but the teams' sounds are
+              // saved with the session and can be chosen from here.
+              onBuzzerSetup: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => BuzzersPage(connection: _connection),
+              )),
             ),
           ),
         ],
@@ -467,11 +472,20 @@ class _PresentPageState extends State<PresentPage> {
       }
       connection.displaced!.addListener(_onDisplaced);
       // Sound comes out of the presenting device only.
-      TeamSounds.instance.load(widget.sessionId);
+      // A team's own sound is fetched when it is chosen; until this device
+      // has it, the team buzzes with the built-in sound.
+      void fetchTeamSounds() {
+        for (final team in connection.state.value?.teams ?? const <Team>[]) {
+          if (team.sound != null) TeamSounds.instance.ensureCached(widget.sessionId, team.sound!);
+        }
+      }
+
+      connection.state.addListener(fetchTeamSounds);
+      TeamSounds.instance.init().then((_) => fetchTeamSounds());
       final audio = AudioDirector(
         host: connection.host!,
         backend: AudioplayersBackend(),
-        teamSound: (teamId) => TeamSounds.instance.pathFor(widget.sessionId, teamId),
+        teamSound: (teamId) => TeamSounds.instance.pathFor(widget.sessionId, connection.host!.state.team(teamId)?.sound),
         resolve: (gameId, name) {
           final file = MediaService.instance.localFile(gameId, name);
           return file.existsSync() ? file.path : null;
@@ -547,7 +561,7 @@ class _PresentPageState extends State<PresentPage> {
             onConnectDevices: () => openConnectDevices(context, connection),
             // Team sounds are set up there too, so it is offered everywhere.
             onBuzzerSetup: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => BuzzersPage(teams: connection.state.value?.teams ?? const [], sessionId: widget.sessionId),
+              builder: (_) => BuzzersPage(connection: connection),
             )),
           ),
         ),

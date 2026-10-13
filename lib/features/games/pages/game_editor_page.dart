@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
@@ -34,6 +35,13 @@ class _GameEditorPageState extends State<GameEditorPage> {
   late final Stream<GameSnapshot> _game = GameRepository.instance.watchGame(widget.gameId);
 
   GameRepository get _repo => GameRepository.instance;
+
+  /// Everything in the game, answers included, for pasting elsewhere.
+  Future<void> _copyAsText(GameContent game) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await Clipboard.setData(ClipboardData(text: gameAsText(game)));
+    messenger.showSnackBar(const SnackBar(content: Text("Copied the game with its answers.")));
+  }
 
   Future<void> _rename(GameContent game) async {
     final name = await promptText(context, title: "Rename game", initial: game.name, label: "Name");
@@ -116,8 +124,6 @@ class _GameEditorPageState extends State<GameEditorPage> {
                     save: (cards) => guarded(context, () => _repo.updateGame(game.id, {'cards': cards})),
                   ),
                 ),
-              if (canEditStructure)
-                IconButton(icon: const Icon(Icons.edit_outlined), tooltip: "Rename", onPressed: () => _rename(game)),
               if (data.role == GameRole.admin)
                 IconButton(
                   icon: const Icon(Icons.group_outlined),
@@ -126,10 +132,32 @@ class _GameEditorPageState extends State<GameEditorPage> {
                     MaterialPageRoute(builder: (_) => GameAccessPage(gameId: game.id)),
                   ),
                 ),
-              if (data.role == GameRole.admin)
-                IconButton(icon: const Icon(Icons.delete_outline), tooltip: "Delete game", onPressed: () => _delete(game))
-              else
-                IconButton(icon: const Icon(Icons.logout), tooltip: "Leave game", onPressed: () => _leave(game)),
+              // The rarely needed ones, so the title keeps its room on a phone.
+              PopupMenuButton<VoidCallback>(
+                tooltip: "More",
+                onSelected: (action) => action(),
+                itemBuilder: (context) => [
+                  if (canEditStructure)
+                    PopupMenuItem(
+                      value: () => _rename(game),
+                      child: const ListTile(leading: Icon(Icons.edit_outlined), title: Text("Rename")),
+                    ),
+                  PopupMenuItem(
+                    value: () => _copyAsText(game),
+                    child: const ListTile(leading: Icon(Icons.copy_all_outlined), title: Text("Copy as text")),
+                  ),
+                  if (data.role == GameRole.admin)
+                    PopupMenuItem(
+                      value: () => _delete(game),
+                      child: const ListTile(leading: Icon(Icons.delete_outline), title: Text("Delete game")),
+                    )
+                  else
+                    PopupMenuItem(
+                      value: () => _leave(game),
+                      child: const ListTile(leading: Icon(Icons.logout), title: Text("Leave game")),
+                    ),
+                ],
+              ),
             ],
           ),
           body: ReorderableListView.builder(

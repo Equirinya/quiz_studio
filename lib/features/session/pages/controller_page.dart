@@ -213,6 +213,13 @@ class _ControllerViewState extends State<ControllerView> {
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
+                title: const Text("Picture strip"),
+                subtitle: const Text("Small pictures under a question that reveals pictures one by one"),
+                value: state.thumbnails,
+                onChanged: (value) => _send(SetThumbnails(value)),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
                 title: const Text("Buzzer test"),
                 subtitle: const Text("Buzzers light up their team; only from the board"),
                 value: state.phase == Phase.buzzerTest,

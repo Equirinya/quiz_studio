@@ -13,7 +13,9 @@ import 'package:quiz_show/features/buzzers/buzzer_link.dart';
 import 'package:quiz_show/features/buzzers/buzzers_page.dart';
 import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
+import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/games/pages/category_editor_page.dart';
+import 'package:quiz_show/features/games/widgets/question_preview.dart';
 import 'package:quiz_show/features/games/widgets/map_editor.dart';
 import 'package:quiz_show/features/player/pages/player_page.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
@@ -814,4 +816,153 @@ void main() {
     );
     await shot('account_assistant');
   });
+
+  // ── brought back from v1 ───────────────────────────────────────────────────
+
+  /// A game whose progressing reveal has a picture for every hint, with the
+  /// files really on disk.
+  GameContent pictureGame() {
+    final root = Directory.systemTemp.createTempSync('quiz_shots');
+    Directory('${root.path}/pics').createSync();
+    const colors = [(200, 80, 60), (60, 140, 200), (90, 170, 90), (220, 180, 60), (140, 90, 190)];
+    for (final (i, color) in colors.indexed) {
+      final picture = img.Image(width: 320, height: 180);
+      img.fill(picture, color: img.ColorRgb8(color.$1, color.$2, color.$3));
+      img.fillCircle(picture, x: 60 + i * 50, y: 90, radius: 50, color: img.ColorRgb8(255, 255, 255));
+      File('${root.path}/pics/$i.png').writeAsBytesSync(img.encodePng(picture));
+    }
+    MediaService.instance.debugRoot = root;
+    return GameContent.assemble(
+      id: 'pics',
+      game: {'name': 'Pictures'},
+      groups: {
+        'g': {'name': 'Round', 'categoryGroupType': 'category_wheel', 'categoryGroupIndex': 0},
+      },
+      categories: {
+        'c': {'name': 'Cities', 'categoryGroup': 'g', 'categoryIndex': 0, 'active': true},
+      },
+      questions: {
+        'c': {
+          'q': {
+            'type': 'progressingReveal',
+            'question': 'Which city is this?',
+            'music': 'tune.mp3',
+            'information': ['A river', 'A tower', 'A bridge', 'A square', 'The skyline'],
+            'informationImage': ['0.png', '1.png', '2.png', '3.png', '4.png'],
+            'informationMusic': ['', '', '', '', ''],
+            'pointsPlus': 500,
+          },
+        },
+      },
+    );
+  }
+
+  Future<void> loadPictures(WidgetTester tester, GameContent game) async {
+    await tester.runAsync(() async {
+      for (var i = 0; i < 5; i++) {
+        await precacheImage(FileImage(MediaService.instance.localFile(game.id, '$i.png')), tester.element(find.byType(Scaffold).first));
+      }
+    });
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+
+  testWidgets('presenter: picture strip and music bars', (tester) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final game = pictureGame();
+    host = SessionHost(initial: fixtureState().copyWith(gameId: 'pics'));
+    final connection = SessionConnection.local(host, game: game);
+    addTearDown(connection.dispose);
+    for (final command in const [OpenQuestion(QuestionRef('c', 'q')), Reveal(1), Reveal(1), Reveal(1), ImageFocus(-1)]) {
+      host.dispatch(command);
+    }
+    // The pictures have to be in the image cache before a widget asks for
+    // them: a load started under the test's fake clock never finishes.
+    await tester.pumpWidget(const MaterialApp(home: Scaffold()));
+    await loadPictures(tester, game);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.dark),
+      home: Scaffold(body: PresenterView(connection: connection)),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('presenter_picture_strip');
+    host.dispatch(const SetThumbnails(false));
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('presenter_picture_strip_off');
+  });
+
+  testWidgets('editor: question preview', (tester) async {
+    tester.view.physicalSize = const Size(1100, 760);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final game = pictureGame();
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        appBar: AppBar(title: const Text("Cities")),
+        body: Builder(
+          builder: (context) => Center(
+            child: TextButton(
+              onPressed: () => showQuestionPreview(
+                context,
+                gameId: game.id,
+                categoryId: 'c',
+                question: game.question(const QuestionRef('c', 'q'))!,
+              ),
+              child: const Text("open"),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await loadPictures(tester, game);
+    await tapText(tester, find.text('open'));
+    await tester.tap(find.byTooltip('Reveal next'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byTooltip('Reveal next'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('editor_question_preview');
+  });
+
+  testWidgets('buzzers: raw data and team sounds', (tester) async {
+    tester.view.physicalSize = const Size(900, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var now = 1000;
+    final port = FakePort()..plugged = true;
+    final link = BuzzerLink(port, clock: () => now);
+    link.use('COM3');
+    const teams = [Team(id: 'red', name: 'Red', sound: 'horn.mp3'), Team(id: 'blue', name: 'Blue'), Team(id: 'green', name: 'Green')];
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        appBar: AppBar(title: const Text("Buzzers")),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            BuzzersView(link: link, teams: teams, assignments: const {}, onPort: (_) {}, onAssign: (_, _) {}, onThreshold: (_, _) {}),
+            const Divider(height: 40),
+            TeamSoundsList(teams: teams, uploading: const {'green'}, onChoose: (_) {}, onClear: (_) {}),
+          ],
+        ),
+      ),
+    ));
+    for (var i = 0; i < 14; i++) {
+      port.send('0:${12 + i % 3},1:${20 + i * 40},2:${8 + i % 2}\n');
+      now += 10;
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    await tester.tap(find.byType(Switch));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 400));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/buzzers_raw_and_sounds.png'));
+    await tester.pumpWidget(const SizedBox());
+    link.dispose();
+  });
 }
+

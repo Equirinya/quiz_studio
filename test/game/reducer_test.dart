@@ -388,4 +388,45 @@ void main() {
     expect(withCards.mediaPaths, {'sponsor.png', 'intro.mp4'});
     expect(fixtureGame().cards, isEmpty);
   });
+
+  group('team sounds and the picture strip', () {
+    test('a team keeps its sound through renames and points', () {
+      final s = run(fixtureState(), [
+        const SetTeamSound('red', 'horn.mp3'),
+        const RenameTeam('red', 'Crimson'),
+        const AdjustPoints('red', 100),
+        const OpenQuestion(free),
+        const Buzz('red'),
+        const Judge(correct: true),
+      ]);
+      final red = s.team('red')!;
+      expect((red.name, red.sound), ('Crimson', 'horn.mp3'));
+      expect(red.points, greaterThan(100));
+      expect(s.team('blue')!.sound, isNull);
+    });
+
+    test('a sound is taken away with null, and nothing happens for nothing', () {
+      final withSound = run(fixtureState(), [const SetTeamSound('red', 'horn.mp3')]);
+      expect(apply(withSound, const SetTeamSound('red', 'horn.mp3')).accepted, isFalse);
+      expect(apply(withSound, const SetTeamSound('nobody', 'horn.mp3')).accepted, isFalse);
+      expect(apply(withSound, const SetTeamSound('red', null)).state.team('red')!.sound, isNull);
+      expect(apply(withSound, const SetTeamSound('red', '')).state.team('red')!.sound, isNull);
+      expect(apply(fixtureState(), const SetTeamSound('red', null)).accepted, isFalse);
+    });
+
+    test('players cannot change either', () {
+      const player = Sender(Role.player, teamId: 'red');
+      expect(mayIssue(player, const SetTeamSound('red', 'x.mp3')), isFalse);
+      expect(mayIssue(player, const SetThumbnails(false)), isFalse);
+      expect(mayIssue(const Sender(Role.controller), const SetTeamSound('red', 'x.mp3')), isTrue);
+    });
+
+    test('the strip is on until switched off, and a state from before has it on', () {
+      expect(fixtureState().thumbnails, isTrue);
+      final off = apply(fixtureState(), const SetThumbnails(false));
+      expect(off.state.thumbnails, isFalse);
+      expect(apply(off.state, const SetThumbnails(false)).accepted, isFalse);
+      expect(SessionState.fromJson((fixtureState().toJson())..remove('thumbnails')).thumbnails, isTrue);
+    });
+  });
 }

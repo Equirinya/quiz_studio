@@ -55,6 +55,13 @@ class MediaService {
   Directory? _root;
   final Map<String, Future<void>> _downloads = {};
 
+  /// Whether [localFile] can be used yet.
+  bool get ready => _root != null;
+
+  /// Points the cache at [directory], for rendering screens in tests.
+  @visibleForTesting
+  set debugRoot(Directory directory) => _root = directory;
+
   /// Call once before using [localFile]; cheap to call again.
   Future<void> init() async => _root ??= await getApplicationSupportDirectory();
 

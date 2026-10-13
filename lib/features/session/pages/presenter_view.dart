@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:mini_music_visualizer/mini_music_visualizer.dart';
 
 import 'package:quiz_show/features/companion/answer_view.dart';
 import 'package:quiz_show/features/games/media_service.dart';
@@ -96,7 +97,7 @@ class PresenterView extends StatelessWidget {
                   SizedBox(height: unit * 2),
                   Expanded(
                     child: question != null
-                        ? _QuestionDisplay(game: game, state: state, question: question, unit: unit)
+                        ? QuestionDisplay(gameId: game.id, state: state, question: question, unit: unit)
                         : group == null
                         ? const SizedBox()
                         : group.type == BoardType.wheel
@@ -254,17 +255,19 @@ class _BoardGrid extends StatelessWidget {
   }
 }
 
-class _QuestionDisplay extends StatelessWidget {
-  const _QuestionDisplay({required this.game, required this.state, required this.question, required this.unit});
+/// The open question as far as it is revealed. [unit] is a hundredth of the
+/// screen's height.
+class QuestionDisplay extends StatelessWidget {
+  const QuestionDisplay({super.key, required this.gameId, required this.state, required this.question, required this.unit});
 
-  final GameContent game;
+  final String gameId;
   final SessionState state;
   final Question question;
   final double unit;
 
   File? _file(String? name) {
-    if (name == null || name.isEmpty) return null;
-    final file = MediaService.instance.localFile(game.id, name);
+    if (name == null || name.isEmpty || !MediaService.instance.ready) return null;
+    final file = MediaService.instance.localFile(gameId, name);
     return file.existsSync() ? file : null;
   }
 
@@ -277,6 +280,8 @@ class _QuestionDisplay extends StatelessWidget {
         : null;
     final image = _file(focused) ?? _file(question.image);
     final round = state.answerRound;
+    final strip =
+        state.thumbnails && round == null && question.type == QuestionType.progressingReveal && question.hasInformationImages;
     return Column(
       children: [
         if (question.description != null)
@@ -308,10 +313,13 @@ class _QuestionDisplay extends StatelessWidget {
                 if (question.hasMusic)
                   Padding(
                     padding: EdgeInsets.only(right: unit * 2),
-                    child: Icon(
-                      state.media == MediaPlayback.playing ? Icons.graphic_eq : Icons.music_note,
-                      size: unit * 6,
+                    // Bars that dance while the sound plays and stand still otherwise.
+                    child: MiniMusicVisualizer(
+                      animate: state.media == MediaPlayback.playing,
                       color: scheme.primary,
+                      width: unit * 1.5,
+                      height: unit * 5,
+                      radius: unit * 0.4,
                     ),
                   ),
                 Flexible(
@@ -327,6 +335,17 @@ class _QuestionDisplay extends StatelessWidget {
             ),
           ),
         ),
+        if (strip)
+          Padding(
+            padding: EdgeInsets.only(top: unit * 1.5),
+            child: _PictureStrip(
+              unit: unit,
+              files: [for (final name in question.informationImages) _file(name)],
+              names: question.informationImages,
+              revealed: state.revealed,
+              focus: state.imageFocus,
+            ),
+          ),
         SizedBox(height: unit * 2),
         if (round != null)
           Expanded(
@@ -356,6 +375,9 @@ class _QuestionDisplay extends StatelessWidget {
                 ],
               ),
             ),
+            // Pictures only: the strip above says it all.
+            QuestionType.progressingReveal when strip && question.information.every((text) => text.trim().isEmpty) =>
+              const SizedBox(),
             QuestionType.progressingReveal => Expanded(
               flex: 2,
               child: _Tiles(
@@ -407,6 +429,62 @@ class _QuestionDisplay extends StatelessWidget {
     final value = question.percentages.elementAtOrNull(index) ?? 0;
     final text = value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
     return question.absoluteValues ? text : "$text%";
+  }
+}
+
+/// The pictures of a progressing reveal in a row: the ones revealed so far
+/// in small, a question mark for each still to come, and a frame around the
+/// one that is shown big.
+class _PictureStrip extends StatelessWidget {
+  const _PictureStrip({required this.unit, required this.files, required this.names, required this.revealed, required this.focus});
+
+  final double unit;
+
+  /// One per step; null where the step has no picture or the file is missing.
+  final List<File?> files;
+  final List<String> names;
+  final int revealed;
+
+  /// 1-based; 0 for none.
+  final int focus;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return LayoutBuilder(
+      builder: (context, box) {
+        final count = names.length;
+        // As v1 had them: never wider than a seventh of the screen.
+        final width = ((box.maxWidth - unit * count) / (count < 7 ? 7 : count)).clamp(0.0, unit * 22);
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var i = 0; i < count; i++)
+              if (names[i].isNotEmpty)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: EdgeInsets.symmetric(horizontal: unit * 0.5),
+                  width: width,
+                  height: width * 9 / 16,
+                  clipBehavior: Clip.antiAlias,
+                  foregroundDecoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(unit * 1.2),
+                    border: Border.all(width: unit * 0.4, color: focus == i + 1 ? scheme.primary : Colors.transparent),
+                  ),
+                  decoration: BoxDecoration(color: scheme.surfaceContainerLow, borderRadius: BorderRadius.circular(unit * 1.2)),
+                  child: i < revealed && files[i] != null
+                      ? Image.file(files[i]!, fit: BoxFit.cover)
+                      : Center(
+                          child: Text(
+                            i < revealed ? "${i + 1}" : "?",
+                            style: TextStyle(fontSize: width * 0.22, fontWeight: FontWeight.w600, color: scheme.outline),
+                          ),
+                        ),
+                ),
+          ],
+        );
+      },
+    );
   }
 }
 

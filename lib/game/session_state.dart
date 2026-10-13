@@ -26,18 +26,29 @@ enum Phase {
 enum MediaPlayback { stopped, playing, paused }
 
 class Team {
-  const Team({required this.id, required this.name, this.points = 0});
+  const Team({required this.id, required this.name, this.points = 0, this.sound});
 
   final String id;
   final String name;
   final int points;
 
-  Team copyWith({String? name, int? points}) => Team(id: id, name: name ?? this.name, points: points ?? this.points);
+  /// The team's own buzzer sound: a file among the session's files. Null
+  /// for the default sound.
+  final String? sound;
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'points': points};
+  Team copyWith({String? name, int? points}) =>
+      Team(id: id, name: name ?? this.name, points: points ?? this.points, sound: sound);
 
-  factory Team.fromJson(Map<String, dynamic> json) =>
-      Team(id: json['id'] as String, name: json['name'] as String, points: (json['points'] as num?)?.toInt() ?? 0);
+  Team withSound(String? sound) => Team(id: id, name: name, points: points, sound: sound);
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'points': points, if (sound != null) 'sound': sound};
+
+  factory Team.fromJson(Map<String, dynamic> json) => Team(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        points: (json['points'] as num?)?.toInt() ?? 0,
+        sound: json['sound'] as String?,
+      );
 }
 
 /// Something the gamemaster puts on top of the screen: a text card, an
@@ -85,6 +96,7 @@ class SessionState {
     this.current,
     this.played = const {},
     this.queueBuzzers = false,
+    this.thumbnails = true,
     this.buzzQueue = const [],
     this.revealed = 0,
     this.imageFocus = 0,
@@ -113,6 +125,10 @@ class SessionState {
 
   /// When true, later buzzes queue up behind the first instead of being lost.
   final bool queueBuzzers;
+
+  /// Progressing reveal with images: whether the row of small pictures is
+  /// shown under the question.
+  final bool thumbnails;
 
   /// Team ids in buzz order; the first is answering.
   final List<String> buzzQueue;
@@ -156,6 +172,7 @@ class SessionState {
     Object? current = _unset,
     Set<String>? played,
     bool? queueBuzzers,
+    bool? thumbnails,
     List<String>? buzzQueue,
     int? revealed,
     int? imageFocus,
@@ -175,6 +192,7 @@ class SessionState {
         current: identical(current, _unset) ? this.current : current as QuestionRef?,
         played: played ?? this.played,
         queueBuzzers: queueBuzzers ?? this.queueBuzzers,
+        thumbnails: thumbnails ?? this.thumbnails,
         buzzQueue: buzzQueue ?? this.buzzQueue,
         revealed: revealed ?? this.revealed,
         imageFocus: imageFocus ?? this.imageFocus,
@@ -195,6 +213,7 @@ class SessionState {
         'current': current?.key,
         'played': played.toList()..sort(),
         'queueBuzzers': queueBuzzers,
+        'thumbnails': thumbnails,
         'buzzQueue': buzzQueue,
         'revealed': revealed,
         'imageFocus': imageFocus,
@@ -215,6 +234,7 @@ class SessionState {
         current: QuestionRef.tryParse(json['current']),
         played: {...(json['played'] as List? ?? const []).cast<String>()},
         queueBuzzers: json['queueBuzzers'] == true,
+        thumbnails: json['thumbnails'] != false,
         buzzQueue: (json['buzzQueue'] as List? ?? const []).cast<String>().toList(),
         revealed: (json['revealed'] as num?)?.toInt() ?? 0,
         imageFocus: (json['imageFocus'] as num?)?.toInt() ?? 0,

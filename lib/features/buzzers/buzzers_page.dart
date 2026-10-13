@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/features/audio/team_sounds.dart';
@@ -8,15 +9,15 @@ import 'package:quiz_show/features/buzzers/buzzer_link.dart';
 import 'package:quiz_show/features/buzzers/serial_buzzers.dart';
 import 'package:quiz_show/features/buzzers/serial_protocol.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
+import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// The buzzer box of this device: connection, a live test of every buzzer,
 /// which buzzer belongs to which team, and each team's sound.
 class BuzzersPage extends StatefulWidget {
-  const BuzzersPage({super.key, required this.teams, required this.sessionId});
+  const BuzzersPage({super.key, required this.connection});
 
-  final List<Team> teams;
-  final String sessionId;
+  final SessionConnection connection;
 
   @override
   State<BuzzersPage> createState() => _BuzzersPageState();
@@ -25,93 +26,139 @@ class BuzzersPage extends StatefulWidget {
 class _BuzzersPageState extends State<BuzzersPage> {
   Buzzers get _buzzers => Buzzers.instance;
 
+  String get _sessionId => widget.connection.sessionId;
+
+  /// Teams whose sound is being uploaded.
+  final Set<String> _uploading = {};
+
   @override
   void initState() {
     super.initState();
-    _buzzers.start().then((_) {
-      if (mounted) setState(() {});
-    });
+    if (Buzzers.supported) {
+      _buzzers.start().then((_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  Future<void> _chooseSound(Team team) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final path = await MediaKind.audio.pick();
+    if (path == null || !mounted) return;
+    setState(() => _uploading.add(team.id));
+    try {
+      final name = await TeamSounds.instance.upload(_sessionId, path);
+      widget.connection.send(SetTeamSound(team.id, name));
+      if (team.sound != null) TeamSounds.instance.delete(_sessionId, team.sound!);
+    } on UnsupportedError catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message ?? "This file cannot be used.")));
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text("Could not upload the sound. The team keeps the one it had.")));
+    }
+    if (mounted) setState(() => _uploading.remove(team.id));
+  }
+
+  void _clearSound(Team team) {
+    widget.connection.send(SetTeamSound(team.id, null));
+    if (team.sound != null) TeamSounds.instance.delete(_sessionId, team.sound!);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Buzzers")),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (Buzzers.supported)
-            BuzzersView(
-              link: _buzzers.link,
-              teams: widget.teams,
-              assignments: _buzzers.assignments(widget.sessionId),
-              onPort: (port) async {
-                await _buzzers.selectPort(port);
-                if (mounted) setState(() {});
-              },
-              onAssign: (buzzerId, teamId) async {
-                await _buzzers.assign(widget.sessionId, buzzerId, teamId);
-                if (mounted) setState(() {});
-              },
-              onThreshold: (buzzerId, threshold) async {
-                await _buzzers.setThreshold(buzzerId, threshold);
-                if (mounted) setState(() {});
-              },
-            )
-          else
-            const Text(
-              "A USB buzzer box works on Windows, macOS and Linux. Phones and tablets can still be buzzers: see Connect devices.",
-            ),
-          const Divider(height: 40),
-          ..._teamSounds(Theme.of(context)),
-        ],
+      body: ValueListenableBuilder(
+        valueListenable: widget.connection.state,
+        builder: (context, state, _) {
+          final teams = state?.teams ?? const <Team>[];
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (Buzzers.supported)
+                BuzzersView(
+                  link: _buzzers.link,
+                  teams: teams,
+                  assignments: _buzzers.assignments(_sessionId),
+                  onPort: (port) async {
+                    await _buzzers.selectPort(port);
+                    if (mounted) setState(() {});
+                  },
+                  onAssign: (buzzerId, teamId) async {
+                    await _buzzers.assign(_sessionId, buzzerId, teamId);
+                    if (mounted) setState(() {});
+                  },
+                  onThreshold: (buzzerId, threshold) async {
+                    await _buzzers.setThreshold(buzzerId, threshold);
+                    if (mounted) setState(() {});
+                  },
+                )
+              else
+                const Text(
+                  "A USB buzzer box works on Windows, macOS and Linux. Phones and tablets can still be buzzers: see Connect devices.",
+                ),
+              const Divider(height: 40),
+              TeamSoundsList(teams: teams, uploading: _uploading, onChoose: _chooseSound, onClear: _clearSound),
+            ],
+          );
+        },
       ),
     );
   }
+}
 
-  /// A buzzer sound per team, whatever the team buzzes with.
-  List<Widget> _teamSounds(ThemeData theme) => [
+/// A buzzer sound per team, whatever the team buzzes with.
+class TeamSoundsList extends StatelessWidget {
+  const TeamSoundsList({super.key, required this.teams, required this.uploading, required this.onChoose, required this.onClear});
+
+  final List<Team> teams;
+
+  /// Ids of teams whose sound is on its way up.
+  final Set<String> uploading;
+  final ValueChanged<Team> onChoose;
+  final ValueChanged<Team> onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Text("Buzzer sounds", style: theme.textTheme.titleMedium),
         const SizedBox(height: 4),
         Text(
-          "Played on this device when the team buzzes. Teams without one get the default sound.",
+          "Saved with the session and played by whichever device presents. "
+          "Until that device has fetched a sound, and for teams without one, the built-in buzzer plays.",
           style: theme.textTheme.bodySmall,
         ),
-        for (final team in widget.teams)
-          Builder(builder: (context) {
-            final own = TeamSounds.instance.pathFor(widget.sessionId, team.id);
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(own == null ? Icons.notifications_none : Icons.notifications_active),
-              title: Text(team.name),
-              subtitle: Text(own == null ? "Default sound" : "Own sound"),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextButton(
-                    onPressed: () async {
-                      final path = await MediaKind.audio.pick();
-                      if (path == null) return;
-                      await TeamSounds.instance.set(widget.sessionId, team.id, path);
-                      if (mounted) setState(() {});
-                    },
-                    child: Text(own == null ? "Choose" : "Change"),
+        for (final team in teams)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(team.sound == null ? Icons.notifications_none : Icons.notifications_active),
+            title: Text(team.name),
+            subtitle: Text(uploading.contains(team.id)
+                ? "Uploading…"
+                : team.sound == null
+                    ? "Built-in buzzer"
+                    : "Own sound"),
+            trailing: uploading.contains(team.id)
+                ? const SizedBox(width: 48, child: Center(child: CupertinoActivityIndicator()))
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton(onPressed: () => onChoose(team), child: Text(team.sound == null ? "Choose" : "Change")),
+                      if (team.sound != null)
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          tooltip: "Back to the built-in buzzer",
+                          onPressed: () => onClear(team),
+                        ),
+                    ],
                   ),
-                  if (own != null)
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      tooltip: "Back to the default sound",
-                      onPressed: () async {
-                        await TeamSounds.instance.clear(widget.sessionId, team.id);
-                        if (mounted) setState(() {});
-                      },
-                    ),
-                ],
-              ),
-            );
-          }),
-        if (widget.teams.isEmpty) const Padding(padding: EdgeInsets.only(top: 8), child: Text("Add teams first.")),
-      ];
+          ),
+        if (teams.isEmpty) const Padding(padding: EdgeInsets.only(top: 8), child: Text("Add teams first.")),
+      ],
+    );
+  }
 }
 
 /// Connection, test and team assignment of a buzzer box. Works on any
@@ -146,6 +193,9 @@ class _BuzzersViewState extends State<BuzzersView> {
 
   /// Buzzers in the order they were pressed since the last reset.
   final List<int> _order = [];
+
+  /// Whether the box's raw lines are shown. For finding faults only.
+  bool _console = false;
 
   /// Teams waiting for their buzzer to be pressed; the first is up.
   final List<String> _awaiting = [];
@@ -299,6 +349,46 @@ class _BuzzersViewState extends State<BuzzersView> {
               }),
             if (widget.teams.isEmpty)
               const Padding(padding: EdgeInsets.only(top: 8), child: Text("Add teams in the session first.")),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Raw data", style: theme.textTheme.titleMedium),
+                      Text("Exactly what the box sends, for finding faults", style: theme.textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+                Switch(value: _console, onChanged: (on) => setState(() => _console = on)),
+              ],
+            ),
+            if (_console)
+              Container(
+                key: const ValueKey('serial-console'),
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(12),
+                height: 220,
+                decoration: BoxDecoration(color: const Color(0xFF16181C), borderRadius: BorderRadius.circular(12)),
+                alignment: Alignment.bottomLeft,
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.bottomLeft,
+                    maxHeight: double.infinity,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Text(
+                        _link.recentLines.isEmpty
+                            ? (_link.status.value == BuzzerStatus.connected ? "Nothing received yet." : "Not connected.")
+                            : _link.recentLines.join("\n"),
+                        softWrap: false,
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12, height: 1.35, color: Color(0xFFB8F5C0)),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         );
       },

@@ -11,6 +11,8 @@ void main() {
   test('session state survives a JSON round trip', () {
     final s = run(fixtureState(), [
       const SetQueueBuzzers(true),
+      const SetThumbnails(false),
+      const SetTeamSound('blue', 'horn.mp3'),
       const OpenQuestion(free),
       const CloseQuestion(),
       const OpenQuestion(reveal),
@@ -25,6 +27,9 @@ void main() {
     final copy = SessionState.fromJson(jsonDecode(jsonEncode(s.toJson())) as Map<String, dynamic>);
     expect(copy.toJson(), s.toJson());
     expect(copy.current, reveal);
+    expect(copy.thumbnails, isFalse);
+    expect(copy.team('blue')!.sound, 'horn.mp3');
+    expect(copy.team('red')!.sound, isNull);
     expect(copy.answerRound!.answers['red']!.drawing, 'strokes');
     expect(copy.answerRound!.spec.timerSeconds, 30);
     expect((copy.overlay!.title, copy.overlay!.text, copy.overlay!.image), ('T', 'x', 'i.png'));
@@ -58,6 +63,9 @@ void main() {
       RenameTeam('t', 'Other'),
       RemoveTeam('t'),
       SetQueueBuzzers(true),
+      SetThumbnails(false),
+      SetTeamSound('red', 'horn.mp3'),
+      SetTeamSound('red', null),
       OpenAnswers(CompanionSpec(kind: CompanionKind.slider, min: 0, max: 10, step: 0.5, unit: 'kg', solution: 4, timerSeconds: 20)),
       OpenAnswers(CompanionSpec(kind: CompanionKind.match, options: ['a', 'b'], targets: ['1', '2'])),
       SubmitAnswer('red', PlayerAnswer(choice: 2)),

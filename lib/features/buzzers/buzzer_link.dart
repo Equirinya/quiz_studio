@@ -94,6 +94,10 @@ class BuzzerLink {
 
   // Diagnostics, shown on the buzzer page.
   int linesTotal = 0;
+
+  /// The last lines the box sent, exactly as they came, newest last.
+  final List<String> recentLines = [];
+  static const int _keptLines = 40;
   int reconnects = 0;
   int _windowStart = 0;
   int _windowLines = 0;
@@ -208,6 +212,8 @@ class BuzzerLink {
     }
     if (data.isNotEmpty) {
       for (final line in _lines.add(String.fromCharCodes(data))) {
+        recentLines.add(line);
+        if (recentLines.length > _keptLines) recentLines.removeAt(0);
         final reading = parseBuzzerLine(line);
         if (reading == null) continue;
         linesTotal++;
