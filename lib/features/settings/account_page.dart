@@ -1,5 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import 'package:quiz_show/features/assistant/assistant.dart';
+import 'package:quiz_show/features/assistant/assistant_card.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -88,6 +91,8 @@ class _AccountPageState extends State<AccountPage> {
     );
     if (!sure) return;
     navigator.popUntil((route) => route.isFirst);
+    // The assistant acts as the signed-in user; it ends with the sign-in.
+    await Assistant.instance.stop();
     await FirebaseAuth.instance.signOut();
   }
 
@@ -104,6 +109,7 @@ class _AccountPageState extends State<AccountPage> {
         onRename: _rename,
         onUpgrade: _upgrade,
         onSignOut: () => _signOut(user?.isAnonymous ?? true),
+        assistant: Assistant.supported ? const AssistantSection() : null,
       ),
     );
   }
@@ -120,6 +126,7 @@ class AccountView extends StatelessWidget {
     required this.onRename,
     required this.onUpgrade,
     required this.onSignOut,
+    this.assistant,
   });
 
   final String? username;
@@ -129,6 +136,9 @@ class AccountView extends StatelessWidget {
   final VoidCallback onRename;
   final VoidCallback onUpgrade;
   final VoidCallback onSignOut;
+
+  /// The assistant switch, on computers.
+  final Widget? assistant;
 
   Future<void> _open(String url) async {
     try {
@@ -181,6 +191,7 @@ class AccountView extends StatelessWidget {
             subtitle: const Text("Sign in with this address on your other devices"),
           ),
         ListTile(leading: const Icon(Icons.logout), title: const Text("Sign out"), onTap: onSignOut),
+        if (assistant != null) ...[const Divider(height: 32), assistant!],
         const Divider(height: 32),
         ListTile(
           leading: const Icon(Icons.mail_outlined),

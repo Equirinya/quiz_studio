@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:quiz_show/features/assistant/assistant_card.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -785,5 +786,32 @@ void main() {
       ),
     );
     await shot('account_email');
+  });
+
+  testWidgets('account: assistant on', (tester) async {
+    await page(
+      tester,
+      AccountView(
+        username: 'Jacob',
+        email: 'jacob@example.com',
+        guest: false,
+        version: '2.0.0',
+        onRename: () {},
+        onUpgrade: () {},
+        onSignOut: () {},
+        assistant: AssistantCard(
+          running: true,
+          url: 'http://localhost:47820/mcp',
+          command: 'claude mcp add --transport http quiz-studio http://localhost:47820/mcp',
+          activity: const [
+            'Added to "Capitals": Which city is the capital of Australia? (300)',
+            'Added to "Capitals": Capital of France? (100)',
+            'Added category "Capitals"',
+          ],
+          onChanged: (_) {},
+        ),
+      ),
+    );
+    await shot('account_assistant');
   });
 }

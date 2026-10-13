@@ -289,13 +289,17 @@ class GameRepository {
 
   // ── category groups ────────────────────────────────────────────────────────
 
-  Future<void> addGroup(String gameId, BoardType type, int index) => _groups(gameId).add({
-        'name': "New ${type.uiString}",
-        'categoryGroupIndex': index,
-        'categoryGroupType': type.databaseString,
-        'createdBy': _uid,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+  Future<String> addGroup(String gameId, BoardType type, int index, {String? name}) async {
+    final ref = _groups(gameId).doc();
+    await ref.set({
+      'name': name ?? "New ${type.uiString}",
+      'categoryGroupIndex': index,
+      'categoryGroupType': type.databaseString,
+      'createdBy': _uid,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return ref.id;
+  }
 
   Future<void> updateGroup(String gameId, String groupId, Map<String, dynamic> data) =>
       _groups(gameId).doc(groupId).update(data);
@@ -313,10 +317,10 @@ class GameRepository {
 
   // ── categories ─────────────────────────────────────────────────────────────
 
-  Future<String> addCategory(String gameId, {String? groupId, required int index}) async {
+  Future<String> addCategory(String gameId, {String? groupId, required int index, String? name}) async {
     final ref = _categories(gameId).doc();
     await ref.set({
-      'name': "New Category",
+      'name': name ?? "New Category",
       'categoryGroup': groupId == CategoryGroup.ungroupedId ? null : groupId,
       'categoryIndex': index,
       'createdBy': _uid,
@@ -350,7 +354,14 @@ class GameRepository {
 
   // ── questions ──────────────────────────────────────────────────────────────
 
-  Future<String> addQuestion(String gameId, String categoryId, {int pointsPlus = 0, int pointsMinus = 0}) async {
+  /// [data] overrides the fields of the empty question.
+  Future<String> addQuestion(
+    String gameId,
+    String categoryId, {
+    int pointsPlus = 0,
+    int pointsMinus = 0,
+    Map<String, dynamic> data = const {},
+  }) async {
     final ref = _questions(gameId, categoryId).doc();
     await ref.set({
       'type': QuestionType.free.name,
@@ -361,6 +372,7 @@ class GameRepository {
       'pointsPlus': pointsPlus,
       'pointsMinus': pointsMinus,
       'answerHint': "",
+      ...data,
     });
     return ref.id;
   }
