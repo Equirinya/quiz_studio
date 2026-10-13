@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'package:quiz_show/features/player/pages/player_page.dart';
+import 'package:quiz_show/features/player/recent_sessions.dart';
 import 'package:quiz_show/features/player/widgets/scanner_overlay.dart';
 import 'package:quiz_show/features/session/pages/sessions_page.dart';
 import 'package:quiz_show/features/session/session_links.dart';
@@ -27,6 +28,15 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
   final TextEditingController _link = TextEditingController();
   bool _busy = false;
   String? _error;
+  List<RecentSession> _recent = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    RecentSessions.load().then((recent) {
+      if (mounted) setState(() => _recent = recent);
+    });
+  }
 
   @override
   void dispose() {
@@ -61,12 +71,21 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
         return;
       }
     }
+    await RecentSessions.remember(link);
     if (!mounted) return;
     Navigator.of(context).pushReplacement(MaterialPageRoute(
       builder: (_) => link.role == Role.player
           ? PlayerPage(link: link)
           : ControlPage(sessionId: link.sessionId, title: "Session", joinLink: link),
     ));
+  }
+
+  static String _ago(int millis) {
+    final minutes = (DateTime.now().millisecondsSinceEpoch - millis) ~/ 60000;
+    if (minutes < 2) return "just now";
+    if (minutes < 60) return "$minutes minutes ago";
+    if (minutes < 60 * 24) return "${minutes ~/ 60} hours ago";
+    return "${minutes ~/ (60 * 24)} days ago";
   }
 
   @override
@@ -76,6 +95,17 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Getting back in after closing the app, without the code.
+          for (final recent in _recent.take(3))
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(recent.link.role == Role.player ? Icons.touch_app_outlined : Icons.tune),
+              title: Text(recent.link.role == Role.player ? "Rejoin as a team's device" : "Rejoin as controller"),
+              subtitle: Text("Joined ${_ago(recent.joinedAtMillis)}"),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _busy ? null : () => _join(recent.link.link),
+            ),
           TextField(
             controller: _link,
             enabled: !_busy,

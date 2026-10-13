@@ -191,7 +191,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
           ),
           for (var i = 0; i < _options.length; i++)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 14),
               child: Row(
                 children: [
                   SizedBox(width: 28, child: Text("${i + 1}.")),

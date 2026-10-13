@@ -108,6 +108,23 @@ void main() {
     expect(backend.log.last, 'file /game/horn.mp3');
   });
 
+  test('a team with a sound of its own buzzes with it', () async {
+    await director.dispose();
+    backend = FakeBackend();
+    director = AudioDirector(
+      host: host,
+      backend: backend,
+      resolve: (gameId, name) => '/$gameId/$name',
+      teamSound: (teamId) => teamId == 'red' ? '/sounds/red.mp3' : null,
+    );
+    host
+      ..dispatch(const SetQueueBuzzers(true))
+      ..dispatch(const OpenQuestion(free))
+      ..dispatch(const Buzz('red'))
+      ..dispatch(const Buzz('blue'));
+    expect(backend.log, ['file /sounds/red.mp3', 'asset buzzer.mp3']);
+  });
+
   test('a question can override an effect', () {
     host
       ..dispatch(const OpenQuestion(reveal))

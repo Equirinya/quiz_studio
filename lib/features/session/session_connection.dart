@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/media_service.dart';
+import 'package:quiz_show/features/session/lan/lan_discovery.dart';
 import 'package:quiz_show/features/session/lan/lan_host_server.dart';
 import 'package:quiz_show/features/session/session_client.dart';
 import 'package:quiz_show/features/session/session_links.dart';
@@ -26,6 +27,7 @@ class SessionConnection {
   final FirestoreHostLink? _link;
   final SessionClient? _client;
   LanHostServer? _server;
+  LanBeacon? _beacon;
 
   final ValueNotifier<SessionState?> state = ValueNotifier(null);
   final ValueNotifier<GameContent?> game = ValueNotifier(null);
@@ -78,6 +80,13 @@ class SessionConnection {
       await server.start();
       _server = server;
       lanEndpoints.value = await server.endpoints();
+      // Answering "where is the presenter?" is optional on top of that.
+      try {
+        _beacon = LanBeacon(sessionId: sessionId, serverPort: server.port);
+        await _beacon!.start();
+      } catch (error) {
+        if (kDebugMode) print('Session: no discovery beacon: $error');
+      }
       await repo.publishLanEndpoints(sessionId, lanEndpoints.value);
     } catch (error) {
       if (kDebugMode) print('Session: no local network server: $error');
@@ -175,6 +184,7 @@ class SessionConnection {
       await sub.cancel();
     }
     await _gameSub?.cancel();
+    _beacon?.stop();
     if (_server != null) {
       await _server!.stop();
       SessionRepository.instance.publishLanEndpoints(sessionId, const []).catchError((Object _) {});

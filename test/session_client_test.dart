@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quiz_show/features/session/lan/lan_discovery.dart';
 import 'package:quiz_show/features/session/lan/lan_host_server.dart';
 import 'package:quiz_show/features/session/session_client.dart';
 import 'package:quiz_show/game/game.dart';
@@ -143,4 +144,34 @@ void main() {
     expect(c.link.value, LinkStatus.cloud);
     expect(server.clientCount, 0);
   });
+
+  test('finds the presenter by asking the network when no address is known', () async {
+    final beacon = LanBeacon(sessionId: 'S1', serverPort: port);
+    await beacon.start(port: 0, address: InternetAddress.loopbackIPv4);
+    addTearDown(beacon.stop);
+    // The beacon's own port is only known to this test; in the app it is fixed.
+    final beaconPort = await _portOf(beacon);
+
+    expect(await discoverPresenter('S1', port: beaconPort, target: InternetAddress.loopbackIPv4), '127.0.0.1:$port');
+    // Asking for another session gets no answer.
+    expect(
+      await discoverPresenter('other', port: beaconPort, target: InternetAddress.loopbackIPv4, timeout: fast * 4),
+      isNull,
+    );
+
+    final c = SessionClient(
+      role: Role.controller,
+      token: 'ctl',
+      endpoints: const ['127.0.0.1:1'],
+      cloudStates: cloudStates.stream,
+      discover: () => discoverPresenter('S1', port: beaconPort, target: InternetAddress.loopbackIPv4),
+      retryDelay: fast,
+    );
+    addTearDown(c.dispose);
+    c.start();
+    await until(() => c.link.value == LinkStatus.lan);
+  });
 }
+
+/// A beacon bound to port 0 has to be asked which port it got.
+Future<int> _portOf(LanBeacon beacon) async => beacon.boundPort;

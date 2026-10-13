@@ -32,6 +32,7 @@ class AudioDirector {
     required this.host,
     required this.backend,
     required this.resolve,
+    this.teamSound,
     this.buzzerAsset = 'buzzer.mp3',
   }) {
     _subs = [
@@ -49,6 +50,9 @@ class AudioDirector {
   /// The local path of a media file of the current game, or null when it is
   /// not available on this device.
   final String? Function(String gameId, String name) resolve;
+
+  /// A team's own buzzer sound as a local file path; null for the default.
+  final String? Function(String teamId)? teamSound;
   final String buzzerAsset;
 
   late final List<StreamSubscription<dynamic>> _subs;
@@ -89,8 +93,9 @@ class AudioDirector {
       case SoundEffect(:final key):
         final path = _path(_sounds.effects[key]);
         if (path != null) backend.playFile(path);
-      case BuzzerSound():
-        backend.playAsset(buzzerAsset);
+      case BuzzerSound(:final teamId):
+        final own = teamSound?.call(teamId);
+        own == null ? backend.playAsset(buzzerAsset) : backend.playFile(own);
       case VisualEffect():
         break; // nothing to hear
     }

@@ -254,7 +254,7 @@ class _QuestionCardState extends State<QuestionCard> {
         ),
         title: Text(_q.text.isEmpty ? "New question" : _q.text, maxLines: 2, overflow: TextOverflow.ellipsis),
         subtitle: Text(_q.type.uiString),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
         expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Wrap(
@@ -273,8 +273,8 @@ class _QuestionCardState extends State<QuestionCard> {
                   if (type != null && type != QuestionType.unsupported) _save({'type': type.name});
                 },
               ),
-              _points(_plus, "Points if right", 'pointsPlus'),
-              _points(_minus, "Points if wrong", 'pointsMinus'),
+              _points(_plus, "If right +", 'pointsPlus'),
+              _points(_minus, "If wrong −", 'pointsMinus'),
               MediaButton(
                 gameId: widget.gameId,
                 kind: MediaKind.image,

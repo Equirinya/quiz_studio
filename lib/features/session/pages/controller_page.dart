@@ -234,8 +234,8 @@ class _ControllerViewState extends State<ControllerView> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.usb),
-                  title: const Text("USB buzzers"),
-                  subtitle: const Text("Port, sensitivity and teams"),
+                  title: const Text("Buzzers"),
+                  subtitle: const Text("USB buzzer box, and a sound per team"),
                   onTap: () {
                     Navigator.of(context).pop();
                     widget.onBuzzerSetup!();

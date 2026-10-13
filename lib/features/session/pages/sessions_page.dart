@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/audio/audio_director.dart';
 import 'package:quiz_show/features/audio/audioplayers_backend.dart';
+import 'package:quiz_show/features/audio/team_sounds.dart';
 import 'package:quiz_show/features/buzzers/buzzers_page.dart';
 import 'package:quiz_show/features/buzzers/serial_buzzers.dart';
 import 'package:quiz_show/game/game.dart';
@@ -465,9 +466,11 @@ class _PresentPageState extends State<PresentPage> {
       }
       connection.displaced!.addListener(_onDisplaced);
       // Sound comes out of the presenting device only.
+      TeamSounds.instance.load(widget.sessionId);
       final audio = AudioDirector(
         host: connection.host!,
         backend: AudioplayersBackend(),
+        teamSound: (teamId) => TeamSounds.instance.pathFor(widget.sessionId, teamId),
         resolve: (gameId, name) {
           final file = MediaService.instance.localFile(gameId, name);
           return file.existsSync() ? file.path : null;
@@ -539,11 +542,10 @@ class _PresentPageState extends State<PresentPage> {
           child: ControllerView(
             connection: connection,
             onConnectDevices: () => openConnectDevices(context, connection),
-            onBuzzerSetup: SerialBuzzers.supported
-                ? () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => BuzzersPage(teams: connection.state.value?.teams ?? const []),
-                    ))
-                : null,
+            // Team sounds are set up there too, so it is offered everywhere.
+            onBuzzerSetup: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => BuzzersPage(teams: connection.state.value?.teams ?? const [], sessionId: widget.sessionId),
+            )),
           ),
         ),
       ),

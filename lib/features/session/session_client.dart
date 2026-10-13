@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'package:quiz_show/features/session/lan/lan_client.dart';
+import 'package:quiz_show/features/session/lan/lan_discovery.dart';
 import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/game/game.dart';
@@ -35,6 +36,7 @@ class SessionClient implements CommandSink {
     this.cloudEndpoints,
     this.cloudSend,
     this.onSendError,
+    this.discover,
     LanConnector? connect,
     this.retryDelay = const Duration(seconds: 2),
   })  : _token = token,
@@ -61,6 +63,7 @@ class SessionClient implements CommandSink {
       cloudEndpoints: repo.watchLanEndpoints(sessionId),
       cloudSend: (command) => repo.sendCommand(sessionId, command, role: role, teamId: teamId),
       onSendError: onSendError,
+      discover: () => discoverPresenter(sessionId),
     );
   }
 
@@ -77,6 +80,10 @@ class SessionClient implements CommandSink {
   final Stream<List<String>>? cloudEndpoints;
   final Future<void> Function(Command command)? cloudSend;
   final void Function(Object error)? onSendError;
+
+  /// Asks the local network where the presenter is; used when none of the
+  /// known addresses answers, e.g. after the presenter got a new one.
+  final Future<String?> Function()? discover;
   final Duration retryDelay;
   final LanConnector _connect;
 
@@ -149,6 +156,7 @@ class SessionClient implements CommandSink {
     while (!_disposed) {
       final token = _token;
       if (token != null) {
+        var connected = false;
         for (final endpoint in _endpoints.toList()) {
           if (_disposed) return;
           try {
@@ -157,11 +165,17 @@ class SessionClient implements CommandSink {
               await client.close();
               return;
             }
+            connected = true;
             await _useLan(client);
             break;
           } catch (_) {
             // Not reachable here; try the next address.
           }
+        }
+        if (!connected && discover != null && !_disposed) {
+          final found = await discover!();
+          // A new address is tried straight away.
+          if (found != null && _endpoints.add(found)) continue;
         }
       }
       if (_disposed) return;

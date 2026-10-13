@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/games/widgets/ranker_import.dart';
+import 'package:quiz_show/features/player/recent_sessions.dart';
 import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/game/game.dart';
 
@@ -165,6 +166,42 @@ void main() {
       final parsed = SessionJoinLink.tryParse('quiz-studio://session/S1/controller/tok?lan=evil.example.com:80,192.168.1.5:47800,x')!;
       expect(parsed.lan, ['192.168.1.5:47800']);
       expect(SessionJoinLink.tryParse('quiz-studio://session/S1/controller/tok?other=1')!.lan, isEmpty);
+    });
+  });
+
+  group('recent sessions', () {
+    const red = SessionJoinLink(sessionId: 'S1', token: 't1', role: Role.player, teamId: 'red', lan: ['192.168.1.5:47800']);
+    const controller = SessionJoinLink(sessionId: 'S1', token: 't2', role: Role.controller);
+
+    test('are remembered newest first, with their local address', () {
+      var stored = encodeRecentSessions(const [], red, 1000);
+      stored = encodeRecentSessions(decodeRecentSessions(stored), controller, 2000);
+      final recent = decodeRecentSessions(stored);
+      expect(recent.map((r) => (r.link.role, r.joinedAtMillis)), [(Role.controller, 2000), (Role.player, 1000)]);
+      expect(recent.last.link.lan, ['192.168.1.5:47800']);
+    });
+
+    test('joining the same session again replaces the old entry', () {
+      var stored = encodeRecentSessions(const [], red, 1000);
+      stored = encodeRecentSessions(decodeRecentSessions(stored), red.withLan(['10.0.0.9:47800']), 5000);
+      final recent = decodeRecentSessions(stored);
+      expect(recent, hasLength(1));
+      expect(recent.single.joinedAtMillis, 5000);
+      expect(recent.single.link.lan, ['10.0.0.9:47800']);
+    });
+
+    test('only a handful are kept, and junk is skipped', () {
+      var stored = <String>[];
+      for (var i = 0; i < 9; i++) {
+        stored = encodeRecentSessions(
+          decodeRecentSessions(stored),
+          SessionJoinLink(sessionId: 'S$i', token: 't', role: Role.controller),
+          i,
+        );
+      }
+      expect(decodeRecentSessions(stored).map((r) => r.link.sessionId), ['S8', 'S7', 'S6', 'S5', 'S4']);
+      expect(decodeRecentSessions(['not json', '{"link":"nope","at":1}', '{}']), isEmpty);
+      expect(decodeRecentSessions(null), isEmpty);
     });
   });
 }

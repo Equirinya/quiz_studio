@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
+import 'package:quiz_show/features/games/pages/category_editor_page.dart';
 import 'package:quiz_show/features/games/widgets/map_editor.dart';
 import 'package:quiz_show/features/player/pages/player_page.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
@@ -506,5 +507,53 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('decoration-0')));
     await tester.pump(const Duration(milliseconds: 300));
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/map_editor.png'));
+  });
+
+  Future<void> questionCard(WidgetTester tester, String name, Map<String, dynamic> data) async {
+    tester.view.physicalSize = const Size(900, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        appBar: AppBar(title: const Text("Maths")),
+        body: ListView(
+          padding: const EdgeInsets.all(8),
+          children: [
+            QuestionCard(gameId: 'g', categoryId: 'c', question: Question.fromMap('q', data), initiallyExpanded: true),
+          ],
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 500));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/$name.png'));
+  }
+
+  testWidgets('editor: question with a whiteboard', (tester) async {
+    await questionCard(tester, 'editor_question_whiteboard', {
+      'type': 'free',
+      'question': 'What is 3+5?',
+      'answerHint': '8',
+      'noBuzzer': true,
+      'pointsPlus': 400,
+      'pointsMinus': 0,
+      'companion': {'kind': 'whiteboard', 'timer': 30, 'background': 'list', 'listRows': 5},
+    });
+  });
+
+  testWidgets('editor: question with pairs to match', (tester) async {
+    await questionCard(tester, 'editor_question_match', {
+      'type': 'free',
+      'question': 'Which capital belongs to which country?',
+      'pointsPlus': 300,
+      'pointsMinus': 0,
+      'companion': {
+        'kind': 'match',
+        'timer': 60,
+        'options': ['France', 'Italy', 'Spain'],
+        'targets': ['Paris', 'Rome', 'Madrid'],
+      },
+    });
   });
 }
