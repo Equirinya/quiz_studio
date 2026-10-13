@@ -1,11 +1,16 @@
 /// Where everything sits on a map board. Positions are fractions of the
-/// board (0..1 in both directions), so a layout fits any screen.
+/// canvas (0..1 in both directions), so a layout fits any screen. The canvas
+/// is as tall as the screen and may be several screens wide; the board then
+/// scrolls sideways.
 ///
 /// Stored on the category group document as `mapLayout`:
+///   width:       number   canvas width in screens; absent = as wide as the
+///                automatic layout needs (about four bubbles per screen)
 ///   follows:     {categoryId: categoryId | ""}   which bubble a category
 ///                comes after; "" starts a new chain; absent = the category
 ///                before it in the group's order
-///   nodes:       {categoryId: {x, y}}            bubbles placed by hand
+///   nodes:       {categoryId: {x, y, scale}}     x and y: a bubble placed by
+///                hand; scale: its size relative to the others (default 1)
 ///   decorations: [{type: "title", text, x, y, size}
 ///                 {type: "image", image, x, y, width}
 ///                 {type: "line", x1, y1, x2, y2}]
@@ -76,7 +81,23 @@ class MapLine extends MapDecoration {
 }
 
 class MapLayout {
-  const MapLayout({required this.nodes, required this.edges, required this.columns, required this.rows, this.decorations = const []});
+  const MapLayout({
+    required this.nodes,
+    required this.edges,
+    required this.columns,
+    required this.rows,
+    this.widthFactor = 1,
+    this.scales = const {},
+    this.decorations = const [],
+  });
+
+  /// How many screens wide the canvas is; never less than one.
+  final double widthFactor;
+
+  /// Size of each bubble relative to the default, where it was changed.
+  final Map<String, double> scales;
+
+  double scaleOf(String categoryId) => scales[categoryId] ?? 1;
 
   /// Centre of each category's bubble, by category id.
   final Map<String, MapPoint> nodes;
@@ -91,10 +112,21 @@ class MapLayout {
   final List<MapDecoration> decorations;
 }
 
+/// Smallest and largest size a bubble can be given, relative to the default.
+const double kMapMinScale = 0.6;
+const double kMapMaxScale = 2.0;
+
+/// Widest canvas, in screens.
+const double kMapMaxWidth = 8;
+
+/// How many steps of the path fit on one screen before the canvas grows.
+const int kMapColumnsPerScreen = 4;
+
 /// Lays a group out as a map: every category a bubble, each following
-/// another. A plain sequence becomes a chain (winding back and forth when it
-/// is long), a category that several others follow becomes a branching
-/// point, as in an organisation chart.
+/// another. A plain sequence becomes a chain running left to right, a
+/// category that several others follow becomes a branching point, as in an
+/// organisation chart. A long path makes the canvas wider than the screen
+/// rather than the bubbles smaller.
 MapLayout layoutMap(CategoryGroup group) {
   final stored = group.data['mapLayout'];
   final layout = stored is Map ? stored : const {};
@@ -137,49 +169,35 @@ MapLayout layoutMap(CategoryGroup group) {
       if (parent[id] != null) (parent[id]!, id),
   ];
 
+  // A tidy tree: columns are steps along the path, leaves take one row
+  // each, and a branching point sits level with the middle of its branches.
   final column = <String, int>{};
   final row = <String, double>{};
-  final isChain = roots.length == 1 && children.values.every((list) => list.length <= 1);
   var columns = 1;
-  var rows = 1;
-
-  if (isChain && ids.length > 5) {
-    // A long chain winds back and forth instead of shrinking to fit one row.
-    rows = ids.length <= 10 ? 2 : 3;
-    columns = (ids.length / rows).ceil();
-    var id = roots.first;
-    for (var i = 0; i < ids.length; i++) {
-      final r = i ~/ columns;
-      final c = i % columns;
-      column[id] = r.isEven ? c : columns - 1 - c;
-      row[id] = r.toDouble();
-      final next = children[id];
-      if (next == null || next.isEmpty) break;
-      id = next.first;
+  var nextRow = 0;
+  void place(String id, int depth) {
+    column[id] = depth;
+    if (depth + 1 > columns) columns = depth + 1;
+    final next = children[id] ?? const <String>[];
+    if (next.isEmpty) {
+      row[id] = (nextRow++).toDouble();
+      return;
     }
-  } else {
-    // A tidy tree: columns are steps along the path, leaves take one row
-    // each, and a branching point sits level with the middle of its branches.
-    var nextRow = 0;
-    void place(String id, int depth) {
-      column[id] = depth;
-      if (depth + 1 > columns) columns = depth + 1;
-      final next = children[id] ?? const <String>[];
-      if (next.isEmpty) {
-        row[id] = (nextRow++).toDouble();
-        return;
-      }
-      for (final child in next) {
-        place(child, depth + 1);
-      }
-      row[id] = (row[next.first]! + row[next.last]!) / 2;
+    for (final child in next) {
+      place(child, depth + 1);
     }
-
-    for (final root in roots) {
-      place(root, 0);
-    }
-    rows = nextRow < 1 ? 1 : nextRow;
+    row[id] = (row[next.first]! + row[next.last]!) / 2;
   }
+
+  for (final root in roots) {
+    place(root, 0);
+  }
+  final rows = nextRow < 1 ? 1 : nextRow;
+
+  final storedWidth = layout['width'];
+  final widthFactor = storedWidth is num
+      ? storedWidth.toDouble().clamp(1.0, kMapMaxWidth).toDouble()
+      : (columns / kMapColumnsPerScreen).clamp(1.0, kMapMaxWidth).toDouble();
 
   final nodes = <String, MapPoint>{};
   for (final id in ids) {
@@ -196,6 +214,12 @@ MapLayout layoutMap(CategoryGroup group) {
     edges: edges,
     columns: columns,
     rows: rows,
+    widthFactor: widthFactor,
+    scales: {
+      for (final id in ids)
+        if (manual[id] case {'scale': final num scale})
+          id: scale.toDouble().clamp(kMapMinScale, kMapMaxScale).toDouble(),
+    },
     decorations: [
       if (layout['decorations'] is List)
         for (final entry in layout['decorations'] as List) ?MapDecoration.fromMap(entry),

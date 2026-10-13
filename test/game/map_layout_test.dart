@@ -17,15 +17,34 @@ void main() {
     expect(map.nodes['c2'], const MapPoint(5 / 6, 0.5));
   });
 
-  test('a long chain winds back and forth', () {
+  test('a long chain stays one row and makes the canvas wider instead', () {
     final map = layoutMap(group(8));
-    expect((map.columns, map.rows), (4, 2));
-    // First row left to right, second row right to left.
-    expect(map.nodes['c3']!.x, closeTo(7 / 8, 1e-9));
-    expect(map.nodes['c4']!.x, closeTo(7 / 8, 1e-9));
-    expect(map.nodes['c4']!.y, 0.75);
-    expect(map.nodes['c7']!.x, closeTo(1 / 8, 1e-9));
-    expect(map.edges, hasLength(7));
+    expect((map.columns, map.rows), (8, 1));
+    expect(map.widthFactor, 2);
+    expect(map.nodes['c7']!.x, closeTo(15 / 16, 1e-9));
+    expect(map.nodes.values.every((p) => p.y == 0.5), isTrue);
+    expect(layoutMap(group(3)).widthFactor, 1);
+  });
+
+  test('the canvas width can be set by hand, within limits', () {
+    expect(layoutMap(group(3, layout: {'width': 2.5})).widthFactor, 2.5);
+    expect(layoutMap(group(8, layout: {'width': 1})).widthFactor, 1);
+    expect(layoutMap(group(3, layout: {'width': 0.2})).widthFactor, 1);
+    expect(layoutMap(group(3, layout: {'width': 99})).widthFactor, kMapMaxWidth);
+  });
+
+  test('a bubble can be given its own size without being placed by hand', () {
+    final map = layoutMap(group(3, layout: {
+      'nodes': {
+        'c0': {'scale': 1.5},
+        'c1': {'x': 0.5, 'y': 0.2, 'scale': 9},
+        'c2': {'scale': 'big'},
+      },
+    }));
+    expect((map.scaleOf('c0'), map.scaleOf('c1'), map.scaleOf('c2')), (1.5, kMapMaxScale, 1.0));
+    // Only c1 has a position of its own.
+    expect(map.nodes['c0'], const MapPoint(1 / 6, 0.5));
+    expect(map.nodes['c1'], const MapPoint(0.5, 0.2));
   });
 
   test('two categories following the same one make a branch', () {

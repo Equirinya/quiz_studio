@@ -615,4 +615,62 @@ void main() {
       'companion': {'kind': 'whiteboard', 'timer': 45, 'background': 'image', 'backgroundImage': 'map.png'},
     });
   });
+
+  testWidgets('map: wide canvas, mid game', (tester) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final group = CategoryGroup(
+      id: 'm',
+      type: BoardType.map,
+      data: {
+        'mapLayout': {
+          'nodes': {
+            'c4': {'scale': 1.35},
+          },
+        },
+      },
+      categories: mapGroup(count: 8).categories,
+    );
+    Widget board(SessionState state) => MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme(Brightness.dark),
+          home: Scaffold(
+            body: Padding(padding: const EdgeInsets.all(24), child: MapBoard(group: group, state: state, imageFile: (_) => null)),
+          ),
+        );
+    await tester.pumpWidget(board(const SessionState()));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpWidget(board(const SessionState(
+      phase: Phase.question,
+      current: QuestionRef('c4', 'q1'),
+      played: {'c0/q0', 'c0/q1', 'c0/q2', 'c0/q3', 'c1/q0', 'c1/q1', 'c1/q2', 'c1/q3', 'c2/q0', 'c2/q1', 'c2/q2', 'c2/q3', 'c3/q0', 'c3/q1', 'c3/q2', 'c3/q3', 'c4/q0'},
+    )));
+    await tester.pumpAndSettle();
+    await shot('map_wide_in_game');
+  });
+
+  testWidgets('map editor: wide canvas, bubble selected', (tester) async {
+    tester.view.physicalSize = const Size(1280, 860);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        appBar: AppBar(title: const Text("Map · Round 2")),
+        body: MapEditor(group: mapGroup(count: 8), imageFile: (_) => null, pickImage: () async => null, onSave: (_) {}),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('bubble-c1')));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byTooltip('Larger'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byTooltip('Larger'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 100));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/map_editor_wide.png'));
+  });
 }

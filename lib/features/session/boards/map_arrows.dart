@@ -86,7 +86,13 @@ MapArrow routeArrow(Rect from, Rect to, {double gap = 0}) {
   // looking drawn rather than ruled.
   final offset = sideways ? (end.dy - start.dy).abs() : (end.dx - start.dx).abs();
   final length = (end - start).distance;
-  if (length > 0 && offset < length * 0.08) {
+  // Bubbles that almost touch leave no room for a curve: a short straight
+  // arrow reads better than a squeezed one.
+  final cramped = length < gap * 8;
+  if (cramped) {
+    control1 = start + (end - start) * 0.3;
+    control2 = start + (end - start) * 0.7;
+  } else if (length > 0 && offset < length * 0.08) {
     // One even arc: both controls on the chord, pushed out to one side.
     final bow = Offset(normalOut.dy, -normalOut.dx) * length * 0.2;
     control1 = start + (end - start) * 0.3 + bow;

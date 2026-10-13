@@ -133,6 +133,39 @@ void main() {
     expect((picture['type'], picture['image']), ('image', 'picked.png'));
   });
 
+  testWidgets('the canvas can be made wider than the screen, and is then moved with a slider', (tester) async {
+    await pumpEditor(tester);
+    expect(find.byType(Slider), findsNothing);
+    await tester.tap(find.text('Wider'));
+    await tester.pump();
+    expect(saved['width'], 1.5);
+    expect(find.byType(Slider), findsOneWidget);
+    expect(find.text('1.5 screens wide'), findsOneWidget);
+    await tester.tap(find.text('Narrower'));
+    await tester.pump();
+    expect(saved['width'], 1.0);
+  });
+
+  testWidgets('a tapped bubble can be made larger or smaller, and keeps its size when tidied', (tester) async {
+    await pumpEditor(tester);
+    await tester.tap(bubble('c1'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Larger'));
+    await tester.pump();
+    final scale = ((saved['nodes'] as Map)['c1'] as Map)['scale'] as num;
+    expect(scale, greaterThan(1));
+    // Sized, but still placed by the automatic layout.
+    expect(((saved['nodes'] as Map)['c1'] as Map).containsKey('x'), isFalse);
+    expect(layoutMap(group(layout: saved)).scaleOf('c1'), scale);
+
+    await tester.drag(bubble('c1'), const Offset(0, 120));
+    await tester.pump();
+    expect(((saved['nodes'] as Map)['c1'] as Map).containsKey('x'), isTrue);
+    await tester.tap(find.text('Tidy up'));
+    await tester.pump();
+    expect((saved['nodes'] as Map)['c1'], {'scale': scale});
+  });
+
   testWidgets('the tools that need a selection are off without one', (tester) async {
     await pumpEditor(tester);
     expect(tester.widget<IconButton>(find.ancestor(of: find.byIcon(Icons.delete_outline), matching: find.byType(IconButton))).onPressed, isNull);

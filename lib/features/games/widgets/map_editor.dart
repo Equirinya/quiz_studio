@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 
@@ -41,6 +40,19 @@ class _MapEditorState extends State<MapEditor> {
   /// Index into the decorations, or null.
   int? _selected;
 
+  /// The bubble picked for resizing, or null.
+  String? _bubble;
+
+  /// Scrolls the stage when the canvas is wider than one screen. Moved with
+  /// the slider below it, so that dragging on the stage always moves things.
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
   /// Connecting: the bubble the next tap will be drawn after.
   bool _connecting = false;
   String? _from;
@@ -48,6 +60,7 @@ class _MapEditorState extends State<MapEditor> {
   static Map<String, dynamic> _copy(Object? stored) {
     final map = stored is Map ? stored : const {};
     return {
+      if (map['width'] is num) 'width': map['width'],
       'follows': Map<String, dynamic>.from(map['follows'] as Map? ?? const {}),
       'nodes': {
         for (final entry in (map['nodes'] as Map? ?? const {}).entries)
@@ -133,6 +146,12 @@ class _MapEditorState extends State<MapEditor> {
   }
 
   void _resize(double factor) => _change(() {
+        final bubble = _bubble;
+        if (bubble != null) {
+          final node = _nodes.putIfAbsent(bubble, () => <String, dynamic>{}) as Map<String, dynamic>;
+          node['scale'] = (((node['scale'] as num?) ?? 1) * factor).clamp(kMapMinScale, kMapMaxScale);
+          return;
+        }
         final decoration = _decorations[_selected!];
         if (decoration['type'] == 'title') {
           decoration['size'] = (((decoration['size'] as num?) ?? 1) * factor).clamp(0.5, 5.0);
@@ -141,8 +160,21 @@ class _MapEditorState extends State<MapEditor> {
         }
       });
 
+  /// Makes the canvas [by] screens wider or narrower.
+  void _widen(double by) => _change(() {
+        final current = layoutMap(_draft).widthFactor;
+        _layout['width'] = (current + by).clamp(1.0, kMapMaxWidth);
+      });
+
   void _tapBubble(String categoryId) {
-    if (!_connecting) return;
+    if (!_connecting) {
+      // Picked for resizing.
+      setState(() {
+        _bubble = _bubble == categoryId ? null : categoryId;
+        _selected = null;
+      });
+      return;
+    }
     final from = _from;
     if (from == null) {
       setState(() => _from = categoryId);
@@ -183,13 +215,48 @@ class _MapEditorState extends State<MapEditor> {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(8),
-                    child: LayoutBuilder(builder: (context, box) => _stage(box.biggest, scheme)),
+                    child: LayoutBuilder(
+                      builder: (context, box) {
+                        // One screen of a canvas that may be wider; the slider
+                        // below moves the window, the stage itself only drags
+                        // what is on it.
+                        final canvas = Size(box.maxWidth * layoutMap(_draft).widthFactor, box.maxHeight);
+                        return SingleChildScrollView(
+                          controller: _scroll,
+                          scrollDirection: Axis.horizontal,
+                          physics: const NeverScrollableScrollPhysics(),
+                          child: SizedBox.fromSize(size: canvas, child: _stage(canvas, box.maxWidth, scheme)),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
             ),
           ),
         ),
+        if (layoutMap(_draft).widthFactor > 1)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: ListenableBuilder(
+              listenable: _scroll,
+              builder: (context, _) {
+                final most = _scroll.hasClients && _scroll.position.hasContentDimensions ? _scroll.position.maxScrollExtent : 0.0;
+                return Row(
+                  children: [
+                    const Icon(Icons.swap_horiz, size: 18),
+                    Expanded(
+                      child: Slider(
+                        value: most <= 0 ? 0 : (_scroll.offset / most).clamp(0.0, 1.0).toDouble(),
+                        onChanged: most <= 0 ? null : (value) => _scroll.jumpTo(value * most),
+                      ),
+                    ),
+                    Text("${formatNumber(layoutMap(_draft).widthFactor)} screens wide", style: theme.textTheme.bodySmall),
+                  ],
+                );
+              },
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
@@ -197,9 +264,11 @@ class _MapEditorState extends State<MapEditor> {
                 ? (_from == null
                     ? "Tap the bubble that comes first."
                     : "Now tap the bubble that comes after it. Tap the same one again to make it a start.")
-                : selected != null
-                    ? "Drag to move. Use the buttons below to change or remove it."
-                    : "Drag bubbles to place them. Tap a title, picture or line to select it.",
+                : _bubble != null
+                    ? "Drag to move. Use − and + below to change this bubble's size."
+                    : selected != null
+                        ? "Drag to move. Use the buttons below to change or remove it."
+                        : "Drag things to place them. Tap a bubble, title, picture or line to select it.",
             style: theme.textTheme.bodySmall,
             textAlign: TextAlign.center,
           ),
@@ -220,6 +289,7 @@ class _MapEditorState extends State<MapEditor> {
                   _connecting = on;
                   _from = null;
                   _selected = null;
+                  _bubble = null;
                 }),
               ),
               ActionChip(avatar: const Icon(Icons.title, size: 18), label: const Text("Title"), onPressed: _addTitle),
@@ -227,9 +297,29 @@ class _MapEditorState extends State<MapEditor> {
                 ActionChip(avatar: const Icon(Icons.image_outlined, size: 18), label: const Text("Picture"), onPressed: _addImage),
               ActionChip(avatar: const Icon(Icons.horizontal_rule, size: 18), label: const Text("Line"), onPressed: _addLine),
               ActionChip(
+                avatar: const Icon(Icons.unfold_less, size: 18),
+                label: const Text("Narrower"),
+                onPressed: layoutMap(_draft).widthFactor <= 1 ? null : () => _widen(-0.5),
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.unfold_more, size: 18),
+                label: const Text("Wider"),
+                onPressed: layoutMap(_draft).widthFactor >= kMapMaxWidth ? null : () => _widen(0.5),
+              ),
+              ActionChip(
                 avatar: const Icon(Icons.auto_fix_high, size: 18),
                 label: const Text("Tidy up"),
-                onPressed: _nodes.isEmpty ? null : () => _change(_nodes.clear),
+                // Positions go back to automatic; sizes are kept.
+                onPressed: _nodes.values.every((node) => (node as Map)['x'] == null)
+                    ? null
+                    : () => _change(() {
+                          for (final node in _nodes.values) {
+                            (node as Map)
+                              ..remove('x')
+                              ..remove('y');
+                          }
+                          _nodes.removeWhere((_, node) => (node as Map).isEmpty);
+                        }),
               ),
             ],
           ),
@@ -242,12 +332,12 @@ class _MapEditorState extends State<MapEditor> {
               IconButton(
                 tooltip: "Smaller",
                 icon: const Icon(Icons.remove_circle_outline),
-                onPressed: selected == null || selected['type'] == 'line' ? null : () => _resize(1 / 1.15),
+                onPressed: _bubble == null && (selected == null || selected['type'] == 'line') ? null : () => _resize(1 / 1.15),
               ),
               IconButton(
                 tooltip: "Larger",
                 icon: const Icon(Icons.add_circle_outline),
-                onPressed: selected == null || selected['type'] == 'line' ? null : () => _resize(1.15),
+                onPressed: _bubble == null && (selected == null || selected['type'] == 'line') ? null : () => _resize(1.15),
               ),
               IconButton(
                 tooltip: "Edit text",
@@ -271,11 +361,11 @@ class _MapEditorState extends State<MapEditor> {
     );
   }
 
-  Widget _stage(Size size, ColorScheme scheme) {
+  Widget _stage(Size size, double viewportWidth, ColorScheme scheme) {
     final draft = _draft;
     final map = layoutMap(draft);
-    // Same sizing as MapBoard, to put each handle over its bubble.
-    final bubbleWidth = min(min(size.width / map.columns * 0.72, size.height / map.rows * 1.4), size.width * 0.28);
+    // Same sizing as the canvas itself, to put each handle over its bubble.
+    final bubbleWidth = MapCanvas.bubbleWidth(map, size, viewportWidth);
 
     Widget handle({
       required Key key,
@@ -337,14 +427,22 @@ class _MapEditorState extends State<MapEditor> {
       children: [
         Positioned.fill(
           child: IgnorePointer(
-            child: MapBoard(group: draft, state: const SessionState(), imageFile: widget.imageFile),
+            child: MapCanvas(
+              group: draft,
+              state: const SessionState(),
+              imageFile: widget.imageFile,
+              viewportWidth: viewportWidth,
+            ),
           ),
         ),
         // Tapping empty space lets go of the selection.
         Positioned.fill(
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
-            onTap: () => setState(() => _selected = null),
+            onTap: () => setState(() {
+              _selected = null;
+              _bubble = null;
+            }),
           ),
         ),
         for (final category in widget.group.categories)
@@ -352,15 +450,17 @@ class _MapEditorState extends State<MapEditor> {
             key: ValueKey('bubble-${category.id}'),
             x: map.nodes[category.id]!.x,
             y: map.nodes[category.id]!.y,
-            width: bubbleWidth,
-            height: bubbleWidth * 0.55,
-            outlined: _from == category.id,
+            width: bubbleWidth * map.scaleOf(category.id),
+            height: bubbleWidth * map.scaleOf(category.id) * 0.62,
+            outlined: _from == category.id || _bubble == category.id,
             onTap: () => _tapBubble(category.id),
             onMove: (dx, dy) {
               final at = map.nodes[category.id]!;
-              final node = _nodes.putIfAbsent(category.id, () => <String, dynamic>{'x': at.x, 'y': at.y}) as Map<String, dynamic>;
-              node['x'] = _unit((node['x'] as num) + dx);
-              node['y'] = _unit((node['y'] as num) + dy);
+              final node = _nodes.putIfAbsent(category.id, () => <String, dynamic>{}) as Map<String, dynamic>;
+              // A bubble that only had a size so far starts from where the
+              // automatic layout put it.
+              node['x'] = _unit(((node['x'] as num?) ?? at.x) + dx);
+              node['y'] = _unit(((node['y'] as num?) ?? at.y) + dy);
             },
           ),
         for (final (i, decoration) in _decorations.indexed)
@@ -374,7 +474,10 @@ class _MapEditorState extends State<MapEditor> {
                 width: _selected == i ? 22 : 30,
                 height: _selected == i ? 22 : 30,
                 round: _selected == i,
-                onTap: () => setState(() => _selected = i),
+                onTap: () => setState(() {
+                  _selected = i;
+                  _bubble = null;
+                }),
                 onMove: (dx, dy) {
                   _selected = i;
                   decoration['x$end'] = _unit((decoration['x$end'] as num) + dx);
@@ -393,7 +496,10 @@ class _MapEditorState extends State<MapEditor> {
                   ? ((decoration['width'] as num?) ?? 0.2) * size.width * 0.7
                   : titleSize(decoration).height,
               outlined: _selected == i,
-              onTap: () => setState(() => _selected = i),
+              onTap: () => setState(() {
+                  _selected = i;
+                  _bubble = null;
+                }),
               onMove: (dx, dy) {
                 _selected = i;
                 decoration['x'] = _unit((decoration['x'] as num) + dx);

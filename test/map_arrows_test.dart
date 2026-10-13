@@ -56,6 +56,15 @@ void main() {
     expect(arrow.shaft(20).getBounds().right, lessThan(arrow.end.dx));
   });
 
+  test('bubbles that almost touch get a short straight arrow', () {
+    final arrow = routeArrow(a, const Rect.fromLTWH(130, 100, 100, 60), gap: 5);
+    expect(arrow.start, const Offset(105, 130));
+    expect(arrow.end, const Offset(125, 130));
+    expect(arrow.control1.dy, 130);
+    expect(arrow.control2.dy, 130);
+    expect(arrow.heading, const Offset(1, 0));
+  });
+
   test('touching or overlapping bubbles still give a finite arrow', () {
     final arrow = routeArrow(a, a.shift(const Offset(40, 10)), gap: 5);
     for (final point in [arrow.start, arrow.control1, arrow.control2, arrow.end]) {
