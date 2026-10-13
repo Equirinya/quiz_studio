@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
+import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
 
@@ -195,5 +196,30 @@ void main() {
 
     await tap(tester, inSheet(find.text('Show on screen')));
     expect(inPresenter(find.text('forty-two')), findsOneWidget);
+  });
+
+  testWidgets('a text typed in the effects sheet goes over the screen and comes off again', (tester) async {
+    await pumpBoth(tester);
+    await tap(tester, tab('Effects'));
+    await tester.enterText(inSheet(find.byType(TextField)), 'Back in ten minutes');
+    await tap(tester, inSheet(find.text('Show')));
+    expect(host.state.overlay!.text, 'Back in ten minutes');
+    expect(inPresenter(find.text('Back in ten minutes')), findsOneWidget);
+
+    await tap(tester, inSheet(find.text('Take card off screen')));
+    expect(host.state.overlay, isNull);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(inPresenter(find.text('Back in ten minutes')), findsNothing);
+  });
+
+  testWidgets('confetti runs on the presenter and ends by itself', (tester) async {
+    await pumpBoth(tester);
+    expect(inPresenter(find.byWidgetPredicate((w) => w is CustomPaint && w.painter is ConfettiPainter)), findsNothing);
+    await tap(tester, tab('Effects'));
+    await tap(tester, inSheet(find.text('Confetti')));
+    expect(inPresenter(find.byWidgetPredicate((w) => w is CustomPaint && w.painter is ConfettiPainter)), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump();
+    expect(inPresenter(find.byWidgetPredicate((w) => w is CustomPaint && w.painter is ConfettiPainter)), findsNothing);
   });
 }

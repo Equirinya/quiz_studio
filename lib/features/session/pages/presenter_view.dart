@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/session/boards/wheel_board.dart';
+import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
 
@@ -40,41 +41,57 @@ class PresenterView extends StatelessWidget {
                 ),
               );
         final question = state.current == null ? null : game.question(state.current!);
+        File? mediaFile(String name) {
+          final file = MediaService.instance.localFile(game.id, name);
+          return file.existsSync() ? file : null;
+        }
+
         return Theme(
           data: theme,
-          child: Builder(
-            builder: (context) => ColoredBox(
-              color: Theme.of(context).colorScheme.surface,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final unit = constraints.maxHeight / 100;
-                  return Padding(
-                    padding: EdgeInsets.all(unit * 2),
-                    child: Column(
-                      children: [
-                        _Scores(state: state, unit: unit),
-                        SizedBox(height: unit * 2),
-                        Expanded(
-                          child: question != null
-                              ? _QuestionDisplay(game: game, state: state, question: question, unit: unit)
-                              : group == null
-                                  ? const SizedBox()
-                                  : group.type == BoardType.wheel
-                                      ? LayoutBuilder(
-                                          builder: (context, box) =>
-                                              WheelBoard(group: group, state: state, size: box.biggest),
-                                        )
-                                      : _BoardGrid(group: group, state: state, unit: unit),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              _screen(state, game, group, question),
+              // Cards and effects lie over whatever is on screen.
+              CardOverlay(card: state.overlay, imageFile: mediaFile),
+              ScreenEffectLayer(effects: connection.host?.effects),
+            ],
           ),
         );
       },
+    );
+  }
+
+  Widget _screen(SessionState state, GameContent game, CategoryGroup? group, Question? question) {
+    return Builder(
+      builder: (context) => ColoredBox(
+        color: Theme.of(context).colorScheme.surface,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final unit = constraints.maxHeight / 100;
+            return Padding(
+              padding: EdgeInsets.all(unit * 2),
+              child: Column(
+                children: [
+                  _Scores(state: state, unit: unit),
+                  SizedBox(height: unit * 2),
+                  Expanded(
+                    child: question != null
+                        ? _QuestionDisplay(game: game, state: state, question: question, unit: unit)
+                        : group == null
+                        ? const SizedBox()
+                        : group.type == BoardType.wheel
+                        ? LayoutBuilder(
+                            builder: (context, box) => WheelBoard(group: group, state: state, size: box.biggest),
+                          )
+                        : _BoardGrid(group: group, state: state, unit: unit),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -95,27 +112,37 @@ class _Scores extends StatelessWidget {
       runSpacing: unit,
       children: [
         for (final team in state.teams)
-          Builder(builder: (context) {
-            final position = showQueue ? state.buzzQueue.indexOf(team.id) : -1;
-            // The answering team stands out; queued teams fade towards the back.
-            final color = position < 0
-                ? scheme.surfaceContainerHigh
-                : Color.lerp(scheme.primaryContainer, scheme.surfaceContainerHigh, position / state.buzzQueue.length)!;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: unit * 22,
-              height: unit * 12,
-              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(unit * 2)),
-              alignment: Alignment.center,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(team.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: unit * 2.2)),
-                  Text(team.points.toString(), style: TextStyle(fontSize: unit * 4.5, fontWeight: FontWeight.w600)),
-                ],
-              ),
-            );
-          }),
+          Builder(
+            builder: (context) {
+              final position = showQueue ? state.buzzQueue.indexOf(team.id) : -1;
+              // The answering team stands out; queued teams fade towards the back.
+              final color = position < 0
+                  ? scheme.surfaceContainerHigh
+                  : Color.lerp(scheme.primaryContainer, scheme.surfaceContainerHigh, position / state.buzzQueue.length)!;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: unit * 22,
+                height: unit * 12,
+                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(unit * 2)),
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      team.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: unit * 2.2),
+                    ),
+                    Text(
+                      team.points.toString(),
+                      style: TextStyle(fontSize: unit * 4.5, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
       ],
     );
   }
@@ -135,7 +162,11 @@ class _BoardGrid extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     if (group.type == BoardType.display) {
       return Center(
-        child: Text(group.text ?? group.name, textAlign: TextAlign.center, style: TextStyle(fontSize: unit * 7)),
+        child: Text(
+          group.text ?? group.name,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: unit * 7),
+        ),
       );
     }
     final rows = group.categories.fold(0, (most, c) => c.questions.length > most ? c.questions.length : most);
@@ -162,27 +193,29 @@ class _BoardGrid extends StatelessWidget {
                   ),
                   for (var i = 0; i < rows; i++)
                     Expanded(
-                      child: Builder(builder: (context) {
-                        final question = category.questions.elementAtOrNull(i);
-                        if (question == null) return const SizedBox();
-                        final played = state.played.contains(QuestionRef(category.id, question.id).key);
-                        return Container(
-                          margin: EdgeInsets.symmetric(vertical: unit * 0.6),
-                          decoration: BoxDecoration(
-                            color: played ? scheme.surfaceContainerLow : scheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(unit * 1.5),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            question.pointsPlus.toString(),
-                            style: TextStyle(
-                              fontSize: unit * 4,
-                              fontWeight: FontWeight.w600,
-                              color: played ? scheme.outlineVariant : scheme.onPrimaryContainer,
+                      child: Builder(
+                        builder: (context) {
+                          final question = category.questions.elementAtOrNull(i);
+                          if (question == null) return const SizedBox();
+                          final played = state.played.contains(QuestionRef(category.id, question.id).key);
+                          return Container(
+                            margin: EdgeInsets.symmetric(vertical: unit * 0.6),
+                            decoration: BoxDecoration(
+                              color: played ? scheme.surfaceContainerLow : scheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(unit * 1.5),
                             ),
-                          ),
-                        );
-                      }),
+                            alignment: Alignment.center,
+                            child: Text(
+                              question.pointsPlus.toString(),
+                              style: TextStyle(
+                                fontSize: unit * 4,
+                                fontWeight: FontWeight.w600,
+                                color: played ? scheme.outlineVariant : scheme.onPrimaryContainer,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                 ],
               ),
@@ -221,7 +254,9 @@ class _QuestionDisplay extends StatelessWidget {
         if (question.description != null)
           Padding(
             padding: EdgeInsets.only(bottom: unit),
-            child: Chip(label: Text(question.description!, style: TextStyle(fontSize: unit * 2.4))),
+            child: Chip(
+              label: Text(question.description!, style: TextStyle(fontSize: unit * 2.4)),
+            ),
           ),
         Expanded(
           flex: 3,
@@ -266,15 +301,23 @@ class _QuestionDisplay extends StatelessWidget {
         ),
         SizedBox(height: unit * 2),
         if (round != null && round.revealed)
-          Expanded(flex: 2, child: _Tiles(unit: unit, tiles: [
-            for (final team in state.teams)
-              (label: team.name, text: _answerText(round.answers[team.id]), shown: true, mark: null),
-          ]))
+          Expanded(
+            flex: 2,
+            child: _Tiles(
+              unit: unit,
+              tiles: [
+                for (final team in state.teams) (label: team.name, text: _answerText(round.answers[team.id]), shown: true, mark: null),
+              ],
+            ),
+          )
         else
           switch (question.type) {
             QuestionType.abcd => Expanded(
-                flex: 2,
-                child: _Tiles(unit: unit, columns: 2, tiles: [
+              flex: 2,
+              child: _Tiles(
+                unit: unit,
+                columns: 2,
+                tiles: [
                   for (final (i, answer) in question.answers.indexed)
                     (
                       label: String.fromCharCode(0x41 + i),
@@ -282,30 +325,35 @@ class _QuestionDisplay extends StatelessWidget {
                       shown: i < state.revealed,
                       mark: state.revealed > question.answers.length ? question.answersCorrect.elementAtOrNull(i) ?? false : null,
                     ),
-                ]),
+                ],
               ),
+            ),
             QuestionType.progressingReveal => Expanded(
-                flex: 2,
-                child: _Tiles(unit: unit, tiles: [
+              flex: 2,
+              child: _Tiles(
+                unit: unit,
+                tiles: [
                   for (final (i, information) in question.information.indexed)
                     (label: "${i + 1}", text: information, shown: i < state.revealed, mark: null),
-                ]),
+                ],
               ),
+            ),
             QuestionType.feud => Expanded(
-                flex: 3,
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: unit * 6,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          for (var i = 0; i < state.wrongAttempts; i++) Icon(Icons.close, color: scheme.error, size: unit * 6),
-                        ],
-                      ),
+              flex: 3,
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: unit * 6,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [for (var i = 0; i < state.wrongAttempts; i++) Icon(Icons.close, color: scheme.error, size: unit * 6)],
                     ),
-                    Expanded(
-                      child: _Tiles(unit: unit, columns: question.information.length <= 5 ? 1 : 2, tiles: [
+                  ),
+                  Expanded(
+                    child: _Tiles(
+                      unit: unit,
+                      columns: question.information.length <= 5 ? 1 : 2,
+                      tiles: [
                         for (final (i, information) in question.information.indexed)
                           (
                             // The value is part of what gets uncovered.
@@ -314,11 +362,12 @@ class _QuestionDisplay extends StatelessWidget {
                             shown: state.feudRevealed.contains(i),
                             mark: null,
                           ),
-                      ]),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
             _ => const Spacer(),
           },
       ],
@@ -364,43 +413,45 @@ class _Tiles extends StatelessWidget {
               children: [
                 for (var c = 0; c < perRow; c++)
                   Expanded(
-                    child: Builder(builder: (context) {
-                      final tile = tiles.elementAtOrNull(r * perRow + c);
-                      if (tile == null) return const SizedBox();
-                      return AnimatedOpacity(
-                        duration: const Duration(milliseconds: 250),
-                        opacity: tile.shown ? 1 : 0.25,
-                        child: Container(
-                          margin: EdgeInsets.all(unit * 0.6),
-                          padding: EdgeInsets.symmetric(horizontal: unit * 2),
-                          decoration: BoxDecoration(
-                            color: scheme.surfaceContainerLow,
-                            borderRadius: BorderRadius.circular(unit * 1.5),
-                          ),
-                          child: Row(
-                            children: [
-                              Text(
-                                tile.label,
-                                style: TextStyle(fontSize: unit * 3, fontWeight: FontWeight.bold, color: scheme.tertiary),
-                              ),
-                              SizedBox(width: unit * 2),
-                              Expanded(
-                                child: Text(
-                                  tile.shown ? tile.text : "",
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: unit * 3),
+                    child: Builder(
+                      builder: (context) {
+                        final tile = tiles.elementAtOrNull(r * perRow + c);
+                        if (tile == null) return const SizedBox();
+                        return AnimatedOpacity(
+                          duration: const Duration(milliseconds: 250),
+                          opacity: tile.shown ? 1 : 0.25,
+                          child: Container(
+                            margin: EdgeInsets.all(unit * 0.6),
+                            padding: EdgeInsets.symmetric(horizontal: unit * 2),
+                            decoration: BoxDecoration(color: scheme.surfaceContainerLow, borderRadius: BorderRadius.circular(unit * 1.5)),
+                            child: Row(
+                              children: [
+                                Text(
+                                  tile.label,
+                                  style: TextStyle(fontSize: unit * 3, fontWeight: FontWeight.bold, color: scheme.tertiary),
                                 ),
-                              ),
-                              if (tile.mark != null)
-                                Icon(tile.mark! ? Icons.check : Icons.close,
-                                    size: unit * 4, color: tile.mark! ? Colors.green : scheme.error),
-                            ],
+                                SizedBox(width: unit * 2),
+                                Expanded(
+                                  child: Text(
+                                    tile.shown ? tile.text : "",
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: unit * 3),
+                                  ),
+                                ),
+                                if (tile.mark != null)
+                                  Icon(
+                                    tile.mark! ? Icons.check : Icons.close,
+                                    size: unit * 4,
+                                    color: tile.mark! ? Colors.green : scheme.error,
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    }),
+                        );
+                      },
+                    ),
                   ),
               ],
             ),

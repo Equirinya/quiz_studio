@@ -80,9 +80,9 @@ class _ControllerViewState extends State<ControllerView> {
             _SheetRow(
               boardSuggested: game != null && state.current == null && state.phase != Phase.buzzerTest,
               answersActive: state.answerRound != null,
-              musicActive: state.music != null,
+              effectsActive: state.music != null || state.overlay != null,
               onBoard: _openBoard,
-              onSounds: _openSounds,
+              onEffects: _openEffects,
               onAnswers: _openAnswers,
               onSetup: _openSetup,
             ),
@@ -185,7 +185,7 @@ class _ControllerViewState extends State<ControllerView> {
       ? const SizedBox(height: 120, child: Center(child: Text("This session has no game yet.")))
       : _BoardSheet(state: state, game: game, send: _send));
 
-  void _openSounds() => _sheet((context, state, game) => _SoundsSheet(state: state, game: game, send: _send));
+  void _openEffects() => _sheet((context, state, game) => _EffectsSheet(state: state, game: game, send: _send));
 
   void _openAnswers() => _sheet((context, state, game) => _AnswersSheet(state: state, game: game, send: _send));
 
@@ -633,9 +633,9 @@ class _SheetRow extends StatelessWidget {
   const _SheetRow({
     required this.boardSuggested,
     required this.answersActive,
-    required this.musicActive,
+    required this.effectsActive,
     required this.onBoard,
-    required this.onSounds,
+    required this.onEffects,
     required this.onAnswers,
     required this.onSetup,
   });
@@ -643,9 +643,11 @@ class _SheetRow extends StatelessWidget {
   /// Nothing is open: picking a question is the next thing to do.
   final bool boardSuggested;
   final bool answersActive;
-  final bool musicActive;
+
+  /// Music is playing or a card is on screen.
+  final bool effectsActive;
   final VoidCallback onBoard;
-  final VoidCallback onSounds;
+  final VoidCallback onEffects;
   final VoidCallback onAnswers;
   final VoidCallback onSetup;
 
@@ -680,7 +682,7 @@ class _SheetRow extends StatelessWidget {
       child: Row(
         children: [
           tab("Board", Icons.grid_view_rounded, onBoard, highlight: boardSuggested),
-          tab("Sounds", Icons.music_note_outlined, onSounds, dot: musicActive),
+          tab("Effects", Icons.auto_awesome_outlined, onEffects, dot: effectsActive),
           tab("Answers", Icons.draw_outlined, onAnswers, dot: answersActive),
           tab("Setup", Icons.settings_outlined, onSetup),
         ],
@@ -874,29 +876,101 @@ const Map<String, String> _effectNames = {
   effectReveal: "Reveal",
 };
 
-class _SoundsSheet extends StatelessWidget {
-  const _SoundsSheet({required this.state, required this.game, required this.send});
+/// Everything for the eyes and ears that is not part of a question: cards
+/// and animations over the screen, music, sound effects.
+class _EffectsSheet extends StatefulWidget {
+  const _EffectsSheet({required this.state, required this.game, required this.send});
 
   final SessionState state;
   final GameContent? game;
   final void Function(Command) send;
 
   @override
+  State<_EffectsSheet> createState() => _EffectsSheetState();
+}
+
+class _EffectsSheetState extends State<_EffectsSheet> {
+  final TextEditingController _text = TextEditingController();
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final state = widget.state;
+    final game = widget.game;
+    final send = widget.send;
     final sounds = game?.soundsFor(ref: state.current, groupId: state.groupId) ?? MusicConfig.empty;
     final question = state.current == null ? null : game?.question(state.current!);
     final listening = state.phase == Phase.question || state.phase == Phase.buzzered;
+    final cards = game?.cards ?? const <CueCard>[];
     Widget header(String text) => Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 8),
           child: Text(text, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
         );
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          header("On screen"),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ActionChip(
+                avatar: const Icon(Icons.celebration_outlined, size: 18),
+                label: const Text("Confetti"),
+                onPressed: () => send(const ScreenEffect(screenEffectConfetti)),
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.flash_on_outlined, size: 18),
+                label: const Text("Flash"),
+                onPressed: () => send(const ScreenEffect(screenEffectFlash)),
+              ),
+              for (final card in cards)
+                ActionChip(
+                  avatar: Icon(card.image == null ? Icons.article_outlined : Icons.image_outlined, size: 18),
+                  label: Text(card.title.isNotEmpty ? card.title : (card.text.isNotEmpty ? card.text : "Image"), overflow: TextOverflow.ellipsis),
+                  onPressed: () => send(ShowCard(OverlayCard(
+                    title: card.title.isEmpty ? null : card.title,
+                    text: card.text.isEmpty ? null : card.text,
+                    image: card.image,
+                  ))),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _text,
+                  decoration: const InputDecoration(labelText: "Text to show", isDense: true),
+                  onSubmitted: (text) => send(ShowCard(OverlayCard(text: text.trim()))),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonal(
+                onPressed: () => send(ShowCard(OverlayCard(text: _text.text.trim()))),
+                child: const Text("Show"),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: state.overlay == null ? null : () => send(const HideCard()),
+              icon: const Icon(Icons.visibility_off_outlined),
+              label: Text(state.overlay == null ? "No card on screen" : "Take card off screen"),
+            ),
+          ),
           header("Music"),
           if (sounds.slots.isEmpty) const Text("This game has no music. Add some in the editor."),
           Wrap(
@@ -911,7 +985,7 @@ class _SoundsSheet extends StatelessWidget {
                   ),
             ],
           ),
-          header("Effects"),
+          header("Sound effects"),
           if (sounds.effects.isEmpty) const Text("This game has no sound effects."),
           Wrap(
             spacing: 8,

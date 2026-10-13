@@ -91,6 +91,8 @@ class AudioDirector {
         if (path != null) backend.playFile(path);
       case BuzzerSound():
         backend.playAsset(buzzerAsset);
+      case VisualEffect():
+        break; // nothing to hear
     }
   }
 

@@ -113,6 +113,32 @@ class AnswerRound {
       );
 }
 
+/// Something the gamemaster puts on top of the screen: a text card, an image,
+/// or both. Stays until it is hidden.
+class OverlayCard {
+  const OverlayCard({this.title, this.text, this.image});
+
+  final String? title;
+  final String? text;
+
+  /// A media file of the game.
+  final String? image;
+
+  bool get isEmpty => (title ?? '').trim().isEmpty && (text ?? '').trim().isEmpty && (image ?? '').isEmpty;
+
+  Map<String, dynamic> toJson() => {
+        if (title != null) 'title': title,
+        if (text != null) 'text': text,
+        if (image != null) 'image': image,
+      };
+
+  factory OverlayCard.fromJson(Map<String, dynamic> json) => OverlayCard(
+        title: json['title'] as String?,
+        text: json['text'] as String?,
+        image: json['image'] as String?,
+      );
+}
+
 const Object _unset = Object();
 
 class SessionState {
@@ -133,6 +159,7 @@ class SessionState {
     this.media = MediaPlayback.stopped,
     this.music,
     this.answerRound,
+    this.overlay,
   });
 
   /// Incremented on every accepted command; lets a client drop stale updates.
@@ -176,6 +203,9 @@ class SessionState {
   final String? music;
   final AnswerRound? answerRound;
 
+  /// The card currently shown on top of the screen, if any.
+  final OverlayCard? overlay;
+
   Team? team(String id) {
     for (final team in teams) {
       if (team.id == id) return team;
@@ -200,6 +230,7 @@ class SessionState {
     MediaPlayback? media,
     Object? music = _unset,
     Object? answerRound = _unset,
+    Object? overlay = _unset,
   }) =>
       SessionState(
         seq: seq ?? this.seq,
@@ -218,6 +249,7 @@ class SessionState {
         media: media ?? this.media,
         music: identical(music, _unset) ? this.music : music as String?,
         answerRound: identical(answerRound, _unset) ? this.answerRound : answerRound as AnswerRound?,
+        overlay: identical(overlay, _unset) ? this.overlay : overlay as OverlayCard?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -237,6 +269,7 @@ class SessionState {
         'media': media.name,
         'music': music,
         'answerRound': answerRound?.toJson(),
+        'overlay': overlay?.toJson(),
       };
 
   factory SessionState.fromJson(Map<String, dynamic> json) => SessionState(
@@ -257,5 +290,6 @@ class SessionState {
         music: json['music'] as String?,
         answerRound:
             json['answerRound'] == null ? null : AnswerRound.fromJson(Map<String, dynamic>.from(json['answerRound'] as Map)),
+        overlay: json['overlay'] == null ? null : OverlayCard.fromJson(Map<String, dynamic>.from(json['overlay'] as Map)),
       );
 }

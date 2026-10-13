@@ -328,6 +328,29 @@ class QuestionRef {
   String toString() => key;
 }
 
+/// A card prepared in the editor for the gamemaster to show during the
+/// show: rules of a round, a sponsor's logo, a "back in ten minutes".
+class CueCard {
+  const CueCard({this.title = '', this.text = '', this.image});
+
+  final String title;
+  final String text;
+  final String? image;
+
+  Map<String, dynamic> toMap() => {'title': title, 'text': text, 'image': image};
+
+  static List<CueCard> listFrom(Object? stored) => [
+        if (stored is List)
+          for (final entry in stored)
+            if (entry is Map)
+              CueCard(
+                title: entry['title'] is String ? entry['title'] as String : '',
+                text: entry['text'] is String ? entry['text'] as String : '',
+                image: _str(entry['image']),
+              ),
+      ];
+}
+
 class GameContent {
   GameContent({
     required this.id,
@@ -336,6 +359,9 @@ class GameContent {
     this.sounds = MusicConfig.empty,
     this.data = const {},
   });
+
+  /// Cards prepared for this game; stored as `cards` on the game document.
+  List<CueCard> get cards => CueCard.listFrom(data['cards']);
 
   final String id;
   final String name;
@@ -512,6 +538,7 @@ class GameContent {
   /// Every media file the game needs, for caching ahead of the show.
   Set<String> get mediaPaths => {
         ...sounds.mediaPaths,
+        for (final card in cards) ?card.image,
         for (final group in groups) ...[
           ...group.mediaPaths,
           for (final category in group.categories) ...[

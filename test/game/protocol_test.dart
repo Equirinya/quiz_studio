@@ -20,11 +20,13 @@ void main() {
       const SubmitAnswer('red', PlayerAnswer(drawing: 'strokes')),
       const Buzz('blue'),
       const AdjustPoints('red', -30),
+      const ShowCard(OverlayCard(title: 'T', text: 'x', image: 'i.png')),
     ]);
     final copy = SessionState.fromJson(jsonDecode(jsonEncode(s.toJson())) as Map<String, dynamic>);
     expect(copy.toJson(), s.toJson());
     expect(copy.current, reveal);
     expect(copy.answerRound!.answers['red']!.drawing, 'strokes');
+    expect((copy.overlay!.title, copy.overlay!.text, copy.overlay!.image), ('T', 'x', 'i.png'));
   });
 
   test('every command survives a JSON round trip', () {
@@ -60,6 +62,9 @@ void main() {
       LockAnswers(),
       RevealAnswers(),
       ClearAnswers(),
+      ShowCard(OverlayCard(title: 'Break', image: 'a.png')),
+      HideCard(),
+      ScreenEffect(screenEffectFlash),
     ];
     for (final command in commands) {
       final json = jsonDecode(jsonEncode(command.toJson())) as Map<String, dynamic>;

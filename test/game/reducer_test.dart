@@ -345,4 +345,55 @@ void main() {
       expect(apply(fixtureState(), const SubmitAnswer('red', PlayerAnswer(text: 'x'))).accepted, isFalse);
     });
   });
+
+  group('on top of the screen', () {
+    test('a card stays until hidden and survives questions coming and going', () {
+      var s = run(fixtureState(), [const ShowCard(OverlayCard(title: 'Break', text: 'Back in ten'))]);
+      expect(s.overlay!.title, 'Break');
+      s = run(s, [const OpenQuestion(free), const CloseQuestion()]);
+      expect(s.overlay!.text, 'Back in ten');
+      s = run(s, [const ShowCard(OverlayCard(image: 'logo.png'))]);
+      expect((s.overlay!.title, s.overlay!.image), (null, 'logo.png'));
+      s = run(s, [const HideCard()]);
+      expect(s.overlay, isNull);
+    });
+
+    test('empty cards and hiding nothing are rejected', () {
+      expect(apply(fixtureState(), const ShowCard(OverlayCard(text: '  '))).accepted, isFalse);
+      expect(apply(fixtureState(), const ShowCard(OverlayCard())).accepted, isFalse);
+      expect(apply(fixtureState(), const HideCard()).accepted, isFalse);
+    });
+
+    test('screen effects are one-shot and leave the state alone', () {
+      final result = apply(fixtureState(), const ScreenEffect(screenEffectConfetti));
+      expect((result.effects.single as VisualEffect).name, screenEffectConfetti);
+      expect(result.state.seq, fixtureState().seq);
+      expect(apply(fixtureState(), const ScreenEffect('earthquake')).accepted, isFalse);
+    });
+
+    test('players can do neither', () {
+      const red = Sender(Role.player, teamId: 'red');
+      expect(mayIssue(red, const ShowCard(OverlayCard(text: 'hi'))), isFalse);
+      expect(mayIssue(red, const ScreenEffect(screenEffectConfetti)), isFalse);
+    });
+  });
+
+  test('prepared cards are read from the game and their images cached', () {
+    final withCards = GameContent.assemble(
+      id: 'g',
+      game: {
+        'cards': [
+          {'title': 'Rules', 'text': 'No phones', 'image': null},
+          {'title': '', 'text': '', 'image': 'sponsor.png'},
+          'junk',
+        ],
+      },
+      groups: {},
+      categories: {},
+      questions: {},
+    );
+    expect(withCards.cards.map((c) => (c.title, c.text, c.image)), [('Rules', 'No phones', null), ('', '', 'sponsor.png')]);
+    expect(withCards.mediaPaths, {'sponsor.png'});
+    expect(fixtureGame().cards, isEmpty);
+  });
 }

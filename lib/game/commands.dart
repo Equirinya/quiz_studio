@@ -90,6 +90,9 @@ sealed class Command {
       'lockAnswers' => const LockAnswers(),
       'revealAnswers' => const RevealAnswers(),
       'clearAnswers' => const ClearAnswers(),
+      'showCard' => ShowCard(OverlayCard.fromJson(Map<String, dynamic>.from(j['card'] as Map))),
+      'hideCard' => const HideCard(),
+      'screenEffect' => ScreenEffect(j['name'] as String),
       _ => null,
     };
   }
@@ -372,4 +375,37 @@ class ClearAnswers extends Command {
   const ClearAnswers();
   @override
   String get type => 'clearAnswers';
+}
+
+// ── on top of the screen ─────────────────────────────────────────────────────
+
+/// Puts a text card or image over whatever the presenter shows.
+class ShowCard extends Command {
+  const ShowCard(this.card);
+  final OverlayCard card;
+  @override
+  String get type => 'showCard';
+  @override
+  Map<String, dynamic> get _args => {'card': card.toJson()};
+}
+
+class HideCard extends Command {
+  const HideCard();
+  @override
+  String get type => 'hideCard';
+}
+
+/// Names of the one-shot animations the presenter can play.
+const String screenEffectConfetti = 'confetti';
+const String screenEffectFlash = 'flash';
+const List<String> screenEffects = [screenEffectConfetti, screenEffectFlash];
+
+/// Plays a one-shot animation over the screen, e.g. confetti.
+class ScreenEffect extends Command {
+  const ScreenEffect(this.name);
+  final String name;
+  @override
+  String get type => 'screenEffect';
+  @override
+  Map<String, dynamic> get _args => {'name': name};
 }

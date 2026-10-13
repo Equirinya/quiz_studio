@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/player/pages/player_page.dart';
+import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/pages/sessions_page.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
@@ -224,5 +225,29 @@ void main() {
     await tapText(tester, find.text('open'));
     await tapText(tester, find.text('Pub quiz'));
     await shot('sessions_new');
+  });
+
+  testWidgets('presenter: card', (tester) async {
+    await screen(tester, const [
+      OpenQuestion(abcd),
+      Reveal(1),
+      ShowCard(OverlayCard(title: 'Short break', text: 'Grab a drink. We continue with the finale in ten minutes.')),
+    ]);
+    await shot('presenter_card');
+  });
+
+  testWidgets('presenter: confetti', (tester) async {
+    await screen(tester, const [AdjustPoints('red', 900), AdjustPoints('blue', 700)]);
+    tester.state<ScreenEffectLayerState>(find.byType(ScreenEffectLayer)).play(screenEffectConfetti);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1500));
+    await shot('presenter_confetti');
+    await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('controller: effects sheet', (tester) async {
+    await phone(tester, const [SetMusic(musicBackground), ShowCard(OverlayCard(text: 'Back in ten'))]);
+    await tapText(tester, find.widgetWithText(TextButton, 'Effects'));
+    await shot('controller_effects_sheet');
   });
 }

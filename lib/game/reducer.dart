@@ -23,6 +23,12 @@ class SoundEffect extends Effect {
   final String key;
 }
 
+/// A one-shot animation over the whole screen; see `screenEffects`.
+class VisualEffect extends Effect {
+  const VisualEffect(this.name);
+  final String name;
+}
+
 class Reduction {
   const Reduction(this.state, {this.effects = const [], this.accepted = true});
 
@@ -289,6 +295,19 @@ Reduction reduce(SessionState s, Command command, GameContent? game) {
     case ClearAnswers():
       if (s.answerRound == null) return _no(s);
       return _ok(s.copyWith(answerRound: null));
+
+    // ── on top of the screen ─────────────────────────────────────────────────
+    case ShowCard(:final card):
+      if (card.isEmpty) return _no(s);
+      return _ok(s.copyWith(overlay: card));
+
+    case HideCard():
+      if (s.overlay == null) return _no(s);
+      return _ok(s.copyWith(overlay: null));
+
+    case ScreenEffect(:final name):
+      if (!screenEffects.contains(name)) return _no(s);
+      return Reduction(s, effects: [VisualEffect(name)]);
   }
 }
 

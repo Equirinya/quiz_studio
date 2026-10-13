@@ -5,6 +5,7 @@ import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/pages/category_editor_page.dart';
 import 'package:quiz_show/features/games/pages/game_access_page.dart';
+import 'package:quiz_show/features/games/widgets/cards_dialog.dart';
 import 'package:quiz_show/features/games/widgets/group_colors_dialog.dart';
 import 'package:quiz_show/features/games/widgets/sounds_dialog.dart';
 import 'package:quiz_show/game/game.dart';
@@ -101,6 +102,17 @@ class _GameEditorPageState extends State<GameEditorPage> {
                     title: "Sounds for the whole game",
                     data: data.data,
                     save: (update) => guarded(context, () => _repo.updateGame(game.id, update)),
+                  ),
+                ),
+              if (canEditStructure)
+                IconButton(
+                  icon: const Icon(Icons.article_outlined),
+                  tooltip: "Cards to show on screen",
+                  onPressed: () => showCardsDialog(
+                    context,
+                    gameId: game.id,
+                    cards: game.cards,
+                    save: (cards) => guarded(context, () => _repo.updateGame(game.id, {'cards': cards})),
                   ),
                 ),
               if (canEditStructure)
