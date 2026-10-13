@@ -18,6 +18,7 @@ import 'package:quiz_show/features/player/pages/player_page.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/pages/sessions_page.dart';
 import 'package:quiz_show/features/session/session_client.dart';
+import 'package:quiz_show/features/settings/account_page.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/boards/map_board.dart';
@@ -760,5 +761,29 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/buzzers_assigning.png'));
     await tester.pumpWidget(const SizedBox());
     link.dispose();
+  });
+
+  testWidgets('account: guest', (tester) async {
+    await page(
+      tester,
+      AccountView(username: 'Jacob', email: null, guest: true, version: '2.0.0', onRename: () {}, onUpgrade: () {}, onSignOut: () {}),
+    );
+    await shot('account_guest');
+  });
+
+  testWidgets('account: with email', (tester) async {
+    await page(
+      tester,
+      AccountView(
+        username: 'Jacob',
+        email: 'jacob@example.com',
+        guest: false,
+        version: '2.0.0',
+        onRename: () {},
+        onUpgrade: () {},
+        onSignOut: () {},
+      ),
+    );
+    await shot('account_email');
   });
 }

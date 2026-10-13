@@ -60,6 +60,33 @@ class UserService {
     await batch.commit();
   }
 
+  /// Changes the display name, in the private profile and its public mirror.
+  Future<void> rename(String username) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final batch = _db.batch()
+      ..update(_private(uid), {'username': username})
+      ..set(_public(uid), {'username': username, 'updatedAt': FieldValue.serverTimestamp()});
+    await batch.commit();
+    _names[uid] = Future.value(username);
+  }
+
+  /// Turns the signed-in guest account into one with an email address and
+  /// password. The account stays the same one, with all its games; from then
+  /// on it can be signed in to on other devices. Returns null on success, or
+  /// a message to show.
+  Future<String?> addEmailAndPassword(String email, String password) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 'You are not signed in.';
+    try {
+      await user.linkWithCredential(EmailAuthProvider.credential(email: email, password: password));
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return upgradeErrorMessage(e.code);
+    } catch (_) {
+      return upgradeErrorMessage('');
+    }
+  }
+
   /// Run once per launch for a user who already has a profile: stamps
   /// `lastLogin` and writes the public mirror if it is missing, which is the
   /// case for every account created by v1 (it only wrote `users/{uid}`).
@@ -76,3 +103,16 @@ class UserService {
     }
   }
 }
+
+/// What to tell the user when adding an email address and password fails.
+String upgradeErrorMessage(String code) => switch (code) {
+      'email-already-in-use' || 'credential-already-in-use' =>
+        'There is already an account with this email address. Sign in to that one instead.',
+      'invalid-email' => 'That is not a valid email address.',
+      'weak-password' => 'Please choose a stronger password.',
+      'provider-already-linked' => 'This account already has an email address.',
+      'requires-recent-login' => 'For safety, please restart the app and try again.',
+      'network-request-failed' => "You're not connected to the internet.",
+      'operation-not-allowed' => 'Email sign-in is switched off for this app.',
+      _ => 'That did not work. Please try again.',
+    };

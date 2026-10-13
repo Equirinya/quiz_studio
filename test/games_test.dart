@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quiz_show/features/auth/user_service.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/games/widgets/ranker_import.dart';
@@ -205,5 +206,13 @@ void main() {
       expect(decodeRecentSessions(['not json', '{"link":"nope","at":1}', '{}']), isEmpty);
       expect(decodeRecentSessions(null), isEmpty);
     });
+  });
+
+  test('adding an email address explains what went wrong in plain words', () {
+    expect(upgradeErrorMessage('email-already-in-use'), contains('already an account'));
+    expect(upgradeErrorMessage('credential-already-in-use'), upgradeErrorMessage('email-already-in-use'));
+    expect(upgradeErrorMessage('weak-password'), contains('stronger'));
+    expect(upgradeErrorMessage('network-request-failed'), contains('internet'));
+    expect(upgradeErrorMessage('something-new'), 'That did not work. Please try again.');
   });
 }

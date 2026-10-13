@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
@@ -8,11 +7,11 @@ import 'package:window_manager/window_manager.dart';
 
 import 'core/theme.dart';
 import 'core/version_gate.dart';
-import 'core/widgets/dialogs.dart';
 import 'features/auth/auth_gate.dart';
 import 'features/games/media_service.dart';
 import 'features/games/pages/games_page.dart';
 import 'features/session/pages/sessions_page.dart';
+import 'features/settings/account_page.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -55,25 +54,18 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _tab = 0;
 
-  Future<void> _signOut() async {
-    final guest = FirebaseAuth.instance.currentUser?.isAnonymous ?? false;
-    final sure = await confirm(
-      context,
-      title: "Sign out",
-      message: guest
-          ? "You are signed in as a guest. Signing out loses this account and the games only it can access."
-          : "You can sign in again with your email address and password.",
-      action: "Sign out",
-    );
-    if (sure) await FirebaseAuth.instance.signOut();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Quiz Studio"),
-        actions: [IconButton(icon: const Icon(Icons.logout), tooltip: "Sign out", onPressed: _signOut)],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.account_circle_outlined),
+            tooltip: "Account",
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AccountPage())),
+          ),
+        ],
       ),
       body: IndexedStack(index: _tab, children: const [GamesPage(), SessionsPage()]),
       bottomNavigationBar: NavigationBar(
