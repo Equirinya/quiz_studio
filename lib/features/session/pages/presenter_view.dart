@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/features/games/media_service.dart';
+import 'package:quiz_show/features/session/boards/map_board.dart';
 import 'package:quiz_show/features/session/boards/wheel_board.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
@@ -84,7 +85,16 @@ class PresenterView extends StatelessWidget {
                         ? LayoutBuilder(
                             builder: (context, box) => WheelBoard(group: group, state: state, size: box.biggest),
                           )
-                        : _BoardGrid(group: group, state: state, unit: unit),
+                        : group.type == BoardType.map
+                                        ? MapBoard(
+                                            group: group,
+                                            state: state,
+                                            imageFile: (name) {
+                                              final file = MediaService.instance.localFile(game.id, name);
+                                              return file.existsSync() ? file : null;
+                                            },
+                                          )
+                                        : _BoardGrid(group: group, state: state, unit: unit),
                   ),
                 ],
               ),
@@ -148,8 +158,8 @@ class _Scores extends StatelessWidget {
   }
 }
 
-/// A plain grid of categories and point fields. Stands in for the map and
-/// graph boards until those renderers are in.
+/// A plain grid of categories and point fields, for groups without a board
+/// of their own.
 class _BoardGrid extends StatelessWidget {
   const _BoardGrid({required this.group, required this.state, required this.unit});
 

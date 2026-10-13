@@ -292,6 +292,15 @@ class _GroupCard extends StatelessWidget {
               value: group.splitPointFields,
               onChanged: (value) => guarded(context, () => _repo.updateGroup(game.id, group.id, {'splitPointFields': value})),
             ),
+          if (editable && group.type == BoardType.map)
+            SwitchListTile(
+              dense: true,
+              title: const Text("Show each question's label instead of its points"),
+              subtitle: const Text("Questions without a label still show their points"),
+              value: mapShowsLabels(group),
+              onChanged: (value) =>
+                  guarded(context, () => _repo.updateGroup(game.id, group.id, {'mapLabels': value ? 'label' : 'points'})),
+            ),
           for (final (index, category) in group.categories.indexed)
             _CategoryTile(
               game: game,
@@ -317,7 +326,7 @@ class _GroupCard extends StatelessWidget {
   }
 }
 
-enum _CategoryAction { up, down, move, delete }
+enum _CategoryAction { up, down, move, follows, delete }
 
 class _CategoryTile extends StatelessWidget {
   const _CategoryTile({
@@ -357,6 +366,36 @@ class _CategoryTile extends StatelessWidget {
     await guarded(context, () => _repo.moveCategory(game, category.id, target, end));
   }
 
+  /// Map boards: which bubble this category is drawn after. Several
+  /// categories after the same one make a branch.
+  Future<void> _chooseFollows(BuildContext context) async {
+    const previous = '\u0000previous';
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text("\"${category.name}\" comes after"),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(context).pop(previous),
+            child: const Text("The category before it (default)"),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(context).pop(''),
+            child: const Text("Nothing: it starts a new chain"),
+          ),
+          for (final other in group.categories.where((c) => c.id != category.id))
+            SimpleDialogOption(onPressed: () => Navigator.of(context).pop(other.id), child: Text(other.name)),
+        ],
+      ),
+    );
+    if (choice == null || !context.mounted) return;
+    final layout = Map<String, dynamic>.from(group.data['mapLayout'] as Map? ?? const {});
+    final follows = Map<String, dynamic>.from(layout['follows'] as Map? ?? const {});
+    choice == previous ? follows.remove(category.id) : follows[category.id] = choice;
+    layout['follows'] = follows;
+    await guarded(context, () => _repo.updateGroup(game.id, group.id, {'mapLayout': layout}));
+  }
+
   Future<void> _delete(BuildContext context) async {
     final sure = await confirm(
       context,
@@ -391,6 +430,8 @@ class _CategoryTile extends StatelessWidget {
               guarded(context, () => _repo.moveCategory(game, category.id, group.id, index + 1));
             case _CategoryAction.move:
               _moveToGroup(context);
+            case _CategoryAction.follows:
+              _chooseFollows(context);
             case _CategoryAction.delete:
               _delete(context);
           }
@@ -401,6 +442,8 @@ class _CategoryTile extends StatelessWidget {
             const PopupMenuItem(value: _CategoryAction.down, child: Text("Move down")),
           if (canEditStructure && hasOtherGroups)
             const PopupMenuItem(value: _CategoryAction.move, child: Text("Move to group…")),
+          if (canEditStructure && group.type == BoardType.map && group.categories.length > 1)
+            const PopupMenuItem(value: _CategoryAction.follows, child: Text("Comes after…")),
           const PopupMenuItem(value: _CategoryAction.delete, child: Text("Delete")),
         ],
       ),

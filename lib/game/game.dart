@@ -4,6 +4,7 @@ library;
 
 export 'commands.dart';
 export 'content.dart';
+export 'map_layout.dart';
 export 'public_view.dart';
 export 'reducer.dart';
 export 'session_host.dart';

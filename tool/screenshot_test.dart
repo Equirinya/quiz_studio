@@ -12,6 +12,7 @@ import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/pages/sessions_page.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
+import 'package:quiz_show/features/session/boards/map_board.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
@@ -249,5 +250,79 @@ void main() {
     await phone(tester, const [SetMusic(musicBackground), ShowCard(OverlayCard(text: 'Back in ten'))]);
     await tapText(tester, find.widgetWithText(TextButton, 'Effects'));
     await shot('controller_effects_sheet');
+  });
+
+  /// A map with a branch after the first bubble, labels on one category, and
+  /// a title and a line added by hand.
+  CategoryGroup mapGroup({bool labels = false, int count = 5}) {
+    const names = ['Warm-up', 'Geography', 'History', 'Music', 'Finale', 'Science', 'Sports', 'Movies'];
+    return CategoryGroup(
+      id: 'm',
+      type: BoardType.map,
+      data: {
+        'mapLabels': labels ? 'label' : 'points',
+        'mapLayout': {
+          'follows': count == 5 ? {'c2': 'c0', 'c3': 'c2', 'c4': 'c1'} : const <String, dynamic>{},
+          'decorations': count == 5
+              ? [
+                  {'type': 'title', 'text': 'The road\nto the finale', 'x': 0.16, 'y': 0.12, 'size': 1.4},
+                  {'type': 'line', 'x1': 0.05, 'y1': 0.24, 'x2': 0.27, 'y2': 0.24},
+                ]
+              : const <dynamic>[],
+        },
+      },
+      categories: [
+        for (var c = 0; c < count; c++)
+          Category(
+            id: 'c$c',
+            name: names[c],
+            index: c,
+            questions: [
+              for (var q = 0; q < 4; q++)
+                Question(
+                  id: 'q$q',
+                  type: QuestionType.free,
+                  pointsPlus: (q + 1) * 100,
+                  description: const ['Capitals', 'Rivers', 'Flags', 'Borders'][q],
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Future<void> mapShot(WidgetTester tester, String name, CategoryGroup group, SessionState state) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.dark),
+      home: Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: MapBoard(group: group, state: state, imageFile: (_) => null),
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot(name);
+  }
+
+  testWidgets('map: branching, points', (tester) async {
+    await mapShot(
+      tester,
+      'map_branching',
+      mapGroup(),
+      const SessionState(played: {'c0/q0', 'c0/q1', 'c0/q2', 'c0/q3', 'c1/q0'}, current: QuestionRef('c2', 'q1'), phase: Phase.question),
+    );
+  });
+
+  testWidgets('map: branching, labels', (tester) async {
+    await mapShot(tester, 'map_labels', mapGroup(labels: true), const SessionState());
+  });
+
+  testWidgets('map: long chain', (tester) async {
+    await mapShot(tester, 'map_chain', mapGroup(count: 8), const SessionState(played: {'c0/q0'}));
   });
 }
