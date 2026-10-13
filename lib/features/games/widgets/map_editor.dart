@@ -275,7 +275,7 @@ class _MapEditorState extends State<MapEditor> {
     final draft = _draft;
     final map = layoutMap(draft);
     // Same sizing as MapBoard, to put each handle over its bubble.
-    final bubbleWidth = min(min(size.width / map.columns * 0.8, size.height / map.rows * 1.5), size.width * 0.3);
+    final bubbleWidth = min(min(size.width / map.columns * 0.72, size.height / map.rows * 1.4), size.width * 0.28);
 
     Widget handle({
       required Key key,

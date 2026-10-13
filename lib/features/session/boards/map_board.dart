@@ -3,12 +3,14 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'package:quiz_show/features/session/boards/map_arrows.dart';
 import 'package:quiz_show/game/game.dart';
 
-/// The map: every category a bubble holding its questions, connected in the
-/// order they are played, with branches where several follow the same one.
-/// Titles, pictures and lines placed in the editor lie around them.
-class MapBoard extends StatelessWidget {
+/// The map: every category a bubble holding its questions, connected by
+/// arrows in the order they are played, with branches where several follow
+/// the same one. Titles, pictures and lines placed in the editor lie around
+/// them.
+class MapBoard extends StatefulWidget {
   const MapBoard({super.key, required this.group, required this.state, required this.imageFile});
 
   final CategoryGroup group;
@@ -18,20 +20,56 @@ class MapBoard extends StatelessWidget {
   final File? Function(String name) imageFile;
 
   @override
+  State<MapBoard> createState() => _MapBoardState();
+}
+
+class _MapBoardState extends State<MapBoard> {
+  final Map<String, GlobalKey> _keys = {};
+
+  /// How large each bubble turned out, so arrows can meet their edges. A
+  /// bubble's height depends on its content and is only known once laid out.
+  Map<String, Size> _sizes = const {};
+
+  void _measure() {
+    if (!mounted) return;
+    final sizes = <String, Size>{
+      for (final entry in _keys.entries)
+        if (entry.value.currentContext?.findRenderObject() case final RenderBox box when box.hasSize) entry.key: box.size,
+    };
+    final changed = sizes.length != _sizes.length || sizes.entries.any((e) => _sizes[e.key] != e.value);
+    if (changed) setState(() => _sizes = sizes);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final group = widget.group;
+    final state = widget.state;
     final map = layoutMap(group);
     final labels = mapShowsLabels(group);
+    _keys.removeWhere((id, _) => !map.nodes.containsKey(id));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+
     return LayoutBuilder(
       builder: (context, box) {
         final size = box.biggest;
         final cellWidth = size.width / map.columns;
         final cellHeight = size.height / map.rows;
         // A bubble gets most of its cell, but never grows absurdly large on
-        // a map with only a few of them.
-        final bubbleWidth = min(min(cellWidth * 0.8, cellHeight * 1.5), size.width * 0.3);
+        // a map with only a few of them. Arrows need room between bubbles.
+        final bubbleWidth = min(min(cellWidth * 0.72, cellHeight * 1.4), size.width * 0.28);
         final unit = bubbleWidth / 13;
         Offset at(MapPoint point) => Offset(point.x * size.width, point.y * size.height);
+        Rect rectOf(String id) {
+          final bubble = _sizes[id] ?? Size(bubbleWidth, bubbleWidth * 0.5);
+          return Rect.fromCenter(center: at(map.nodes[id]!), width: bubble.width, height: bubble.height);
+        }
+
+        bool done(String categoryId) {
+          final category = group.categories.firstWhere((c) => c.id == categoryId);
+          return category.questions.isNotEmpty &&
+              category.questions.every((q) => state.played.contains(QuestionRef(category.id, q.id).key));
+        }
 
         Widget centred(MapPoint point, Widget child) => Positioned(
               left: at(point).dx,
@@ -45,16 +83,22 @@ class MapBoard extends StatelessWidget {
             Positioned.fill(
               child: CustomPaint(
                 painter: _ConnectionsPainter(
-                  edges: [for (final (from, to) in map.edges) (at(map.nodes[from]!), at(map.nodes[to]!))],
+                  arrows: [
+                    for (final (from, to) in map.edges)
+                      // The way out of a finished bubble lights up: this is
+                      // where the game goes next.
+                      (routeArrow(rectOf(from), rectOf(to), gap: unit * 0.5), done(from)),
+                  ],
                   lines: [for (final line in map.decorations.whereType<MapLine>()) (at(line.from), at(line.to))],
-                  color: scheme.secondary,
+                  color: scheme.outline,
+                  activeColor: scheme.primary,
                   lineColor: scheme.outline,
-                  width: unit * 0.45,
+                  width: unit * 0.3,
                 ),
               ),
             ),
             for (final image in map.decorations.whereType<MapImage>())
-              if (imageFile(image.image) case final file?)
+              if (widget.imageFile(image.image) case final file?)
                 centred(
                   image.center,
                   ClipRRect(
@@ -74,7 +118,14 @@ class MapBoard extends StatelessWidget {
             for (final category in group.categories)
               centred(
                 map.nodes[category.id]!,
-                _Bubble(category: category, state: state, width: bubbleWidth, unit: unit, labels: labels),
+                _Bubble(
+                  key: _keys.putIfAbsent(category.id, GlobalKey.new),
+                  category: category,
+                  state: state,
+                  width: bubbleWidth,
+                  unit: unit,
+                  labels: labels,
+                ),
               ),
           ],
         );
@@ -84,7 +135,7 @@ class MapBoard extends StatelessWidget {
 }
 
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.category, required this.state, required this.width, required this.unit, required this.labels});
+  const _Bubble({super.key, required this.category, required this.state, required this.width, required this.unit, required this.labels});
 
   final Category category;
   final SessionState state;
@@ -105,7 +156,19 @@ class _Bubble extends StatelessWidget {
       decoration: BoxDecoration(
         color: done ? scheme.surfaceContainerLow : scheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(unit * 2.2),
-        border: Border.all(color: active ? scheme.primary : scheme.outlineVariant, width: unit * (active ? 0.3 : 0.12)),
+        border: Border.all(color: active ? scheme.primary : scheme.outlineVariant, width: unit * (active ? 0.3 : 0.1)),
+        // Lifts the bubbles off the board, and the one in play a bit more.
+        boxShadow: done
+            ? null
+            : [
+                // The bubble in play glows; the others cast a soft shadow.
+                BoxShadow(
+                  color: (active ? scheme.primary : Colors.black).withValues(alpha: active ? 0.45 : 0.16),
+                  blurRadius: unit * (active ? 3.5 : 2.6),
+                  spreadRadius: active ? unit * 0.2 : 0,
+                  offset: active ? Offset.zero : Offset(0, unit * 0.5),
+                ),
+              ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -168,52 +231,46 @@ class _Bubble extends StatelessWidget {
 }
 
 class _ConnectionsPainter extends CustomPainter {
-  _ConnectionsPainter({required this.edges, required this.lines, required this.color, required this.lineColor, required this.width});
+  _ConnectionsPainter({
+    required this.arrows,
+    required this.lines,
+    required this.color,
+    required this.activeColor,
+    required this.lineColor,
+    required this.width,
+  });
 
-  final List<(Offset, Offset)> edges;
+  /// Each arrow, and whether it leads on from a finished bubble.
+  final List<(MapArrow, bool)> arrows;
   final List<(Offset, Offset)> lines;
   final Color color;
+  final Color activeColor;
   final Color lineColor;
   final double width;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = width
-      ..strokeCap = StrokeCap.round;
-    for (final (from, to) in edges) {
-      // An S-curve that leaves and arrives along the main direction, like
-      // the connectors of an organisation chart.
-      final path = Path()..moveTo(from.dx, from.dy);
-      if ((to.dx - from.dx).abs() >= (to.dy - from.dy).abs()) {
-        final mid = (from.dx + to.dx) / 2;
-        path.cubicTo(mid, from.dy, mid, to.dy, to.dx, to.dy);
-      } else {
-        final mid = (from.dy + to.dy) / 2;
-        path.cubicTo(from.dx, mid, to.dx, mid, to.dx, to.dy);
-      }
-      canvas.drawPath(path, paint);
+    final head = width * 4.2;
+    for (final (arrow, active) in arrows) {
+      final paint = Paint()
+        ..color = active ? activeColor : color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = active ? width * 1.35 : width
+        ..strokeCap = StrokeCap.round;
+      canvas
+        ..drawPath(arrow.shaft(head), paint)
+        ..drawPath(arrow.head(head), Paint()..color = paint.color);
     }
     final linePaint = Paint()
       ..color = lineColor
-      ..strokeWidth = width * 0.6
+      ..strokeWidth = width
       ..strokeCap = StrokeCap.round;
     for (final (from, to) in lines) {
       canvas.drawLine(from, to, linePaint);
     }
   }
 
+  // Cheap to paint, and the arrows move with every measured bubble.
   @override
-  bool shouldRepaint(_ConnectionsPainter old) =>
-      old.color != color || old.width != width || !_same(old.edges, edges) || !_same(old.lines, lines);
-
-  static bool _same(List<(Offset, Offset)> a, List<(Offset, Offset)> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
+  bool shouldRepaint(_ConnectionsPainter old) => true;
 }
