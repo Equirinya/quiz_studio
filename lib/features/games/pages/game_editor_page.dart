@@ -5,6 +5,7 @@ import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/pages/category_editor_page.dart';
 import 'package:quiz_show/features/games/pages/game_access_page.dart';
+import 'package:quiz_show/features/games/pages/map_editor_page.dart';
 import 'package:quiz_show/features/games/widgets/cards_dialog.dart';
 import 'package:quiz_show/features/games/widgets/group_colors_dialog.dart';
 import 'package:quiz_show/features/games/widgets/sounds_dialog.dart';
@@ -291,6 +292,17 @@ class _GroupCard extends StatelessWidget {
               title: const Text("Split point fields when a value appears more than once"),
               value: group.splitPointFields,
               onChanged: (value) => guarded(context, () => _repo.updateGroup(game.id, group.id, {'splitPointFields': value})),
+            ),
+          if (editable && group.type == BoardType.map)
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.open_with),
+              title: const Text("Arrange the map"),
+              subtitle: const Text("Place bubbles, connect them, add titles, pictures and lines"),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => MapEditorPage(gameId: game.id, groupId: group.id)),
+              ),
             ),
           if (editable && group.type == BoardType.map)
             SwitchListTile(

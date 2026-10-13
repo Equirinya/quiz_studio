@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
+import 'package:quiz_show/features/games/widgets/map_editor.dart';
 import 'package:quiz_show/features/player/pages/player_page.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/pages/sessions_page.dart';
@@ -486,5 +487,24 @@ void main() {
       const CompanionSpec(kind: CompanionKind.whiteboard, timerSeconds: 30),
       answer: PlayerAnswer(drawing: eight()),
     );
+  });
+
+  testWidgets('map editor', (tester) async {
+    tester.view.physicalSize = const Size(1280, 860);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        appBar: AppBar(title: const Text("Map · Round 2")),
+        body: MapEditor(group: mapGroup(), imageFile: (_) => null, pickImage: () async => null, onSave: (_) {}),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 300));
+    // Select the title, as after tapping it.
+    await tester.tap(find.byKey(const ValueKey('decoration-0')));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/map_editor.png'));
   });
 }
