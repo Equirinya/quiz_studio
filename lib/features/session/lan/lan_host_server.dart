@@ -22,6 +22,7 @@ typedef LanGrant = ({Role role, String? teamId});
 ///   client → host   {"t":"hello","token":…}        {"t":"cmd","c":{command}}
 ///   host → client   {"t":"welcome","role":…,"teamId":…}   {"t":"denied"}
 ///                   {"t":"state","s":{…}}  {"t":"game","g":{…}|null}  {"t":"public","p":{…}}
+///                   {"t":"bg","n":name,"d":base64}   the picture of a whiteboard
 class LanHostServer {
   LanHostServer(this.host, {required this.authorize});
 
@@ -35,6 +36,21 @@ class LanHostServer {
   final Map<WebSocket, LanGrant> _clients = {};
   GameContent? _sentGame;
   String? _gameJson;
+  String? _backgroundMessage;
+
+  /// Hands every device the picture teams draw on in the current round, and
+  /// every device that connects later too. [name] is the media file's name,
+  /// by which devices match it to the round.
+  void setBackground(String name, List<int> bytes) {
+    _backgroundMessage = jsonEncode({'t': 'bg', 'n': name, 'd': base64Encode(bytes)});
+    for (final socket in _clients.keys.toList()) {
+      try {
+        socket.add(_backgroundMessage!);
+      } catch (_) {
+        _clients.remove(socket);
+      }
+    }
+  }
 
   int get port => _server?.port ?? 0;
 
@@ -104,6 +120,7 @@ class LanHostServer {
       }
       _clients[socket] = granted;
       socket.add(jsonEncode({'t': 'welcome', 'role': granted.role.name, 'teamId': granted.teamId}));
+      if (_backgroundMessage != null) socket.add(_backgroundMessage!);
       _sendCurrent(socket, granted, withGame: true);
       return;
     }

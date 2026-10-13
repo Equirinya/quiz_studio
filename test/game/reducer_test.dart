@@ -335,6 +335,16 @@ void main() {
       expect(SessionState.fromJson(s.toJson()).overlay!.video, 'intro.mp4');
     });
 
+    test('a video silences the music and pauses the question sound; other cards do not', () {
+      final playing = run(fixtureState(), [const OpenQuestion(song), const SetMusic(musicBackground)]);
+      expect(run(playing, [const ShowCard(OverlayCard(text: 'hello'))]).music, musicBackground);
+      expect(run(playing, [const ShowCard(OverlayCard(video: 'intro.mp4'))]).music, isNull);
+
+      final sound = run(fixtureState(), [const OpenQuestion(song), const SetMedia(MediaPlayback.playing)]);
+      expect(run(sound, [const ShowCard(OverlayCard(image: 'a.png'))]).media, MediaPlayback.playing);
+      expect(run(sound, [const ShowCard(OverlayCard(video: 'intro.mp4'))]).media, MediaPlayback.paused);
+    });
+
     test('empty cards and hiding nothing are rejected', () {
       expect(apply(fixtureState(), const ShowCard(OverlayCard(text: '  '))).accepted, isFalse);
       expect(apply(fixtureState(), const ShowCard(OverlayCard())).accepted, isFalse);

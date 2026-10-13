@@ -22,7 +22,7 @@ enum CompanionKind {
 }
 
 /// What lies behind the ink on a whiteboard.
-const List<String> whiteboardBackgrounds = ['blank', 'lines', 'grid', 'list'];
+const List<String> whiteboardBackgrounds = ['blank', 'lines', 'grid', 'list', 'image'];
 
 double? _num(Object? v) => v is num ? v.toDouble() : null;
 
@@ -37,7 +37,9 @@ List<String> _strings(Object? v) => [
 ///
 ///   kind:        one of [CompanionKind]
 ///   timer:       seconds until answers lock by themselves; absent = no timer
-///   background, listRows:   whiteboard: "blank" | "lines" | "grid" | "list"
+///   background, listRows:   whiteboard: "blank" | "lines" | "grid" | "list" | "image"
+///   backgroundImage:        whiteboard with "image": a media file of the game
+///                           to draw on, e.g. a map to mark or a form to fill
 ///   min, max, step, unit:   number and slider
 ///   solution:    number and slider: the right value, for the gamemaster
 ///   options:     choice: what to pick from · order: the items, in the RIGHT
@@ -48,6 +50,7 @@ class CompanionSpec {
     required this.kind,
     this.timerSeconds,
     this.background = 'blank',
+    this.backgroundImage,
     this.listRows = 5,
     this.min,
     this.max,
@@ -61,6 +64,7 @@ class CompanionSpec {
   final CompanionKind kind;
   final int? timerSeconds;
   final String background;
+  final String? backgroundImage;
   final int listRows;
   final double? min;
   final double? max;
@@ -75,11 +79,16 @@ class CompanionSpec {
     final kind = CompanionKind.fromName(stored['kind']);
     if (kind == null) return null;
     final timer = _num(stored['timer'])?.round();
-    final background = stored['background'];
+    final image = stored['backgroundImage'] is String && (stored['backgroundImage'] as String).isNotEmpty
+        ? stored['backgroundImage'] as String
+        : null;
+    // "image" without a picture is just a blank board.
+    final background = stored['background'] == 'image' && image == null ? 'blank' : stored['background'];
     return CompanionSpec(
       kind: kind,
       timerSeconds: timer != null && timer > 0 ? timer : null,
       background: whiteboardBackgrounds.contains(background) ? background as String : 'blank',
+      backgroundImage: background == 'image' ? image : null,
       listRows: (_num(stored['listRows'])?.round() ?? 5).clamp(1, 20),
       min: _num(stored['min']),
       max: _num(stored['max']),
@@ -95,6 +104,7 @@ class CompanionSpec {
         'kind': kind.name,
         if (timerSeconds != null) 'timer': timerSeconds,
         if (kind == CompanionKind.whiteboard) 'background': background,
+        if (kind == CompanionKind.whiteboard && backgroundImage != null) 'backgroundImage': backgroundImage,
         if (kind == CompanionKind.whiteboard && background == 'list') 'listRows': listRows,
         if (min != null) 'min': min,
         if (max != null) 'max': max,
@@ -109,6 +119,7 @@ class CompanionSpec {
         kind: kind,
         timerSeconds: timerSeconds,
         background: background,
+        backgroundImage: backgroundImage,
         listRows: listRows,
         min: min,
         max: max,
@@ -149,6 +160,8 @@ class CompanionSpec {
       'kind': kind.name,
       if (timerSeconds != null) 'timer': timerSeconds,
       if (kind == CompanionKind.whiteboard) 'background': background,
+      // Only the name; the picture itself reaches the device separately.
+      if (kind == CompanionKind.whiteboard && backgroundImage != null) 'backgroundImage': backgroundImage,
       if (kind == CompanionKind.whiteboard && background == 'list') 'listRows': listRows,
       if (min != null) 'min': min,
       if (max != null) 'max': max,

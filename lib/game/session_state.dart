@@ -181,7 +181,7 @@ class SessionState {
         feudRevealed: feudRevealed ?? this.feudRevealed,
         wrongAttempts: wrongAttempts ?? this.wrongAttempts,
         media: media ?? this.media,
-        music: identical(music, _unset) ? this.music : music as String?,
+        music: music is String? ? music : this.music,
         answerRound: identical(answerRound, _unset) ? this.answerRound : answerRound as AnswerRound?,
         overlay: identical(overlay, _unset) ? this.overlay : overlay as OverlayCard?,
       );

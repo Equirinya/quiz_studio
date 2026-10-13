@@ -117,6 +117,23 @@ void main() {
     await client.close();
   });
 
+  test('a whiteboard picture reaches devices already connected and those that join later', () async {
+    final early = await LanClient.connect(endpoint, token: 'red');
+    final got = <(String, List<int>)>[];
+    early.backgrounds.listen((b) => got.add((b.$1, b.$2.toList())));
+    server.setBackground('map.png', [1, 2, 3, 250]);
+    await settle();
+    expect(got.single.$1, 'map.png');
+    expect(got.single.$2, [1, 2, 3, 250]);
+
+    final late = await LanClient.connect(endpoint, token: 'ctl');
+    final picture = await late.backgrounds.first.timeout(const Duration(seconds: 2));
+    expect(picture.$1, 'map.png');
+    expect(picture.$2.toList(), [1, 2, 3, 250]);
+    await early.close();
+    await late.close();
+  });
+
   test('the client notices when the host goes away', () async {
     final client = await LanClient.connect(endpoint, token: 'red');
     expect(client.isOpen, isTrue);

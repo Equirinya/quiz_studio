@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/media_service.dart';
+import 'package:quiz_show/features/session/background_image.dart';
 import 'package:quiz_show/features/session/lan/lan_discovery.dart';
 import 'package:quiz_show/features/session/lan/lan_host_server.dart';
 import 'package:quiz_show/features/session/session_client.dart';
@@ -111,6 +113,8 @@ class SessionConnection {
     );
     final connection = SessionConnection._(sessionId, client, client: client);
     client.state.addListener(() => connection._onState(client.state.value));
+    // A picture arriving is worth a repaint of whatever shows answers.
+    client.background.addListener(() => connection.state.value = client.state.value == null ? null : connection.state.value?.copyWith());
     // Over the local network the presenter sends the game along, which also
     // serves a controller whose account cannot open the game itself.
     client.lanGame.addListener(() {
@@ -141,8 +145,46 @@ class SessionConnection {
     return connection;
   }
 
+  String? _backgroundName;
+
+  /// The picture a whiteboard round is drawn on, for showing answers: from
+  /// this device's media cache when it presents, otherwise as received from
+  /// the presenter.
+  ImageProvider? backgroundImage(String? name) {
+    if (name == null) return null;
+    if (isPresenting) {
+      final gameId = _gameId;
+      if (gameId == null) return null;
+      final file = MediaService.instance.localFile(gameId, name);
+      return file.existsSync() ? FileImage(file) : null;
+    }
+    final received = _client?.background.value;
+    return received != null && received.$1 == name ? MemoryImage(received.$2) : null;
+  }
+
+  /// Presenting: when a round with a picture starts, shrink the picture and
+  /// send it to the teams' devices, over the local network and the cloud.
+  Future<void> _shareBackground(SessionState? next) async {
+    final name = next?.answerRound?.spec.backgroundImage;
+    final gameId = _gameId;
+    if (!isPresenting || name == null || gameId == null || name == _backgroundName) return;
+    _backgroundName = name;
+    try {
+      await MediaService.instance.ensureCached(gameId, name);
+      final bytes = await prepareBackgroundFile(MediaService.instance.localFile(gameId, name));
+      if (bytes == null || _disposed) return;
+      _server?.setBackground(name, bytes);
+      await SessionRepository.instance.publishBackground(sessionId, name, bytes);
+    } catch (error) {
+      // The round still works; the teams draw on plain paper.
+      if (kDebugMode) print('Session: could not share the whiteboard picture: $error');
+      _backgroundName = null;
+    }
+  }
+
   void _onState(SessionState? next) {
     state.value = next;
+    _shareBackground(next);
     if (next?.gameId != _gameId) _watchGame(next?.gameId);
   }
 

@@ -165,6 +165,18 @@ class SessionRepository {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
+  /// Puts the picture of a whiteboard round where every device of the
+  /// session can fetch it. Host only; [bytes] must stay well under 1 MiB.
+  Future<void> publishBackground(String sessionId, String name, Uint8List bytes) =>
+      session(sessionId).collection('public').doc('background').set({'name': name, 'image': Blob(bytes)});
+
+  Stream<(String, Uint8List)?> watchBackground(String sessionId) =>
+      session(sessionId).collection('public').doc('background').snapshots().map((doc) {
+        final name = doc.data()?['name'];
+        final image = doc.data()?['image'];
+        return name is String && image is Blob ? (name, image.bytes) : null;
+      });
+
   Stream<List<String>> watchLanEndpoints(String sessionId) => session(sessionId)
       .collection('public')
       .doc('lan')

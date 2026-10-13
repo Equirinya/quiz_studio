@@ -73,7 +73,14 @@ class _ControllerViewState extends State<ControllerView> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(12),
-                child: _NowPanel(state: state, game: game, question: question, send: _send, hostClock: _c.isPresenting),
+                child: _NowPanel(
+                  state: state,
+                  game: game,
+                  question: question,
+                  send: _send,
+                  hostClock: _c.isPresenting,
+                  backgroundImage: _c.backgroundImage(state.answerRound?.spec.backgroundImage),
+                ),
               ),
             ),
             const Divider(height: 1),
@@ -339,7 +346,17 @@ String _status(SessionState state, Question? question) {
 }
 
 class _NowPanel extends StatelessWidget {
-  const _NowPanel({required this.state, required this.game, required this.question, required this.send, required this.hostClock});
+  const _NowPanel({
+    required this.state,
+    required this.game,
+    required this.question,
+    required this.send,
+    required this.hostClock,
+    this.backgroundImage,
+  });
+
+  /// The picture a whiteboard round is drawn on, if this device has it.
+  final ImageProvider? backgroundImage;
 
   final SessionState state;
   final GameContent? game;
@@ -402,7 +419,8 @@ class _NowPanel extends StatelessWidget {
             child: Text(q.answerHint!, style: theme.textTheme.bodyLarge?.copyWith(color: scheme.onTertiaryContainer)),
           ),
         const SizedBox(height: 8),
-        if (round != null) _AnswersPanel(state: state, round: round, question: q, send: send, hostClock: hostClock),
+        if (round != null)
+          _AnswersPanel(state: state, round: round, question: q, send: send, hostClock: hostClock, backgroundImage: backgroundImage),
         if (q.type == QuestionType.abcd)
           for (final (i, answer) in q.answers.indexed)
             Padding(
@@ -1171,7 +1189,16 @@ class _AnswersSheetState extends State<_AnswersSheet> {
 /// The teams' answers as they come in, for the gamemaster to read, show and
 /// rate. Lives in the middle of the controller for as long as a round runs.
 class _AnswersPanel extends StatelessWidget {
-  const _AnswersPanel({required this.state, required this.round, required this.question, required this.send, required this.hostClock});
+  const _AnswersPanel({
+    required this.state,
+    required this.round,
+    required this.question,
+    required this.send,
+    required this.hostClock,
+    this.backgroundImage,
+  });
+
+  final ImageProvider? backgroundImage;
 
   final SessionState state;
   final AnswerRound round;
@@ -1271,7 +1298,7 @@ class _AnswersPanel extends StatelessWidget {
                             alignment: Alignment.centerLeft,
                             child: ConstrainedBox(
                               constraints: const BoxConstraints(maxHeight: 132),
-                              child: AnswerView(spec: spec, answer: answer, fontSize: 16),
+                              child: AnswerView(spec: spec, answer: answer, fontSize: 16, backgroundImage: backgroundImage),
                             ),
                           ),
                         ),

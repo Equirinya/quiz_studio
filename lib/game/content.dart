@@ -217,6 +217,7 @@ class Question {
         ?music,
         ...informationImages.where((e) => e.isNotEmpty),
         ...informationMusic.where((e) => e.isNotEmpty),
+        ?companion?.backgroundImage,
         ...sounds.mediaPaths,
       ];
 }

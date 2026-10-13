@@ -35,7 +35,8 @@ class WhiteboardPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = paper);
+    // Over a picture the paper is left out, so the picture shows through.
+    if (background != 'image') canvas.drawRect(Offset.zero & size, Paint()..color = paper);
     final guidePaint = Paint()
       ..color = guide
       ..strokeWidth = size.height * 0.004;
@@ -100,11 +101,15 @@ class WhiteboardPainter extends CustomPainter {
 
 /// A drawing, read-only.
 class DrawingView extends StatelessWidget {
-  const DrawingView({super.key, required this.drawing, this.background = 'blank', this.listRows = 5});
+  const DrawingView({super.key, required this.drawing, this.background = 'blank', this.listRows = 5, this.backgroundImage});
 
   final String? drawing;
   final String background;
   final int listRows;
+
+  /// The picture drawn on, for the "image" background; without it the ink
+  /// is shown on plain paper.
+  final ImageProvider? backgroundImage;
 
   @override
   Widget build(BuildContext context) {
@@ -112,10 +117,43 @@ class DrawingView extends StatelessWidget {
       aspectRatio: drawingAspect(drawing),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: CustomPaint(
-          painter: WhiteboardPainter(strokes: decodeDrawing(drawing), background: background, listRows: listRows),
+        child: WhiteboardSurface(
+          background: background,
+          backgroundImage: backgroundImage,
+          ink: CustomPaint(
+            painter: WhiteboardPainter(
+              strokes: decodeDrawing(drawing),
+              background: backgroundImage == null && background == 'image' ? 'blank' : background,
+              listRows: listRows,
+            ),
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// Paper, an optional picture on it, and the ink on top. The picture is
+/// fitted whole into the board and centred, the same way everywhere, so ink
+/// lands on the same spot of it on every screen.
+class WhiteboardSurface extends StatelessWidget {
+  const WhiteboardSurface({super.key, required this.background, required this.backgroundImage, required this.ink});
+
+  final String background;
+  final ImageProvider? backgroundImage;
+  final Widget ink;
+
+  @override
+  Widget build(BuildContext context) {
+    final picture = background == 'image' ? backgroundImage : null;
+    if (picture == null) return ink;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const ColoredBox(color: Colors.white),
+        Image(image: picture, fit: BoxFit.contain, gaplessPlayback: true, errorBuilder: (_, _, _) => const SizedBox()),
+        ink,
+      ],
     );
   }
 }
@@ -130,7 +168,12 @@ class WhiteboardPad extends StatefulWidget {
     this.background = 'blank',
     this.listRows = 5,
     this.aspect = kWhiteboardAspect,
+    this.backgroundImage,
   });
+
+  /// The picture to draw on, for the "image" background. May arrive after
+  /// the board is on screen; the paper is plain until then.
+  final ImageProvider? backgroundImage;
 
   /// Width / height of the board. Read once: a board keeps its shape even
   /// if the device is turned while drawing.
@@ -184,9 +227,20 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
                             setState(() => _strokes.add([_point(d.localPosition, size)]));
                             _emit();
                           },
-                    child: CustomPaint(
+                    child: SizedBox.fromSize(
                       size: size,
-                      painter: WhiteboardPainter(strokes: _strokes, background: widget.background, listRows: widget.listRows),
+                      child: WhiteboardSurface(
+                        background: widget.background,
+                        backgroundImage: widget.backgroundImage,
+                        ink: CustomPaint(
+                          size: size,
+                          painter: WhiteboardPainter(
+                            strokes: _strokes,
+                            background: widget.backgroundImage == null && widget.background == 'image' ? 'blank' : widget.background,
+                            listRows: widget.listRows,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   if (widget.enabled)

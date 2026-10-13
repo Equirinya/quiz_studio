@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:quiz_show/game/game.dart';
 
@@ -17,6 +18,7 @@ class LanClient {
   final StreamController<SessionState> _states = StreamController<SessionState>.broadcast();
   final StreamController<PublicView> _views = StreamController<PublicView>.broadcast();
   final StreamController<GameContent?> _games = StreamController<GameContent?>.broadcast();
+  final StreamController<(String, Uint8List)> _backgrounds = StreamController<(String, Uint8List)>.broadcast();
   final Completer<void> _done = Completer<void>();
 
   /// Controllers only.
@@ -28,6 +30,9 @@ class LanClient {
 
   /// Players only.
   Stream<PublicView> get views => _views.stream;
+
+  /// The picture of a whiteboard round, as (media name, image bytes).
+  Stream<(String, Uint8List)> get backgrounds => _backgrounds.stream;
 
   /// Completes when the connection is gone, for whatever reason.
   Future<void> get done => _done.future;
@@ -54,7 +59,11 @@ class LanClient {
         welcome['role'] == 'player' ? Role.player : Role.controller,
         welcome['teamId'] as String?,
       );
-      client._pump(messages);
+      // Reading on starts only after the caller has had its turn: the host
+      // sends the first state, the game and a whiteboard picture right behind
+      // the welcome, and whoever awaited this must be able to subscribe
+      // before any of them is handed out.
+      Timer.run(() => client._pump(messages));
       return client;
     } catch (_) {
       await socket.close();
@@ -73,6 +82,7 @@ class LanClient {
     await _states.close();
     await _views.close();
     await _games.close();
+    await _backgrounds.close();
     if (!_done.isCompleted) _done.complete();
   }
 
@@ -87,6 +97,8 @@ class LanClient {
         case 'game':
           final game = message['g'];
           _games.add(game == null ? null : GameContent.fromJson(Map<String, dynamic>.from(game as Map)));
+        case 'bg':
+          _backgrounds.add((message['n'] as String, base64Decode(message['d'] as String)));
       }
     } catch (_) {
       // One malformed message must not take the connection down.

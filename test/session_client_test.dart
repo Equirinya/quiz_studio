@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/features/session/lan/lan_discovery.dart';
@@ -136,6 +137,36 @@ void main() {
 
     c.token = 'ctl';
     await until(() => c.link.value == LinkStatus.lan);
+  });
+
+  test('the whiteboard picture arrives over either transport, once', () async {
+    final cloud = StreamController<(String, Uint8List)?>.broadcast();
+    addTearDown(cloud.close);
+    final c = SessionClient(
+      role: Role.player,
+      teamId: 'red',
+      token: 'red',
+      endpoints: ['127.0.0.1:$port'],
+      cloudViews: cloudViews.stream,
+      cloudBackground: cloud.stream,
+      retryDelay: fast,
+    );
+    addTearDown(c.dispose);
+    c.start();
+    await until(() => c.link.value == LinkStatus.lan);
+    var changes = 0;
+    c.background.addListener(() => changes++);
+
+    server.setBackground('map.png', [1, 2, 3]);
+    await until(() => c.background.value != null);
+    expect(c.background.value!.$1, 'map.png');
+    // The same picture then also comes in through the cloud: nothing new.
+    cloud.add(('map.png', Uint8List.fromList([1, 2, 3])));
+    await Future<void>.delayed(fast);
+    expect(changes, 1);
+    // Another round, another picture.
+    cloud.add(('form.png', Uint8List.fromList([9])));
+    await until(() => c.background.value!.$1 == 'form.png');
   });
 
   test('a wrong token never gets onto the local network', () async {

@@ -246,6 +246,34 @@ void main() {
     });
   });
 
+  group('a picture as whiteboard paper', () {
+    const spec = CompanionSpec(kind: CompanionKind.whiteboard, background: 'image', backgroundImage: 'map.png');
+
+    test('survives storage and tells the devices which picture to wait for', () {
+      final copy = CompanionSpec.fromMap(spec.toMap())!;
+      expect((copy.background, copy.backgroundImage), ('image', 'map.png'));
+      expect(spec.toPublicMap('seed')['backgroundImage'], 'map.png');
+      expect(spec.withOptions(const ['x']).backgroundImage, 'map.png');
+    });
+
+    test('without a picture it is a blank board', () {
+      final copy = CompanionSpec.fromMap({'kind': 'whiteboard', 'background': 'image'})!;
+      expect((copy.background, copy.backgroundImage), ('blank', null));
+      // A picture name left over from another paper is ignored.
+      expect(CompanionSpec.fromMap({'kind': 'whiteboard', 'background': 'lines', 'backgroundImage': 'map.png'})!.backgroundImage, isNull);
+    });
+
+    test('is cached with the rest of the question\'s media', () {
+      final question = Question.fromMap('q', {'type': 'free', 'companion': spec.toMap()});
+      expect(question.mediaPaths, ['map.png']);
+    });
+
+    test('travels in the session state', () {
+      final s = run(fixtureState(), [const OpenQuestion(estimate), const OpenAnswers(spec)]);
+      expect(SessionState.fromJson(s.toJson()).answerRound!.spec.backgroundImage, 'map.png');
+    });
+  });
+
   group('drawings', () {
     test('survive encoding, to about a thousandth of the board', () {
       final strokes = <Stroke>[

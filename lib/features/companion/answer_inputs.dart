@@ -19,7 +19,11 @@ class CompanionInput extends StatefulWidget {
     required this.onChanged,
     this.enabled = true,
     this.whiteboardAspect = kWhiteboardAspect,
+    this.backgroundImage,
   });
+
+  /// Whiteboards with a picture as paper: the picture, once it has arrived.
+  final ImageProvider? backgroundImage;
 
   /// Whiteboards only: the board's width / height, chosen to fit the device.
   final double whiteboardAspect;
@@ -84,6 +88,7 @@ class _CompanionInputState extends State<CompanionInput> {
         return WhiteboardPad(
           enabled: enabled,
           aspect: widget.whiteboardAspect,
+          backgroundImage: widget.backgroundImage,
           background: widget.spec['background'] as String? ?? 'blank',
           listRows: (widget.spec['listRows'] as num?)?.toInt() ?? 5,
           onChanged: (drawing) => widget.onChanged(PlayerAnswer(drawing: drawing)),

@@ -34,6 +34,7 @@ class SessionClient implements CommandSink {
     this.cloudStates,
     this.cloudViews,
     this.cloudEndpoints,
+    this.cloudBackground,
     this.cloudSend,
     this.onSendError,
     this.discover,
@@ -61,6 +62,7 @@ class SessionClient implements CommandSink {
       cloudStates: role == Role.player ? null : repo.watchState(sessionId),
       cloudViews: role == Role.player ? repo.watchPublicState(sessionId) : null,
       cloudEndpoints: repo.watchLanEndpoints(sessionId),
+      cloudBackground: repo.watchBackground(sessionId),
       cloudSend: (command) => repo.sendCommand(sessionId, command, role: role, teamId: teamId),
       onSendError: onSendError,
       discover: () => discoverPresenter(sessionId),
@@ -78,6 +80,9 @@ class SessionClient implements CommandSink {
 
   /// Where the presenter says it listens; adds to what the join code carried.
   final Stream<List<String>>? cloudEndpoints;
+
+  /// The picture of a whiteboard round as the cloud delivers it.
+  final Stream<(String, Uint8List)?>? cloudBackground;
   final Future<void> Function(Command command)? cloudSend;
   final void Function(Object error)? onSendError;
 
@@ -94,6 +99,10 @@ class SessionClient implements CommandSink {
   /// then, and always null for players.
   final ValueNotifier<GameContent?> lanGame = ValueNotifier(null);
   final ValueNotifier<LinkStatus> link = ValueNotifier(LinkStatus.cloud);
+
+  /// The picture teams draw on, as (media name, image bytes); whichever
+  /// transport brings it first.
+  final ValueNotifier<(String, Uint8List)?> background = ValueNotifier(null);
 
   /// False once the cloud refused this device, e.g. after it was removed.
   final ValueNotifier<bool> cloudOk = ValueNotifier(true);
@@ -135,7 +144,15 @@ class SessionClient implements CommandSink {
         }
       }, onError: (Object _) {}));
     }
+    if (cloudBackground != null) {
+      _subs.add(cloudBackground!.listen(_onBackground, onError: (Object _) {}));
+    }
     _lanLoop();
+  }
+
+  void _onBackground((String, Uint8List)? next) {
+    // The same picture from the other transport changes nothing.
+    if (next != null && next.$1 != background.value?.$1) background.value = next;
   }
 
   void _onState(SessionState next) {
@@ -192,6 +209,7 @@ class SessionClient implements CommandSink {
       client.states.listen(_onState),
       client.views.listen(_onView),
       client.games.listen((game) => lanGame.value = game),
+      client.backgrounds.listen(_onBackground),
     ];
     link.value = LinkStatus.lan;
     await client.done;
@@ -228,6 +246,7 @@ class SessionClient implements CommandSink {
     view.dispose();
     lanGame.dispose();
     link.dispose();
+    background.dispose();
     cloudOk.dispose();
   }
 }

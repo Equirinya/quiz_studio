@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
@@ -554,6 +555,64 @@ void main() {
         'options': ['France', 'Italy', 'Spain'],
         'targets': ['Paris', 'Rome', 'Madrid'],
       },
+    });
+  });
+
+  /// A stand-in for a picture to draw on: an outline map with three dots.
+  Uint8List outlineMap() {
+    final image = img.Image(width: 800, height: 600)..clear(img.ColorRgb8(236, 244, 250));
+    img.fillPolygon(
+      image,
+      vertices: [img.Point(150, 120), img.Point(520, 80), img.Point(680, 300), img.Point(560, 520), img.Point(240, 480), img.Point(110, 300)],
+      color: img.ColorRgb8(200, 224, 190),
+    );
+    for (final (x, y) in [(260, 220), (470, 190), (480, 400)]) {
+      img.fillCircle(image, x: x, y: y, radius: 14, color: img.ColorRgb8(190, 60, 50));
+    }
+    return img.encodePng(image);
+  }
+
+  testWidgets('companion: whiteboard on a picture', (tester) async {
+    tester.view.physicalSize = const Size(1024, 768);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final picture = MemoryImage(outlineMap());
+    host = SessionHost(initial: fixtureState(), game: fixtureGame());
+    addTearDown(host.dispose);
+    host
+      ..dispatch(const OpenQuestion(estimate))
+      ..dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.whiteboard, background: 'image', backgroundImage: 'map.png')));
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        body: SafeArea(
+          child: PlayerView(view: PublicView(host.publicState), teamId: 'red', send: (_) {}, onLeave: () {}, backgroundImage: picture),
+        ),
+      ),
+    ));
+    await tester.runAsync(() => precacheImage(picture, tester.element(find.byType(PlayerView))));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+    // Circle one of the dots.
+    final board = tester.getRect(find.descendant(of: find.byType(WhiteboardPad), matching: find.byType(CustomPaint)).first);
+    final gesture = await tester.startGesture(board.center);
+    for (var i = 0; i <= 30; i++) {
+      await gesture.moveTo(board.center + Offset(70 * math.cos(i / 30 * 2 * math.pi), 70 * math.sin(i / 30 * 2 * math.pi)));
+    }
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 300));
+    await shot('companion_picture');
+  });
+
+  testWidgets('editor: whiteboard on a picture', (tester) async {
+    await questionCard(tester, 'editor_question_picture', {
+      'type': 'free',
+      'question': 'Mark where the Eiffel Tower stands.',
+      'noBuzzer': true,
+      'pointsPlus': 300,
+      'pointsMinus': 0,
+      'companion': {'kind': 'whiteboard', 'timer': 45, 'background': 'image', 'backgroundImage': 'map.png'},
     });
   });
 }

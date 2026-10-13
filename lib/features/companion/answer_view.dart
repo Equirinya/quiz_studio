@@ -7,7 +7,10 @@ import 'package:quiz_show/game/game.dart';
 /// along, the audience once it is revealed. [fontSize] scales it from a
 /// phone card to a projector tile.
 class AnswerView extends StatelessWidget {
-  const AnswerView({super.key, required this.spec, required this.answer, this.fontSize = 16});
+  const AnswerView({super.key, required this.spec, required this.answer, this.fontSize = 16, this.backgroundImage});
+
+  /// Whiteboards drawn on a picture: that picture, where this device has it.
+  final ImageProvider? backgroundImage;
 
   final CompanionSpec spec;
   final PlayerAnswer? answer;
@@ -23,7 +26,12 @@ class AnswerView extends StatelessWidget {
 
     switch (spec.kind) {
       case CompanionKind.whiteboard:
-        return DrawingView(drawing: answer.drawing, background: spec.background, listRows: spec.listRows);
+        return DrawingView(
+          drawing: answer.drawing,
+          background: spec.background,
+          listRows: spec.listRows,
+          backgroundImage: backgroundImage,
+        );
       case CompanionKind.text:
         return Text(answer.text ?? "", style: style);
       case CompanionKind.number:

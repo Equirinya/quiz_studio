@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// Sets up what the teams' own devices show while a question is open: a
 /// whiteboard, a number to enter, items to sort, and so on. Stored on the
 /// question as `companion`; null removes it.
 class CompanionEditor extends StatefulWidget {
-  const CompanionEditor({super.key, required this.question, required this.save});
+  const CompanionEditor({super.key, required this.gameId, required this.question, required this.save});
 
+  final String gameId;
   final Question question;
   final void Function(Map<String, dynamic> data) save;
 
@@ -20,12 +22,14 @@ const Map<String, String> _backgroundNames = {
   'lines': "Ruled",
   'grid': "Squared",
   'list': "Numbered list",
+  'image': "Picture",
 };
 
 class _CompanionEditorState extends State<CompanionEditor> {
   late CompanionKind? _kind;
   late int? _timer;
   late String _background;
+  String? _backgroundImage;
   late int _listRows;
   late final TextEditingController _min;
   late final TextEditingController _max;
@@ -42,7 +46,11 @@ class _CompanionEditorState extends State<CompanionEditor> {
     String n(double? v) => v == null ? '' : formatNumber(v);
     _kind = spec?.kind;
     _timer = spec?.timerSeconds;
-    _background = spec?.background ?? 'blank';
+    // Read from the stored value: a "Picture" paper without a picture yet
+    // should stay selected while one is being chosen.
+    final stored = (widget.question.data['companion'] as Map?)?['background'];
+    _background = stored is String && whiteboardBackgrounds.contains(stored) ? stored : 'blank';
+    _backgroundImage = spec?.backgroundImage ?? (widget.question.data['companion'] as Map?)?['backgroundImage'] as String?;
     _listRows = spec?.listRows ?? 5;
     _min = TextEditingController(text: n(spec?.min));
     _max = TextEditingController(text: n(spec?.max));
@@ -79,6 +87,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
         kind: kind,
         timerSeconds: _timer,
         background: _background,
+        backgroundImage: _background == 'image' ? _backgroundImage : null,
         listRows: _listRows,
         min: _hasRange ? n(_min) : null,
         max: _hasRange ? n(_max) : null,
@@ -159,6 +168,19 @@ class _CompanionEditorState extends State<CompanionEditor> {
                   for (final entry in _backgroundNames.entries) DropdownMenuEntry(value: entry.key, label: entry.value),
                 ],
                 onSelected: (value) => _change(() => _background = value ?? 'blank'),
+              ),
+            if (kind == CompanionKind.whiteboard && _background == 'image')
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  MediaButton(
+                    gameId: widget.gameId,
+                    kind: MediaKind.image,
+                    name: _backgroundImage,
+                    onChanged: (name) => _change(() => _backgroundImage = name),
+                  ),
+                  Text(_backgroundImage == null ? "Choose the picture to draw on" : "Picture set"),
+                ],
               ),
             if (kind == CompanionKind.whiteboard && _background == 'list')
               DropdownMenu<int>(

@@ -367,7 +367,13 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
     // ── on top of the screen ─────────────────────────────────────────────────
     case ShowCard(:final card):
       if (card.isEmpty) return _no(s);
-      return _ok(s.copyWith(overlay: card));
+      // A video brings its own sound; nothing else plays over it.
+      final video = (card.video ?? '').isNotEmpty;
+      return _ok(s.copyWith(
+        overlay: card,
+        music: video ? null : _keepTimer,
+        media: video && s.media == MediaPlayback.playing ? MediaPlayback.paused : null,
+      ));
 
     case HideCard():
       if (s.overlay == null) return _no(s);

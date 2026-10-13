@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/features/companion/answer_inputs.dart';
@@ -52,7 +53,7 @@ class _PlayerPageState extends State<PlayerPage> {
     return Scaffold(
       body: SafeArea(
         child: ListenableBuilder(
-          listenable: Listenable.merge([_client.view, _client.link, _client.cloudOk]),
+          listenable: Listenable.merge([_client.view, _client.link, _client.cloudOk, _client.background]),
           builder: (context, _) {
             final view = _client.view.value;
             final onLan = _client.link.value == LinkStatus.lan;
@@ -61,7 +62,17 @@ class _PlayerPageState extends State<PlayerPage> {
               if (!_client.cloudOk.value && !onLan) return _Message("Could not reach this session.", onLeave: leave);
               return _Message("Waiting for the show to start…", onLeave: leave);
             }
-            return PlayerView(view: view, teamId: widget.link.teamId!, send: _client.send, onLeave: leave, link: _client.link.value);
+            // The picture to draw on, once it is here and if it is this round's.
+            final picture = _client.background.value;
+            final wanted = view.companion?['backgroundImage'];
+            return PlayerView(
+              view: view,
+              teamId: widget.link.teamId!,
+              send: _client.send,
+              onLeave: leave,
+              link: _client.link.value,
+              backgroundImage: picture != null && picture.$1 == wanted ? MemoryImage(picture.$2) : null,
+            );
           },
         ),
       ),
@@ -91,7 +102,18 @@ class _Message extends StatelessWidget {
 /// What the player sees, given the public state. Separate from the page so
 /// it can be shown and tested without a connection.
 class PlayerView extends StatefulWidget {
-  const PlayerView({super.key, required this.view, required this.teamId, required this.send, this.onLeave, this.link});
+  const PlayerView({
+    super.key,
+    required this.view,
+    required this.teamId,
+    required this.send,
+    this.onLeave,
+    this.link,
+    this.backgroundImage,
+  });
+
+  /// The picture of a whiteboard round, when it has one and it has arrived.
+  final ImageProvider? backgroundImage;
 
   final PublicView view;
   final String teamId;
@@ -301,6 +323,21 @@ class _PlayerViewState extends State<PlayerView> {
   /// locked.
   Widget _input(Team team) {
     final view = widget.view;
+    if (view.answerKind == CompanionKind.whiteboard && view.companion?['background'] == 'image') {
+      // The board takes the picture's own shape, so it has to wait for it.
+      return _PictureBoard(
+        key: ValueKey('${view.answersOpenedAt}/${view.companion?['backgroundImage']}'),
+        image: widget.backgroundImage,
+        builder: (aspect) => CompanionInput(
+          key: ValueKey('${view.answersOpenedAt}/${view.question?['text']}'),
+          spec: view.companion!,
+          enabled: _editable(team),
+          whiteboardAspect: aspect,
+          backgroundImage: widget.backgroundImage,
+          onChanged: (answer) => widget.send(SubmitAnswer(team.id, answer)),
+        ),
+      );
+    }
     if (view.answerKind == CompanionKind.whiteboard) {
       // Shaped after the room there is; the board keeps that shape once made.
       return LayoutBuilder(
@@ -309,6 +346,7 @@ class _PlayerViewState extends State<PlayerView> {
           spec: view.companion!,
           enabled: _editable(team),
           whiteboardAspect: whiteboardAspectFor(box.biggest),
+          backgroundImage: widget.backgroundImage,
           onChanged: (answer) => widget.send(SubmitAnswer(team.id, answer)),
         ),
       );
@@ -355,6 +393,84 @@ class _PlayerViewState extends State<PlayerView> {
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodySmall,
       );
+}
+
+/// Holds a whiteboard back until its picture is here and its proportions
+/// are known, then builds it in exactly that shape. If the picture does not
+/// come, the teams get a plain board after a few seconds rather than nothing.
+class _PictureBoard extends StatefulWidget {
+  const _PictureBoard({super.key, required this.image, required this.builder});
+
+  final ImageProvider? image;
+  final Widget Function(double aspect) builder;
+
+  @override
+  State<_PictureBoard> createState() => _PictureBoardState();
+}
+
+class _PictureBoardState extends State<_PictureBoard> {
+  double? _aspect;
+  ImageStream? _stream;
+  late final ImageStreamListener _listener = ImageStreamListener(
+    (info, _) {
+      if (!mounted || _aspect != null) return;
+      // Kept within what still fits a tile on the big screen.
+      setState(() => _aspect = (info.image.width / info.image.height).clamp(0.5, 2.0).toDouble());
+    },
+    onError: (_, _) => _giveUp(),
+  );
+  Timer? _patience;
+
+  @override
+  void initState() {
+    super.initState();
+    _patience = Timer(const Duration(seconds: 8), _giveUp);
+  }
+
+  void _giveUp() {
+    if (mounted && _aspect == null) setState(() => _aspect = kWhiteboardAspect);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(_PictureBoard old) {
+    super.didUpdateWidget(old);
+    if (old.image != widget.image) _resolve();
+  }
+
+  void _resolve() {
+    if (_aspect != null || widget.image == null) return;
+    _stream?.removeListener(_listener);
+    _stream = widget.image!.resolve(createLocalImageConfiguration(context))..addListener(_listener);
+  }
+
+  @override
+  void dispose() {
+    _patience?.cancel();
+    _stream?.removeListener(_listener);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final aspect = _aspect;
+    if (aspect != null) return widget.builder(aspect);
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CupertinoActivityIndicator(),
+          const SizedBox(height: 12),
+          Text("Getting the picture…", style: Theme.of(context).textTheme.bodyMedium),
+        ],
+      ),
+    );
+  }
 }
 
 /// Wi-Fi when the presenter is reached directly, a cloud when not.

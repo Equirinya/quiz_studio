@@ -329,7 +329,15 @@ class _QuestionDisplay extends StatelessWidget {
         ),
         SizedBox(height: unit * 2),
         if (round != null)
-          Expanded(flex: 3, child: _AnswerRoundDisplay(state: state, round: round, unit: unit))
+          Expanded(
+            flex: 3,
+            child: _AnswerRoundDisplay(
+              state: state,
+              round: round,
+              unit: unit,
+              backgroundImage: _file(round.spec.backgroundImage) == null ? null : FileImage(_file(round.spec.backgroundImage)!),
+            ),
+          )
         else
           switch (question.type) {
             QuestionType.abcd => Expanded(
@@ -479,7 +487,9 @@ class _Tiles extends StatelessWidget {
 /// left, and the answers the gamemaster has shown so far, each with its
 /// ruling once there is one.
 class _AnswerRoundDisplay extends StatelessWidget {
-  const _AnswerRoundDisplay({required this.state, required this.round, required this.unit});
+  const _AnswerRoundDisplay({required this.state, required this.round, required this.unit, this.backgroundImage});
+
+  final ImageProvider? backgroundImage;
 
   final SessionState state;
   final AnswerRound round;
@@ -607,7 +617,12 @@ class _AnswerRoundDisplay extends StatelessWidget {
                                       width: round.kind == CompanionKind.whiteboard
                                           ? unit * 60 * (drawingAspect(round.answers[team.id]?.drawing) < 1 ? 0.6 : 1)
                                           : null,
-                                      child: AnswerView(spec: round.spec, answer: round.answers[team.id], fontSize: unit * 3.4),
+                                      child: AnswerView(
+                                        spec: round.spec,
+                                        answer: round.answers[team.id],
+                                        fontSize: unit * 3.4,
+                                        backgroundImage: backgroundImage,
+                                      ),
                                     ),
                                   ),
                                 ),
