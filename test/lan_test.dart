@@ -131,7 +131,7 @@ void main() {
     expect(copy.name, game.name);
     String shape(GameContent g) => [for (final group in g.groups) '${group.id} ${group.type.name} ${group.categories.map((c) => c.id)}'].join(' | ');
     expect(shape(copy), shape(game));
-    expect(copy.category('c1')!.questions.map((q) => q.id), ['free', 'estimate', 'song']);
+    expect(copy.category('c1')!.questions.map((q) => q.id), ['free', 'estimate', 'song', 'sum']);
     expect(copy.question(feud)!.percentages, [50.0, 30.0, 20.0]);
     expect(copy.soundsFor(ref: reveal).effects, game.soundsFor(ref: reveal).effects);
     expect(copy.mediaPaths, game.mediaPaths);

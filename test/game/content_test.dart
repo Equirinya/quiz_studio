@@ -10,7 +10,7 @@ void main() {
     expect(game.groups.map((g) => g.id), ['g1', 'g2']);
     expect(game.groups.first.categories.map((c) => c.id), ['c1', 'c2']);
     // by points, ascending
-    expect(game.category('c1')!.questions.map((q) => q.id), ['free', 'estimate', 'song']);
+    expect(game.category('c1')!.questions.map((q) => q.id), ['free', 'estimate', 'song', 'sum']);
     expect(game.groups.first.type, BoardType.wheel);
     expect(game.groups.last.type, BoardType.display);
   });

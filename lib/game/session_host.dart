@@ -11,9 +11,19 @@ import 'reducer.dart';
 import 'session_state.dart';
 
 class SessionHost {
-  SessionHost({SessionState initial = const SessionState(), GameContent? game})
+  SessionHost({SessionState initial = const SessionState(), GameContent? game, int Function()? clock})
       : _state = initial,
-        _game = game;
+        _game = game,
+        _clock = clock ?? (() => DateTime.now().millisecondsSinceEpoch) {
+    _armTimer();
+  }
+
+  /// The host's time in milliseconds; replaceable in tests.
+  final int Function() _clock;
+
+  /// Locks the running answer round when its time is up.
+  Timer? _roundTimer;
+  int? _armedFor;
 
   SessionState _state;
   GameContent? _game;
@@ -53,18 +63,39 @@ class SessionHost {
   /// may not issue it or it makes no sense right now; nothing changes then.
   bool dispatch(Command command, {Sender sender = const Sender.host()}) {
     if (_states.isClosed || !mayIssue(sender, command)) return false;
-    final result = reduce(_state, command, _game);
+    final result = reduce(_state, command, _game, now: _clock());
     if (!result.accepted) return false;
     final changed = !identical(result.state, _state);
     _state = result.state;
-    if (changed) _states.add(_state);
+    if (changed) {
+      _armTimer();
+      _states.add(_state);
+    }
     for (final effect in result.effects) {
       _effects.add(effect);
     }
     return true;
   }
 
+  /// Keeps one timer running for the answer round that has a deadline. Also
+  /// covers a show resumed after a restart: a deadline already passed locks
+  /// the round at once.
+  void _armTimer() {
+    final round = _state.answerRound;
+    final endsAt = round != null && round.open ? round.endsAtMillis : null;
+    if (endsAt == _armedFor) return;
+    _roundTimer?.cancel();
+    _armedFor = endsAt;
+    if (endsAt == null) return;
+    final remaining = endsAt - _clock();
+    _roundTimer = Timer(Duration(milliseconds: remaining < 0 ? 0 : remaining), () {
+      _armedFor = null;
+      dispatch(const LockAnswers());
+    });
+  }
+
   Future<void> dispose() async {
+    _roundTimer?.cancel();
     await _states.close();
     await _effects.close();
   }

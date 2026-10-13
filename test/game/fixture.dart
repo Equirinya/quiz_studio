@@ -3,6 +3,7 @@ import 'package:quiz_show/game/game.dart';
 const free = QuestionRef('c1', 'free');
 const estimate = QuestionRef('c1', 'estimate');
 const song = QuestionRef('c1', 'song');
+const sum = QuestionRef('c1', 'sum');
 const abcd = QuestionRef('c2', 'abcd');
 const reveal = QuestionRef('c2', 'reveal');
 const feud = QuestionRef('c3', 'feud');
@@ -30,6 +31,14 @@ GameContent fixtureGame() => GameContent.assemble(
           'song': {'type': 'free', 'question': 'Name the song', 'music': 'song.mp3', 'pointsPlus': 300, 'pointsMinus': 150},
           'free': {'type': 'free', 'question': 'Capital of France?', 'answerHint': 'Paris', 'pointsPlus': 100, 'pointsMinus': 50},
           'estimate': {'type': 'free', 'question': 'How many?', 'noBuzzer': true, 'pointsPlus': 200},
+          'sum': {
+            'type': 'free',
+            'question': 'What is 3+5?',
+            'answerHint': '8',
+            'noBuzzer': true,
+            'pointsPlus': 400,
+            'companion': {'kind': 'whiteboard', 'timer': 30},
+          },
         },
         'c2': {
           'abcd': {

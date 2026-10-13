@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
+import 'package:quiz_show/features/games/widgets/companion_editor.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/features/games/widgets/question_type_editors.dart';
 import 'package:quiz_show/features/games/widgets/sounds_dialog.dart';
@@ -334,6 +335,7 @@ class _QuestionCardState extends State<QuestionCard> {
               _hint.text = answerHint;
             },
           ),
+          CompanionEditor(question: _q, save: _save),
         ],
       ),
     );

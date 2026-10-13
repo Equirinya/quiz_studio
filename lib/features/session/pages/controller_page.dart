@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/core/widgets/dialogs.dart';
+import 'package:quiz_show/features/companion/answer_view.dart';
 import 'package:quiz_show/features/games/pages/game_editor_page.dart' show BoardTypeIcon;
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
@@ -72,7 +73,7 @@ class _ControllerViewState extends State<ControllerView> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(12),
-                child: _NowPanel(state: state, game: game, question: question, send: _send),
+                child: _NowPanel(state: state, game: game, question: question, send: _send, hostClock: _c.isPresenting),
               ),
             ),
             const Divider(height: 1),
@@ -338,12 +339,15 @@ String _status(SessionState state, Question? question) {
 }
 
 class _NowPanel extends StatelessWidget {
-  const _NowPanel({required this.state, required this.game, required this.question, required this.send});
+  const _NowPanel({required this.state, required this.game, required this.question, required this.send, required this.hostClock});
 
   final SessionState state;
   final GameContent? game;
   final Question? question;
   final void Function(Command) send;
+
+  /// This device runs the show, so its clock is the one deadlines are on.
+  final bool hostClock;
 
   @override
   Widget build(BuildContext context) {
@@ -397,15 +401,8 @@ class _NowPanel extends StatelessWidget {
             decoration: BoxDecoration(color: scheme.tertiaryContainer, borderRadius: BorderRadius.circular(12)),
             child: Text(q.answerHint!, style: theme.textTheme.bodyLarge?.copyWith(color: scheme.onTertiaryContainer)),
           ),
-        if (round != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              "Answers: ${round.answers.length} of ${state.teams.length} in${round.revealed ? " · on screen" : round.open ? "" : " · locked"}",
-              style: theme.textTheme.labelLarge,
-            ),
-          ),
         const SizedBox(height: 8),
+        if (round != null) _AnswersPanel(state: state, round: round, question: q, send: send, hostClock: hostClock),
         if (q.type == QuestionType.abcd)
           for (final (i, answer) in q.answers.indexed)
             Padding(
@@ -539,9 +536,21 @@ class _ActionPad extends StatelessWidget {
     final Command? close = state.current == null ? null : const CloseQuestion();
 
     // Second row: stepping through the question.
+    // For a question with steps of its own these walk through them;
+    // otherwise they show the teams' answers one by one.
     final canReveal = q != null && q.maxReveal > 0 && state.current != null;
-    final Command? back = canReveal && state.revealed > 0 ? const Reveal(-1) : null;
-    final Command? next = canReveal && state.revealed < q.maxReveal ? const Reveal(1) : null;
+    final round = state.answerRound;
+    final answerSteps = !canReveal && round != null;
+    final Command? back = answerSteps
+        ? (round.revealed.isEmpty ? null : RevealAnswer(round.revealed.last, show: false))
+        : canReveal && state.revealed > 0
+            ? const Reveal(-1)
+            : null;
+    final Command? next = answerSteps
+        ? (state.teams.any((team) => !round.revealed.contains(team.id)) ? const RevealNextAnswer() : null)
+        : canReveal && state.revealed < q.maxReveal
+            ? const Reveal(1)
+            : null;
     final playing = state.media == MediaPlayback.playing;
     final Command? sound = q != null && q.hasMusic && listening
         ? SetMedia(playing ? MediaPlayback.paused : MediaPlayback.playing)
@@ -615,7 +624,11 @@ class _ActionPad extends StatelessWidget {
             children: [
               small("Hide", Icons.navigate_before, back),
               small(
-                q?.type == QuestionType.abcd && state.revealed == q!.answers.length ? "Solution" : "Reveal",
+                answerSteps
+                    ? "Show answer"
+                    : q?.type == QuestionType.abcd && state.revealed == q!.answers.length
+                        ? "Solution"
+                        : "Reveal",
                 Icons.navigate_next,
                 next,
               ),
@@ -1028,71 +1041,267 @@ class _EffectsSheetState extends State<_EffectsSheet> {
   }
 }
 
-/// Answers typed, chosen or drawn on the players' own devices.
-class _AnswersSheet extends StatelessWidget {
+/// Starting and steering an answer round. The answers themselves are in
+/// the middle of the controller, where they can be read and rated.
+class _AnswersSheet extends StatefulWidget {
   const _AnswersSheet({required this.state, required this.game, required this.send});
 
   final SessionState state;
   final GameContent? game;
   final void Function(Command) send;
 
-  static String _describe(PlayerAnswer? answer) {
-    if (answer == null) return "Nothing yet";
-    if (answer.text != null) return answer.text!;
-    if (answer.choice != null) return "Chose ${String.fromCharCode(0x41 + answer.choice!)}";
-    return "Sent a drawing";
-  }
+  @override
+  State<_AnswersSheet> createState() => _AnswersSheetState();
+}
+
+class _AnswersSheetState extends State<_AnswersSheet> {
+  int? _timer;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final state = widget.state;
+    final send = widget.send;
     final round = state.answerRound;
-    final question = state.current == null ? null : game?.question(state.current!);
-    Widget action(String label, IconData icon, Command? command) => Padding(
+    final question = state.current == null ? null : widget.game?.question(state.current!);
+    Widget action(String label, IconData icon, VoidCallback? onPressed) => Padding(
           padding: const EdgeInsets.only(right: 8, top: 8),
-          child: FilledButton.tonalIcon(
-            onPressed: command == null ? null : () => send(command),
-            icon: Icon(icon),
-            label: Text(label),
-          ),
+          child: FilledButton.tonalIcon(onPressed: onPressed, icon: Icon(icon), label: Text(label)),
         );
+    void open(CompanionKind kind) {
+      send(OpenAnswers(CompanionSpec(kind: kind, timerSeconds: _timer)));
+      Navigator.of(context).pop();
+    }
+
+    final automatic = round == null
+        ? const <String, bool>{}
+        : {
+            for (final team in state.teams)
+              team.id: ?autoVerdict(round.spec, round.answers[team.id], choiceCorrect: question?.answersCorrect ?? const []),
+          };
+    final closest = round == null ? const <String>[] : closestTeams(round.spec, round.answers);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Answers from players' devices", style: Theme.of(context).textTheme.titleMedium),
+          Text("Answers on the teams' devices", style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
           if (state.current == null)
             const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Text("Open a question first."))
           else if (round == null) ...[
-            const Text("Every team answers on its own device. Nobody sees the answers until you show them."),
+            const Text("Every team answers on its own device. You see the answers as they come in; the audience only when you show them."),
+            const SizedBox(height: 8),
             Wrap(
+              spacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                action("Text", Icons.short_text, const OpenAnswers(AnswerKind.text)),
-                action("Drawing", Icons.draw_outlined, const OpenAnswers(AnswerKind.drawing)),
-                action("Choice", Icons.checklist, question?.type == QuestionType.abcd ? const OpenAnswers(AnswerKind.choice) : null),
+                const Text("Timer"),
+                for (final seconds in [null, 20, 30, 60, 120])
+                  ChoiceChip(
+                    label: Text(seconds == null ? "None" : "$seconds s"),
+                    selected: _timer == seconds,
+                    onSelected: (_) => setState(() => _timer = seconds),
+                  ),
               ],
             ),
-          ] else ...[
-            for (final team in state.teams)
-              ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(round.answers.containsKey(team.id) ? Icons.check_circle : Icons.hourglass_empty),
-                title: Text(team.name),
-                subtitle: Text(_describe(round.answers[team.id])),
-              ),
             Wrap(
               children: [
-                action("Lock", Icons.lock_outline, round.open ? const LockAnswers() : null),
-                action("Show on screen", Icons.tv, round.revealed ? null : const RevealAnswers()),
-                action("Discard", Icons.delete_outline, const ClearAnswers()),
+                action("Whiteboard", Icons.draw_outlined, () => open(CompanionKind.whiteboard)),
+                action("Text", Icons.short_text, () => open(CompanionKind.text)),
+                action("Number", Icons.pin_outlined, () => open(CompanionKind.number)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Sliders, sorting, matching and prepared whiteboards are set up per question in the editor and start by themselves.",
+              style: theme.textTheme.bodySmall,
+            ),
+          ] else ...[
+            Text(
+              "${round.kind.uiString} · ${round.open ? "open" : "locked"} · "
+              "${round.answers.values.where((a) => !a.isEmpty).length} of ${state.teams.length} in",
+            ),
+            Wrap(
+              children: [
+                if (round.open)
+                  action("Lock all", Icons.lock_outline, () => send(const LockAnswers()))
+                else
+                  action("Let them edit again", Icons.lock_open, () => send(const UnlockAnswers())),
+                action(
+                  "Show all",
+                  Icons.tv,
+                  state.teams.every((team) => round.revealed.contains(team.id)) ? null : () => send(const RevealAnswers()),
+                ),
+                if (automatic.isNotEmpty)
+                  action("Rate automatically", Icons.auto_fix_high, () {
+                    automatic.forEach((teamId, verdict) => send(RateAnswer(teamId, correct: verdict)));
+                  }),
+                if (closest.isNotEmpty && automatic.values.every((right) => !right))
+                  action("Closest wins", Icons.adjust, () {
+                    for (final team in state.teams) {
+                      if (round.answers[team.id]?.number != null) {
+                        send(RateAnswer(team.id, correct: closest.contains(team.id)));
+                      }
+                    }
+                  }),
+                action("Discard", Icons.delete_outline, () => send(const ClearAnswers())),
               ],
             ),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// The teams' answers as they come in, for the gamemaster to read, show and
+/// rate. Lives in the middle of the controller for as long as a round runs.
+class _AnswersPanel extends StatelessWidget {
+  const _AnswersPanel({required this.state, required this.round, required this.question, required this.send, required this.hostClock});
+
+  final SessionState state;
+  final AnswerRound round;
+  final Question question;
+  final void Function(Command) send;
+  final bool hostClock;
+
+  Future<void> _customPoints(BuildContext context, Team team) async {
+    final text = await promptText(
+      context,
+      title: "Points for ${team.name}",
+      initial: (round.awarded[team.id] ?? question.pointsPlus).toString(),
+      label: "Points for this answer",
+    );
+    final points = text == null ? null : int.tryParse(text);
+    if (points != null) send(AwardAnswer(team.id, points));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final spec = round.spec;
+    final closest = closestTeams(spec, round.answers);
+    final solution = switch (spec.kind) {
+      CompanionKind.number || CompanionKind.slider => spec.solution == null ? null : formatNumber(spec.solution!, unit: spec.unit),
+      CompanionKind.order => spec.options.join("  →  "),
+      CompanionKind.match => [for (final (i, left) in spec.options.indexed) "$left → ${spec.targets.elementAtOrNull(i) ?? "?"}"].join(" · "),
+      _ => null,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (round.open && round.endsAtMillis != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: RoundCountdown(openedAt: round.openedAtMillis, endsAt: round.endsAtMillis!, hostClock: hostClock),
+          ),
+        if (solution != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text("Solution: $solution", style: theme.textTheme.labelLarge),
+          ),
+        for (final team in state.teams)
+          Builder(builder: (context) {
+            final answer = round.answers[team.id];
+            final shown = round.revealed.contains(team.id);
+            final verdict = round.verdicts[team.id];
+            final suggestion = autoVerdict(spec, answer, choiceCorrect: question.answersCorrect) ??
+                (closest.contains(team.id) ? true : null);
+            final awarded = round.awarded[team.id];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              color: shown ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          answer?.locked == true
+                              ? Icons.lock
+                              : (answer == null || answer.isEmpty)
+                                  ? Icons.hourglass_empty
+                                  : Icons.edit_outlined,
+                          size: 16,
+                          color: scheme.outline,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            "${team.name}${shown ? " · on screen" : ""}"
+                            "${awarded == null ? "" : " · ${awarded >= 0 ? "+" : ""}$awarded"}",
+                            style: theme.textTheme.labelLarge,
+                          ),
+                        ),
+                        if (suggestion != null && verdict == null)
+                          Tooltip(
+                            message: suggestion ? "Looks right" : "Looks wrong",
+                            child: Icon(
+                              suggestion ? Icons.thumb_up_alt_outlined : Icons.thumb_down_alt_outlined,
+                              size: 18,
+                              color: scheme.outline,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    // The answer on the left, and always the same four
+                    // buttons in the same square on the right.
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 132),
+                              child: AnswerView(spec: spec, answer: answer, fontSize: 16),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 96,
+                          child: Wrap(
+                            children: [
+                              IconButton(
+                                tooltip: shown ? "Take off screen" : "Show on screen",
+                                icon: Icon(shown ? Icons.visibility : Icons.visibility_outlined),
+                                color: shown ? scheme.primary : null,
+                                onPressed: () => send(RevealAnswer(team.id, show: !shown)),
+                              ),
+                              IconButton(
+                                tooltip: "Other points",
+                                icon: const Icon(Icons.exposure_outlined),
+                                onPressed: () => _customPoints(context, team),
+                              ),
+                              IconButton(
+                                tooltip: "Right",
+                                icon: Icon(verdict == true ? Icons.check_circle : Icons.check_circle_outline),
+                                color: verdict == true ? Colors.green : null,
+                                onPressed: () => send(RateAnswer(team.id, correct: verdict == true ? null : true)),
+                              ),
+                              IconButton(
+                                tooltip: "Wrong",
+                                icon: Icon(verdict == false ? Icons.cancel : Icons.cancel_outlined),
+                                color: verdict == false ? scheme.error : null,
+                                onPressed: () => send(RateAnswer(team.id, correct: verdict == false ? null : false)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+      ],
     );
   }
 }

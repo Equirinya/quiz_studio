@@ -16,7 +16,7 @@ void main() {
       const OpenQuestion(reveal),
       const Reveal(1),
       const SetMusic(musicCalm),
-      const OpenAnswers(AnswerKind.drawing),
+      const OpenAnswers(CompanionSpec(kind: CompanionKind.whiteboard, timerSeconds: 30)),
       const SubmitAnswer('red', PlayerAnswer(drawing: 'strokes')),
       const Buzz('blue'),
       const AdjustPoints('red', -30),
@@ -26,6 +26,7 @@ void main() {
     expect(copy.toJson(), s.toJson());
     expect(copy.current, reveal);
     expect(copy.answerRound!.answers['red']!.drawing, 'strokes');
+    expect(copy.answerRound!.spec.timerSeconds, 30);
     expect((copy.overlay!.title, copy.overlay!.text, copy.overlay!.image), ('T', 'x', 'i.png'));
   });
 
@@ -57,10 +58,20 @@ void main() {
       RenameTeam('t', 'Other'),
       RemoveTeam('t'),
       SetQueueBuzzers(true),
-      OpenAnswers(AnswerKind.choice),
+      OpenAnswers(CompanionSpec(kind: CompanionKind.slider, min: 0, max: 10, step: 0.5, unit: 'kg', solution: 4, timerSeconds: 20)),
+      OpenAnswers(CompanionSpec(kind: CompanionKind.match, options: ['a', 'b'], targets: ['1', '2'])),
       SubmitAnswer('red', PlayerAnswer(choice: 2)),
+      SubmitAnswer('red', PlayerAnswer(order: [2, 0, 1])),
+      SubmitAnswer('red', PlayerAnswer(number: 3.5)),
+      LockAnswer('red'),
       LockAnswers(),
+      UnlockAnswers(),
+      RevealAnswer('red', show: false),
+      RevealNextAnswer(),
       RevealAnswers(),
+      RateAnswer('red', correct: null),
+      RateAnswer('red', correct: false),
+      AwardAnswer('red', 250),
       ClearAnswers(),
       ShowCard(OverlayCard(title: 'Break', image: 'a.png')),
       HideCard(),
@@ -126,20 +137,42 @@ void main() {
       expect(view(s), isNot(contains('apple')));
     });
 
-    test('submissions stay hidden until revealed; who has submitted does not', () {
+    test('answers stay hidden until shown, one team at a time; who has answered does not', () {
       var s = run(fixtureState(), [
         const OpenQuestion(estimate),
-        const OpenAnswers(AnswerKind.text),
+        const OpenAnswers(CompanionSpec(kind: CompanionKind.text)),
         const SubmitAnswer('red', PlayerAnswer(text: 'red-secret')),
+        const SubmitAnswer('blue', PlayerAnswer(text: 'blue-secret')),
+        const LockAnswer('red'),
       ]);
-      expect(view(s), isNot(contains('red-secret')));
-      expect(parsed(s).answerKind, AnswerKind.text);
+      expect(view(s), isNot(contains('secret')));
+      expect(parsed(s).answerKind, CompanionKind.text);
       expect(parsed(s).answersOpen, isTrue);
-      expect(parsed(s).hasSubmitted('red'), isTrue);
-      expect(parsed(s).hasSubmitted('blue'), isFalse);
-      s = run(s, [const RevealAnswers()]);
+      expect((parsed(s).hasSubmitted('red'), parsed(s).hasLocked('red'), parsed(s).hasLocked('blue')), (true, true, false));
+      s = run(s, [const RevealAnswer('red')]);
       expect(view(s), contains('red-secret'));
+      expect(view(s), isNot(contains('blue-secret')));
+      expect(parsed(s).isRevealed('red'), isTrue);
       expect(parsed(s).answersOpen, isFalse);
+    });
+
+    test('the solution and the right order never reach a device', () {
+      final order = run(fixtureState(), [
+        const OpenQuestion(estimate),
+        const OpenAnswers(CompanionSpec(kind: CompanionKind.order, options: ['first', 'second', 'third', 'fourth'])),
+      ]);
+      final items = (parsed(order).companion!['items'] as List).cast<Map>();
+      expect(items.map((e) => e['t']).toSet(), {'first', 'second', 'third', 'fourth'});
+      expect(items.map((e) => e['i']).toList(), isNot([0, 1, 2, 3]));
+      // Each item still knows its original place, to answer with.
+      expect({for (final e in items) e['t']: e['i']}, {'first': 0, 'second': 1, 'third': 2, 'fourth': 3});
+
+      final slider = run(fixtureState(), [
+        const OpenQuestion(estimate),
+        const OpenAnswers(CompanionSpec(kind: CompanionKind.slider, min: 0, max: 100, solution: 42)),
+      ]);
+      expect(parsed(slider).companion!.containsKey('solution'), isFalse);
+      expect(view(slider), isNot(contains('42')));
     });
 
     test('canBuzz follows the rules for each team', () {

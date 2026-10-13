@@ -6,6 +6,8 @@
 /// firebase/firestore.rules.
 library;
 
+import 'companion.dart';
+
 // Music slots and built-in effect keys (v1 names, also used as stored keys).
 const String musicBackground = 'musicBackground';
 const String musicCalm = 'musicCalm';
@@ -180,6 +182,14 @@ class Question {
       sounds: MusicConfig.fromMap(data),
       data: data,
     );
+  }
+
+  /// The screen the teams' own devices show while this question is open,
+  /// if it has one. For "pick one" the options are the ABCD answers.
+  CompanionSpec? get companion {
+    final spec = CompanionSpec.fromMap(data['companion']);
+    if (spec == null) return null;
+    return spec.kind == CompanionKind.choice && spec.options.isEmpty ? spec.withOptions(answers) : spec;
   }
 
   bool get buzzerable => type == QuestionType.free ? !noBuzzer : true;

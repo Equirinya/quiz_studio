@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:quiz_show/features/companion/answer_inputs.dart';
+import 'package:quiz_show/features/companion/answer_view.dart';
 import 'package:quiz_show/features/player/widgets/buzzer_button.dart';
 import 'package:quiz_show/features/session/session_client.dart';
 import 'package:quiz_show/features/session/session_links.dart';
@@ -103,15 +105,12 @@ class PlayerView extends StatefulWidget {
 }
 
 class _PlayerViewState extends State<PlayerView> {
-  final TextEditingController _answer = TextEditingController();
-
   /// Set right after a buzz, until the host has answered, so a second tap
   /// does nothing while the first is on its way.
   Timer? _justBuzzed;
 
   @override
   void dispose() {
-    _answer.dispose();
     _justBuzzed?.cancel();
     super.dispose();
   }
@@ -150,9 +149,11 @@ class _PlayerViewState extends State<PlayerView> {
     // While answers are collected the buzzer is replaced by the answer area.
     final headline = kind == null
         ? status
-        : view.answersOpen
+        : view.answersOpen && !view.hasLocked(team.id)
             ? "Answer here"
-            : "Answers are in";
+            : view.isRevealed(team.id)
+                ? "Your answer is being shown"
+                : "Answers are in";
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -211,83 +212,73 @@ class _PlayerViewState extends State<PlayerView> {
                       ),
                     ),
                   )
-                : _answerArea(kind, team),
+                : _answerArea(team),
           ),
         ],
       ),
     );
   }
 
-  Widget _answerArea(AnswerKind kind, Team team) {
+  Widget _answerArea(Team team) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final view = widget.view;
-    final submitted = view.hasSubmitted(team.id);
-    if (!view.answersOpen) {
-      return Center(
-        child: Text(
-          submitted ? "Your answer is in." : "Answers are closed.",
-          style: theme.textTheme.titleMedium,
+    final locked = view.hasLocked(team.id);
+    final editable = view.answersOpen && !locked;
+    final verdict = view.verdictOf(team.id);
+    final endsAt = view.answersEndAt;
+    return Column(
+      children: [
+        if (view.answersOpen && endsAt != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: RoundCountdown(openedAt: view.answersOpenedAt, endsAt: endsAt),
+          ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              // Kept alive across the round, so the answer stays on screen
+              // after it is locked.
+              child: CompanionInput(
+                key: ValueKey('${view.answersOpenedAt}/${view.question?['text']}'),
+                spec: view.companion!,
+                enabled: editable,
+                onChanged: (answer) => widget.send(SubmitAnswer(team.id, answer)),
+              ),
+            ),
+          ),
         ),
-      );
-    }
-    final note = Text(
-      submitted ? "Sent. You can still change it." : "Only the gamemaster sees this until it is shown.",
-      style: theme.textTheme.bodySmall,
+        if (verdict != null)
+          Chip(
+            avatar: Icon(verdict ? Icons.check_circle : Icons.cancel, color: verdict ? Colors.green : scheme.error),
+            label: Text(verdict ? "Right!" : "Not this time"),
+          )
+        else
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: FilledButton.icon(
+              onPressed: editable && view.hasSubmitted(team.id) ? () => widget.send(LockAnswer(team.id)) : null,
+              icon: Icon(editable ? Icons.lock_open : Icons.lock),
+              label: Text(
+                locked
+                    ? "Locked in"
+                    : !view.answersOpen
+                        ? "Time is up"
+                        : view.hasSubmitted(team.id)
+                            ? "Lock in answer"
+                            : "Answer first",
+              ),
+            ),
+          ),
+        const SizedBox(height: 4),
+        Text(
+          view.isRevealed(team.id) ? "Your answer is on the big screen." : "Only the gamemaster sees this until it is shown.",
+          style: theme.textTheme.bodySmall,
+        ),
+      ],
     );
-    switch (kind) {
-      case AnswerKind.text:
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: _answer,
-              autofocus: true,
-              minLines: 1,
-              maxLines: 4,
-              decoration: const InputDecoration(labelText: "Your answer"),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: FilledButton(
-                onPressed: () {
-                  final text = _answer.text.trim();
-                  if (text.isNotEmpty) widget.send(SubmitAnswer(team.id, PlayerAnswer(text: text)));
-                },
-                child: Text(submitted ? "Send again" : "Send"),
-              ),
-            ),
-            const SizedBox(height: 8),
-            note,
-          ],
-        );
-      case AnswerKind.choice:
-        final count = (view.question?['answerCount'] as num?)?.toInt() ?? 4;
-        final shown = (view.question?['answers'] as List? ?? const []).cast<String>();
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (var i = 0; i < count; i++)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: FilledButton.tonal(
-                    onPressed: () => widget.send(SubmitAnswer(team.id, PlayerAnswer(choice: i))),
-                    child: Text("${String.fromCharCode(0x41 + i)}${i < shown.length ? "   ${shown[i]}" : ""}"),
-                  ),
-                ),
-              ),
-            const SizedBox(height: 8),
-            note,
-          ],
-        );
-      case AnswerKind.drawing:
-        // The whiteboard comes with the player-input step.
-        return Center(child: Text("Drawing answers are not available in this version yet.", style: theme.textTheme.titleMedium));
-    }
   }
 }
 

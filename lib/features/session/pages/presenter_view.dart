@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import 'package:quiz_show/features/companion/answer_view.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/session/boards/map_board.dart';
 import 'package:quiz_show/features/session/boards/wheel_board.dart';
@@ -310,16 +311,8 @@ class _QuestionDisplay extends StatelessWidget {
           ),
         ),
         SizedBox(height: unit * 2),
-        if (round != null && round.revealed)
-          Expanded(
-            flex: 2,
-            child: _Tiles(
-              unit: unit,
-              tiles: [
-                for (final team in state.teams) (label: team.name, text: _answerText(round.answers[team.id]), shown: true, mark: null),
-              ],
-            ),
-          )
+        if (round != null)
+          Expanded(flex: 3, child: _AnswerRoundDisplay(state: state, round: round, unit: unit))
         else
           switch (question.type) {
             QuestionType.abcd => Expanded(
@@ -384,12 +377,6 @@ class _QuestionDisplay extends StatelessWidget {
     );
   }
 
-  static String _answerText(PlayerAnswer? answer) {
-    if (answer == null) return "–";
-    if (answer.text != null) return answer.text!;
-    if (answer.choice != null) return String.fromCharCode(0x41 + answer.choice!);
-    return "✎";
-  }
 
   static String _feudValue(Question question, int index) {
     final value = question.percentages.elementAtOrNull(index) ?? 0;
@@ -462,6 +449,153 @@ class _Tiles extends StatelessWidget {
                         );
                       },
                     ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// An answer round on the big screen: who is still writing, how much time is
+/// left, and the answers the gamemaster has shown so far, each with its
+/// ruling once there is one.
+class _AnswerRoundDisplay extends StatelessWidget {
+  const _AnswerRoundDisplay({required this.state, required this.round, required this.unit});
+
+  final SessionState state;
+  final AnswerRound round;
+  final double unit;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final shown = [
+      for (final teamId in round.revealed)
+        if (state.team(teamId) != null) state.team(teamId)!,
+    ];
+    return Column(
+      children: [
+        // The presenter runs the show, so the deadline is on its own clock.
+        if (round.open && round.endsAtMillis != null)
+          Padding(
+            padding: EdgeInsets.only(bottom: unit * 1.5),
+            child: RoundCountdown(openedAt: round.openedAtMillis, endsAt: round.endsAtMillis!, hostClock: true, height: unit * 1.6),
+          ),
+        if (shown.isEmpty)
+          Expanded(
+            child: Center(
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: unit * 1.5,
+                runSpacing: unit * 1.5,
+                children: [
+                  for (final team in state.teams)
+                    Builder(builder: (context) {
+                      final answer = round.answers[team.id];
+                      final done = answer?.locked == true || (!round.open && answer != null && !answer.isEmpty);
+                      final writing = answer != null && !answer.isEmpty;
+                      return Container(
+                        padding: EdgeInsets.symmetric(horizontal: unit * 3, vertical: unit * 1.5),
+                        decoration: BoxDecoration(
+                          color: done ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(unit * 2),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              done
+                                  ? Icons.lock
+                                  : writing
+                                      ? Icons.edit
+                                      : Icons.hourglass_empty,
+                              size: unit * 3.5,
+                              color: done ? scheme.onPrimaryContainer : scheme.outline,
+                            ),
+                            SizedBox(width: unit * 1.5),
+                            Text(team.name, style: TextStyle(fontSize: unit * 3.2, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            ),
+          )
+        else
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final team in shown)
+                  Expanded(
+                    child: Builder(builder: (context) {
+                      final verdict = round.verdicts[team.id];
+                      final awarded = round.awarded[team.id];
+                      return Container(
+                        margin: EdgeInsets.symmetric(horizontal: unit * 0.8),
+                        padding: EdgeInsets.all(unit * 1.5),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(unit * 2),
+                          border: Border.all(
+                            width: unit * 0.5,
+                            color: verdict == null
+                                ? Colors.transparent
+                                : verdict
+                                    ? Colors.green
+                                    : scheme.error,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    team.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: unit * 2.8, fontWeight: FontWeight.w700, color: scheme.primary),
+                                  ),
+                                ),
+                                if (verdict != null) ...[
+                                  SizedBox(width: unit),
+                                  Icon(
+                                    verdict ? Icons.check_circle : Icons.cancel,
+                                    size: unit * 3.2,
+                                    color: verdict ? Colors.green : scheme.error,
+                                  ),
+                                  if (awarded != null && awarded != 0)
+                                    Text(
+                                      " ${awarded > 0 ? "+" : ""}$awarded",
+                                      style: TextStyle(fontSize: unit * 2.6, fontWeight: FontWeight.w700),
+                                    ),
+                                ],
+                              ],
+                            ),
+                            SizedBox(height: unit),
+                            Expanded(
+                              child: Center(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(maxWidth: unit * 60),
+                                    child: SizedBox(
+                                      width: round.kind == CompanionKind.whiteboard ? unit * 60 : null,
+                                      child: AnswerView(spec: round.spec, answer: round.answers[team.id], fontSize: unit * 3.4),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                   ),
               ],
             ),

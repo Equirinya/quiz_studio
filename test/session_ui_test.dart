@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
@@ -181,21 +182,62 @@ void main() {
     expect(host.state.groupId, 'g2');
   });
 
-  testWidgets('answers from devices are collected, read and shown from their sheet', (tester) async {
+  testWidgets('the whiteboard scenario: watch, lock, show one by one, rate', (tester) async {
+    await pumpBoth(tester);
+    host.dispatch(const OpenQuestion(sum));
+    await tester.pump();
+    // The round started with the question; nothing is on the big screen yet.
+    expect(host.state.answerRound!.kind, CompanionKind.whiteboard);
+    expect(inController(find.byType(DrawingView)), findsNothing);
+
+    host
+      ..dispatch(SubmitAnswer('red', PlayerAnswer(drawing: encodeDrawing([[(0.2, 0.2), (0.8, 0.8)]]))))
+      ..dispatch(SubmitAnswer('blue', PlayerAnswer(drawing: encodeDrawing([[(0.5, 0.1), (0.5, 0.9)]]))));
+    await tester.pump();
+    // The gamemaster sees both boards while they are being written.
+    expect(inController(find.byType(DrawingView)), findsNWidgets(2));
+    expect(inPresenter(find.byType(DrawingView)), findsNothing);
+
+    // The pad's reveal button now walks through the teams' answers.
+    await tap(tester, pad('Show answer'));
+    expect(host.state.answerRound!.revealed, ['red']);
+    expect(host.state.answerRound!.open, isFalse);
+    expect(inPresenter(find.byType(DrawingView)), findsOneWidget);
+    await tap(tester, pad('Show answer'));
+    expect(inPresenter(find.byType(DrawingView)), findsNWidgets(2));
+    expect(enabled(tester, 'Show answer'), isFalse);
+    await tap(tester, pad('Hide'));
+    expect(host.state.answerRound!.revealed, ['red']);
+
+    // Right for red, wrong for blue, each on its own card.
+    await tester.ensureVisible(inController(find.byTooltip('Right')).first);
+    await tap(tester, inController(find.byTooltip('Right')).first);
+    await tester.ensureVisible(inController(find.byTooltip('Wrong')).last);
+    await tap(tester, inController(find.byTooltip('Wrong')).last);
+    expect(host.state.team('red')!.points, 400);
+    expect(host.state.team('blue')!.points, 0);
+    expect(host.state.answerRound!.verdicts, {'red': true, 'blue': false});
+    // Changing one's mind does not count twice.
+    await tap(tester, inController(find.byTooltip('Right')).first);
+    expect(host.state.team('red')!.points, 0);
+  });
+
+  testWidgets('a round can be started by hand, with a timer, from the Answers sheet', (tester) async {
     await pumpBoth(tester);
     host.dispatch(const OpenQuestion(estimate));
     await tester.pump();
     await tap(tester, tab('Answers'));
-    await tap(tester, inSheet(find.text('Text')));
-    expect(host.state.answerRound!.kind, AnswerKind.text);
+    await tap(tester, inSheet(find.text('30 s')));
+    await tap(tester, inSheet(find.text('Number')));
+    final round = host.state.answerRound!;
+    expect((round.kind, round.spec.timerSeconds, round.endsAtMillis != null), (CompanionKind.number, 30, true));
 
-    host.dispatch(const SubmitAnswer('red', PlayerAnswer(text: 'forty-two')));
+    host.dispatch(const SubmitAnswer('red', PlayerAnswer(number: 42)));
     await tester.pump();
-    expect(inSheet(find.text('forty-two')), findsOneWidget);
-    expect(inPresenter(find.text('forty-two')), findsNothing);
-
-    await tap(tester, inSheet(find.text('Show on screen')));
-    expect(inPresenter(find.text('forty-two')), findsOneWidget);
+    expect(inController(find.text('42')), findsOneWidget);
+    expect(inPresenter(find.text('42')), findsNothing);
+    await tap(tester, pad('Show answer'));
+    expect(inPresenter(find.text('42')), findsOneWidget);
   });
 
   testWidgets('a text typed in the effects sheet goes over the screen and comes off again', (tester) async {

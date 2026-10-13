@@ -317,35 +317,6 @@ void main() {
     });
   });
 
-  group('answer rounds', () {
-    SessionState round() => run(fixtureState(), [const OpenQuestion(estimate), const OpenAnswers(AnswerKind.text)]);
-
-    test('teams submit while open and may overwrite; the kind must match', () {
-      var s = run(round(), [
-        const SubmitAnswer('red', PlayerAnswer(text: '40')),
-        const SubmitAnswer('red', PlayerAnswer(text: '42')),
-      ]);
-      expect(s.answerRound!.answers['red']!.text, '42');
-      expect(apply(s, const SubmitAnswer('blue', PlayerAnswer(choice: 1))).accepted, isFalse);
-      expect(apply(s, const SubmitAnswer('green', PlayerAnswer(text: 'x'))).accepted, isFalse);
-      s = run(s, [const LockAnswers()]);
-      expect(apply(s, const SubmitAnswer('blue', PlayerAnswer(text: 'late'))).accepted, isFalse);
-    });
-
-    test('reveal locks; closing the question clears the round', () {
-      var s = run(round(), [const SubmitAnswer('red', PlayerAnswer(text: '42')), const RevealAnswers()]);
-      expect(s.answerRound!.revealed, isTrue);
-      expect(s.answerRound!.open, isFalse);
-      s = run(s, [const CloseQuestion()]);
-      expect(s.answerRound, isNull);
-    });
-
-    test('needs an open question', () {
-      expect(apply(fixtureState(), const OpenAnswers(AnswerKind.text)).accepted, isFalse);
-      expect(apply(fixtureState(), const SubmitAnswer('red', PlayerAnswer(text: 'x'))).accepted, isFalse);
-    });
-  });
-
   group('on top of the screen', () {
     test('a card stays until hidden and survives questions coming and going', () {
       var s = run(fixtureState(), [const ShowCard(OverlayCard(title: 'Break', text: 'Back in ten'))]);

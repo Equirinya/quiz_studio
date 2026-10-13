@@ -2,6 +2,7 @@
 /// and content, so answers never leave the host before they are revealed.
 library;
 
+import 'companion.dart';
 import 'content.dart';
 import 'reducer.dart';
 import 'session_state.dart';
@@ -24,11 +25,30 @@ Map<String, dynamic> publicView(SessionState state, GameContent? game) {
     'answerRound': round == null
         ? null
         : {
-            'kind': round.kind.name,
+            // Without the solution, and with the items to sort or assign
+            // shuffled; the seed keeps the shuffle the same for everyone.
+            'spec': round.spec.toPublicMap(state.current?.key ?? ''),
             'open': round.open,
+            'openedAt': round.openedAtMillis,
+            'endsAt': round.endsAtMillis,
+            'submitted': [
+              for (final entry in round.answers.entries)
+                if (!entry.value.isEmpty) entry.key,
+            ],
+            'locked': [
+              for (final entry in round.answers.entries)
+                if (entry.value.locked) entry.key,
+            ],
+            // Only what the gamemaster has put on the big screen.
             'revealed': round.revealed,
-            'submitted': round.answers.keys.toList(),
-            if (round.revealed) 'answers': {for (final entry in round.answers.entries) entry.key: entry.value.toJson()},
+            'answers': {
+              for (final teamId in round.revealed)
+                if (round.answers[teamId] != null) teamId: round.answers[teamId]!.toJson(),
+            },
+            'verdicts': {
+              for (final teamId in round.revealed)
+                if (round.verdicts.containsKey(teamId)) teamId: round.verdicts[teamId],
+            },
           },
   };
 }
@@ -88,14 +108,28 @@ class PublicView {
   Map<String, dynamic>? get question =>
       json['question'] == null ? null : Map<String, dynamic>.from(json['question'] as Map);
 
-  AnswerKind? get answerKind {
-    final kind = (json['answerRound'] as Map?)?['kind'];
-    return AnswerKind.values.where((k) => k.name == kind).firstOrNull;
-  }
+  Map<String, dynamic>? get _round => json['answerRound'] == null ? null : Map<String, dynamic>.from(json['answerRound'] as Map);
 
-  bool get answersOpen => (json['answerRound'] as Map?)?['open'] == true;
+  /// The companion screen to show, as the device may know it (see
+  /// `CompanionSpec.toPublicMap`); null when no answers are collected.
+  Map<String, dynamic>? get companion => _round == null ? null : Map<String, dynamic>.from(_round!['spec'] as Map? ?? const {});
 
-  bool hasSubmitted(String teamId) => ((json['answerRound'] as Map?)?['submitted'] as List? ?? const []).contains(teamId);
+  CompanionKind? get answerKind => CompanionKind.fromName(companion?['kind']);
+
+  bool get answersOpen => _round?['open'] == true;
+
+  /// Host clock; see `AnswerRound`.
+  int? get answersOpenedAt => (_round?['openedAt'] as num?)?.toInt();
+
+  int? get answersEndAt => (_round?['endsAt'] as num?)?.toInt();
+
+  bool hasSubmitted(String teamId) => (_round?['submitted'] as List? ?? const []).contains(teamId);
+
+  bool hasLocked(String teamId) => (_round?['locked'] as List? ?? const []).contains(teamId);
+
+  bool isRevealed(String teamId) => (_round?['revealed'] as List? ?? const []).contains(teamId);
+
+  bool? verdictOf(String teamId) => (_round?['verdicts'] as Map?)?[teamId] as bool?;
 
   /// Whether a buzz by [teamId] would count right now.
   bool canBuzz(String teamId) {

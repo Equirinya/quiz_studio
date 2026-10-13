@@ -1,15 +1,18 @@
 // Renders the session screens to PNG files for a quick look without a device:
 //   flutter test tool/screenshot_test.dart --update-goldens
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/core/theme.dart';
+import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/player/pages/player_page.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/pages/sessions_page.dart';
+import 'package:quiz_show/features/session/session_client.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/boards/map_board.dart';
@@ -84,7 +87,15 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
   }
 
-  Future<void> shot(String name) => expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/$name.png'));
+  Future<void> shot(String name) async {
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/$name.png'));
+    // A round with a timer leaves it running; stop it before the test ends.
+    try {
+      host.dispatch(const ClearAnswers());
+    } on Error catch (_) {
+      // This screenshot has no session behind it.
+    }
+  }
 
   Future<void> tapText(WidgetTester tester, Finder finder) async {
     await tester.tap(finder);
@@ -175,7 +186,7 @@ void main() {
   });
 
   testWidgets('player: choice', (tester) async {
-    await player(tester, const [OpenQuestion(abcd), Reveal(1), Reveal(1), OpenAnswers(AnswerKind.choice)]);
+    await player(tester, const [OpenQuestion(abcd), Reveal(1), Reveal(1), OpenAnswers(CompanionSpec(kind: CompanionKind.choice, options: ['a', 'b', 'c', 'd']))]);
     await shot('player_choice');
   });
 
@@ -324,5 +335,147 @@ void main() {
 
   testWidgets('map: long chain', (tester) async {
     await mapShot(tester, 'map_chain', mapGroup(count: 8), const SessionState(played: {'c0/q0'}));
+  });
+
+  // ── the whiteboard scenario ───────────────────────────────────────────────
+
+  /// "8", written by hand.
+  String eight() => encodeDrawing([
+        [
+          for (var i = 0; i <= 40; i++)
+            (0.5 + 0.11 * math.sin(i / 40 * 2 * math.pi), 0.33 - 0.16 * math.cos(i / 40 * 2 * math.pi)),
+        ],
+        [
+          for (var i = 0; i <= 40; i++)
+            (0.5 + 0.14 * math.sin(i / 40 * 2 * math.pi), 0.68 - 0.19 * math.cos(i / 40 * 2 * math.pi)),
+        ],
+      ]);
+
+  /// "9", wrong.
+  String nine() => encodeDrawing([
+        [
+          for (var i = 0; i <= 40; i++)
+            (0.5 + 0.13 * math.sin(i / 40 * 2 * math.pi), 0.36 - 0.17 * math.cos(i / 40 * 2 * math.pi)),
+        ],
+        [(0.63, 0.36), (0.62, 0.6), (0.55, 0.82), (0.42, 0.86)],
+      ]);
+
+  List<Command> scenario() => [
+        const OpenQuestion(sum),
+        SubmitAnswer('red', PlayerAnswer(drawing: eight())),
+        const LockAnswer('red'),
+        SubmitAnswer('blue', PlayerAnswer(drawing: nine())),
+      ];
+
+  testWidgets('scenario: tablet whiteboard', (tester) async {
+    tester.view.physicalSize = const Size(1024, 768);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    host = SessionHost(initial: fixtureState(), game: fixtureGame());
+    addTearDown(host.dispose);
+    host.dispatch(const OpenQuestion(sum));
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        body: SafeArea(
+          child: StreamBuilder<SessionState>(
+            stream: host.states,
+            builder: (context, _) => PlayerView(
+              view: PublicView(host.publicState),
+              teamId: 'red',
+              send: (command) => host.dispatch(command, sender: const Sender(Role.player, teamId: 'red')),
+              onLeave: () {},
+              link: LinkStatus.lan,
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 300));
+    // Write an 8 on the board, the way a finger would.
+    final board = tester.getRect(find.descendant(of: find.byType(WhiteboardPad), matching: find.byType(CustomPaint)).first);
+    for (final stroke in decodeDrawing(eight())) {
+      final gesture = await tester.startGesture(board.topLeft + Offset(stroke.first.$1 * board.width, stroke.first.$2 * board.height));
+      for (final point in stroke.skip(1)) {
+        await gesture.moveTo(board.topLeft + Offset(point.$1 * board.width, point.$2 * board.height));
+      }
+      await gesture.up();
+    }
+    await tester.pump(const Duration(milliseconds: 300));
+    await shot('scenario_tablet');
+  });
+
+  testWidgets('scenario: controller while they write', (tester) async {
+    await phone(tester, scenario());
+    await shot('scenario_controller');
+  });
+
+  testWidgets('scenario: controller rating', (tester) async {
+    await phone(tester, [
+      ...scenario(),
+      const RevealNextAnswer(),
+      const RevealNextAnswer(),
+      const RateAnswer('red', correct: true),
+      const RateAnswer('blue', correct: false),
+    ]);
+    await shot('scenario_controller_rated');
+  });
+
+  testWidgets('scenario: big screen while they write', (tester) async {
+    await screen(tester, scenario());
+    await shot('scenario_screen_writing');
+  });
+
+  testWidgets('scenario: big screen, answers shown and rated', (tester) async {
+    await screen(tester, [
+      ...scenario(),
+      const RevealNextAnswer(),
+      const RevealNextAnswer(),
+      const RateAnswer('red', correct: true),
+      const RateAnswer('blue', correct: false),
+    ]);
+    await shot('scenario_screen_rated');
+  });
+
+  Future<void> companion(WidgetTester tester, String name, CompanionSpec spec, {PlayerAnswer? answer}) async {
+    tester.view.physicalSize = const Size(412, 892);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    host = SessionHost(initial: fixtureState(), game: fixtureGame());
+    addTearDown(host.dispose);
+    host
+      ..dispatch(const OpenQuestion(estimate))
+      ..dispatch(OpenAnswers(spec));
+    if (answer != null) host.dispatch(SubmitAnswer('red', answer));
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        body: SafeArea(child: PlayerView(view: PublicView(host.publicState), teamId: 'red', send: (_) {}, onLeave: () {})),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot(name);
+  }
+
+  testWidgets('companion: slider', (tester) async {
+    await companion(tester, 'companion_slider', const CompanionSpec(kind: CompanionKind.slider, min: 0, max: 500, step: 10, unit: 'km', timerSeconds: 30));
+  });
+
+  testWidgets('companion: order', (tester) async {
+    await companion(tester, 'companion_order', const CompanionSpec(kind: CompanionKind.order, options: ['Mercury', 'Venus', 'Earth', 'Mars']));
+  });
+
+  testWidgets('companion: match', (tester) async {
+    await companion(
+      tester,
+      'companion_match',
+      const CompanionSpec(kind: CompanionKind.match, options: ['France', 'Italy', 'Spain'], targets: ['Paris', 'Rome', 'Madrid']),
+    );
+  });
+
+  testWidgets('companion: list whiteboard', (tester) async {
+    await companion(tester, 'companion_list', const CompanionSpec(kind: CompanionKind.whiteboard, background: 'list', listRows: 5));
   });
 }

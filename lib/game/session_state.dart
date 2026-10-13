@@ -3,6 +3,7 @@
 /// carry it.
 library;
 
+import 'companion.dart';
 import 'content.dart';
 
 enum Phase {
@@ -24,9 +25,6 @@ enum Phase {
 
 enum MediaPlayback { stopped, playing, paused }
 
-/// What players' devices are asked for during an answer round.
-enum AnswerKind { text, choice, drawing }
-
 class Team {
   const Team({required this.id, required this.name, this.points = 0});
 
@@ -40,77 +38,6 @@ class Team {
 
   factory Team.fromJson(Map<String, dynamic> json) =>
       Team(id: json['id'] as String, name: json['name'] as String, points: (json['points'] as num?)?.toInt() ?? 0);
-}
-
-/// One team's submission in an answer round. Exactly the field matching the
-/// round's [AnswerKind] is set.
-class PlayerAnswer {
-  const PlayerAnswer({this.text, this.choice, this.drawing});
-
-  final String? text;
-
-  /// Index into the question's answers.
-  final int? choice;
-
-  /// Encoded strokes; opaque to the game core.
-  final String? drawing;
-
-  bool matches(AnswerKind kind) => switch (kind) {
-        AnswerKind.text => text != null && choice == null && drawing == null,
-        AnswerKind.choice => choice != null && text == null && drawing == null,
-        AnswerKind.drawing => drawing != null && text == null && choice == null,
-      };
-
-  Map<String, dynamic> toJson() => {
-        if (text != null) 'text': text,
-        if (choice != null) 'choice': choice,
-        if (drawing != null) 'drawing': drawing,
-      };
-
-  factory PlayerAnswer.fromJson(Map<String, dynamic> json) => PlayerAnswer(
-        text: json['text'] as String?,
-        choice: (json['choice'] as num?)?.toInt(),
-        drawing: json['drawing'] as String?,
-      );
-}
-
-/// Players answering on their own devices. Submissions stay with the host
-/// until the gamemaster reveals them.
-class AnswerRound {
-  const AnswerRound({required this.kind, this.open = true, this.revealed = false, this.answers = const {}});
-
-  final AnswerKind kind;
-
-  /// Whether submissions are still accepted.
-  final bool open;
-  final bool revealed;
-
-  /// By team id.
-  final Map<String, PlayerAnswer> answers;
-
-  AnswerRound copyWith({bool? open, bool? revealed, Map<String, PlayerAnswer>? answers}) => AnswerRound(
-        kind: kind,
-        open: open ?? this.open,
-        revealed: revealed ?? this.revealed,
-        answers: answers ?? this.answers,
-      );
-
-  Map<String, dynamic> toJson() => {
-        'kind': kind.name,
-        'open': open,
-        'revealed': revealed,
-        'answers': {for (final entry in answers.entries) entry.key: entry.value.toJson()},
-      };
-
-  factory AnswerRound.fromJson(Map<String, dynamic> json) => AnswerRound(
-        kind: AnswerKind.values.byName(json['kind'] as String),
-        open: json['open'] == true,
-        revealed: json['revealed'] == true,
-        answers: {
-          for (final entry in (json['answers'] as Map? ?? const {}).entries)
-            entry.key as String: PlayerAnswer.fromJson(Map<String, dynamic>.from(entry.value as Map)),
-        },
-      );
 }
 
 /// Something the gamemaster puts on top of the screen: a text card, an image,

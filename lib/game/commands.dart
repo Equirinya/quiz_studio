@@ -2,6 +2,7 @@
 /// hardware all send these; only the reducer turns them into state.
 library;
 
+import 'companion.dart';
 import 'content.dart';
 import 'session_state.dart';
 
@@ -28,12 +29,13 @@ class Sender {
   final String? teamId;
 }
 
-/// Players may only buzz and answer, and only for their own team. Whether the
+/// Players may only buzz, answer and lock their answer, and only for their own team. Whether the
 /// game currently accepts that buzz or answer is the reducer's decision.
 bool mayIssue(Sender sender, Command command) {
   if (sender.role != Role.player) return true;
   return switch (command) {
-    Buzz(:final teamId) || SubmitAnswer(:final teamId) => sender.teamId != null && teamId == sender.teamId,
+    Buzz(:final teamId) || SubmitAnswer(:final teamId) || LockAnswer(:final teamId) =>
+      sender.teamId != null && teamId == sender.teamId,
     _ => false,
   };
 }
@@ -84,11 +86,17 @@ sealed class Command {
       'renameTeam' => RenameTeam(j['teamId'] as String, j['name'] as String),
       'removeTeam' => RemoveTeam(j['teamId'] as String),
       'setQueueBuzzers' => SetQueueBuzzers(j['on'] as bool),
-      'openAnswers' => OpenAnswers(AnswerKind.values.byName(j['kind'] as String)),
+      'openAnswers' => OpenAnswers(CompanionSpec.fromMap(j['spec'])!),
       'submitAnswer' =>
         SubmitAnswer(j['teamId'] as String, PlayerAnswer.fromJson(Map<String, dynamic>.from(j['answer'] as Map))),
+      'lockAnswer' => LockAnswer(j['teamId'] as String),
       'lockAnswers' => const LockAnswers(),
+      'unlockAnswers' => const UnlockAnswers(),
+      'revealAnswer' => RevealAnswer(j['teamId'] as String, show: j['show'] != false),
+      'revealNextAnswer' => const RevealNextAnswer(),
       'revealAnswers' => const RevealAnswers(),
+      'rateAnswer' => RateAnswer(j['teamId'] as String, correct: j['correct'] as bool?),
+      'awardAnswer' => AwardAnswer(j['teamId'] as String, (j['points'] as num).toInt()),
       'clearAnswers' => const ClearAnswers(),
       'showCard' => ShowCard(OverlayCard.fromJson(Map<String, dynamic>.from(j['card'] as Map))),
       'hideCard' => const HideCard(),
@@ -337,18 +345,22 @@ class SetQueueBuzzers extends Command {
   Map<String, dynamic> get _args => {'on': on};
 }
 
-// ── answers from player devices ──────────────────────────────────────────────
+// ── answers from the teams' own devices ─────────────────────────────────────
 
-/// Starts collecting answers of [kind] for the open question.
+/// Starts collecting answers for the open question on the screen [spec]
+/// describes. A question with its own companion screen does this by itself
+/// when it is opened.
 class OpenAnswers extends Command {
-  const OpenAnswers(this.kind);
-  final AnswerKind kind;
+  const OpenAnswers(this.spec);
+  final CompanionSpec spec;
   @override
   String get type => 'openAnswers';
   @override
-  Map<String, dynamic> get _args => {'kind': kind.name};
+  Map<String, dynamic> get _args => {'spec': spec.toMap()};
 }
 
+/// A team's answer as it stands. Sent again whenever it changes, so the
+/// gamemaster can watch along.
 class SubmitAnswer extends Command {
   const SubmitAnswer(this.teamId, this.answer);
   final String teamId;
@@ -359,16 +371,76 @@ class SubmitAnswer extends Command {
   Map<String, dynamic> get _args => {'teamId': teamId, 'answer': answer.toJson()};
 }
 
+/// A team locks its own answer in; it cannot change it afterwards.
+class LockAnswer extends Command {
+  const LockAnswer(this.teamId);
+  final String teamId;
+  @override
+  String get type => 'lockAnswer';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId};
+}
+
+/// Closes the round for everyone. The timer does this when it runs out.
 class LockAnswers extends Command {
   const LockAnswers();
   @override
   String get type => 'lockAnswers';
 }
 
+/// Lets every team change its answer again; a timer does not restart.
+class UnlockAnswers extends Command {
+  const UnlockAnswers();
+  @override
+  String get type => 'unlockAnswers';
+}
+
+/// Puts one team's answer on the big screen, or takes it off again.
+class RevealAnswer extends Command {
+  const RevealAnswer(this.teamId, {this.show = true});
+  final String teamId;
+  final bool show;
+  @override
+  String get type => 'revealAnswer';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId, 'show': show};
+}
+
+/// Shows the next team's answer, in team order.
+class RevealNextAnswer extends Command {
+  const RevealNextAnswer();
+  @override
+  String get type => 'revealNextAnswer';
+}
+
 class RevealAnswers extends Command {
   const RevealAnswers();
   @override
   String get type => 'revealAnswers';
+}
+
+/// Rules a team's answer right or wrong and gives or takes the question's
+/// points; null withdraws the ruling and its points.
+class RateAnswer extends Command {
+  const RateAnswer(this.teamId, {required this.correct});
+  final String teamId;
+  final bool? correct;
+  @override
+  String get type => 'rateAnswer';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId, 'correct': correct};
+}
+
+/// Gives a team a number of points of the gamemaster's choosing for its
+/// answer, replacing whatever it got for this round before.
+class AwardAnswer extends Command {
+  const AwardAnswer(this.teamId, this.points);
+  final String teamId;
+  final int points;
+  @override
+  String get type => 'awardAnswer';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId, 'points': points};
 }
 
 class ClearAnswers extends Command {

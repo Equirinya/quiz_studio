@@ -3,6 +3,7 @@
 library;
 
 import 'commands.dart';
+import 'companion.dart';
 import 'content.dart';
 import 'session_state.dart';
 
@@ -73,7 +74,10 @@ String? feudOpponent(SessionState state) {
 
 /// Applies [command]. [game] is the content the session is playing; without
 /// it, commands that depend on a question are dropped.
-Reduction reduce(SessionState s, Command command, GameContent? game) {
+///
+/// [now] is the host's clock in milliseconds; it is only needed to start the
+/// timer of an answer round, and is passed in so this stays a pure function.
+Reduction reduce(SessionState s, Command command, GameContent? game, {int? now}) {
   final question = s.current == null ? null : game?.question(s.current!);
   final questionOpen =
       s.current != null && (s.phase == Phase.question || s.phase == Phase.buzzered || s.phase == Phase.answerRevealed);
@@ -90,11 +94,15 @@ Reduction reduce(SessionState s, Command command, GameContent? game) {
 
     case OpenQuestion(:final ref):
       if (s.phase == Phase.buzzerTest || game?.question(ref) == null) return _no(s);
+      final companion = game!.question(ref)!.companion;
       return _ok(_backToBoard(s).copyWith(
         phase: Phase.question,
         current: ref,
-        groupId: game!.groupOfCategory(ref.categoryId)?.id ?? s.groupId,
+        groupId: game.groupOfCategory(ref.categoryId)?.id ?? s.groupId,
         played: {...s.played, ?s.current?.key},
+        // A question with a companion screen puts it on the teams' devices
+        // the moment it opens.
+        answerRound: companion == null ? null : _newRound(companion, now),
       ));
 
     case CloseQuestion(:final markPlayed):
@@ -266,31 +274,91 @@ Reduction reduce(SessionState s, Command command, GameContent? game) {
         buzzQueue: queue,
         // Nobody is left to answer: let the others buzz again.
         phase: s.phase == Phase.buzzered && queue.isEmpty ? Phase.question : null,
-        answerRound: round?.copyWith(answers: {...round.answers}..remove(teamId)),
+        answerRound: round?.copyWith(
+          answers: {...round.answers}..remove(teamId),
+          revealed: [...round.revealed]..remove(teamId),
+          verdicts: {...round.verdicts}..remove(teamId),
+          awarded: {...round.awarded}..remove(teamId),
+        ),
       ));
 
     case SetQueueBuzzers(:final on):
       if (on == s.queueBuzzers) return _no(s);
       return _ok(s.copyWith(queueBuzzers: on));
 
-    // ── answers from player devices ──────────────────────────────────────────
-    case OpenAnswers(:final kind):
+    // ── answers from the teams' own devices ─────────────────────────────────
+    case OpenAnswers(:final spec):
       if (!questionOpen) return _no(s);
-      return _ok(s.copyWith(answerRound: AnswerRound(kind: kind)));
+      return _ok(s.copyWith(answerRound: _newRound(spec, now)));
 
     case SubmitAnswer(:final teamId, :final answer):
       final round = s.answerRound;
       if (round == null || !round.open || s.team(teamId) == null || !answer.matches(round.kind)) return _no(s);
-      return _ok(s.copyWith(answerRound: round.copyWith(answers: {...round.answers, teamId: answer})));
+      if (round.answers[teamId]?.locked == true) return _no(s);
+      return _ok(s.copyWith(answerRound: round.copyWith(answers: {...round.answers, teamId: answer.asLocked(false)})));
+
+    case LockAnswer(:final teamId):
+      final round = s.answerRound;
+      if (round == null || !round.open || s.team(teamId) == null) return _no(s);
+      if (round.answers[teamId]?.locked == true) return _no(s);
+      final answers = {...round.answers, teamId: (round.answers[teamId] ?? const PlayerAnswer()).asLocked(true)};
+      // Once every team has locked in there is nothing left to wait for.
+      final everyone = s.teams.every((team) => answers[team.id]?.locked == true);
+      return _ok(s.copyWith(
+        answerRound: round.copyWith(answers: answers, open: everyone ? false : null, endsAtMillis: everyone ? null : _keepTimer),
+      ));
 
     case LockAnswers():
       if (s.answerRound?.open != true) return _no(s);
-      return _ok(s.copyWith(answerRound: s.answerRound!.copyWith(open: false)));
+      return _ok(s.copyWith(answerRound: s.answerRound!.copyWith(open: false, endsAtMillis: null)));
+
+    case UnlockAnswers():
+      final round = s.answerRound;
+      if (round == null) return _no(s);
+      return _ok(s.copyWith(
+        answerRound: round.copyWith(
+          open: true,
+          endsAtMillis: null,
+          answers: {for (final entry in round.answers.entries) entry.key: entry.value.asLocked(false)},
+        ),
+      ));
+
+    case RevealAnswer(:final teamId, :final show):
+      final round = s.answerRound;
+      if (round == null || s.team(teamId) == null || round.revealed.contains(teamId) == show) return _no(s);
+      return _ok(s.copyWith(answerRound: _reveal(round, show ? [...round.revealed, teamId] : ([...round.revealed]..remove(teamId)))));
+
+    case RevealNextAnswer():
+      final round = s.answerRound;
+      final next = s.teams.where((team) => round != null && !round.revealed.contains(team.id)).firstOrNull;
+      if (round == null || next == null) return _no(s);
+      return _ok(s.copyWith(answerRound: _reveal(round, [...round.revealed, next.id])));
 
     case RevealAnswers():
       final round = s.answerRound;
-      if (round == null || round.revealed) return _no(s);
-      return _ok(s.copyWith(answerRound: round.copyWith(open: false, revealed: true)));
+      if (round == null || s.teams.every((team) => round.revealed.contains(team.id))) return _no(s);
+      return _ok(s.copyWith(
+        answerRound: _reveal(round, [
+          ...round.revealed,
+          for (final team in s.teams)
+            if (!round.revealed.contains(team.id)) team.id,
+        ]),
+      ));
+
+    case RateAnswer(:final teamId, :final correct):
+      final round = s.answerRound;
+      if (round == null || question == null || s.team(teamId) == null) return _no(s);
+      final points = correct == null ? 0 : (correct ? question.pointsPlus : -question.pointsMinus);
+      if (round.verdicts[teamId] == correct && (round.awarded[teamId] ?? 0) == points) return _no(s);
+      return _ok(
+        _award(s, round, teamId, points, verdict: correct),
+        [if (correct != null) SoundEffect(correct ? effectAnswerCorrect : effectAnswerWrong)],
+      );
+
+    case AwardAnswer(:final teamId, :final points):
+      final round = s.answerRound;
+      if (round == null || s.team(teamId) == null) return _no(s);
+      return _ok(_award(s, round, teamId, points, verdict: points > 0));
 
     case ClearAnswers():
       if (s.answerRound == null) return _no(s);
@@ -309,6 +377,32 @@ Reduction reduce(SessionState s, Command command, GameContent? game) {
       if (!screenEffects.contains(name)) return _no(s);
       return Reduction(s, effects: [VisualEffect(name)]);
   }
+}
+
+/// Marker for "leave the timer as it is" in a copyWith that may clear it.
+const Object _keepTimer = Object();
+
+AnswerRound _newRound(CompanionSpec spec, int? now) => AnswerRound(
+      spec: spec,
+      openedAtMillis: now,
+      endsAtMillis: now != null && spec.timerSeconds != null ? now + spec.timerSeconds! * 1000 : null,
+    );
+
+/// Showing an answer on the big screen ends the time to change it.
+AnswerRound _reveal(AnswerRound round, List<String> revealed) =>
+    round.copyWith(revealed: revealed, open: revealed.isEmpty ? null : false, endsAtMillis: revealed.isEmpty ? _keepTimer : null);
+
+/// Gives [teamId] exactly [points] for this round, taking back whatever it
+/// had been given for it before.
+SessionState _award(SessionState s, AnswerRound round, String teamId, int points, {required bool? verdict}) {
+  final before = round.awarded[teamId] ?? 0;
+  return s.copyWith(
+    teams: _addPoints(s.teams, teamId, points - before),
+    answerRound: round.copyWith(
+      verdicts: verdict == null ? ({...round.verdicts}..remove(teamId)) : {...round.verdicts, teamId: verdict},
+      awarded: verdict == null ? ({...round.awarded}..remove(teamId)) : {...round.awarded, teamId: points},
+    ),
+  );
 }
 
 Reduction _ok(SessionState state, [List<Effect> effects = const []]) =>
