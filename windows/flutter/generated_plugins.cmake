@@ -3,18 +3,11 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  audioplayers_windows
   cloud_firestore
-  connectivity_plus
-  dynamic_color
-  file_selector_windows
   firebase_auth
   firebase_core
   firebase_storage
-  flutter_libserialport
-  record_windows
   screen_retriever_windows
-  url_launcher_windows
   window_manager
 )
 
