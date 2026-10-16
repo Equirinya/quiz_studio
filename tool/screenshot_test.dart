@@ -46,6 +46,11 @@ Future<void> _loadFonts() async {
   await roboto.load();
   final icons = FontLoader('MaterialIcons')..addFont(read('MaterialIcons-Regular.otf'));
   await icons.load();
+  // Stands in for whatever fixed-width font the computer has.
+  const mono = '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf';
+  if (File(mono).existsSync()) {
+    await (FontLoader('monospace')..addFont(Future.value(ByteData.view(File(mono).readAsBytesSync().buffer)))).load();
+  }
 }
 
 void main() {

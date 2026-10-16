@@ -29,3 +29,9 @@ ThemeData buildAppTheme(Brightness brightness) {
     ),
   );
 }
+
+/// Fixed-width text, for commands and raw data. "monospace" alone is only a
+/// family name on Linux and Android; elsewhere the fallbacks find one.
+const String kMonospaceFamily = 'monospace';
+const List<String> kMonospaceFallback = ['Consolas', 'Cascadia Mono', 'Menlo', 'SF Mono', 'Courier New'];
+

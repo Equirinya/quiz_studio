@@ -24,7 +24,11 @@ class WhiteboardPainter extends CustomPainter {
     this.paper = Colors.white,
     this.ink = const Color(0xFF1B1B1F),
     this.guide = const Color(0x33000000),
+    this.fontFamily,
   });
+
+  /// The app's font, which a painter does not pick up from the theme.
+  final String? fontFamily;
 
   final List<Stroke> strokes;
   final String background;
@@ -63,7 +67,12 @@ class WhiteboardPainter extends CustomPainter {
           final number = TextPainter(
             text: TextSpan(
               text: '${i + 1}.',
-              style: TextStyle(color: guide.withValues(alpha: 0.55), fontSize: rowHeight * 0.42, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: guide.withValues(alpha: 0.55),
+                fontSize: rowHeight * 0.42,
+                fontWeight: FontWeight.w600,
+                fontFamily: fontFamily,
+              ),
             ),
             textDirection: TextDirection.ltr,
           )..layout();
@@ -122,6 +131,7 @@ class DrawingView extends StatelessWidget {
           backgroundImage: backgroundImage,
           ink: CustomPaint(
             painter: WhiteboardPainter(
+              fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
               strokes: decodeDrawing(drawing),
               background: backgroundImage == null && background == 'image' ? 'blank' : background,
               listRows: listRows,
@@ -235,8 +245,11 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
                         ink: CustomPaint(
                           size: size,
                           painter: WhiteboardPainter(
+                            fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
                             strokes: _strokes,
-                            background: widget.backgroundImage == null && widget.background == 'image' ? 'blank' : widget.background,
+                            background: widget.backgroundImage == null && widget.background == 'image'
+                                ? 'blank'
+                                : widget.background,
                             listRows: widget.listRows,
                           ),
                         ),

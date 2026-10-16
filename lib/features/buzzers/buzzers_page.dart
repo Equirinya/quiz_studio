@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/audio/team_sounds.dart';
 import 'package:quiz_show/features/buzzers/buzzer_link.dart';
 import 'package:quiz_show/features/buzzers/serial_buzzers.dart';
@@ -383,7 +384,13 @@ class _BuzzersViewState extends State<BuzzersView> {
                             ? (_link.status.value == BuzzerStatus.connected ? "Nothing received yet." : "Not connected.")
                             : _link.recentLines.join("\n"),
                         softWrap: false,
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12, height: 1.35, color: Color(0xFFB8F5C0)),
+                        style: const TextStyle(
+                          fontFamily: kMonospaceFamily,
+                          fontFamilyFallback: kMonospaceFallback,
+                          fontSize: 12,
+                          height: 1.35,
+                          color: Color(0xFFB8F5C0),
+                        ),
                       ),
                     ),
                   ),

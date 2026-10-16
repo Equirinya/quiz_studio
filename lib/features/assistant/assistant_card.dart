@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/assistant/assistant.dart';
 
 /// The assistant switch on the account page, bound to [Assistant.instance].
@@ -56,7 +57,11 @@ class AssistantCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final mono = theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace', color: scheme.onSurface);
+    final mono = theme.textTheme.bodySmall?.copyWith(
+      fontFamily: kMonospaceFamily,
+      fontFamilyFallback: kMonospaceFallback,
+      color: scheme.onSurface,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

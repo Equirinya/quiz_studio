@@ -60,6 +60,7 @@ class WheelBoard extends StatelessWidget {
           subFields: subFields,
           disabledFields: newPlayedFieldsList..addAll(emptyFields.map((e) => (e.$1, e.$2, 0))),
           colorScheme: Theme.of(context).colorScheme,
+          fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
           highlightedField: newSelectedFieldData,
         ),
       );
@@ -80,6 +81,7 @@ class WheelBoard extends StatelessWidget {
         pointRings: gameQuestionPoints,
         disabledFields: newPlayedFieldsList..addAll(emptyFields),
         colorScheme: Theme.of(context).colorScheme,
+        fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
         highlightedField: newSelectedFieldData,
       ),
     );
@@ -288,11 +290,15 @@ class WheelPlayingFieldPainter extends CustomPainter {
   final List<(int categoryIndex, int ringIndex)> disabledFields;
   final ColorScheme colorScheme;
 
+  /// The app's font, which a painter does not pick up from the theme.
+  final String? fontFamily;
+
   WheelPlayingFieldPainter({
     super.repaint,
     required this.pointRings,
     required this.categories,
     required this.colorScheme,
+    this.fontFamily,
     required this.highlightedField,
     required this.disabledFields,
   });
@@ -335,7 +341,7 @@ class WheelPlayingFieldPainter extends CustomPainter {
       TextPainter textPainter = TextPainter(
         text: TextSpan(
           text: pointRings[ringIndex].toString(),
-          style: TextStyle(color: colorScheme.onSurface, fontSize: smallerDimension / 25),
+          style: TextStyle(color: colorScheme.onSurface, fontFamily: fontFamily, fontSize: smallerDimension / 25),
         ),
         textDirection: TextDirection.ltr,
       );
@@ -423,7 +429,7 @@ class WheelPlayingFieldPainter extends CustomPainter {
       TextPainter textPainter;
       TextSpan text = TextSpan(
         text: title,
-        style: TextStyle(color: colorScheme.onSurface, fontSize: smallerDimension / 17),
+        style: TextStyle(color: colorScheme.onSurface, fontFamily: fontFamily, fontSize: smallerDimension / 17),
       );
       Offset offset;
       if (index < (categories.length - 1) / 2) {
@@ -477,12 +483,16 @@ class WheelPlayingFieldPainterWithSplitFields extends CustomPainter {
   final List<(int categoryIndex, int ringIndex, int subIndex)> disabledFields;
   final ColorScheme colorScheme;
 
+  /// The app's font, which a painter does not pick up from the theme.
+  final String? fontFamily;
+
   WheelPlayingFieldPainterWithSplitFields({
     super.repaint,
     required this.categories,
     required this.pointRings,
     required this.subFields,
     required this.colorScheme,
+    this.fontFamily,
     required this.highlightedField,
     required this.disabledFields,
   });
@@ -524,7 +534,7 @@ class WheelPlayingFieldPainterWithSplitFields extends CustomPainter {
       TextPainter textPainter = TextPainter(
         text: TextSpan(
           text: pointRings[ringIndex].toString(),
-          style: TextStyle(color: colorScheme.onSurface, fontSize: smallerDimension / 25),
+          style: TextStyle(color: colorScheme.onSurface, fontFamily: fontFamily, fontSize: smallerDimension / 25),
         ),
         textDirection: TextDirection.ltr,
       );
@@ -634,7 +644,7 @@ class WheelPlayingFieldPainterWithSplitFields extends CustomPainter {
       TextPainter textPainter;
       TextSpan text = TextSpan(
         text: title,
-        style: TextStyle(color: colorScheme.onSurface, fontSize: smallerDimension / 17),
+        style: TextStyle(color: colorScheme.onSurface, fontFamily: fontFamily, fontSize: smallerDimension / 17),
       );
       Offset offset;
       if (index < (categories.length - 1) / 2) {
