@@ -228,6 +228,25 @@ class PublicView {
   /// Connections: the sixteen words in the order shown.
   List<String> get connectionWords => (companion?['words'] as List? ?? const []).cast<String>();
 
+  /// Connections: all four groups, easiest first, with the places of their
+  /// words in the shown order; for checking a guess on the device.
+  List<GroupView> get connectionGroups {
+    final words = connectionWords;
+    return [
+      for (final (level, group) in (companion?['groups'] as List? ?? const []).indexed)
+        if (group is Map)
+          GroupView({
+            'level': level,
+            'name': group['name'],
+            'positions': group['positions'],
+            'words': [
+              for (final p in group['positions'] as List? ?? const [])
+                if (p is num && p.toInt() < words.length) words[p.toInt()],
+            ],
+          }),
+    ];
+  }
+
   int get connectionMistakesAllowed => (companion?['mistakes'] as num?)?.toInt() ?? 3;
 
   /// Connections: this team's progress; null before its first guess.

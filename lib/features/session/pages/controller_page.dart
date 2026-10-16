@@ -610,7 +610,7 @@ class _ActionPad extends StatelessWidget {
     Future<bool> askReveal() => confirm(
           context,
           title: "Reveal a group now?",
-          message: "The teams are still playing. Revealing a group ends their time; what they found so far counts.",
+          message: "The teams are still playing and will see this group on their devices too. Their time keeps running.",
           action: "Reveal",
         );
     Widget small(String label, IconData icon, Command? command, {Future<bool> Function()? ask}) => Expanded(

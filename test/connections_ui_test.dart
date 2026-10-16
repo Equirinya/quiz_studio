@@ -81,6 +81,32 @@ void main() {
     expect(find.text('Perfect!'), findsNothing, reason: 'the message has gone again');
   });
 
+  testWidgets('the device answers a guess at once, without waiting for the presenter', (tester) async {
+    host.dispatch(const OpenQuestion(puzzle));
+    final view = PublicView(host.publicStateFor('red'));
+    final guesses = <Command>[];
+    tester.view.physicalSize = const Size(800, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    // A presenter that never answers.
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: PlayerView(view: view, teamId: 'red', send: guesses.add)),
+    ));
+    await pick(tester, placesOf(3));
+    await tester.tap(find.widgetWithText(FilledButton, 'Submit'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1200));
+    expect(find.text('___ PIE'), findsOneWidget);
+    expect(guesses.whereType<GuessConnection>(), hasLength(1));
+
+    await pick(tester, [placesOf(0)[0], placesOf(0)[1], placesOf(0)[2], placesOf(1)[0]]);
+    await tester.tap(find.widgetWithText(FilledButton, 'Submit'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('One away…'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+  });
+
   testWidgets('a wrong guess: one away, a try less, and the same guess is not sent twice', (tester) async {
     host.dispatch(const OpenQuestion(puzzle));
     await pumpTablet(tester);
@@ -202,13 +228,22 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Reveal').last);
       await settle(tester);
       expect(host.state.revealed, 1);
-      expect(host.state.answerRound!.open, isFalse);
+      expect(host.state.answerRound!.open, isTrue, reason: 'the teams play on');
       expect(find.descendant(of: find.byType(PresenterView), matching: find.text('FRUIT')), findsOneWidget);
 
       await tester.tap(pad('Reveal group'));
       await settle(tester);
-      expect(find.text('Reveal a group now?'), findsNothing);
+      expect(find.text('Reveal a group now?'), findsOneWidget, reason: 'still playing, so it asks again');
+      await tester.tap(find.widgetWithText(FilledButton, 'Reveal').last);
+      await settle(tester);
       expect(host.state.revealed, 2);
+
+      host.dispatch(const LockAnswers());
+      await settle(tester);
+      await tester.tap(pad('Reveal group'));
+      await settle(tester);
+      expect(find.text('Reveal a group now?'), findsNothing, reason: 'time is up, nothing to give away');
+      expect(host.state.revealed, 3);
     });
 
     testWidgets('the gamemaster sees each team\'s colours and mistakes, and gives the points', (tester) async {

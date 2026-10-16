@@ -51,17 +51,18 @@ void main() {
       }
     });
 
-    test('devices get the words in the shown order and nothing about the groups', () {
+    test('devices get the words in the shown order, and the groups to judge guesses themselves', () {
       final h = host();
-      final view = h.publicStateFor('blue');
-      final text = jsonEncode(view);
-      for (final secret in ['Fruit', 'Planets', 'Card games', '___ Pie']) {
-        expect(text, isNot(contains(secret)));
-      }
-      final shown = PublicView(view).connectionWords;
+      final view = PublicView(h.publicStateFor('blue'));
       final order = connectionsOrder('cx/puzzle');
       final spec = h.game!.question(puzzle)!.companion!;
-      expect(shown, [for (final i in order) spec.wordAt(i)]);
+      expect(view.connectionWords, [for (final i in order) spec.wordAt(i)]);
+      final groups = view.connectionGroups;
+      expect(groups.map((g) => g.name), ['Fruit', 'Planets', 'Card games', '___ Pie']);
+      for (final group in groups) {
+        expect(group.positions..sort(), placesOf(group.level)..sort());
+        expect(group.words.toSet(), spec.groups[group.level].words.toSet());
+      }
     });
   });
 
@@ -144,7 +145,7 @@ void main() {
   });
 
   group('what others see', () {
-    test('another team sees how far red got, never which words', () {
+    test("another team sees how far red got, but not red's own part", () {
       final h = host();
       h.dispatch(GuessConnection('red', placesOf(3)), sender: red);
       h.dispatch(GuessConnection('red', [placesOf(0)[0], placesOf(1)[0], placesOf(2)[0], placesOf(2)[1]]), sender: red);
@@ -152,29 +153,27 @@ void main() {
       expect(blue.ownConnections, isNull);
       expect(blue.progressOf('red')!.solved, [3]);
       expect(blue.progressOf('red')!.mistakes, 1);
-      final text = jsonEncode(h.publicStateFor('blue'));
-      expect(text, isNot(contains('___ Pie')));
       // The shared view, as written for everyone, has no team's own part.
       expect(jsonEncode(h.publicState), isNot(contains('"own"')));
     });
 
-    test('a revealed team answer shows counts only', () {
+    test('a revealed team answer goes out as counts, which is all a screen needs', () {
       final h = host();
       h.dispatch(GuessConnection('red', placesOf(1)), sender: red);
       h.dispatch(const RevealAnswer('red'));
-      final text = jsonEncode(h.publicStateFor('blue'));
-      expect(text, isNot(contains('wrong')));
-      expect(text, isNot(contains('Planets')));
+      expect(jsonEncode(h.publicStateFor('blue')), isNot(contains('wrong')));
     });
   });
 
   group('revealing and points', () {
-    test('groups come up on the big screen easiest first, and end the teams\' time', () {
+    test('groups come up on the big screen easiest first, and the teams play on', () {
       final h = host(timer: 60);
-      expect(h.state.answerRound!.endsAtMillis, isNotNull);
+      final endsAt = h.state.answerRound!.endsAtMillis;
+      expect(endsAt, isNotNull);
       h.dispatch(const Reveal(1));
-      expect(h.state.answerRound!.open, isFalse);
-      expect(h.state.answerRound!.endsAtMillis, isNull);
+      expect(h.state.answerRound!.open, isTrue);
+      expect(h.state.answerRound!.endsAtMillis, endsAt);
+      expect(h.dispatch(GuessConnection('red', placesOf(2)), sender: red), isTrue);
       final shown = PublicView(h.publicStateFor('blue')).revealedGroups;
       expect(shown.single.name, 'Fruit');
       expect(shown.single.positions..sort(), placesOf(0)..sort());

@@ -174,16 +174,9 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       // The enlarged image follows a new reveal and never points past the
       // last revealed one.
       final focus = delta > 0 ? revealed : (s.imageFocus > revealed ? revealed : s.imageFocus);
-      // A group on the big screen is a group nobody needs to find any more:
-      // the teams' time is up.
-      final round = s.answerRound;
-      final endsRound = question.type == QuestionType.connections && delta > 0 && round != null && round.open;
+      // Teams keep playing while groups come up; their time runs on.
       return _ok(
-        s.copyWith(
-          revealed: revealed,
-          imageFocus: question.type == QuestionType.progressingReveal ? focus : null,
-          answerRound: endsRound ? round.copyWith(open: false, endsAtMillis: null) : round,
-        ),
+        s.copyWith(revealed: revealed, imageFocus: question.type == QuestionType.progressingReveal ? focus : null),
         [if (question.type == QuestionType.connections && delta > 0) const SoundEffect(effectReveal)],
       );
 

@@ -324,49 +324,75 @@ class _ConnectionsPlayState extends State<ConnectionsPlay> {
   final Set<int> _selected = {};
   List<int>? _layout;
   int _shake = 0;
-  bool _waiting = false;
-  Timer? _waitTimer;
   String? _message;
   Timer? _messageTimer;
 
+  // This device's own reckoning, updated the moment a guess is made: group
+  // levels found in order, wrong guesses (sorted places) and which of them
+  // were one away. The host counts the same guesses for the points.
+  List<int> _found = [];
+  List<List<int>> _wrong = [];
+  List<bool> _oneAway = [];
+
   PublicView get _view => widget.view;
 
-  ConnectionsView? get _own => _view.ownConnections;
+  ConnectionsView? get _host => _view.ownConnections;
 
-  bool get _finished => _own?.finished == true;
+  List<GroupView> get _groups => _view.connectionGroups;
+
+  int get _steps => _found.length + _wrong.length;
+
+  bool get _finished => _found.length == kConnectionsGroups || _wrong.length >= _view.connectionMistakesAllowed;
 
   bool get _locked => _view.hasLocked(widget.teamId);
 
   bool get _playable => _view.answersOpen && !_finished && !_locked;
 
   @override
+  void initState() {
+    super.initState();
+    // Back after a restart or a lost connection: carry on where the host is.
+    _adopt(_host);
+  }
+
+  void _adopt(ConnectionsView? host) {
+    if (host == null) return;
+    _found = [for (final group in host.solved) group.level];
+    _wrong = [for (final guess in host.wrong) [...guess]..sort()];
+    _oneAway = [...host.oneAway];
+  }
+
+  @override
   void didUpdateWidget(ConnectionsPlay old) {
     super.didUpdateWidget(old);
-    final before = old.view.ownConnections;
-    final now = _own;
-    if (now == null) return;
-    if (now.solved.length > (before?.solved.length ?? 0)) {
-      // Found one: its words leave the selection and the board.
-      _done();
-      final found = now.solved.last;
-      _selected.removeAll(found.positions);
-      HapticFeedback.mediumImpact();
-      _say(now.solved.length == kConnectionsGroups ? "All four found!" : _praise[now.solved.length % _praise.length]);
-    } else if (now.mistakes > (before?.mistakes ?? 0)) {
-      _done();
-      _shake++;
-      HapticFeedback.heavyImpact();
-      final away = now.oneAway.isNotEmpty && now.oneAway.last;
-      final left = _view.connectionMistakesAllowed - now.mistakes;
-      _say(left <= 0 ? "No tries left" : (away ? "One away…" : "Not a group"));
+    final host = _host;
+    if (host == null) return;
+    final hostSteps = host.solved.length + host.mistakes;
+    // The host knows more when another device of the team guessed too, and
+    // has the last word once the round is over.
+    if (hostSteps > _steps || (!_view.answersOpen && hostSteps != _steps)) {
+      final found = _found.length;
+      final wrong = _wrong.length;
+      _adopt(host);
+      _react(found, wrong);
     }
   }
 
   static const _praise = ["Perfect!", "Great!", "Nice!", "Solid!"];
 
-  void _done() {
-    _waiting = false;
-    _waitTimer?.cancel();
+  /// Feedback for what changed since [found] groups and [wrong] mistakes.
+  void _react(int found, int wrong) {
+    if (_found.length > found) {
+      final level = _found.last;
+      _selected.removeAll(_groups.where((g) => g.level == level).expand((g) => g.positions));
+      HapticFeedback.mediumImpact();
+      _say(_found.length == kConnectionsGroups ? "All four found!" : _praise[_found.length % _praise.length]);
+    } else if (_wrong.length > wrong) {
+      _shake++;
+      HapticFeedback.heavyImpact();
+      final left = _view.connectionMistakesAllowed - _wrong.length;
+      _say(left <= 0 ? "No tries left" : (_oneAway.isNotEmpty && _oneAway.last ? "One away…" : "Not a group"));
+    }
   }
 
   void _say(String message) {
@@ -379,13 +405,12 @@ class _ConnectionsPlayState extends State<ConnectionsPlay> {
 
   @override
   void dispose() {
-    _waitTimer?.cancel();
     _messageTimer?.cancel();
     super.dispose();
   }
 
   void _toggle(int position) {
-    if (!_playable || _waiting) return;
+    if (!_playable) return;
     setState(() {
       if (!_selected.remove(position) && _selected.length < kConnectionsGroupSize) _selected.add(position);
     });
@@ -396,31 +421,41 @@ class _ConnectionsPlayState extends State<ConnectionsPlay> {
     setState(() => _layout = remaining);
   }
 
+  bool _same(List<int> a, List<int> b) => a.length == b.length && Iterable<int>.generate(a.length).every((i) => a[i] == b[i]);
+
   void _submit() {
-    if (_selected.length != kConnectionsGroupSize || _waiting) return;
+    if (_selected.length != kConnectionsGroupSize) return;
     final guess = _selected.toList()..sort();
-    final repeated = (_own?.wrong ?? const []).any((wrong) {
-      final sorted = [...wrong]..sort();
-      return Iterable<int>.generate(kConnectionsGroupSize).every((i) => sorted[i] == guess[i]);
-    });
-    if (repeated) {
+    if (_wrong.any((wrong) => _same(wrong, guess))) {
       _say("Already guessed");
       return;
     }
     widget.send(GuessConnection(widget.teamId, guess));
-    setState(() => _waiting = true);
-    // If the answer gets lost on the way, the team can simply try again.
-    _waitTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted) setState(() => _waiting = false);
+    // Judged right here, so the board answers at once; the host does the
+    // same with the guess for the points.
+    final match = _groups.where((g) => _same([...g.positions]..sort(), guess)).firstOrNull;
+    if (_groups.length != kConnectionsGroups) return; // The host's answer will tell.
+    final found = _found.length;
+    final wrong = _wrong.length;
+    setState(() {
+      if (match != null) {
+        _found = [..._found, match.level];
+      } else {
+        _wrong = [..._wrong, guess];
+        _oneAway = [..._oneAway, _groups.any((g) => g.positions.where(guess.contains).length == kConnectionsGroupSize - 1)];
+      }
     });
+    _react(found, wrong);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final own = _own;
-    final found = [for (final group in own?.solved ?? const <GroupView>[]) GridGroup.of(group)];
+    final found = [
+      for (final level in _found)
+        for (final group in _groups.where((g) => g.level == level)) GridGroup.of(group),
+    ];
     final foundLevels = {for (final g in found) g.level};
     final groups = [
       ...found,
@@ -429,13 +464,13 @@ class _ConnectionsPlayState extends State<ConnectionsPlay> {
         if (!foundLevels.contains(group.level)) GridGroup.of(group, found: false),
     ];
     final allowed = _view.connectionMistakesAllowed;
-    final mistakes = own?.mistakes ?? 0;
-    final status = own?.solved.length == kConnectionsGroups
+    final mistakes = _wrong.length;
+    final status = _found.length == kConnectionsGroups
         ? "All four groups found"
         : _finished
             ? "No tries left. Wait for the solution"
             : _locked
-                ? "Locked in with ${own?.solved.length ?? 0} of 4"
+                ? "Locked in with ${_found.length} of 4"
                 : !_view.answersOpen
                     ? "Time is up"
                     : null;
@@ -511,10 +546,8 @@ class _ConnectionsPlayState extends State<ConnectionsPlay> {
             const SizedBox(width: 8),
             Expanded(
               child: FilledButton(
-                onPressed: _playable && !_waiting && _selected.length == kConnectionsGroupSize ? _submit : null,
-                child: _waiting
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const _OneLine("Submit"),
+                onPressed: _playable && _selected.length == kConnectionsGroupSize ? _submit : null,
+                child: const _OneLine("Submit"),
               ),
             ),
           ],

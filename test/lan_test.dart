@@ -191,7 +191,7 @@ void main() {
     red.send(GuessConnection('red', placesOf(1)));
     await settle();
     expect(redFrames.last.ownConnections!.solved.single.name, 'Planets');
-    expect(blueFrames.last, isNot(contains('Planets')));
+    expect(PublicView(jsonDecode(blueFrames.last) as Map<String, dynamic>).ownConnections, isNull);
     expect(PublicView(jsonDecode(blueFrames.last) as Map<String, dynamic>).progressOf('red')!.solved, [1]);
     // Blue cannot guess for red, or find anything with red's places.
     blue.send(GuessConnection('red', placesOf(0)));

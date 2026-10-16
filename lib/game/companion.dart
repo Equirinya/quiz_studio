@@ -267,9 +267,19 @@ class CompanionSpec {
       if (timerSeconds != null) 'timer': timerSeconds,
       'lock': lockable,
       if (kind == CompanionKind.connections) 'mistakes': mistakes,
-      // In the shown order only; no names, nothing that tells which belong together.
-      if (kind == CompanionKind.connections)
+      // In the shown order. The groups come along so a device can tell a
+      // team at once whether a guess is right: speed matters more during a
+      // show than keeping the answer from someone who digs through the app.
+      if (kind == CompanionKind.connections) ...{
         'words': [for (final index in order) _wordAt(index)],
+        'groups': [
+          for (var level = 0; level < groups.length; level++)
+            {
+              'name': groups[level].name,
+              'positions': [for (var i = 0; i < kConnectionsGroupSize; i++) order.indexOf(level * kConnectionsGroupSize + i)],
+            },
+        ],
+      },
       if (kind == CompanionKind.whiteboard) 'background': background,
       // Only the name; the picture itself reaches the device separately.
       if (kind == CompanionKind.whiteboard && backgroundImage != null) 'backgroundImage': backgroundImage,
