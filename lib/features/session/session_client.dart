@@ -60,7 +60,7 @@ class SessionClient implements CommandSink {
       token: token,
       endpoints: endpoints,
       cloudStates: role == Role.player ? null : repo.watchState(sessionId),
-      cloudViews: role == Role.player ? repo.watchPublicState(sessionId) : null,
+      cloudViews: role == Role.player ? repo.watchPublicState(sessionId, teamId: teamId) : null,
       cloudEndpoints: repo.watchLanEndpoints(sessionId),
       cloudBackground: repo.watchBackground(sessionId),
       cloudSend: (command) => repo.sendCommand(sessionId, command, role: role, teamId: teamId),
@@ -150,19 +150,23 @@ class SessionClient implements CommandSink {
     _lanLoop();
   }
 
+  // A message can still be on its way when the client is disposed; it is
+  // dropped then rather than handed to a notifier that is gone.
+
   void _onBackground((String, Uint8List)? next) {
+    if (_disposed) return;
     // The same picture from the other transport changes nothing.
     if (next != null && next.$1 != background.value?.$1) background.value = next;
   }
 
   void _onState(SessionState next) {
-    if (next.seq < _seq) return;
+    if (_disposed || next.seq < _seq) return;
     _seq = next.seq;
     state.value = next;
   }
 
   void _onView(PublicView next) {
-    if (next.seq < _seq) return;
+    if (_disposed || next.seq < _seq) return;
     _seq = next.seq;
     view.value = next;
   }
@@ -208,7 +212,9 @@ class SessionClient implements CommandSink {
     final subs = [
       client.states.listen(_onState),
       client.views.listen(_onView),
-      client.games.listen((game) => lanGame.value = game),
+      client.games.listen((game) {
+        if (!_disposed) lanGame.value = game;
+      }),
       client.backgrounds.listen(_onBackground),
     ];
     link.value = LinkStatus.lan;

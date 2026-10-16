@@ -132,7 +132,8 @@ class LanHostServer {
 
   void _sendCurrent(WebSocket socket, LanGrant grant, {required bool withGame}) {
     if (grant.role == Role.player) {
-      socket.add(jsonEncode({'t': 'public', 'p': host.publicState}));
+      // A team's devices get their team's view, with what only they may see.
+      socket.add(jsonEncode({'t': 'public', 'p': host.publicStateFor(grant.teamId)}));
       return;
     }
     if (withGame) socket.add(_gameMessage());

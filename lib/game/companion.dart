@@ -12,13 +12,77 @@ enum CompanionKind {
   slider("Slider"),
   choice("Pick one"),
   order("Put in order"),
-  match("Match pairs");
+  match("Match pairs"),
+  connections("Connections");
 
   const CompanionKind(this.uiString);
 
   final String uiString;
 
   static CompanionKind? fromName(Object? name) => CompanionKind.values.where((k) => k.name == name).firstOrNull;
+}
+
+/// Connections: sixteen words in four groups of four, from the easiest
+/// group (level 0, yellow) to the hardest (level 3, purple).
+const int kConnectionsGroups = 4;
+const int kConnectionsGroupSize = 4;
+const int kConnectionsWords = kConnectionsGroups * kConnectionsGroupSize;
+
+/// One group of a Connections puzzle: what the four words have in common.
+class ConnectionGroup {
+  const ConnectionGroup({this.name = '', this.words = const ['', '', '', '']});
+
+  final String name;
+
+  /// Always four entries, possibly empty while the puzzle is being written.
+  final List<String> words;
+
+  bool get isComplete => name.trim().isNotEmpty && words.length == kConnectionsGroupSize && words.every((w) => w.trim().isNotEmpty);
+
+  static ConnectionGroup fromMap(Object? stored) {
+    if (stored is! Map) return const ConnectionGroup();
+    final words = _strings(stored['words']);
+    return ConnectionGroup(
+      name: stored['name'] is String ? stored['name'] as String : '',
+      words: [for (var i = 0; i < kConnectionsGroupSize; i++) i < words.length ? words[i] : ''],
+    );
+  }
+
+  /// Always four groups, padded with empty ones.
+  static List<ConnectionGroup> listFrom(Object? stored) {
+    final list = stored is List ? stored : const [];
+    return [for (var i = 0; i < kConnectionsGroups; i++) fromMap(i < list.length ? list[i] : null)];
+  }
+
+  Map<String, dynamic> toMap() => {'name': name, 'words': words};
+}
+
+/// A hash of [text] that is the same in every run and on every device, unlike
+/// [String.hashCode]: a restarted presenter must lay the words out as before.
+int stableHash(String text) {
+  var hash = 0x811c9dc5;
+  for (final unit in text.codeUnits) {
+    hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
+  }
+  return hash;
+}
+
+/// The order the sixteen words are shown in, as original indices (group
+/// level × 4 + position in the group). Devices answer with positions in this
+/// order, so they never learn which words belong together.
+List<int> connectionsOrder(String seed) {
+  final order = List<int>.generate(kConnectionsWords, (i) => i);
+  final random = Random(stableHash('connections|$seed'));
+  // A layout that leaves a whole group in one row gives it away.
+  for (var attempt = 0; attempt < 20; attempt++) {
+    order.shuffle(random);
+    final rowGivesAway = Iterable<int>.generate(kConnectionsGroups).any((row) {
+      final levels = {for (var c = 0; c < kConnectionsGroupSize; c++) order[row * kConnectionsGroupSize + c] ~/ kConnectionsGroupSize};
+      return levels.length == 1;
+    });
+    if (!rowGivesAway) break;
+  }
+  return order;
 }
 
 /// What lies behind the ink on a whiteboard.
@@ -45,6 +109,12 @@ List<String> _strings(Object? v) => [
 ///   options:     choice: what to pick from · order: the items, in the RIGHT
 ///                order · match: the left-hand items
 ///   targets:     match: the right-hand items, aligned with `options`
+///   lock:        whether teams may lock their answer in before the time is
+///                up, which records when they did; absent = true
+///   mistakes:    connections: wrong guesses a team may make (default 3)
+///   groups:      connections: the four groups, easiest first. On the
+///                question they are stored as `connections`; see
+///                [Question.companion].
 class CompanionSpec {
   const CompanionSpec({
     required this.kind,
@@ -59,6 +129,9 @@ class CompanionSpec {
     this.solution,
     this.options = const [],
     this.targets = const [],
+    this.lockable = true,
+    this.mistakes = 3,
+    this.groups = const [],
   });
 
   final CompanionKind kind;
@@ -73,6 +146,9 @@ class CompanionSpec {
   final double? solution;
   final List<String> options;
   final List<String> targets;
+  final bool lockable;
+  final int mistakes;
+  final List<ConnectionGroup> groups;
 
   static CompanionSpec? fromMap(Object? stored) {
     if (stored is! Map) return null;
@@ -97,6 +173,9 @@ class CompanionSpec {
       solution: _num(stored['solution']),
       options: _strings(stored['options']),
       targets: _strings(stored['targets']),
+      lockable: stored['lock'] != false,
+      mistakes: (_num(stored['mistakes'])?.round() ?? 3).clamp(1, 10),
+      groups: kind == CompanionKind.connections ? ConnectionGroup.listFrom(stored['groups']) : const [],
     );
   }
 
@@ -113,7 +192,19 @@ class CompanionSpec {
         if (solution != null) 'solution': solution,
         if (options.isNotEmpty) 'options': options,
         if (targets.isNotEmpty) 'targets': targets,
+        if (!lockable) 'lock': false,
+        if (kind == CompanionKind.connections) 'mistakes': mistakes,
+        if (kind == CompanionKind.connections && groups.isNotEmpty) 'groups': [for (final group in groups) group.toMap()],
       };
+
+  /// The same screen with the groups of a Connections question.
+  CompanionSpec withGroups(List<ConnectionGroup> groups) => CompanionSpec(
+        kind: kind,
+        timerSeconds: timerSeconds,
+        lockable: lockable,
+        mistakes: mistakes,
+        groups: groups,
+      );
 
   CompanionSpec withOptions(List<String> options) => CompanionSpec(
         kind: kind,
@@ -128,6 +219,9 @@ class CompanionSpec {
         solution: solution,
         options: options,
         targets: targets,
+        lockable: lockable,
+        mistakes: mistakes,
+        groups: groups,
       );
 
   /// The slider's range, with defaults where the editor left a gap.
@@ -137,6 +231,17 @@ class CompanionSpec {
     final by = step != null && step! > 0 ? step! : 1.0;
     return (min: low, max: high, step: by);
   }
+
+  /// The word at an original index (group level × 4 + place in the group).
+  String _wordAt(int index) {
+    final group = index ~/ kConnectionsGroupSize;
+    if (group >= groups.length) return '';
+    final words = groups[group].words;
+    final place = index % kConnectionsGroupSize;
+    return place < words.length ? words[place] : '';
+  }
+
+  String wordAt(int index) => _wordAt(index);
 
   /// What a team's device may know: no solution, and the items of "put in
   /// order" and the right-hand side of "match pairs" shuffled. Each shuffled
@@ -156,9 +261,15 @@ class CompanionSpec {
       return indexed;
     }
 
+    final order = kind == CompanionKind.connections ? connectionsOrder(seed) : const <int>[];
     return {
       'kind': kind.name,
       if (timerSeconds != null) 'timer': timerSeconds,
+      'lock': lockable,
+      if (kind == CompanionKind.connections) 'mistakes': mistakes,
+      // In the shown order only; no names, nothing that tells which belong together.
+      if (kind == CompanionKind.connections)
+        'words': [for (final index in order) _wordAt(index)],
       if (kind == CompanionKind.whiteboard) 'background': background,
       // Only the name; the picture itself reaches the device separately.
       if (kind == CompanionKind.whiteboard && backgroundImage != null) 'backgroundImage': backgroundImage,
@@ -175,9 +286,53 @@ class CompanionSpec {
   }
 }
 
+/// A team's way through a Connections puzzle. Words are original indices
+/// (see [connectionsOrder]).
+class ConnectionsProgress {
+  const ConnectionsProgress({this.solved = const [], this.wrong = const [], this.oneAway = const []});
+
+  /// Group levels in the order the team found them.
+  final List<int> solved;
+
+  /// Wrong guesses, each sorted; a guess is never counted twice.
+  final List<List<int>> wrong;
+
+  /// Per wrong guess: three of the four words belonged together.
+  final List<bool> oneAway;
+
+  int get mistakes => wrong.length;
+
+  bool finished(CompanionSpec spec) => solved.length == kConnectionsGroups || mistakes >= spec.mistakes;
+
+  Map<String, dynamic> toJson() => {'solved': solved, 'wrong': wrong, 'oneAway': oneAway};
+
+  factory ConnectionsProgress.fromJson(Map<String, dynamic> json) => ConnectionsProgress(
+        solved: [for (final e in json['solved'] as List? ?? const []) (e as num).toInt()],
+        wrong: [
+          for (final guess in json['wrong'] as List? ?? const []) [for (final e in guess as List) (e as num).toInt()],
+        ],
+        oneAway: [for (final e in json['oneAway'] as List? ?? const []) e == true],
+      );
+}
+
+/// Points for a Connections round: the question's value shared out over the
+/// four groups.
+int connectionsPoints(int pointsPlus, ConnectionsProgress? progress) =>
+    progress == null ? 0 : (pointsPlus * progress.solved.length / kConnectionsGroups).round();
+
 /// One team's answer. Exactly the field matching the round's kind is set.
 class PlayerAnswer {
-  const PlayerAnswer({this.text, this.number, this.choice, this.order, this.pairs, this.drawing, this.locked = false});
+  const PlayerAnswer({
+    this.text,
+    this.number,
+    this.choice,
+    this.order,
+    this.pairs,
+    this.drawing,
+    this.connections,
+    this.locked = false,
+    this.lockedAtMillis,
+  });
 
   final String? text;
   final double? number;
@@ -195,12 +350,28 @@ class PlayerAnswer {
   /// Encoded strokes; see drawing.dart.
   final String? drawing;
 
+  /// Connections only; built by the host from the team's guesses, never sent
+  /// by a device.
+  final ConnectionsProgress? connections;
+
   /// The team has locked this answer in and can no longer change it.
   final bool locked;
 
-  bool get isEmpty => text == null && number == null && choice == null && order == null && pairs == null && drawing == null;
+  /// When the team locked in, on the host's clock; null when the round ended
+  /// before they did.
+  final int? lockedAtMillis;
 
+  bool get isEmpty =>
+      text == null && number == null && choice == null && order == null && pairs == null && drawing == null && connections == null;
+
+  /// Seconds from the start of [round] until the team locked in.
+  double? secondsTaken(AnswerRound round) => lockedAtMillis == null || round.openedAtMillis == null
+      ? null
+      : (lockedAtMillis! - round.openedAtMillis!) / 1000;
+
+  /// Whether a device may send this as its answer to a round of [kind].
   bool matches(CompanionKind kind) {
+    if (connections != null) return false;
     final set = [text, number, choice, order, pairs, drawing].where((v) => v != null).length;
     if (set != 1) return false;
     return switch (kind) {
@@ -210,11 +381,22 @@ class PlayerAnswer {
       CompanionKind.choice => choice != null,
       CompanionKind.order => order != null,
       CompanionKind.match => pairs != null,
+      CompanionKind.connections => false,
     };
   }
 
-  PlayerAnswer asLocked(bool locked) =>
-      PlayerAnswer(text: text, number: number, choice: choice, order: order, pairs: pairs, drawing: drawing, locked: locked);
+  /// Locked in at [atMillis], or unlocked again.
+  PlayerAnswer asLocked(bool locked, {int? atMillis}) => PlayerAnswer(
+        text: text,
+        number: number,
+        choice: choice,
+        order: order,
+        pairs: pairs,
+        drawing: drawing,
+        connections: connections,
+        locked: locked,
+        lockedAtMillis: locked ? (atMillis ?? lockedAtMillis) : null,
+      );
 
   Map<String, dynamic> toJson() => {
         if (text != null) 'text': text,
@@ -223,7 +405,9 @@ class PlayerAnswer {
         if (order != null) 'order': order,
         if (pairs != null) 'pairs': pairs,
         if (drawing != null) 'drawing': drawing,
+        if (connections != null) 'connections': connections!.toJson(),
         if (locked) 'locked': true,
+        if (lockedAtMillis != null) 'lockedAt': lockedAtMillis,
       };
 
   factory PlayerAnswer.fromJson(Map<String, dynamic> json) {
@@ -235,7 +419,11 @@ class PlayerAnswer {
       order: ints(json['order']),
       pairs: ints(json['pairs']),
       drawing: json['drawing'] as String?,
+      connections: json['connections'] is Map
+          ? ConnectionsProgress.fromJson(Map<String, dynamic>.from(json['connections'] as Map))
+          : null,
       locked: json['locked'] == true,
+      lockedAtMillis: (json['lockedAt'] as num?)?.toInt(),
     );
   }
 }
@@ -353,6 +541,9 @@ bool? autoVerdict(CompanionSpec spec, PlayerAnswer? answer, {List<bool> choiceCo
     case CompanionKind.slider:
       if (spec.solution == null || answer.number == null) return null;
       return (answer.number! - spec.solution!).abs() < 1e-9;
+    case CompanionKind.connections:
+      final progress = answer.connections;
+      return progress == null ? null : progress.solved.length == kConnectionsGroups;
     case CompanionKind.whiteboard:
     case CompanionKind.text:
       return null;

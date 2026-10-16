@@ -90,6 +90,7 @@ enum QuestionType {
   abcd("ABCD"),
   progressingReveal("Progressing Reveal"),
   feud("Feud"),
+  connections("Connections"),
   unsupported("Unsupported");
 
   const QuestionType(this.uiString);
@@ -119,6 +120,7 @@ class Question {
     this.informationMusic = const [],
     this.percentages = const [],
     this.absoluteValues = false,
+    this.connectionGroups = const [],
     this.sounds = MusicConfig.empty,
     this.data = const {},
   });
@@ -153,6 +155,9 @@ class Question {
   final List<double> percentages;
   final bool absoluteValues;
 
+  /// connections: the four groups, easiest first. Stored as `connections`.
+  final List<ConnectionGroup> connectionGroups;
+
   final MusicConfig sounds;
 
   /// The stored document, for fields this version doesn't know.
@@ -179,6 +184,9 @@ class Question {
       informationMusic: _strings(data['informationMusic']),
       percentages: percentages is List ? [for (final e in percentages) e is num ? e.toDouble() : 0.0] : const [],
       absoluteValues: data['absoluteValues'] == true,
+      connectionGroups: QuestionType.fromString(data['type']) == QuestionType.connections
+          ? ConnectionGroup.listFrom(data['connections'])
+          : const [],
       sounds: MusicConfig.fromMap(data),
       data: data,
     );
@@ -187,16 +195,26 @@ class Question {
   /// The screen the teams' own devices show while this question is open,
   /// if it has one. For "pick one" the options are the ABCD answers.
   CompanionSpec? get companion {
+    if (type == QuestionType.connections) {
+      // Always played on the teams' devices. The `companion` map holds the
+      // timer, the mistakes allowed and whether teams may lock in.
+      final stored = data['companion'] is Map ? Map<String, dynamic>.from(data['companion'] as Map) : <String, dynamic>{};
+      return CompanionSpec.fromMap({...stored, 'kind': CompanionKind.connections.name})!.withGroups(connectionGroups);
+    }
     final spec = CompanionSpec.fromMap(data['companion']);
-    if (spec == null) return null;
+    if (spec == null || spec.kind == CompanionKind.connections) return null;
     return spec.kind == CompanionKind.choice && spec.options.isEmpty ? spec.withOptions(answers) : spec;
   }
 
-  bool get buzzerable => type == QuestionType.free ? !noBuzzer : true;
+  bool get buzzerable => switch (type) {
+        QuestionType.free => !noBuzzer,
+        QuestionType.connections => false,
+        _ => true,
+      };
 
   /// Whether the generic "answer right / answer wrong" judging applies. Feud
-  /// awards points through its own flow.
-  bool get defaultJudging => type != QuestionType.feud;
+  /// and Connections award points through their own flow.
+  bool get defaultJudging => type != QuestionType.feud && type != QuestionType.connections;
 
   bool get hasMusic => music != null;
 
@@ -208,6 +226,8 @@ class Question {
   int get maxReveal => switch (type) {
         QuestionType.abcd => answers.length + 1,
         QuestionType.progressingReveal => information.length + 1,
+        // One step per group, easiest first.
+        QuestionType.connections => kConnectionsGroups,
         _ => 0,
       };
 

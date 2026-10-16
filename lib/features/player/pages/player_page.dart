@@ -2,8 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
+import 'package:quiz_show/core/version_gate.dart';
 import 'package:quiz_show/features/companion/answer_inputs.dart';
+import 'package:quiz_show/features/companion/connections.dart';
 import 'package:quiz_show/features/companion/answer_view.dart';
 import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/features/player/widgets/buzzer_button.dart';
@@ -35,10 +38,15 @@ class _PlayerPageState extends State<PlayerPage> {
     },
   );
 
+  String? _appVersion;
+
   @override
   void initState() {
     super.initState();
     _client.start();
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _appVersion = info.version);
+    }, onError: (Object _) {});
   }
 
   @override
@@ -71,6 +79,7 @@ class _PlayerPageState extends State<PlayerPage> {
               send: _client.send,
               onLeave: leave,
               link: _client.link.value,
+              appVersion: _appVersion,
               backgroundImage: picture != null && picture.$1 == wanted ? MemoryImage(picture.$2) : null,
             );
           },
@@ -110,7 +119,12 @@ class PlayerView extends StatefulWidget {
     this.onLeave,
     this.link,
     this.backgroundImage,
+    this.appVersion,
   });
+
+  /// This app's version, to compare with what the session needs; unknown
+  /// versions are let through.
+  final String? appVersion;
 
   /// The picture of a whiteboard round, when it has one and it has arrived.
   final ImageProvider? backgroundImage;
@@ -154,6 +168,11 @@ class _PlayerViewState extends State<PlayerView> {
     if (team == null) {
       return _Message("Your team was removed from the session.", onLeave: widget.onLeave ?? () {});
     }
+    final needed = view.minAppVersion;
+    if (needed != null && widget.appVersion != null && compareVersions(widget.appVersion!, needed) < 0) {
+      // Rather than show half a screen it does not understand.
+      return UpdateRequiredPage(installedVersion: widget.appVersion, requiredVersion: needed);
+    }
     final position = view.buzzQueue.indexOf(team.id);
     final answeringTeam = view.buzzQueue.isEmpty ? null : view.teams.where((t) => t.id == view.buzzQueue.first).firstOrNull;
     final status = switch (view.phase) {
@@ -169,11 +188,15 @@ class _PlayerViewState extends State<PlayerView> {
     };
     final canBuzz = view.canBuzz(team.id) && _justBuzzed == null;
     final kind = view.answerKind;
+    if (view.companion != null && kind == null) {
+      // A screen from a newer app than this one.
+      return _Message("This question needs a newer version of Quiz Studio. Please update the app.", onLeave: widget.onLeave ?? () {});
+    }
     // While answers are collected the buzzer is replaced by the answer area.
     final headline = kind == null
         ? status
         : view.answersOpen && !view.hasLocked(team.id)
-            ? "Answer here"
+            ? (kind == CompanionKind.connections ? "Find four groups of four" : "Answer here")
             : view.isRevealed(team.id)
                 ? "Your answer is being shown"
                 : "Answers are in";
@@ -217,6 +240,29 @@ class _PlayerViewState extends State<PlayerView> {
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodyLarge,
           );
+
+    if (kind == CompanionKind.connections) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Column(
+          children: [
+            teamLine,
+            const SizedBox(height: 8),
+            statusBox,
+            ?_countdown(top: 10),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ConnectionsPlay(
+                key: ValueKey('connections-${view.answersOpenedAt}'),
+                view: view,
+                teamId: team.id,
+                send: widget.send,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     // A whiteboard gets every pixel that can be spared: on a tablet held
     // sideways everything else moves into a narrow column beside it, and on
@@ -369,6 +415,18 @@ class _PlayerViewState extends State<PlayerView> {
       );
     }
     final editable = _editable(team);
+    if (!view.lockable && editable) {
+      return Text(
+        view.answersEndAt == null
+            ? "Your answer counts as it stands when the gamemaster ends the round."
+            : "Your answer counts as it stands when the time is up.",
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodyMedium,
+      );
+    }
+    final lockedAt = view.ownLockedAt;
+    final openedAt = view.answersOpenedAt;
+    final took = lockedAt == null || openedAt == null ? null : (lockedAt - openedAt) / 1000;
     return SizedBox(
       width: double.infinity,
       height: 52,
@@ -377,7 +435,7 @@ class _PlayerViewState extends State<PlayerView> {
         icon: Icon(editable ? Icons.lock_open : Icons.lock),
         label: Text(
           view.hasLocked(team.id)
-              ? "Locked in"
+              ? (took == null ? "Locked in" : "Locked in after ${took.toStringAsFixed(1)} s")
               : !view.answersOpen
                   ? "Time is up"
                   : view.hasSubmitted(team.id)

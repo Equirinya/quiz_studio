@@ -58,9 +58,11 @@ const Map<String, dynamic> _string = {'type': 'string'};
 final Map<String, dynamic> _questionFields = {
   'type': {
     'type': 'string',
-    'enum': ['free', 'abcd', 'progressingReveal', 'feud'],
+    'enum': ['free', 'abcd', 'progressingReveal', 'feud', 'connections'],
     'description': 'free: plain question. abcd: four answer options. progressingReveal: hints revealed one by one. '
-        'feud: Family Feud style list of answers, each worth a share of the points.',
+        'feud: Family Feud style list of answers, each worth a share of the points. '
+        'connections: like the NYT puzzle, sixteen words in four groups of four, solved by every team on its own '
+        'device; each group found is worth a quarter of pointsPlus.',
   },
   'question': {'type': 'string', 'description': 'The question as shown to the audience.'},
   'answerHint': {'type': 'string', 'description': 'The answer or notes; only the gamemaster sees this.'},
@@ -92,6 +94,21 @@ final Map<String, dynamic> _questionFields = {
     'items': {'type': 'number'},
     'description': 'feud only: one number per entry of information, as percentages that should add up to about 100.',
   },
+  'groups': {
+    'type': 'array',
+    'minItems': 4,
+    'maxItems': 4,
+    'description': 'connections only: exactly four groups, easiest (yellow) first and hardest (purple) last. '
+        'No word may appear twice. A good puzzle has red herrings: words that seem to fit another group.',
+    'items': {
+      'type': 'object',
+      'properties': {
+        'name': {'type': 'string', 'description': 'What the four words have in common.'},
+        'words': {'type': 'array', 'items': _string, 'minItems': 4, 'maxItems': 4},
+      },
+      'required': ['name', 'words'],
+    },
+  },
   'companion': {
     'type': 'object',
     'description': 'Optional screen on the teams\' own devices while the question is open.',
@@ -118,6 +135,8 @@ final Map<String, dynamic> _questionFields = {
         'description': 'order: the items in the RIGHT order. match: the left-hand items.',
       },
       'targets': {'type': 'array', 'items': _string, 'description': 'match: right-hand items, aligned with options.'},
+      'lock': {'type': 'boolean', 'description': 'Whether teams may lock in before the time is up. Default true.'},
+      'mistakes': {'type': 'integer', 'minimum': 1, 'maximum': 6, 'description': 'connections: wrong guesses allowed, default 3.'},
     },
     'required': ['kind'],
   },
@@ -269,11 +288,32 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     throw const ToolError('A feud question needs "information" and "values" of equal length.');
   }
 
+  final groups = args['groups'];
+  if (groups != null) {
+    if (effective != QuestionType.connections) throw const ToolError('"groups" is for connections questions.');
+    final parsed = ConnectionGroup.listFrom(groups);
+    if (groups is! List || groups.length != kConnectionsGroups || parsed.any((g) => !g.isComplete)) {
+      throw const ToolError('A connections question needs exactly four groups, each with a name and four words.');
+    }
+    final words = [for (final g in parsed) ...g.words.map((w) => w.trim().toLowerCase())];
+    if (words.toSet().length != words.length) throw const ToolError('A word appears twice in the puzzle.');
+    data['connections'] = [for (final g in parsed) g.toMap()];
+  }
+  if (!partial && effective == QuestionType.connections && groups == null) {
+    throw const ToolError('A connections question needs "groups": four groups of four words.');
+  }
+
   final companion = args['companion'];
-  if (companion != null) {
+  if (companion != null && effective == QuestionType.connections) {
+    if (companion is! Map) throw const ToolError('"companion" must be an object.');
+    // The puzzle is always played on the devices; only how is set here.
+    data['companion'] = CompanionSpec.fromMap({...companion, 'kind': CompanionKind.connections.name})!.toMap();
+  } else if (companion != null) {
     if (companion is! Map) throw const ToolError('"companion" must be an object.');
     final spec = CompanionSpec.fromMap(companion);
-    if (spec == null) throw const ToolError('"companion" needs a known "kind".');
+    if (spec == null || spec.kind == CompanionKind.connections) {
+      throw const ToolError('"companion" needs a known "kind"; for Connections use the question type instead.');
+    }
     if ((spec.kind == CompanionKind.order || spec.kind == CompanionKind.match) && spec.options.length < 2) {
       throw const ToolError('This companion screen needs at least two "options".');
     }
@@ -309,7 +349,11 @@ Map<String, dynamic> _describeQuestion(Question q) => {
       if (q.type == QuestionType.abcd) ...{'answers': q.answers, 'correct': q.answersCorrect},
       if (q.type == QuestionType.progressingReveal || q.type == QuestionType.feud) 'information': q.information,
       if (q.type == QuestionType.feud) 'values': q.percentages,
-      if (q.companion != null) 'companion': q.companion!.toMap(),
+      if (q.type == QuestionType.connections) 'groups': [for (final g in q.connectionGroups) g.toMap()],
+      if (q.companion != null)
+        'companion': q.type == QuestionType.connections
+            ? (q.companion!.toMap()..remove('groups'))
+            : q.companion!.toMap(),
       if (q.image != null) 'hasImage': true,
       if (q.music != null) 'hasSound': true,
     };

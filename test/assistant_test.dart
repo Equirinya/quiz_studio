@@ -162,6 +162,36 @@ void main() {
       expect(() => questionDataFromArgs({'question': 'x', 'pointsPlus': 'many'}, partial: false), throwsA(isA<ToolError>()));
     });
 
+    test('connections takes four groups of four, no word twice', () {
+      final groups = [
+        {'name': 'Fruit', 'words': ['Apple', 'Pear', 'Plum', 'Fig']},
+        {'name': 'Planets', 'words': ['Mars', 'Venus', 'Earth', 'Saturn']},
+        {'name': 'Card games', 'words': ['Bridge', 'Poker', 'Snap', 'Rummy']},
+        {'name': '___ Pie', 'words': ['Cherry', 'Humble', 'Shepherd', 'Pork']},
+      ];
+      final data = questionDataFromArgs({
+        'type': 'connections',
+        'question': 'Find the groups',
+        'pointsPlus': 400,
+        'groups': groups,
+        'companion': {'timer': 120, 'mistakes': 4},
+      }, partial: false);
+      final q = Question.fromMap('q', data);
+      expect(q.connectionGroups.map((g) => g.name), ['Fruit', 'Planets', 'Card games', '___ Pie']);
+      expect((q.companion!.timerSeconds, q.companion!.mistakes), (120, 4));
+      expect(() => questionDataFromArgs({'type': 'connections', 'question': 'x'}, partial: false), throwsA(isA<ToolError>()));
+      expect(
+        () => questionDataFromArgs({'type': 'connections', 'question': 'x', 'groups': groups.take(3).toList()}, partial: false),
+        throwsA(isA<ToolError>()),
+      );
+      final twice = [
+        ...groups.take(3),
+        {'name': 'Again', 'words': ['Apple', 'A', 'B', 'C']},
+      ];
+      expect(() => questionDataFromArgs({'type': 'connections', 'question': 'x', 'groups': twice}, partial: false), throwsA(isA<ToolError>()));
+      expect(() => questionDataFromArgs({'question': 'x', 'groups': groups}, partial: false), throwsA(isA<ToolError>()));
+    });
+
     test('a companion screen switches the buzzers off', () {
       final data = questionDataFromArgs({
         'question': 'What is 3+5?',

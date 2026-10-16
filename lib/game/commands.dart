@@ -34,7 +34,7 @@ class Sender {
 bool mayIssue(Sender sender, Command command) {
   if (sender.role != Role.player) return true;
   return switch (command) {
-    Buzz(:final teamId) || SubmitAnswer(:final teamId) || LockAnswer(:final teamId) =>
+    Buzz(:final teamId) || SubmitAnswer(:final teamId) || LockAnswer(:final teamId) || GuessConnection(:final teamId) =>
       sender.teamId != null && teamId == sender.teamId,
     _ => false,
   };
@@ -87,6 +87,8 @@ sealed class Command {
       'removeTeam' => RemoveTeam(j['teamId'] as String),
       'setQueueBuzzers' => SetQueueBuzzers(j['on'] as bool),
       'setThumbnails' => SetThumbnails(j['on'] as bool),
+      'guessConnection' => GuessConnection(j['teamId'] as String, [for (final p in j['positions'] as List) (p as num).toInt()]),
+      'awardConnections' => const AwardConnections(),
       'setTeamSound' => SetTeamSound(j['teamId'] as String, j['sound'] as String?),
       'openAnswers' => OpenAnswers(CompanionSpec.fromMap(j['spec'])!),
       'submitAnswer' =>
@@ -406,6 +408,28 @@ class LockAnswer extends Command {
 }
 
 /// Closes the round for everyone. The timer does this when it runs out.
+/// Connections: a team says these four words, by their places in the shown
+/// order, belong together.
+class GuessConnection extends Command {
+  const GuessConnection(this.teamId, this.positions);
+  final String teamId;
+  final List<int> positions;
+  @override
+  String get type => 'guessConnection';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId, 'positions': positions};
+}
+
+/// Connections: every team gets its share of the points for the groups it
+/// found. Can be given again after a change; nothing is counted twice.
+class AwardConnections extends Command {
+  const AwardConnections();
+  @override
+  String get type => 'awardConnections';
+  @override
+  Map<String, dynamic> get _args => const {};
+}
+
 class LockAnswers extends Command {
   const LockAnswers();
   @override

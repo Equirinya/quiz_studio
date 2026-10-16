@@ -13,6 +13,8 @@ String questionTypeExplanation(QuestionType type) => switch (type) {
       QuestionType.abcd => "Shows right and wrong answer suggestions, which the gamemaster reveals one by one.",
       QuestionType.progressingReveal => "The gamemaster reveals more information piece by piece.",
       QuestionType.feud => "Inspired by Family Feud: a list of answers, each worth a share of the points.",
+      QuestionType.connections =>
+        "Sixteen words in four groups of four. Every team solves it on its own device; each group found is worth a quarter of the points.",
       QuestionType.unsupported => "This question type is not supported by this version of the app.",
     };
 
@@ -42,10 +44,128 @@ class QuestionTypeEditor extends StatelessWidget {
         _InformationEditor(gameId: gameId, question: question, save: save, feud: false, onImported: onImported),
       QuestionType.feud =>
         _InformationEditor(gameId: gameId, question: question, save: save, feud: true, onImported: onImported),
+      QuestionType.connections => _ConnectionsEditor(question: question, save: save),
       QuestionType.unsupported => const SizedBox(),
     };
   }
 }
+
+/// The four groups of a Connections question, easiest first, each in the
+/// colour it will have on screen.
+class _ConnectionsEditor extends StatefulWidget {
+  const _ConnectionsEditor({required this.question, required this.save});
+
+  final Question question;
+  final SaveQuestion save;
+
+  @override
+  State<_ConnectionsEditor> createState() => _ConnectionsEditorState();
+}
+
+class _ConnectionsEditorState extends State<_ConnectionsEditor> {
+  late final List<TextEditingController> _names = [
+    for (final group in widget.question.connectionGroups) TextEditingController(text: group.name),
+  ];
+  late final List<List<TextEditingController>> _words = [
+    for (final group in widget.question.connectionGroups) [for (final word in group.words) TextEditingController(text: word)],
+  ];
+
+  @override
+  void dispose() {
+    for (final controller in [..._names, for (final row in _words) ...row]) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  List<ConnectionGroup> get _groups => [
+        for (var g = 0; g < kConnectionsGroups; g++)
+          ConnectionGroup(name: _names[g].text.trim(), words: [for (final c in _words[g]) c.text.trim()]),
+      ];
+
+  void _write() {
+    setState(() {});
+    widget.save({'connections': [for (final group in _groups) group.toMap()]});
+  }
+
+  /// What still stands between this puzzle and a fair game.
+  String? get _problem {
+    final groups = _groups;
+    final missing = groups.where((g) => !g.isComplete).length;
+    if (missing > 0) return "$missing ${missing == 1 ? "group needs" : "groups need"} a name and four words.";
+    final seen = <String>{};
+    for (final word in [for (final g in groups) ...g.words]) {
+      if (!seen.add(word.toLowerCase())) return "\"$word\" is in the puzzle twice.";
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final problem = _problem;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 8),
+        for (var g = 0; g < kConnectionsGroups; g++)
+          Container(
+            margin: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            decoration: BoxDecoration(
+              color: _groupColors[g].withValues(alpha: 0.28),
+              borderRadius: BorderRadius.circular(14),
+              border: Border(left: BorderSide(color: _groupColors[g], width: 6)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _names[g],
+                  decoration: InputDecoration(
+                    labelText: "${_groupNames[g]}: what they have in common",
+                    isDense: true,
+                  ),
+                  onChanged: (_) => _write(),
+                ),
+                const SizedBox(height: 6),
+                LayoutBuilder(
+                  builder: (context, box) {
+                    final perRow = box.maxWidth < 420 ? 2 : 4;
+                    final width = (box.maxWidth - 8 * (perRow - 1)) / perRow;
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        for (var w = 0; w < kConnectionsGroupSize; w++)
+                          SizedBox(
+                            width: width,
+                            child: TextField(
+                              controller: _words[g][w],
+                              decoration: InputDecoration(labelText: "Word ${w + 1}", isDense: true),
+                              onChanged: (_) => _write(),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 8),
+        Text(
+          problem ?? "Ready. Yellow is meant to be the easiest group and purple the hardest.",
+          style: theme.textTheme.bodySmall?.copyWith(color: problem == null ? null : theme.colorScheme.error),
+        ),
+      ],
+    );
+  }
+}
+
+// The same colours as on screen; see features/companion/connections.dart.
+const List<Color> _groupColors = [Color(0xFFF9DF6D), Color(0xFFA0C35A), Color(0xFFB0C4EF), Color(0xFFBA81C5)];
+const List<String> _groupNames = ['Yellow', 'Green', 'Blue', 'Purple'];
 
 class _FreeEditor extends StatefulWidget {
   const _FreeEditor({required this.question, required this.save});

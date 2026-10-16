@@ -30,6 +30,7 @@ import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
 
 import '../test/fake_buzzer_port.dart';
+import '../test/game/connections_fixture.dart';
 import '../test/game/fixture.dart';
 
 const _fonts = '/home/jacob/development/flutter/bin/cache/artifacts/material_fonts';
@@ -963,6 +964,177 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/buzzers_raw_and_sounds.png'));
     await tester.pumpWidget(const SizedBox());
     link.dispose();
+  });
+
+  // ── Connections ────────────────────────────────────────────────────────────
+
+  /// A picture without ending the round; [shot] clears it afterwards.
+  Future<void> snap(String name) => expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/$name.png'));
+
+  const connectionTeams = [Team(id: 'red', name: 'Red', points: 300), Team(id: 'blue', name: 'Blue', points: 150), Team(id: 'green', name: 'Green')];
+
+  SessionHost connectionsHost({int? timer = 120}) {
+    final h = SessionHost(initial: const SessionState(gameId: 'cg', teams: connectionTeams), game: connectionsGame(timer: timer));
+    h.dispatch(const OpenQuestion(puzzle));
+    return h;
+  }
+
+  void guess(SessionHost h, String teamId, List<int> places) =>
+      h.dispatch(GuessConnection(teamId, places), sender: Sender(Role.player, teamId: teamId));
+
+  List<int> mixed(int i) => [placesOf(0)[i], placesOf(1)[i], placesOf(2)[i], placesOf(3)[i]];
+
+  Future<void> tablet(WidgetTester tester, SessionHost h, {Brightness brightness = Brightness.light, Size size = const Size(820, 1180)}) async {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(brightness),
+      home: Scaffold(
+        body: SafeArea(
+          child: StreamBuilder<SessionState>(
+            stream: h.states,
+            builder: (context, _) => PlayerView(
+              view: PublicView(h.publicStateFor('red')),
+              teamId: 'red',
+              send: (command) => h.dispatch(command, sender: const Sender(Role.player, teamId: 'red')),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
+  Future<void> tapWord(WidgetTester tester, SessionHost h, int place) async {
+    await tester.tap(find.text(PublicView(h.publicStateFor('red')).connectionWords[place].toUpperCase()));
+    await tester.pump(const Duration(milliseconds: 200));
+  }
+
+  testWidgets('connections: tablet, playing', (tester) async {
+    final h = connectionsHost();
+    host = h;
+    guess(h, 'red', placesOf(2));
+    guess(h, 'red', mixed(0));
+    await tablet(tester, h);
+    await tester.pump(const Duration(seconds: 2));
+    for (final place in placesOf(3).take(3)) {
+      await tapWord(tester, h, place);
+    }
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('connections_tablet');
+  });
+
+  testWidgets('connections: tablet, a group sliding together', (tester) async {
+    final h = connectionsHost();
+    host = h;
+    guess(h, 'red', placesOf(2));
+    await tablet(tester, h, brightness: Brightness.dark);
+    await tester.pump(const Duration(seconds: 2));
+    for (final place in placesOf(0)) {
+      await tapWord(tester, h, place);
+    }
+    await tester.tap(find.widgetWithText(FilledButton, 'Submit'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 260));
+    await snap('connections_tablet_sliding');
+    await tester.pump(const Duration(milliseconds: 1200));
+    await shot('connections_tablet_found');
+  });
+
+  testWidgets('connections: phone, shaking after a wrong guess', (tester) async {
+    final h = connectionsHost(timer: null);
+    host = h;
+    await tablet(tester, h, size: const Size(412, 892));
+    for (final place in [...placesOf(1).take(3), placesOf(3)[0]]) {
+      await tapWord(tester, h, place);
+    }
+    await tester.tap(find.widgetWithText(FilledButton, 'Submit'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 90));
+    await shot('connections_phone_one_away');
+    await tester.pump(const Duration(seconds: 3));
+  });
+
+  Future<void> bigScreen(WidgetTester tester, SessionHost h) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final connection = SessionConnection.local(h, game: h.game);
+    addTearDown(connection.dispose);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.dark),
+      home: Scaffold(body: PresenterView(connection: connection)),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
+  testWidgets('connections: big screen while teams play', (tester) async {
+    final h = connectionsHost();
+    host = h;
+    guess(h, 'red', placesOf(2));
+    guess(h, 'red', placesOf(0));
+    guess(h, 'blue', placesOf(0));
+    guess(h, 'blue', mixed(1));
+    guess(h, 'green', mixed(0));
+    guess(h, 'green', mixed(1));
+    guess(h, 'green', mixed(2));
+    await bigScreen(tester, h);
+    await shot('connections_presenter_playing');
+  });
+
+  testWidgets('connections: big screen, groups revealed', (tester) async {
+    final h = connectionsHost();
+    host = h;
+    guess(h, 'red', placesOf(2));
+    await bigScreen(tester, h);
+    h.dispatch(const Reveal(1));
+    h.dispatch(const Reveal(1));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1500));
+    await shot('connections_presenter_revealed');
+  });
+
+  testWidgets('connections: controller', (tester) async {
+    tester.view.physicalSize = const Size(412, 892);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final h = connectionsHost();
+    host = h;
+    guess(h, 'red', placesOf(2));
+    guess(h, 'red', placesOf(0));
+    guess(h, 'blue', mixed(1));
+    guess(h, 'green', placesOf(3));
+    final connection = SessionConnection.local(h, game: h.game);
+    addTearDown(connection.dispose);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(appBar: AppBar(title: const Text("Quiz night")), body: ControllerView(connection: connection)),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+    await snap('connections_controller');
+    await tester.tap(find.widgetWithText(FilledButton, 'Reveal group'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('connections_controller_confirm');
+  });
+
+  testWidgets('connections: editor', (tester) async {
+    await questionCard(tester, 'connections_editor', {
+      'type': 'connections',
+      'question': 'Find four groups of four',
+      'pointsPlus': 400,
+      'connections': [
+        {'name': 'Fruit', 'words': ['Apple', 'Pear', 'Plum', 'Fig']},
+        {'name': 'Planets', 'words': ['Mars', 'Venus', 'Earth', 'Saturn']},
+        {'name': 'Card games', 'words': ['Bridge', 'Poker', 'Snap', '']},
+        {'name': '', 'words': ['', '', '', '']},
+      ],
+      'companion': {'timer': 120, 'mistakes': 3},
+    });
   });
 }
 

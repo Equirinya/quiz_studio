@@ -174,8 +174,17 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       // The enlarged image follows a new reveal and never points past the
       // last revealed one.
       final focus = delta > 0 ? revealed : (s.imageFocus > revealed ? revealed : s.imageFocus);
+      // A group on the big screen is a group nobody needs to find any more:
+      // the teams' time is up.
+      final round = s.answerRound;
+      final endsRound = question.type == QuestionType.connections && delta > 0 && round != null && round.open;
       return _ok(
-        s.copyWith(revealed: revealed, imageFocus: question.type == QuestionType.progressingReveal ? focus : null),
+        s.copyWith(
+          revealed: revealed,
+          imageFocus: question.type == QuestionType.progressingReveal ? focus : null,
+          answerRound: endsRound ? round.copyWith(open: false, endsAtMillis: null) : round,
+        ),
+        [if (question.type == QuestionType.connections && delta > 0) const SoundEffect(effectReveal)],
       );
 
     case ImageFocus(:final delta):
@@ -308,14 +317,57 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
 
     case LockAnswer(:final teamId):
       final round = s.answerRound;
-      if (round == null || !round.open || s.team(teamId) == null) return _no(s);
+      if (round == null || !round.open || !round.spec.lockable || s.team(teamId) == null) return _no(s);
       if (round.answers[teamId]?.locked == true) return _no(s);
-      final answers = {...round.answers, teamId: (round.answers[teamId] ?? const PlayerAnswer()).asLocked(true)};
-      // Once every team has locked in there is nothing left to wait for.
-      final everyone = s.teams.every((team) => answers[team.id]?.locked == true);
       return _ok(s.copyWith(
-        answerRound: round.copyWith(answers: answers, open: everyone ? false : null, endsAtMillis: everyone ? null : _keepTimer),
+        answerRound: _withAnswer(s, round, teamId, (round.answers[teamId] ?? const PlayerAnswer()).asLocked(true, atMillis: now)),
       ));
+
+    case GuessConnection(:final teamId, :final positions):
+      final round = s.answerRound;
+      if (round == null || !round.open || round.kind != CompanionKind.connections || s.team(teamId) == null) return _no(s);
+      final spec = round.spec;
+      final before = round.answers[teamId];
+      final progress = before?.connections ?? const ConnectionsProgress();
+      if (before?.locked == true || progress.finished(spec)) return _no(s);
+      if (positions.length != kConnectionsGroupSize || positions.toSet().length != kConnectionsGroupSize) return _no(s);
+      if (positions.any((p) => p < 0 || p >= kConnectionsWords)) return _no(s);
+      final order = connectionsOrder(s.current?.key ?? '');
+      final words = [for (final p in positions) order[p]]..sort();
+      final levels = [for (final w in words) w ~/ kConnectionsGroupSize];
+      // Words of a group already found are off the board.
+      if (levels.any(progress.solved.contains)) return _no(s);
+      // The same wrong guess again costs nothing and changes nothing.
+      if (progress.wrong.any((guess) => _sameList(guess, words))) return _no(s);
+      final counts = <int, int>{};
+      for (final level in levels) {
+        counts[level] = (counts[level] ?? 0) + 1;
+      }
+      final next = counts.length == 1
+          ? ConnectionsProgress(solved: [...progress.solved, levels.first], wrong: progress.wrong, oneAway: progress.oneAway)
+          : ConnectionsProgress(
+              solved: progress.solved,
+              wrong: [...progress.wrong, words],
+              oneAway: [...progress.oneAway, counts.values.any((n) => n == kConnectionsGroupSize - 1)],
+            );
+      // All found or out of tries: the team is done, and when it was done counts.
+      final done = next.finished(spec);
+      final answer = PlayerAnswer(connections: next, locked: done, lockedAtMillis: done ? now : null);
+      return _ok(s.copyWith(answerRound: _withAnswer(s, round, teamId, answer)));
+
+    case AwardConnections():
+      final round = s.answerRound;
+      if (round == null || round.kind != CompanionKind.connections || question == null) return _no(s);
+      var next = s;
+      var changed = false;
+      for (final team in s.teams) {
+        final points = connectionsPoints(question.pointsPlus, round.answers[team.id]?.connections);
+        final current = next.answerRound!;
+        if (current.awarded.containsKey(team.id) && current.awarded[team.id] == points) continue;
+        next = _award(next, current, team.id, points, verdict: points > 0);
+        changed = true;
+      }
+      return changed ? _ok(next, const [SoundEffect(effectAnswerCorrect)]) : _no(s);
 
     case LockAnswers():
       if (s.answerRound?.open != true) return _no(s);
@@ -402,6 +454,16 @@ AnswerRound _newRound(CompanionSpec spec, int? now) => AnswerRound(
       openedAtMillis: now,
       endsAtMillis: now != null && spec.timerSeconds != null ? now + spec.timerSeconds! * 1000 : null,
     );
+
+/// [round] with [answer] for [teamId]. Once every team has locked in there is
+/// nothing left to wait for, so the round closes.
+AnswerRound _withAnswer(SessionState s, AnswerRound round, String teamId, PlayerAnswer answer) {
+  final answers = {...round.answers, teamId: answer};
+  final everyone = s.teams.every((team) => answers[team.id]?.locked == true);
+  return round.copyWith(answers: answers, open: everyone ? false : null, endsAtMillis: everyone ? null : _keepTimer);
+}
+
+bool _sameList(List<int> a, List<int> b) => a.length == b.length && Iterable<int>.generate(a.length).every((i) => a[i] == b[i]);
 
 /// Showing an answer on the big screen ends the time to change it.
 AnswerRound _reveal(AnswerRound round, List<String> revealed) =>

@@ -45,6 +45,9 @@ class SessionHost {
   /// What player devices may see of the current state.
   Map<String, dynamic> get publicState => publicView(_state, _game);
 
+  /// The view for one team's devices, with what only that team may see.
+  Map<String, dynamic> publicStateFor(String? teamId) => publicView(_state, _game, teamId: teamId);
+
   /// Swaps in new content, e.g. after the game was edited or another game
   /// was loaded. A question that no longer exists is closed without marking
   /// it played.

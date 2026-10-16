@@ -6,6 +6,7 @@ import 'package:quiz_show/features/session/lan/lan_client.dart';
 import 'package:quiz_show/features/session/lan/lan_host_server.dart';
 import 'package:quiz_show/game/game.dart';
 
+import 'game/connections_fixture.dart';
 import 'game/fixture.dart';
 
 /// Real sockets on the loopback interface: the host server on one end, the
@@ -167,5 +168,38 @@ void main() {
     final copy = GameContent.fromJson(jsonDecode(jsonEncode(game.toJson())) as Map<String, dynamic>);
     expect(copy.name, 'G');
     expect(copy.groups.single.name, 'Group');
+  });
+
+  test("each team's devices get their own view, and only theirs", () async {
+    final h = SessionHost(
+      initial: const SessionState(gameId: 'cg', teams: [Team(id: 'red', name: 'Red'), Team(id: 'blue', name: 'Blue')]),
+      game: connectionsGame(),
+    );
+    final s = LanHostServer(h, authorize: (token) => {
+          'red': (role: Role.player, teamId: 'red'),
+          'blue': (role: Role.player, teamId: 'blue'),
+        }[token]);
+    final port = await s.start(port: 0, address: InternetAddress.loopbackIPv4);
+    final red = await LanClient.connect('127.0.0.1:$port', token: 'red');
+    final blue = await LanClient.connect('127.0.0.1:$port', token: 'blue');
+    final redFrames = <PublicView>[];
+    final blueFrames = <String>[];
+    red.views.listen(redFrames.add);
+    blue.views.listen((view) => blueFrames.add(jsonEncode(view.json)));
+    h.dispatch(const OpenQuestion(puzzle));
+    await settle();
+    red.send(GuessConnection('red', placesOf(1)));
+    await settle();
+    expect(redFrames.last.ownConnections!.solved.single.name, 'Planets');
+    expect(blueFrames.last, isNot(contains('Planets')));
+    expect(PublicView(jsonDecode(blueFrames.last) as Map<String, dynamic>).progressOf('red')!.solved, [1]);
+    // Blue cannot guess for red, or find anything with red's places.
+    blue.send(GuessConnection('red', placesOf(0)));
+    await settle();
+    expect(h.state.answerRound!.answers['red']!.connections!.solved, [1]);
+    await red.close();
+    await blue.close();
+    await s.stop();
+    await h.dispose();
   });
 }

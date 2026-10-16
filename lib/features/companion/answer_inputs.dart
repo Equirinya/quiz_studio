@@ -266,6 +266,10 @@ class _CompanionInputState extends State<CompanionInput> {
               ),
           ],
         );
+
+      case CompanionKind.connections:
+        // Played on a screen of its own; see ConnectionsPlay.
+        return const SizedBox();
     }
   }
 }

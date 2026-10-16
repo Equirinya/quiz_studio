@@ -28,6 +28,8 @@ const Map<String, String> _backgroundNames = {
 class _CompanionEditorState extends State<CompanionEditor> {
   late CompanionKind? _kind;
   late int? _timer;
+  late bool _lockable;
+  late int _mistakes;
   late String _background;
   String? _backgroundImage;
   late int _listRows;
@@ -44,8 +46,12 @@ class _CompanionEditorState extends State<CompanionEditor> {
     super.initState();
     final spec = CompanionSpec.fromMap(widget.question.data['companion']);
     String n(double? v) => v == null ? '' : formatNumber(v);
-    _kind = spec?.kind;
-    _timer = spec?.timerSeconds;
+    final connections = widget.question.type == QuestionType.connections;
+    final played = connections ? widget.question.companion : spec;
+    _kind = connections ? CompanionKind.connections : spec?.kind;
+    _timer = played?.timerSeconds;
+    _lockable = played?.lockable ?? true;
+    _mistakes = played?.mistakes ?? 3;
     // Read from the stored value: a "Picture" paper without a picture yet
     // should stay selected while one is being chosen.
     final stored = (widget.question.data['companion'] as Map?)?['background'];
@@ -81,6 +87,13 @@ class _CompanionEditorState extends State<CompanionEditor> {
       widget.save({'companion': null});
       return;
     }
+    if (kind == CompanionKind.connections) {
+      // The groups are the question's own; only how it is played goes here.
+      widget.save({
+        'companion': CompanionSpec(kind: kind, timerSeconds: _timer, lockable: _lockable, mistakes: _mistakes).toMap(),
+      });
+      return;
+    }
     double? n(TextEditingController c) => double.tryParse(c.text.trim().replaceAll(',', '.'));
     widget.save({
       'companion': CompanionSpec(
@@ -96,6 +109,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
         solution: _hasRange ? n(_solution) : null,
         options: _hasItems ? [for (final c in _options) c.text] : const [],
         targets: kind == CompanionKind.match ? [for (final c in _targets) c.text] : const [],
+        lockable: _lockable,
       ).toMap(),
       // Teams answer on their devices; a buzzer would only get in the way.
       if (widget.question.type == QuestionType.free) 'noBuzzer': true,
@@ -121,6 +135,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final kind = _kind;
+    final connections = kind == CompanionKind.connections;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -128,7 +143,9 @@ class _CompanionEditorState extends State<CompanionEditor> {
         Text("On the teams' devices", style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
         const SizedBox(height: 4),
         Text(
-          "Opens on every team's device with the question. You see the answers as they are written and decide when to show them.",
+          connections
+              ? "Every team solves the puzzle on its own device. You see live which groups each team has found."
+              : "Opens on every team's device with the question. You see the answers as they are written and decide when to show them.",
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: 12),
@@ -137,18 +154,20 @@ class _CompanionEditorState extends State<CompanionEditor> {
           runSpacing: 12,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            DropdownMenu<CompanionKind?>(
-              label: const Text("Screen"),
-              initialSelection: kind,
-              dropdownMenuEntries: [
-                const DropdownMenuEntry(value: null, label: "Nothing"),
-                for (final option in CompanionKind.values)
-                  // "Pick one" takes its options from an ABCD question.
-                  if (option != CompanionKind.choice || widget.question.type == QuestionType.abcd)
-                    DropdownMenuEntry(value: option, label: option.uiString),
-              ],
-              onSelected: (value) => _change(() => _kind = value),
-            ),
+            if (!connections)
+              DropdownMenu<CompanionKind?>(
+                label: const Text("Screen"),
+                initialSelection: kind,
+                dropdownMenuEntries: [
+                  const DropdownMenuEntry(value: null, label: "Nothing"),
+                  for (final option in CompanionKind.values)
+                    // "Pick one" takes its options from an ABCD question.
+                    if ((option != CompanionKind.choice || widget.question.type == QuestionType.abcd) &&
+                      option != CompanionKind.connections)
+                      DropdownMenuEntry(value: option, label: option.uiString),
+                ],
+                onSelected: (value) => _change(() => _kind = value),
+              ),
             if (kind != null)
               DropdownMenu<int?>(
                 label: const Text("Timer"),
@@ -159,6 +178,13 @@ class _CompanionEditorState extends State<CompanionEditor> {
                     DropdownMenuEntry(value: seconds, label: seconds < 60 ? "$seconds seconds" : "${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')} minutes"),
                 ],
                 onSelected: (value) => _change(() => _timer = value),
+              ),
+            if (connections)
+              DropdownMenu<int>(
+                label: const Text("Mistakes allowed"),
+                initialSelection: _mistakes,
+                dropdownMenuEntries: [for (var n = 1; n <= 6; n++) DropdownMenuEntry(value: n, label: "$n")],
+                onSelected: (value) => _change(() => _mistakes = value ?? 3),
               ),
             if (kind == CompanionKind.whiteboard)
               DropdownMenu<String>(
@@ -203,6 +229,18 @@ class _CompanionEditorState extends State<CompanionEditor> {
             if (kind == CompanionKind.slider) ...[_number(_min, "From"), _number(_max, "To"), _number(_step, "Step")],
           ],
         ),
+        if (kind != null)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(connections ? "Teams can stop early" : "Teams can lock in early"),
+            subtitle: Text(
+              _lockable
+                  ? "Locking in ends a team's time, and how long it took is kept"
+                  : "Every answer counts as it stands when the time is up or you end the round",
+            ),
+            value: _lockable,
+            onChanged: (value) => _change(() => _lockable = value),
+          ),
         if (_hasItems) ...[
           const SizedBox(height: 12),
           Text(

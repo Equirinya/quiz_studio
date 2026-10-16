@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:quiz_show/features/companion/connections.dart';
 import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/game/game.dart';
 
@@ -25,6 +26,20 @@ class AnswerView extends StatelessWidget {
     String option(List<String> list, int index) => index >= 0 && index < list.length ? list[index] : "?";
 
     switch (spec.kind) {
+      case CompanionKind.connections:
+        final progress = answer.connections!;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ConnectionsProgressRow(solved: progress.solved, mistakes: progress.mistakes, allowed: spec.mistakes, size: fontSize * 1.2),
+            SizedBox(height: fontSize * 0.3),
+            Text(
+              "${progress.solved.length} of 4 found · ${progress.mistakes} ${progress.mistakes == 1 ? "mistake" : "mistakes"}",
+              style: style.copyWith(fontSize: fontSize * 0.85),
+            ),
+          ],
+        );
       case CompanionKind.whiteboard:
         return DrawingView(
           drawing: answer.drawing,

@@ -32,13 +32,21 @@ String questionAsText(Question q) {
         final shown = value == null ? '-' : '${_number(value)}${q.absoluteValues ? '' : ' %'}';
         out.writeln('  $shown  $information');
       }
+    case QuestionType.connections:
+      const colours = ['yellow', 'green', 'blue', 'purple'];
+      for (final (i, group) in q.connectionGroups.indexed) {
+        out.writeln('  ${colours[i]}: ${group.name} – ${group.words.join(', ')}');
+      }
     case QuestionType.free:
       if (q.noBuzzer && q.companion == null) out.writeln('  No buzzers');
     case QuestionType.unsupported:
       break;
   }
   final companion = q.companion;
-  if (companion != null) {
+  if (companion != null && q.type == QuestionType.connections) {
+    final timer = companion.timerSeconds == null ? '' : ', ${companion.timerSeconds} s';
+    out.writeln('  ${companion.mistakes} mistakes allowed$timer');
+  } else if (companion != null) {
     final timer = companion.timerSeconds == null ? '' : ', ${companion.timerSeconds} s';
     out.writeln('  On the teams\' devices: ${companion.kind.name}$timer');
     if (companion.kind == CompanionKind.order) out.writeln('  Right order: ${companion.options.join(' → ')}');

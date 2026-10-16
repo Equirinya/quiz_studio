@@ -344,7 +344,7 @@ class _QuestionCardState extends State<QuestionCard> {
               _hint.text = answerHint;
             },
           ),
-          CompanionEditor(gameId: widget.gameId, question: _q, save: _save),
+          CompanionEditor(key: ValueKey('companion-${_q.type}'), gameId: widget.gameId, question: _q, save: _save),
         ],
       ),
     );

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -212,9 +213,9 @@ class SessionRepository {
         return state is Map ? SessionState.fromJson(Map<String, dynamic>.from(state)) : null;
       });
 
-  /// What players may see.
-  Stream<PublicView?> watchPublicState(String sessionId) =>
-      session(sessionId).collection('public').doc('state').snapshots().map((doc) {
+  /// What players may see; with [teamId], that team's own view.
+  Stream<PublicView?> watchPublicState(String sessionId, {String? teamId}) =>
+      session(sessionId).collection('public').doc(teamId == null ? 'state' : 'team_$teamId').snapshots().map((doc) {
         final data = doc.data();
         return data == null ? null : PublicView(data);
       });
@@ -273,6 +274,9 @@ class FirestoreHostLink {
   StreamSubscription<dynamic>? _session;
   StreamSubscription<SessionState>? _states;
   bool _backlogDropped = false;
+
+  /// The team views as last written, so an unchanged one is not written again.
+  final Map<String, String> _teamViews = {};
   bool _writing = false;
   bool _dirty = false;
   bool _stopped = false;
@@ -343,7 +347,18 @@ class FirestoreHostLink {
             'updatedAt': FieldValue.serverTimestamp(),
           })
           ..set(_ref.collection('public').doc('state'), host.publicState);
+        // Each team reads its own copy, which carries what only it may see.
+        final written = <String, String>{};
+        for (final team in state.teams) {
+          final view = host.publicStateFor(team.id);
+          final encoded = jsonEncode(view);
+          written[team.id] = encoded;
+          if (_teamViews[team.id] != encoded) batch.set(_ref.collection('public').doc('team_${team.id}'), view);
+        }
         await batch.commit();
+        _teamViews
+          ..clear()
+          ..addAll(written);
       } catch (error) {
         if (kDebugMode) print('Session: could not publish state: $error');
       }

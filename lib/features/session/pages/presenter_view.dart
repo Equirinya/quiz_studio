@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:mini_music_visualizer/mini_music_visualizer.dart';
 
 import 'package:quiz_show/features/companion/answer_view.dart';
+import 'package:quiz_show/features/companion/connections.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/session/boards/map_board.dart';
 import 'package:quiz_show/features/session/boards/wheel_board.dart';
@@ -280,6 +281,9 @@ class QuestionDisplay extends StatelessWidget {
         : null;
     final image = _file(focused) ?? _file(question.image);
     final round = state.answerRound;
+    if (question.type == QuestionType.connections) {
+      return _ConnectionsDisplay(state: state, question: question, unit: unit);
+    }
     final strip =
         state.thumbnails && round == null && question.type == QuestionType.progressingReveal && question.hasInformationImages;
     return Column(
@@ -429,6 +433,98 @@ class QuestionDisplay extends StatelessWidget {
     final value = question.percentages.elementAtOrNull(index) ?? 0;
     final text = value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
     return question.absoluteValues ? text : "$text%";
+  }
+}
+
+/// Connections on the big screen: the sixteen words as the teams see them,
+/// the groups the gamemaster has revealed, and how far every team has got.
+class _ConnectionsDisplay extends StatelessWidget {
+  const _ConnectionsDisplay({required this.state, required this.question, required this.unit});
+
+  final SessionState state;
+  final Question question;
+  final double unit;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final spec = question.companion!;
+    final order = connectionsOrder(state.current?.key ?? '');
+    final words = [for (final index in order) spec.wordAt(index)];
+    final revealed = state.revealed.clamp(0, kConnectionsGroups);
+    final round = state.answerRound;
+    return Column(
+      children: [
+        Text(
+          question.text.isEmpty ? "Find four groups of four" : question.text,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: unit * 3.6, fontWeight: FontWeight.w600),
+        ),
+        SizedBox(height: unit * 1.2),
+        if (round != null && round.open && round.endsAtMillis != null)
+          Padding(
+            padding: EdgeInsets.only(bottom: unit * 1.2),
+            child: RoundCountdown(openedAt: round.openedAtMillis, endsAt: round.endsAtMillis!, hostClock: true, height: unit * 1.4),
+          ),
+        Expanded(
+          child: Center(
+            child: AspectRatio(
+              aspectRatio: 2.3,
+              child: ConnectionsGrid(
+                words: words,
+                groups: [for (var level = 0; level < revealed; level++) GridGroup.fromSpec(spec, level, order)],
+                gap: unit * 1.2,
+                fontSize: unit * 3,
+              ),
+            ),
+          ),
+        ),
+        if (round != null) ...[
+          SizedBox(height: unit * 1.5),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: unit * 1.5,
+            runSpacing: unit,
+            children: [
+              for (final team in state.teams)
+                Builder(builder: (context) {
+                  final answer = round.answers[team.id];
+                  final progress = answer?.connections ?? const ConnectionsProgress();
+                  final took = answer?.secondsTaken(round);
+                  final done = progress.finished(spec) || answer?.locked == true;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: EdgeInsets.symmetric(horizontal: unit * 2, vertical: unit * 1),
+                    decoration: BoxDecoration(
+                      color: progress.solved.length == kConnectionsGroups ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(unit * 2),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(team.name, style: TextStyle(fontSize: unit * 3.2, fontWeight: FontWeight.w700)),
+                        SizedBox(width: unit * 1.5),
+                        ConnectionsProgressRow(
+                          solved: progress.solved,
+                          mistakes: progress.mistakes,
+                          allowed: spec.mistakes,
+                          size: unit * 3.2,
+                        ),
+                        if (done && took != null) ...[
+                          SizedBox(width: unit),
+                          Text("${took.toStringAsFixed(1)} s", style: TextStyle(fontSize: unit * 2.6, color: scheme.outline)),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
+            ],
+          ),
+        ],
+      ],
+    );
   }
 }
 
@@ -639,6 +735,7 @@ class _AnswerRoundDisplay extends StatelessWidget {
                     child: Builder(builder: (context) {
                       final verdict = round.verdicts[team.id];
                       final awarded = round.awarded[team.id];
+                      final took = round.answers[team.id]?.secondsTaken(round);
                       return Container(
                         margin: EdgeInsets.symmetric(horizontal: unit * 0.8),
                         padding: EdgeInsets.all(unit * 1.5),
@@ -667,6 +764,11 @@ class _AnswerRoundDisplay extends StatelessWidget {
                                     style: TextStyle(fontSize: unit * 2.8, fontWeight: FontWeight.w700, color: scheme.primary),
                                   ),
                                 ),
+                                if (took != null)
+                                  Text(
+                                    "  ${took.toStringAsFixed(1)} s",
+                                    style: TextStyle(fontSize: unit * 2.2, color: scheme.outline),
+                                  ),
                                 if (verdict != null) ...[
                                   SizedBox(width: unit),
                                   Icon(

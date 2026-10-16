@@ -604,7 +604,16 @@ class _ActionPad extends StatelessWidget {
             ),
           ),
         );
-    Widget small(String label, IconData icon, Command? command) => Expanded(
+    // Revealing a Connections group while teams still play gives it away to
+    // them, so that one asks first.
+    final revealEarly = q?.type == QuestionType.connections && next is Reveal && round != null && round.open;
+    Future<bool> askReveal() => confirm(
+          context,
+          title: "Reveal a group now?",
+          message: "The teams are still playing. Revealing a group ends their time; what they found so far counts.",
+          action: "Reveal",
+        );
+    Widget small(String label, IconData icon, Command? command, {Future<bool> Function()? ask}) => Expanded(
           child: Padding(
             padding: const EdgeInsets.all(4),
             child: SizedBox(
@@ -614,7 +623,12 @@ class _ActionPad extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 2),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                onPressed: command == null ? null : () => send(command),
+                onPressed: command == null
+                    ? null
+                    : () async {
+                        if (ask != null && !await ask()) return;
+                        send(command);
+                      },
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -653,9 +667,12 @@ class _ActionPad extends StatelessWidget {
                     ? "Show answer"
                     : q?.type == QuestionType.abcd && state.revealed == q!.answers.length
                         ? "Solution"
-                        : "Reveal",
+                        : q?.type == QuestionType.connections
+                            ? "Reveal group"
+                            : "Reveal",
                 Icons.navigate_next,
                 next,
+                ask: revealEarly ? askReveal : null,
               ),
               small(playing ? "Pause" : "Play", playing ? Icons.pause : Icons.play_arrow, sound),
               small(queued ? "Next team" : "Reopen", queued ? Icons.skip_next : Icons.undo, pass),
@@ -1109,7 +1126,7 @@ class _AnswersSheetState extends State<_AnswersSheet> {
       Navigator.of(context).pop();
     }
 
-    final automatic = round == null
+    final automatic = round == null || round.kind == CompanionKind.connections
         ? const <String, bool>{}
         : {
             for (final team in state.teams)
@@ -1183,6 +1200,8 @@ class _AnswersSheetState extends State<_AnswersSheet> {
                       }
                     }
                   }),
+                if (round.kind == CompanionKind.connections)
+                  action("Give points for groups", Icons.emoji_events_outlined, () => send(const AwardConnections())),
                 action("Discard", Icons.delete_outline, () => send(const ClearAnswers())),
               ],
             ),
@@ -1234,8 +1253,10 @@ class _AnswersPanel extends StatelessWidget {
       CompanionKind.number || CompanionKind.slider => spec.solution == null ? null : formatNumber(spec.solution!, unit: spec.unit),
       CompanionKind.order => spec.options.join("  →  "),
       CompanionKind.match => [for (final (i, left) in spec.options.indexed) "$left → ${spec.targets.elementAtOrNull(i) ?? "?"}"].join(" · "),
+      CompanionKind.connections => [for (final group in spec.groups) group.name].join(" · "),
       _ => null,
     };
+    final connections = spec.kind == CompanionKind.connections;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1254,9 +1275,11 @@ class _AnswersPanel extends StatelessWidget {
             final answer = round.answers[team.id];
             final shown = round.revealed.contains(team.id);
             final verdict = round.verdicts[team.id];
-            final suggestion = autoVerdict(spec, answer, choiceCorrect: question.answersCorrect) ??
-                (closest.contains(team.id) ? true : null);
+            final suggestion = connections
+                ? null
+                : autoVerdict(spec, answer, choiceCorrect: question.answersCorrect) ?? (closest.contains(team.id) ? true : null);
             final awarded = round.awarded[team.id];
+            final took = answer?.secondsTaken(round);
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
               color: shown ? scheme.primaryContainer : scheme.surfaceContainerHigh,
@@ -1280,6 +1303,7 @@ class _AnswersPanel extends StatelessWidget {
                         Expanded(
                           child: Text(
                             "${team.name}${shown ? " · on screen" : ""}"
+                            "${took == null ? "" : " · ${took.toStringAsFixed(1)} s"}"
                             "${awarded == null ? "" : " · ${awarded >= 0 ? "+" : ""}$awarded"}",
                             style: theme.textTheme.labelLarge,
                           ),
@@ -1346,6 +1370,20 @@ class _AnswersPanel extends StatelessWidget {
               ),
             );
           }),
+        if (connections)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: FilledButton.icon(
+              onPressed: () => send(const AwardConnections()),
+              icon: const Icon(Icons.emoji_events_outlined),
+              label: Text(
+                "Give points: "
+                "${[for (final team in state.teams) "${team.name} ${connectionsPoints(question.pointsPlus, round.answers[team.id]?.connections)}"].join(", ")}",
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
       ],
     );
   }
