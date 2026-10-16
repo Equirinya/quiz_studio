@@ -64,6 +64,7 @@ class PresenterView extends StatelessWidget {
               // Cards and effects lie over whatever is on screen.
               CardOverlay(
                 card: state.overlay,
+                animation: state.cardAnimation,
                 imageFile: mediaFile,
                 // Only the presenting device plays video, and takes the card
                 // off again when the clip is over.

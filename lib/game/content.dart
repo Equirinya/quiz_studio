@@ -6,6 +6,7 @@
 /// firebase/firestore.rules.
 library;
 
+import 'cards.dart';
 import 'companion.dart';
 
 // Music slots and built-in effect keys (v1 names, also used as stored keys).
@@ -573,7 +574,8 @@ class GameContent {
   /// Every media file the game needs, for caching ahead of the show.
   Set<String> get mediaPaths => {
         ...sounds.mediaPaths,
-        for (final card in cards) ...[?card.image, ?card.video],
+        // Built-in pictures come with the app; there is nothing to download.
+        for (final card in cards) ...[if (!isBuiltinImage(card.image)) ?card.image, ?card.video],
         for (final group in groups) ...[
           ...group.mediaPaths,
           for (final category in group.categories) ...[

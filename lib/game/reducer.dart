@@ -436,6 +436,10 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
         media: video && s.media == MediaPlayback.playing ? MediaPlayback.paused : null,
       ));
 
+    case SetCardAnimation(:final animation):
+      if (animation == s.cardAnimation) return _no(s);
+      return _ok(s.copyWith(cardAnimation: animation));
+
     case HideCard():
       if (s.overlay == null) return _no(s);
       return _ok(s.copyWith(overlay: null));

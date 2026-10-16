@@ -2,6 +2,7 @@
 /// Nothing in here may import Flutter or Firebase.
 library;
 
+export 'cards.dart';
 export 'commands.dart';
 export 'companion.dart';
 export 'drawing.dart';

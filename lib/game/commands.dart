@@ -2,6 +2,7 @@
 /// hardware all send these; only the reducer turns them into state.
 library;
 
+import 'cards.dart';
 import 'companion.dart';
 import 'content.dart';
 import 'session_state.dart';
@@ -87,6 +88,7 @@ sealed class Command {
       'removeTeam' => RemoveTeam(j['teamId'] as String),
       'setQueueBuzzers' => SetQueueBuzzers(j['on'] as bool),
       'setThumbnails' => SetThumbnails(j['on'] as bool),
+      'setCardAnimation' => SetCardAnimation(CardAnimation.fromName(j['animation'])),
       'guessConnection' => GuessConnection(j['teamId'] as String, [for (final p in j['positions'] as List) (p as num).toInt()]),
       'awardConnections' => const AwardConnections(),
       'setTeamSound' => SetTeamSound(j['teamId'] as String, j['sound'] as String?),
@@ -507,6 +509,16 @@ class ShowCard extends Command {
   String get type => 'showCard';
   @override
   Map<String, dynamic> get _args => {'card': card.toJson()};
+}
+
+/// How cards come on screen from now on, until it is changed again.
+class SetCardAnimation extends Command {
+  const SetCardAnimation(this.animation);
+  final CardAnimation animation;
+  @override
+  String get type => 'setCardAnimation';
+  @override
+  Map<String, dynamic> get _args => {'animation': animation.name};
 }
 
 class HideCard extends Command {

@@ -973,7 +973,61 @@ class _EffectsSheetState extends State<_EffectsSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          header("On screen"),
+          Row(
+            children: [
+              Expanded(child: header("On screen")),
+              // Kept with the session: every card comes on this way until it is changed.
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: DropdownMenu<CardAnimation>(
+                  key: const ValueKey('card-animation'),
+                  label: const Text("Animation"),
+                  width: 210,
+                  initialSelection: state.cardAnimation,
+                  dropdownMenuEntries: [
+                    for (final animation in CardAnimation.values)
+                      DropdownMenuEntry(value: animation, label: animation.uiString),
+                  ],
+                  onSelected: (animation) {
+                    if (animation != null) send(SetCardAnimation(animation));
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 76,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final image in builtinImages)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Tooltip(
+                      message: image.label,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => send(ShowCard(OverlayCard(image: image.name))),
+                        child: Container(
+                          width: 128,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              width: 3,
+                              color: state.overlay?.image == image.name ? theme.colorScheme.primary : Colors.transparent,
+                            ),
+                          ),
+                          child: Image.asset(image.asset, fit: BoxFit.cover, semanticLabel: image.label),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,

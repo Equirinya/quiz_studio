@@ -15,6 +15,7 @@ import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/games/pages/category_editor_page.dart';
+import 'package:quiz_show/features/games/widgets/cards_dialog.dart';
 import 'package:quiz_show/features/games/widgets/question_preview.dart';
 import 'package:quiz_show/features/games/widgets/map_editor.dart';
 import 'package:quiz_show/features/player/pages/player_page.dart';
@@ -1135,6 +1136,88 @@ void main() {
       ],
       'companion': {'timer': 120, 'mistakes': 3},
     });
+  });
+
+  // ── Cards: built-in pictures and animations ────────────────────────────────
+
+  /// Asset pictures have to be in the cache before a widget asks for them.
+  Future<void> loadBuiltins(WidgetTester tester) async {
+    await tester.pumpWidget(const MaterialApp(home: Scaffold()));
+    await tester.runAsync(() async {
+      for (final image in builtinImages) {
+        await precacheImage(AssetImage(image.asset), tester.element(find.byType(Scaffold)));
+      }
+    });
+  }
+
+  testWidgets('cards: effects sheet with built-in pictures', (tester) async {
+    await loadBuiltins(tester);
+    await phone(tester, const [SetCardAnimation(CardAnimation.bounce)]);
+    await tapText(tester, find.text('Effects'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('cards_effects_sheet');
+  });
+
+  Future<void> cardScreen(WidgetTester tester, CardAnimation animation, OverlayCard card, Duration after, String name) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await loadBuiltins(tester);
+    host = SessionHost(initial: fixtureState());
+    final connection = SessionConnection.local(host, game: fixtureGame());
+    addTearDown(connection.dispose);
+    host.dispatch(SetCardAnimation(animation));
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.dark),
+      home: Scaffold(body: PresenterView(connection: connection)),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+    host.dispatch(ShowCard(card));
+    await tester.pump();
+    await tester.pump(after);
+    await shot(name);
+  }
+
+  testWidgets('cards: built-in picture on screen', (tester) async {
+    await cardScreen(tester, CardAnimation.fade, const OverlayCard(image: 'builtin:correct'), const Duration(seconds: 1), 'cards_builtin_on_screen');
+  });
+
+  testWidgets('cards: bouncing in', (tester) async {
+    await cardScreen(tester, CardAnimation.bounce, const OverlayCard(image: 'builtin:times_up'), const Duration(milliseconds: 170), 'cards_bounce_midway');
+  });
+
+  testWidgets('cards: sliding in from the bottom', (tester) async {
+    await cardScreen(tester, CardAnimation.slideUp, const OverlayCard(title: 'Round 2', text: 'Pictures and sounds'), const Duration(milliseconds: 140), 'cards_slide_midway');
+  });
+
+  testWidgets('cards: flipping in', (tester) async {
+    await cardScreen(tester, CardAnimation.flip, const OverlayCard(image: 'builtin:final_round'), const Duration(milliseconds: 200), 'cards_flip_midway');
+  });
+
+  testWidgets('cards: editor list', (tester) async {
+    tester.view.physicalSize = const Size(900, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await loadBuiltins(tester);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        body: CardsDialog(
+          gameId: 'g',
+          cards: const [
+            CueCard(title: 'Rules', text: 'No phones. Answers in by the buzzer only.'),
+            CueCard(image: 'builtin:break'),
+            CueCard(title: 'Intro', video: 'intro.mp4'),
+            CueCard(image: 'builtin:winner', text: 'Drumroll please'),
+          ],
+          save: (_) {},
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('cards_editor');
   });
 }
 

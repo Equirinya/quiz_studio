@@ -243,7 +243,7 @@ void main() {
   testWidgets('a text typed in the effects sheet goes over the screen and comes off again', (tester) async {
     await pumpBoth(tester);
     await tap(tester, tab('Effects'));
-    await tester.enterText(inSheet(find.byType(TextField)), 'Back in ten minutes');
+    await tester.enterText(inSheet(find.widgetWithText(TextField, 'Text to show')), 'Back in ten minutes');
     await tap(tester, inSheet(find.text('Show')));
     expect(host.state.overlay!.text, 'Back in ten minutes');
     expect(inPresenter(find.text('Back in ten minutes')), findsOneWidget);

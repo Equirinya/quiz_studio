@@ -7,9 +7,16 @@ import 'package:flutter/material.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// The card the gamemaster put over the screen: a title, a text, an image,
-/// in any combination. Fades in and out.
+/// in any combination. The dimmed backdrop fades; the card itself comes and
+/// goes with [animation].
 class CardOverlay extends StatelessWidget {
-  const CardOverlay({super.key, required this.card, required this.imageFile, this.videoBuilder});
+  const CardOverlay({
+    super.key,
+    required this.card,
+    required this.imageFile,
+    this.videoBuilder,
+    this.animation = CardAnimation.fade,
+  });
 
   final OverlayCard? card;
 
@@ -19,71 +26,172 @@ class CardOverlay extends StatelessWidget {
   /// Builds the player for a video file. Left out where video cannot play
   /// (tests, devices that are not presenting); the card's text shows instead.
   final Widget Function(File file)? videoBuilder;
+  final CardAnimation animation;
+
+  static Duration durationOf(CardAnimation animation) => switch (animation) {
+        CardAnimation.off => Duration.zero,
+        CardAnimation.fade => const Duration(milliseconds: 350),
+        CardAnimation.bounce => const Duration(milliseconds: 900),
+        CardAnimation.spin || CardAnimation.flip => const Duration(milliseconds: 700),
+        _ => const Duration(milliseconds: 550),
+      };
+
+  /// [child] coming in as [t] goes from 0 to 1, and going out as it falls
+  /// back; [t] is already curved.
+  static Widget transition(CardAnimation animation, Animation<double> t, Widget child) {
+    switch (animation) {
+      case CardAnimation.off:
+        return child;
+      case CardAnimation.fade:
+        return FadeTransition(opacity: t, child: child);
+      case CardAnimation.slideUp:
+      case CardAnimation.slideDown:
+        final from = Offset(0, animation == CardAnimation.slideUp ? 1.2 : -1.2);
+        return SlideTransition(position: Tween(begin: from, end: Offset.zero).animate(t), child: child);
+      case CardAnimation.bounce:
+        return ScaleTransition(scale: t, child: child);
+      case CardAnimation.zoom:
+        return FadeTransition(
+          opacity: t,
+          child: ScaleTransition(scale: Tween(begin: 2.2, end: 1.0).animate(t), child: child),
+        );
+      case CardAnimation.spin:
+        return ScaleTransition(
+          scale: t,
+          child: RotationTransition(turns: Tween(begin: -1.0, end: 0.0).animate(t), child: child),
+        );
+      case CardAnimation.flip:
+        return AnimatedBuilder(
+          animation: t,
+          child: child,
+          builder: (context, child) => Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.0012)
+              ..rotateY((1 - t.value) * pi / 2),
+            child: Opacity(opacity: t.value < 0.02 ? 0 : 1, child: child),
+          ),
+        );
+    }
+  }
+
+  static Curve curveIn(CardAnimation animation) => switch (animation) {
+        CardAnimation.bounce => Curves.elasticOut,
+        CardAnimation.slideUp || CardAnimation.slideDown => Curves.easeOutBack,
+        CardAnimation.spin => Curves.easeOutCubic,
+        CardAnimation.flip => Curves.easeOutCubic,
+        _ => Curves.easeOutCubic,
+      };
 
   @override
   Widget build(BuildContext context) {
     final card = this.card;
+    final duration = durationOf(animation);
     return IgnorePointer(
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 350),
-        child: card == null
-            ? const SizedBox.expand()
-            : LayoutBuilder(
-                key: ValueKey('${card.title}|${card.text}|${card.image}'),
-                builder: (context, box) {
-                  final unit = box.maxHeight / 100;
-                  final scheme = Theme.of(context).colorScheme;
-                  final video = card.video == null || videoBuilder == null ? null : imageFile(card.video!);
-                  if (video != null) {
-                    return ColoredBox(color: Colors.black, child: Center(child: videoBuilder!(video)));
-                  }
-                  final image = card.image == null ? null : imageFile(card.image!);
-                  final hasText = (card.title ?? '').isNotEmpty || (card.text ?? '').isNotEmpty;
-                  return ColoredBox(
-                    color: Colors.black.withValues(alpha: 0.72),
-                    child: Center(
-                      child: Container(
-                        constraints: BoxConstraints(maxWidth: box.maxWidth * 0.8, maxHeight: box.maxHeight * 0.84),
-                        padding: EdgeInsets.all(unit * 4),
-                        decoration: BoxDecoration(
-                          color: scheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(unit * 4),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if ((card.title ?? '').isNotEmpty)
-                              Text(
-                                card.title!,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: unit * 6, fontWeight: FontWeight.w700, color: scheme.primary),
-                              ),
-                            if (image != null)
-                              Flexible(
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(vertical: hasText ? unit * 2 : 0),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(unit * 2),
-                                    child: Image.file(image, fit: BoxFit.contain),
-                                  ),
-                                ),
-                              ),
-                            if ((card.text ?? '').isNotEmpty)
-                              Padding(
-                                padding: EdgeInsets.only(top: (card.title ?? '').isNotEmpty && image == null ? unit * 2 : 0),
-                                child: Text(
-                                  card.text!,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: unit * 4.5, color: scheme.onSurface),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final video = card?.video == null || videoBuilder == null ? null : imageFile(card!.video!);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              AnimatedOpacity(
+                opacity: card == null ? 0 : 1,
+                duration: animation == CardAnimation.off ? Duration.zero : const Duration(milliseconds: 300),
+                child: ColoredBox(color: video != null ? Colors.black : Colors.black.withValues(alpha: 0.72)),
               ),
+              AnimatedSwitcher(
+                duration: duration,
+                // Going off screen is quicker and never springs.
+                reverseDuration: animation == CardAnimation.off ? Duration.zero : const Duration(milliseconds: 320),
+                switchInCurve: curveIn(animation),
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, t) => transition(
+                  // A clip plays full screen; it only fades.
+                  video != null && animation != CardAnimation.off ? CardAnimation.fade : animation,
+                  t,
+                  child,
+                ),
+                child: card == null
+                    ? const SizedBox.expand(key: ValueKey('no-card'))
+                    : video != null
+                        ? Center(key: ValueKey('video-${card.video}'), child: videoBuilder!(video))
+                        : _CardBody(
+                            key: ValueKey('${card.title}|${card.text}|${card.image}'),
+                            card: card,
+                            box: box,
+                            imageFile: imageFile,
+                          ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CardBody extends StatelessWidget {
+  const _CardBody({super.key, required this.card, required this.box, required this.imageFile});
+
+  final OverlayCard card;
+  final BoxConstraints box;
+  final File? Function(String name) imageFile;
+
+  @override
+  Widget build(BuildContext context) {
+    final unit = box.maxHeight / 100;
+    final scheme = Theme.of(context).colorScheme;
+    final builtin = builtinImage(card.image);
+    final file = card.image == null || builtin != null ? null : imageFile(card.image!);
+    final ImageProvider? image = builtin != null ? AssetImage(builtin.asset) : (file == null ? null : FileImage(file));
+    final hasText = (card.title ?? '').isNotEmpty || (card.text ?? '').isNotEmpty;
+    // A picture on its own fills the screen, without a frame around it.
+    if (image != null && !hasText) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(unit * 4),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(unit * 3),
+            child: Image(image: image, fit: BoxFit.contain),
+          ),
+        ),
+      );
+    }
+    return Center(
+      child: Container(
+        constraints: BoxConstraints(maxWidth: box.maxWidth * 0.8, maxHeight: box.maxHeight * 0.84),
+        padding: EdgeInsets.all(unit * 4),
+        decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 4)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if ((card.title ?? '').isNotEmpty)
+              Text(
+                card.title!,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: unit * 6, fontWeight: FontWeight.w700, color: scheme.primary),
+              ),
+            if (image != null)
+              Flexible(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: unit * 2),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(unit * 2),
+                    child: Image(image: image, fit: BoxFit.contain),
+                  ),
+                ),
+              ),
+            if ((card.text ?? '').isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(top: (card.title ?? '').isNotEmpty && image == null ? unit * 2 : 0),
+                child: Text(
+                  card.text!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: unit * 4.5, color: scheme.onSurface),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

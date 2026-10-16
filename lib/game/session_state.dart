@@ -3,6 +3,7 @@
 /// carry it.
 library;
 
+import 'cards.dart';
 import 'companion.dart';
 import 'content.dart';
 
@@ -97,6 +98,7 @@ class SessionState {
     this.played = const {},
     this.queueBuzzers = false,
     this.thumbnails = true,
+    this.cardAnimation = CardAnimation.fade,
     this.buzzQueue = const [],
     this.revealed = 0,
     this.imageFocus = 0,
@@ -129,6 +131,9 @@ class SessionState {
   /// Progressing reveal with images: whether the row of small pictures is
   /// shown under the question.
   final bool thumbnails;
+
+  /// How cards come on screen and go again.
+  final CardAnimation cardAnimation;
 
   /// Team ids in buzz order; the first is answering.
   final List<String> buzzQueue;
@@ -173,6 +178,7 @@ class SessionState {
     Set<String>? played,
     bool? queueBuzzers,
     bool? thumbnails,
+    CardAnimation? cardAnimation,
     List<String>? buzzQueue,
     int? revealed,
     int? imageFocus,
@@ -193,6 +199,7 @@ class SessionState {
         played: played ?? this.played,
         queueBuzzers: queueBuzzers ?? this.queueBuzzers,
         thumbnails: thumbnails ?? this.thumbnails,
+        cardAnimation: cardAnimation ?? this.cardAnimation,
         buzzQueue: buzzQueue ?? this.buzzQueue,
         revealed: revealed ?? this.revealed,
         imageFocus: imageFocus ?? this.imageFocus,
@@ -214,6 +221,7 @@ class SessionState {
         'played': played.toList()..sort(),
         'queueBuzzers': queueBuzzers,
         'thumbnails': thumbnails,
+        'cardAnimation': cardAnimation.name,
         'buzzQueue': buzzQueue,
         'revealed': revealed,
         'imageFocus': imageFocus,
@@ -235,6 +243,7 @@ class SessionState {
         played: {...(json['played'] as List? ?? const []).cast<String>()},
         queueBuzzers: json['queueBuzzers'] == true,
         thumbnails: json['thumbnails'] != false,
+        cardAnimation: CardAnimation.fromName(json['cardAnimation']),
         buzzQueue: (json['buzzQueue'] as List? ?? const []).cast<String>().toList(),
         revealed: (json['revealed'] as num?)?.toInt() ?? 0,
         imageFocus: (json['imageFocus'] as num?)?.toInt() ?? 0,
