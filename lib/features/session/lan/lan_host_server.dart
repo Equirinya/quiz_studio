@@ -23,6 +23,8 @@ typedef LanGrant = ({Role role, String? teamId});
 ///   host → client   {"t":"welcome","role":…,"teamId":…}   {"t":"denied"}
 ///                   {"t":"state","s":{…}}  {"t":"game","g":{…}|null}  {"t":"public","p":{…}}
 ///                   {"t":"bg","n":name,"d":base64}   the picture of a whiteboard
+///                   {"t":"fx","n":name}   controllers: a screen effect such as confetti,
+///                                         for a presenter window showing the show
 class LanHostServer {
   LanHostServer(this.host, {required this.authorize});
 
@@ -33,6 +35,7 @@ class LanHostServer {
 
   HttpServer? _server;
   StreamSubscription<SessionState>? _states;
+  StreamSubscription<Effect>? _effects;
   final Map<WebSocket, LanGrant> _clients = {};
   GameContent? _sentGame;
   String? _gameJson;
@@ -66,6 +69,7 @@ class LanHostServer {
     }
     _server!.listen(_onRequest, onError: (Object _) {});
     _states = host.states.listen((_) => _broadcast());
+    _effects = host.effects.listen(_onEffect);
     return this.port;
   }
 
@@ -161,8 +165,24 @@ class LanHostServer {
     if (gameChanged) _gameMessage();
   }
 
+  /// Confetti and the like happen once, outside the state, so they are
+  /// passed on as they come.
+  void _onEffect(Effect effect) {
+    if (effect is! VisualEffect) return;
+    final message = jsonEncode({'t': 'fx', 'n': effect.name});
+    for (final entry in _clients.entries.toList()) {
+      if (entry.value.role == Role.player) continue;
+      try {
+        entry.key.add(message);
+      } catch (_) {
+        _clients.remove(entry.key);
+      }
+    }
+  }
+
   Future<void> stop() async {
     await _states?.cancel();
+    await _effects?.cancel();
     for (final socket in _clients.keys.toList()) {
       await socket.close(WebSocketStatus.goingAway);
     }

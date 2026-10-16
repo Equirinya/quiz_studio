@@ -11,10 +11,14 @@ import 'features/auth/auth_gate.dart';
 import 'features/games/media_service.dart';
 import 'features/games/pages/games_page.dart';
 import 'features/session/pages/sessions_page.dart';
+import 'features/session/presenter_window.dart';
 import 'features/settings/account_page.dart';
 import 'firebase_options.dart';
 
-void main() async {
+void main(List<String> args) async {
+  // A second window showing a show the main window runs; see PresenterWindow.
+  final window = PresenterWindowArgs.tryParse(args);
+  if (window != null) return runPresenterWindow(window);
   WidgetsFlutterBinding.ensureInitialized();
   if (Platform.isWindows || Platform.isMacOS) {
     await windowManager.ensureInitialized();

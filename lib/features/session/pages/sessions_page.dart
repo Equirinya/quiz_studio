@@ -22,6 +22,7 @@ import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/features/session/pages/connect_devices_page.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
+import 'package:quiz_show/features/session/presenter_window.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 
@@ -460,6 +461,9 @@ class _PresentPageState extends State<PresentPage> {
   Object? _error;
   bool _fullscreen = false;
 
+  /// The big screen in a window of its own, while this one controls.
+  PresenterWindow? _window;
+
   bool get _canFullscreen => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
   @override
@@ -541,7 +545,39 @@ class _PresentPageState extends State<PresentPage> {
     audio?.dispose();
     _connection?.dispose();
     if (_fullscreen) windowManager.setFullScreen(false);
+    _window?.close();
     super.dispose();
+  }
+
+  Future<void> _openWindow(SessionConnection connection) async {
+    final access = connection.windowAccess;
+    if (access == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final window = await PresenterWindow.open(
+        PresenterWindowArgs(sessionId: widget.sessionId, endpoint: access.endpoint, token: access.token),
+      );
+      if (!mounted) {
+        window.close();
+        return;
+      }
+      if (_fullscreen) {
+        _fullscreen = false;
+        windowManager.setFullScreen(false);
+      }
+      setState(() => _window = window);
+      // Closed over there: the show comes back to this window.
+      window.closed.then((_) {
+        if (mounted && identical(_window, window)) setState(() => _window = null);
+      });
+    } catch (error) {
+      messenger.showSnackBar(const SnackBar(content: Text("Could not open a second window.")));
+    }
+  }
+
+  void _bringBack() {
+    _window?.close();
+    setState(() => _window = null);
   }
 
   @override
@@ -552,6 +588,34 @@ class _PresentPageState extends State<PresentPage> {
     }
     if (connection == null) return const Scaffold(body: Center(child: CupertinoActivityIndicator()));
     final faint = Theme.of(context).colorScheme.outlineVariant;
+    if (_window != null) {
+      // The audience looks at the other window; this one is the controller.
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text("Controlling"),
+          actions: [
+            TextButton.icon(
+              onPressed: _bringBack,
+              icon: const Icon(Icons.close_fullscreen),
+              label: const Text("Close presenter window"),
+            ),
+            IconButton(icon: const Icon(Icons.close), tooltip: "Stop presenting", onPressed: () => Navigator.of(context).pop()),
+          ],
+        ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: ControllerView(
+              connection: connection,
+              onConnectDevices: () => openConnectDevices(context, connection),
+              onBuzzerSetup: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => BuzzersPage(connection: connection),
+              )),
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       endDrawer: Drawer(
         width: 460,
@@ -581,6 +645,12 @@ class _PresentPageState extends State<PresentPage> {
                     tooltip: "Stop presenting",
                     onPressed: () => Navigator.of(context).pop(),
                   ),
+                  if (PresenterWindow.supported && connection.windowAccess != null)
+                    IconButton(
+                      icon: Icon(Icons.open_in_new, color: faint),
+                      tooltip: "Open in a new window, to drag onto another screen",
+                      onPressed: () => _openWindow(connection),
+                    ),
                   if (_canFullscreen)
                     IconButton(
                       icon: Icon(_fullscreen ? Icons.fullscreen_exit : Icons.fullscreen, color: faint),

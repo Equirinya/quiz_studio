@@ -68,15 +68,15 @@ class PresenterView extends StatelessWidget {
                 imageFile: mediaFile,
                 // Only the presenting device plays video, and takes the card
                 // off again when the clip is over.
-                videoBuilder: connection.host == null || !videoCards
+                videoBuilder: !videoCards
                     ? null
                     : (file) => VideoCard(
                           key: ValueKey(file.path),
                           file: file,
-                          onFinished: () => connection.host?.dispatch(const HideCard()),
+                          onFinished: () => connection.send(const HideCard()),
                         ),
               ),
-              ScreenEffectLayer(effects: connection.host?.effects),
+              ScreenEffectLayer(effects: connection.effects),
             ],
           ),
         );

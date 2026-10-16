@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
@@ -17,9 +18,16 @@ import 'package:quiz_show/game/game.dart';
 /// controller alike: the current state, the game being played, and somewhere
 /// to send commands.
 class SessionConnection {
-  SessionConnection._(this.sessionId, this.sink, {this.host, FirestoreHostLink? link, SessionClient? client})
-      : _link = link,
-        _client = client;
+  SessionConnection._(
+    this.sessionId,
+    this.sink, {
+    this.host,
+    FirestoreHostLink? link,
+    SessionClient? client,
+    bool cloud = true,
+  })  : _link = link,
+        _client = client,
+        _cloud = cloud;
 
   final String sessionId;
   final CommandSink sink;
@@ -30,6 +38,19 @@ class SessionConnection {
   final SessionClient? _client;
   LanHostServer? _server;
   LanBeacon? _beacon;
+
+  /// False for a presenter window, which has no account of its own and gets
+  /// everything from the main window.
+  final bool _cloud;
+
+  /// Presenting: lets a presenter window of this app in over the loopback.
+  /// Made up afresh every time and never stored anywhere.
+  final String _windowToken = _randomToken();
+
+  static String _randomToken() {
+    final random = Random.secure();
+    return List.generate(32, (_) => random.nextInt(16).toRadixString(16)).join();
+  }
 
   final ValueNotifier<SessionState?> state = ValueNotifier(null);
   final ValueNotifier<GameContent?> game = ValueNotifier(null);
@@ -56,6 +77,15 @@ class SessionConnection {
 
   void send(Command command) => sink.send(command);
 
+  /// Confetti and the like: from the host itself when presenting, otherwise
+  /// as the presenter passes them on over the local network.
+  Stream<Effect>? get effects => host?.effects ?? _client?.effects;
+
+  /// Presenting: where a presenter window on this computer connects, and the
+  /// token it signs in with; null when the local network server is not up.
+  ({String endpoint, String token})? get windowAccess =>
+      _server == null ? null : (endpoint: '127.0.0.1:${_server!.port}', token: _windowToken);
+
   /// Makes this device the session's host: it holds the state, applies every
   /// command and publishes the results, to the cloud and on the local network.
   static Future<SessionConnection> present(String sessionId) async {
@@ -71,6 +101,11 @@ class SessionConnection {
     return connection;
   }
 
+  /// Who [token] lets in over the local network: the presenter window of this
+  /// computer, or whoever the session's join tokens name.
+  static LanGrant? grantFor(String token, {required String windowToken, required Map<String, LanGrant> tokens}) =>
+      token == windowToken ? (role: Role.controller, teamId: null) : tokens[token];
+
   /// The local network is an extra: if it cannot be set up, the show still
   /// runs through the cloud.
   Future<void> _serveLan() async {
@@ -78,7 +113,12 @@ class SessionConnection {
     var tokens = const <String, LanGrant>{};
     _subs.add(repo.watchTokens(sessionId).listen((next) => tokens = next, onError: (Object _) {}));
     try {
-      final server = LanHostServer(host!, authorize: (token) => tokens[token]);
+      final server = LanHostServer(
+        host!,
+        // The presenter window sees everything and may take a finished video
+        // card off screen, like a controller.
+        authorize: (token) => grantFor(token, windowToken: _windowToken, tokens: tokens),
+      );
       await server.start();
       _server = server;
       lanEndpoints.value = await server.endpoints();
@@ -131,6 +171,26 @@ class SessionConnection {
             onError: (Object _) {},
           );
     }
+    return connection;
+  }
+
+  /// The show in a second window of this app on the same computer: it
+  /// follows the main window over the loopback and has no account of its own.
+  static SessionConnection window({required String sessionId, required String endpoint, required String token}) {
+    final client = SessionClient(
+      role: Role.controller,
+      token: token,
+      endpoints: [endpoint],
+      retryDelay: const Duration(milliseconds: 500),
+    );
+    final connection = SessionConnection._(sessionId, client, client: client, cloud: false);
+    client.state.addListener(() => connection._onState(client.state.value));
+    client.background.addListener(() => connection.state.value = client.state.value == null ? null : connection.state.value?.copyWith());
+    client.lanGame.addListener(() {
+      final sent = client.lanGame.value;
+      if (sent != null) connection.game.value = sent;
+    });
+    client.start();
     return connection;
   }
 
@@ -200,6 +260,7 @@ class SessionConnection {
       return;
     }
     game.value = null;
+    if (!_cloud) return; // It comes from the main window.
     if (gameId == null || gameId.isEmpty) {
       host?.setGame(null);
       return;

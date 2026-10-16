@@ -19,6 +19,7 @@ class LanClient {
   final StreamController<PublicView> _views = StreamController<PublicView>.broadcast();
   final StreamController<GameContent?> _games = StreamController<GameContent?>.broadcast();
   final StreamController<(String, Uint8List)> _backgrounds = StreamController<(String, Uint8List)>.broadcast();
+  final StreamController<Effect> _effects = StreamController<Effect>.broadcast();
   final Completer<void> _done = Completer<void>();
 
   /// Controllers only.
@@ -33,6 +34,9 @@ class LanClient {
 
   /// The picture of a whiteboard round, as (media name, image bytes).
   Stream<(String, Uint8List)> get backgrounds => _backgrounds.stream;
+
+  /// Controllers only: screen effects as the host plays them.
+  Stream<Effect> get effects => _effects.stream;
 
   /// Completes when the connection is gone, for whatever reason.
   Future<void> get done => _done.future;
@@ -83,6 +87,7 @@ class LanClient {
     await _views.close();
     await _games.close();
     await _backgrounds.close();
+    await _effects.close();
     if (!_done.isCompleted) _done.complete();
   }
 
@@ -97,6 +102,8 @@ class LanClient {
         case 'game':
           final game = message['g'];
           _games.add(game == null ? null : GameContent.fromJson(Map<String, dynamic>.from(game as Map)));
+        case 'fx':
+          _effects.add(VisualEffect(message['n'] as String));
         case 'bg':
           _backgrounds.add((message['n'] as String, base64Decode(message['d'] as String)));
       }

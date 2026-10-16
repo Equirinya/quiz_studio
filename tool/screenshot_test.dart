@@ -27,6 +27,7 @@ import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/boards/map_board.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
+import 'package:quiz_show/features/session/presenter_window.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
 
@@ -1218,6 +1219,20 @@ void main() {
     ));
     await tester.pump(const Duration(milliseconds: 400));
     await shot('cards_editor');
+  });
+
+  testWidgets('presenter window', (tester) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    host = SessionHost(initial: fixtureState());
+    final connection = SessionConnection.local(host, game: fixtureGame());
+    addTearDown(connection.dispose);
+    host.dispatch(const AdjustPoints('red', 200));
+    await tester.pumpWidget(PresenterWindowApp(connection: connection, onFullscreen: (_) async {}));
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('presenter_window');
+    await tester.pump(const Duration(seconds: 9));
   });
 }
 

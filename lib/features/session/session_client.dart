@@ -104,6 +104,10 @@ class SessionClient implements CommandSink {
   /// transport brings it first.
   final ValueNotifier<(String, Uint8List)?> background = ValueNotifier(null);
 
+  /// Screen effects, when the presenter is reached over the local network.
+  Stream<Effect> get effects => _effectsOut.stream;
+  final StreamController<Effect> _effectsOut = StreamController<Effect>.broadcast();
+
   /// False once the cloud refused this device, e.g. after it was removed.
   final ValueNotifier<bool> cloudOk = ValueNotifier(true);
 
@@ -216,6 +220,9 @@ class SessionClient implements CommandSink {
         if (!_disposed) lanGame.value = game;
       }),
       client.backgrounds.listen(_onBackground),
+      client.effects.listen((effect) {
+        if (!_disposed) _effectsOut.add(effect);
+      }),
     ];
     link.value = LinkStatus.lan;
     await client.done;
@@ -254,5 +261,6 @@ class SessionClient implements CommandSink {
     link.dispose();
     background.dispose();
     cloudOk.dispose();
+    await _effectsOut.close();
   }
 }
