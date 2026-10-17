@@ -11,6 +11,7 @@ analyzer:
   exclude:
     - build/**
     - firebase/**
+    - third_party/**
     - android/**
     - ios/**
     - web/**

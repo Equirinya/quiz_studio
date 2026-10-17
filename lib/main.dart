@@ -1,10 +1,12 @@
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'core/crash_log.dart';
 import 'core/theme.dart';
 import 'core/version_gate.dart';
 import 'features/auth/auth_gate.dart';
@@ -20,6 +22,7 @@ void main(List<String> args) async {
   final window = PresenterWindowArgs.tryParse(args);
   if (window != null) return runPresenterWindow(window);
   WidgetsFlutterBinding.ensureInitialized();
+  await CrashLog.init();
   if (Platform.isWindows || Platform.isMacOS) {
     await windowManager.ensureInitialized();
     windowManager.setTitle("Quiz Studio");
@@ -27,6 +30,12 @@ void main(List<String> args) async {
   // The video player's native side, for video cards on the presenter.
   MediaKit.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (Platform.isWindows) {
+    // Firestore's on-disk cache gets corrupted on some Windows machines and
+    // then crashes the app natively (flutterfire#12987). Games are held in
+    // memory while presenting anyway, so keep Firestore's cache in memory too.
+    FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: false);
+  }
   await MediaService.instance.init();
   runApp(const MyApp());
 }

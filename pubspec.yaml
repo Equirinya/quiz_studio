@@ -40,6 +40,17 @@ dependencies:
   image: ^4.12.0
   mini_music_visualizer: ^1.1.4
 
+# Patched copies of these plugins: their Windows code answered Flutter from
+# Firebase's worker threads, which can end the app without an error.
+# See third_party/README.md; drop an override once upstream fixes it.
+dependency_overrides:
+  cloud_firestore:
+    path: third_party/cloud_firestore
+  firebase_auth:
+    path: third_party/firebase_auth
+  firebase_storage:
+    path: third_party/firebase_storage
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

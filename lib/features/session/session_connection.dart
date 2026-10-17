@@ -86,6 +86,10 @@ class SessionConnection {
   ({String endpoint, String token})? get windowAccess =>
       _server == null ? null : (endpoint: '127.0.0.1:${_server!.port}', token: _windowToken);
 
+  /// Presenting: counts presenter windows that signed in with [windowAccess],
+  /// so the main window can tell whether one actually arrived.
+  final ValueNotifier<int> windowArrivals = ValueNotifier(0);
+
   /// Makes this device the session's host: it holds the state, applies every
   /// command and publishes the results, to the cloud and on the local network.
   static Future<SessionConnection> present(String sessionId) async {
@@ -117,7 +121,10 @@ class SessionConnection {
         host!,
         // The presenter window sees everything and may take a finished video
         // card off screen, like a controller.
-        authorize: (token) => grantFor(token, windowToken: _windowToken, tokens: tokens),
+        authorize: (token) {
+          if (token == _windowToken) windowArrivals.value++;
+          return grantFor(token, windowToken: _windowToken, tokens: tokens);
+        },
       );
       await server.start();
       _server = server;
@@ -299,5 +306,6 @@ class SessionConnection {
     game.dispose();
     missingMedia.dispose();
     lanEndpoints.dispose();
+    windowArrivals.dispose();
   }
 }

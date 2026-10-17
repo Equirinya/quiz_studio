@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'package:quiz_show/core/crash_log.dart';
 import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
@@ -58,7 +59,17 @@ class PresenterWindow {
   Future<int> get closed => _process.exitCode;
 
   static Future<PresenterWindow> open(PresenterWindowArgs args) async {
-    final process = await Process.start(Platform.resolvedExecutable, args.toArgs());
+    // Run from an IDE, this app gets the debugger's engine switches (such as
+    // start-paused) through the environment. Passed on, the window would wait
+    // for a debugger that never comes and never show up.
+    final environment = Map.of(Platform.environment)
+      ..removeWhere((key, _) => key.toUpperCase().startsWith('FLUTTER_ENGINE_SWITCH'));
+    final process = await Process.start(
+      Platform.resolvedExecutable,
+      args.toArgs(),
+      environment: environment,
+      includeParentEnvironment: false,
+    );
     // Nobody reads its output, but it must not block on a full pipe.
     process.stdout.drain<void>().ignore();
     process.stderr.drain<void>().ignore();
@@ -72,6 +83,7 @@ class PresenterWindow {
 /// main window over the loopback.
 Future<void> runPresenterWindow(PresenterWindowArgs args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  await CrashLog.init(role: "presenter");
   await windowManager.ensureInitialized();
   await windowManager.waitUntilReadyToShow(
     const WindowOptions(title: "Quiz Studio · Presenter", size: Size(1280, 720), center: true),

@@ -553,6 +553,7 @@ class _PresentPageState extends State<PresentPage> {
     final access = connection.windowAccess;
     if (access == null) return;
     final messenger = ScaffoldMessenger.of(context);
+    final arrivalsBefore = connection.windowArrivals.value;
     try {
       final window = await PresenterWindow.open(
         PresenterWindowArgs(sessionId: widget.sessionId, endpoint: access.endpoint, token: access.token),
@@ -570,9 +571,27 @@ class _PresentPageState extends State<PresentPage> {
       window.closed.then((_) {
         if (mounted && identical(_window, window)) setState(() => _window = null);
       });
+      // A window that never signs in (it did not start, or hangs) would leave
+      // this one controlling an empty screen: take the show back.
+      if (await _windowArrives(connection, arrivalsBefore) || !mounted || !identical(_window, window)) return;
+      _bringBack();
+      messenger.showSnackBar(const SnackBar(content: Text("Could not open a second window.")));
     } catch (error) {
       messenger.showSnackBar(const SnackBar(content: Text("Could not open a second window.")));
     }
+  }
+
+  Future<bool> _windowArrives(SessionConnection connection, int before) async {
+    final arrived = Completer<bool>();
+    void check() {
+      if (connection.windowArrivals.value > before && !arrived.isCompleted) arrived.complete(true);
+    }
+
+    connection.windowArrivals.addListener(check);
+    check();
+    final result = await arrived.future.timeout(const Duration(seconds: 20), onTimeout: () => false);
+    if (mounted) connection.windowArrivals.removeListener(check);
+    return result;
   }
 
   void _bringBack() {
