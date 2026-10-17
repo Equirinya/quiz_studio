@@ -20,9 +20,17 @@ pluginManagement {
 plugins {
     id "dev.flutter.flutter-plugin-loader" version "1.0.0"
     id "com.android.application" version "8.12.3" apply false
-    id "org.jetbrains.kotlin.android" version "2.1.21" apply false
+    id "org.jetbrains.kotlin.android" version "2.2.20" apply false
     // START: FlutterFire Configuration
     id "com.google.gms.google-services" version "4.4.4" apply false
 }
 
 include ":app"
+
+// flutter_libserialport 0.6.0 (latest) still calls jcenter(), which Gradle 9 removed.
+// JCenter is a read-only mirror on Maven Central now, so map the call there.
+gradle.allprojects { p ->
+    [p.buildscript.repositories, p.repositories].each { handler ->
+        handler.ext.jcenter = { -> handler.mavenCentral() }
+    }
+}
