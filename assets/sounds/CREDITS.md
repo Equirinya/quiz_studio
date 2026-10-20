@@ -14,7 +14,15 @@ Synthesised by `tool/make_effects.js`, `tool/make_effects2.js` and
 - `effects/lock_in/pop.wav`, `effects/fanfare/brass.wav`
 - `effects/question_open/brass_stab.wav`, `effects/next_item/woodblock.wav`
 - `effects/steal/riser.wav`, `effects/reveal/pop_up.wav`
-- `effects/times_up/game_show_buzzer.wav`, `buzzers/game_show.wav`, `buzzers/horn.wav`
+- `effects/times_up/game_show_buzzer.wav`, `buzzers/buzzer.wav`, `buzzers/soft.wav`
+
+## Made by Jacob Peters
+
+Made in FL Studio (2024–2025):
+
+- `music/quiz_theme.mp3`, `music/chill.mp3`, `music/thrilling.mp3`
+- `effects/right_answer/right_answer.mp3`, `effects/fanfare/fanfare.mp3`
+- `buzzers/power.mp3`, `buzzers/light.mp3`
 
 ## Kenney (www.kenney.nl), CC0
 

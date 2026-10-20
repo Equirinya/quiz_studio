@@ -39,6 +39,7 @@ const String builtinSoundPrefix = 'builtin:';
 /// Picked by Jacob from generated and CC0 sounds (credits in
 /// assets/sounds/CREDITS.md). The first of each moment is its default.
 const List<BuiltinSound> builtinSounds = [
+  BuiltinSound('right_answer/right_answer', "Right answer", 'sounds/effects/right_answer/right_answer.mp3'),
   BuiltinSound('right_answer/ding_ding', "Ding ding", 'sounds/effects/right_answer/ding_ding.wav'),
   BuiltinSound('right_answer/voice_correct_female', "\"Correct!\" (female)", 'sounds/effects/right_answer/voice_correct_female.ogg'),
   BuiltinSound('right_answer/voice_correct_male', "\"Correct!\" (male)", 'sounds/effects/right_answer/voice_correct_male.ogg'),
@@ -49,7 +50,8 @@ const List<BuiltinSound> builtinSounds = [
   BuiltinSound('wrong_answer/voice_wrong_male', "\"Wrong!\" (male)", 'sounds/effects/wrong_answer/voice_wrong_male.ogg'),
   BuiltinSound('wrong_answer/error_low', "Error, low", 'sounds/effects/wrong_answer/error_low.ogg'),
   BuiltinSound('wrong_answer/error_short', "Error, short", 'sounds/effects/wrong_answer/error_short.ogg'),
-  BuiltinSound('fanfare/brass', "Fanfare", 'sounds/effects/fanfare/brass.wav'),
+  BuiltinSound('fanfare/fanfare', "Fanfare", 'sounds/effects/fanfare/fanfare.mp3'),
+  BuiltinSound('fanfare/brass', "Brass fanfare", 'sounds/effects/fanfare/brass.wav'),
   BuiltinSound('fanfare/voice_congratulations', "\"Congratulations!\"", 'sounds/effects/fanfare/voice_congratulations.ogg'),
   BuiltinSound('question_open/brass_stab', "Brass stab", 'sounds/effects/question_open/brass_stab.wav'),
   BuiltinSound('reveal/pluck', "Pluck", 'sounds/effects/reveal/pluck.ogg'),
@@ -79,9 +81,18 @@ const List<BuiltinSound> builtinSounds = [
 /// every team gets until it picks another.
 const List<BuiltinSound> builtinBuzzers = [
   BuiltinSound('buzzer/classic', "Classic", 'buzzer.mp3'),
-  BuiltinSound('buzzer/game_show', "Game show", 'sounds/buzzers/game_show.wav'),
-  BuiltinSound('buzzer/horn', "Horn", 'sounds/buzzers/horn.wav'),
+  BuiltinSound('buzzer/power', "Power", 'sounds/buzzers/power.mp3'),
+  BuiltinSound('buzzer/light', "Light", 'sounds/buzzers/light.mp3'),
+  BuiltinSound('buzzer/buzzer', "Buzzer", 'sounds/buzzers/buzzer.wav'),
+  BuiltinSound('buzzer/soft', "Soft", 'sounds/buzzers/soft.wav'),
 ];
+
+/// Music that comes with the app, played for a slot the game has no music for.
+const Map<String, String> builtinMusic = {
+  musicBackground: 'sounds/music/quiz_theme.mp3',
+  musicCalm: 'sounds/music/chill.mp3',
+  musicExciting: 'sounds/music/thrilling.mp3',
+};
 
 BuiltinSound? builtinBuzzer(String? key) => builtinBuzzers.where((sound) => sound.key == key).firstOrNull;
 
@@ -115,7 +126,7 @@ const String silentSound = 'off';
 /// What plays for a built-in moment when the game set nothing for it.
 const Map<String, String> defaultEffectSounds = {
   effectReveal: 'reveal/pluck',
-  effectAnswerCorrect: 'right_answer/ding_ding',
+  effectAnswerCorrect: 'right_answer/right_answer',
   effectAnswerWrong: 'wrong_answer/bwomp',
   effectQuestionOpen: 'question_open/brass_stab',
   effectLockIn: 'lock_in/pop',
@@ -123,7 +134,7 @@ const Map<String, String> defaultEffectSounds = {
   effectCountdown: 'countdown/alarm_clock_ticking',
   effectTimesUp: 'times_up/game_show_buzzer',
   effectSteal: 'steal/riser',
-  effectFanfare: 'fanfare/brass',
+  effectFanfare: 'fanfare/fanfare',
 };
 
 const Map<String, String> ambienceAssets = {

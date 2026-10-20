@@ -6,7 +6,8 @@ import 'package:quiz_show/game/game.dart';
 /// decides what should sound can be tested without any audio device.
 abstract class AudioBackend {
   /// Loops the file at [path] as the only music, fading out whatever played
-  /// before. Null fades to silence.
+  /// before. A path starting with `asset:` is a bundled asset. Null fades to
+  /// silence.
   void setMusic(String? path);
 
   /// 0 to 1, for the music only.
@@ -80,7 +81,10 @@ class AudioDirector {
   /// state, and by the owner when media files finish downloading.
   void sync() {
     final state = host.state;
-    final music = state.music == null ? null : _path(_sounds.slots[state.music]);
+    // The game's own music for the slot, or the one that comes with the app.
+    final own = state.music == null ? null : _path(_sounds.slots[state.music]);
+    final builtin = state.music == null || _sounds.slots.containsKey(state.music) ? null : builtinMusic[state.music];
+    final music = own ?? (builtin == null ? null : 'asset:$builtin');
     if (music != _music) {
       _music = music;
       backend.setMusic(music);

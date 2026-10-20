@@ -1237,12 +1237,11 @@ class _EffectsSheetState extends State<_EffectsSheet> {
             ),
           ),
           header("Music"),
-          if (sounds.slots.isEmpty) const Text("This game has no music. Add some in the editor."),
+
           Wrap(
             spacing: 8,
             children: [
               for (final slot in musicSlots)
-                if (sounds.slots.containsKey(slot))
                   FilterChip(
                     label: Text(_slotNames[slot]!),
                     selected: state.music == slot,

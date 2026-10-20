@@ -33,7 +33,18 @@ const List<SoundSource> soundSources = [
     sounds: [
       SoundCredit("Soft noise, White noise"),
       SoundCredit("Ding ding, Bwomp, Pop, Fanfare, Brass stab"),
-      SoundCredit("Woodblock, Riser, Pop up, Game-show buzzer, Horn"),
+      SoundCredit("Woodblock, Riser, Pop up, Game-show buzzer"),
+      SoundCredit("Buzzers: Buzzer, Soft"),
+    ],
+  ),
+  SoundSource(
+    name: "Made by Jacob Peters",
+    licence: "Part of the app",
+    url: "https://github.com/Equirinya/quiz_studio",
+    sounds: [
+      SoundCredit("Music: Quiz theme, Chill, Thrilling"),
+      SoundCredit("Right answer, Fanfare"),
+      SoundCredit("Buzzers: Power, Light"),
     ],
   ),
   SoundSource(

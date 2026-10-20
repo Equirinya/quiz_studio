@@ -235,18 +235,18 @@ void main() {
         ),
       ),
     ));
-    // Red uploads another sound of its own, Blue takes the game-show buzzer.
+    // Red uploads another sound of its own, Blue takes the power buzzer.
     await tester.tap(find.text('Choose').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Upload own sound…'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Choose').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Game show'));
+    await tester.tap(find.text('Power'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Back to the built-in buzzer'));
     expect(chosen, ['red']);
-    expect(builtin, ['blue builtin:buzzer/game_show']);
+    expect(builtin, ['blue builtin:buzzer/power']);
     expect(cleared, ['red']);
   });
 }

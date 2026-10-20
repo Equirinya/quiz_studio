@@ -101,10 +101,10 @@ void main() {
 
   test('a team can have one of the buzzers that come with the app', () {
     host
-      ..dispatch(const SetTeamSound('blue', 'builtin:buzzer/game_show'))
+      ..dispatch(const SetTeamSound('blue', 'builtin:buzzer/buzzer'))
       ..dispatch(const OpenQuestion(free))
       ..dispatch(const Buzz('blue'));
-    expect(backend.log, ['asset sounds/effects/question_open/brass_stab.wav', 'asset sounds/buzzers/game_show.wav']);
+    expect(backend.log, ['asset sounds/effects/question_open/brass_stab.wav', 'asset sounds/buzzers/buzzer.wav']);
   });
 
   test('a moment can be set to a built-in sound, or to silence', () {
@@ -128,9 +128,9 @@ void main() {
     expect(host.state.musicVolume, 40);
   });
 
-  test('a slot without a file is silence', () {
+  test('a slot the game has no music for plays the music that comes with the app', () {
     host.dispatch(const SetMusic(musicCalm));
-    expect(backend.log, isEmpty);
+    expect(backend.log, ['music asset:sounds/music/chill.mp3']);
   });
 
   test('the question sound plays, pauses on a buzz, resumes after a wrong answer, stops on close', () {
@@ -169,7 +169,7 @@ void main() {
     host
       ..dispatch(const Buzz('red'))
       ..dispatch(const Judge(correct: true));
-    expect(backend.log, ['asset buzzer.mp3', 'asset sounds/effects/right_answer/ding_ding.wav']);
+    expect(backend.log, ['asset buzzer.mp3', 'asset sounds/effects/right_answer/right_answer.mp3']);
     host.dispatch(const PlayEffect('airhorn'));
     expect(backend.log.last, 'file /game/horn.mp3');
   });

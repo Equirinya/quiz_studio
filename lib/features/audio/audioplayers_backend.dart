@@ -48,7 +48,7 @@ class AudioplayersBackend implements AudioBackend {
     _guard(() async {
       await player.setReleaseMode(ReleaseMode.loop);
       await player.setVolume(0);
-      await player.play(DeviceFileSource(path));
+      await player.play(path.startsWith('asset:') ? AssetSource(path.substring(6)) : DeviceFileSource(path));
       await _fadeTo(player, () => identical(_music, player) ? _musicVolume : player.volume, crossfade);
     });
   }
