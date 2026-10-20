@@ -8,7 +8,7 @@ must match.
 
 ## Your own files
 
-Jacob's music and sounds are in: `music/quiz_theme.mp3` (board), `music/chill.mp3`
+Nikita Zaloga's music and sounds are in: `music/quiz_theme.mp3` (board), `music/chill.mp3`
 (calm), `music/thrilling.mp3` (thrilling), `effects/right_answer/right_answer.mp3`,
 `effects/fanfare/fanfare.mp3`, `buzzers/power.mp3`, `buzzers/light.mp3`. They are
 the defaults for their slot or moment. More files go into the folder of their
@@ -20,7 +20,7 @@ moment (any name), get a line in `CREDITS.md`, and an entry in
 
 | Folder | Moment | Default |
 |---|---|---|
-| `effects/right_answer/` | a team answers right | Right answer (Jacob) |
+| `effects/right_answer/` | a team answers right | Right answer (Nikita Zaloga) |
 | `effects/wrong_answer/` | a team answers wrong | Bwomp |
 | `effects/reveal/` | a reveal step, Feud answer, Connections group | Pluck |
 | `effects/question_open/` | a question opens | Brass stab |
@@ -29,9 +29,9 @@ moment (any name), get a line in `CREDITS.md`, and an entry in
 | `effects/countdown/` | the last 10 seconds of a timer of 20 s or more | Ticking clock |
 | `effects/times_up/` | a timer runs out | Game-show buzzer |
 | `effects/steal/` | Feud: the third strike | Riser |
-| `effects/fanfare/` | a question fully solved | Fanfare (Jacob) |
+| `effects/fanfare/` | a question fully solved | Fanfare (Nikita Zaloga) |
 | `effects/applause/`, `drumroll/`, `joke/`, `announcer/` | by hand, from the Effects sheet | |
-| `buzzers/` | a team's buzzer, chosen on the Buzzers page: Classic (`assets/buzzer.mp3`), Power, Light, Buzzer, Soft | Classic |
+| `buzzers/` | a team's buzzer, chosen on the Buzzers page: Buzzer, Power, Light, Soft | Buzzer |
 | `music/` | Board, Calm and Thrilling music when the game has none of its own | |
 | `ambience/` | keeps the speakers awake when nothing plays | Soft noise |
 

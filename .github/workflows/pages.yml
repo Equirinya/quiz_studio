@@ -1,0 +1,58 @@
+# Publishes docs/ (terms, privacy, account deletion and the open.html page
+# behind QR codes and invites) to GitHub Pages. Same as couple_planner's.
+#
+# Runs only when something in docs/ changes, or by hand. It checks out
+# without submodules: the firebase submodule is private, and GitHub's
+# built-in Pages build fails trying to clone it. Settings -> Pages ->
+# Source must be "GitHub Actions" for this workflow to be used.
+#
+# docs/open.html only exists on v2 so far; switch the branch to master once
+# v2 is merged there.
+name: Deploy Pages
+
+on:
+  push:
+    branches: [v2]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: false
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: docs/
+          destination: ./_site
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -119,7 +119,7 @@ void main() {
       ..dispatch(const OpenQuestion(free))
       ..dispatch(const Buzz('red'))
       ..dispatch(const Judge(correct: true));
-    expect(backend.log, ['asset buzzer.mp3', 'asset sounds/effects/right_answer/voice_correct_male.ogg']);
+    expect(backend.log, ['asset sounds/buzzers/buzzer.wav', 'asset sounds/effects/right_answer/voice_correct_male.ogg']);
   });
 
   test('the music volume follows the session', () {
@@ -140,7 +140,7 @@ void main() {
     expect(backend.log.last, 'media /game/song.mp3 playing');
     backend.log.clear();
     host.dispatch(const Buzz('red'));
-    expect(backend.log, ['media /game/song.mp3 paused', 'asset buzzer.mp3']);
+    expect(backend.log, ['media /game/song.mp3 paused', 'asset sounds/buzzers/buzzer.wav']);
     backend.log.clear();
     host.dispatch(const Judge(correct: false));
     expect(backend.log, ['media /game/song.mp3 playing', 'file /game/wrong.mp3']);
@@ -163,13 +163,13 @@ void main() {
       ..dispatch(const Buzz('red'))
       ..dispatch(const Judge(correct: false));
     // Opening plays the built-in question sound, as the game has none.
-    expect(backend.log, ['asset sounds/effects/question_open/brass_stab.wav', 'asset buzzer.mp3', 'file /game/wrong.mp3']);
+    expect(backend.log, ['asset sounds/effects/question_open/brass_stab.wav', 'asset sounds/buzzers/buzzer.wav', 'file /game/wrong.mp3']);
     backend.log.clear();
     // No "right answer" sound is configured in the fixture game.
     host
       ..dispatch(const Buzz('red'))
       ..dispatch(const Judge(correct: true));
-    expect(backend.log, ['asset buzzer.mp3', 'asset sounds/effects/right_answer/right_answer.mp3']);
+    expect(backend.log, ['asset sounds/buzzers/buzzer.wav', 'asset sounds/effects/right_answer/right_answer.mp3']);
     host.dispatch(const PlayEffect('airhorn'));
     expect(backend.log.last, 'file /game/horn.mp3');
   });
@@ -188,7 +188,7 @@ void main() {
       ..dispatch(const OpenQuestion(free))
       ..dispatch(const Buzz('red'))
       ..dispatch(const Buzz('blue'));
-    expect(backend.log, ['asset sounds/effects/question_open/brass_stab.wav', 'file /sounds/red.mp3', 'asset buzzer.mp3']);
+    expect(backend.log, ['asset sounds/effects/question_open/brass_stab.wav', 'file /sounds/red.mp3', 'asset sounds/buzzers/buzzer.wav']);
   });
 
   test('a question can override an effect', () {

@@ -80,10 +80,9 @@ const List<BuiltinSound> builtinSounds = [
 /// Buzzer sounds a team can have without uploading one. The first is what
 /// every team gets until it picks another.
 const List<BuiltinSound> builtinBuzzers = [
-  BuiltinSound('buzzer/classic', "Classic", 'buzzer.mp3'),
+  BuiltinSound('buzzer/buzzer', "Buzzer", 'sounds/buzzers/buzzer.wav'),
   BuiltinSound('buzzer/power', "Power", 'sounds/buzzers/power.mp3'),
   BuiltinSound('buzzer/light', "Light", 'sounds/buzzers/light.mp3'),
-  BuiltinSound('buzzer/buzzer', "Buzzer", 'sounds/buzzers/buzzer.wav'),
   BuiltinSound('buzzer/soft', "Soft", 'sounds/buzzers/soft.wav'),
 ];
 

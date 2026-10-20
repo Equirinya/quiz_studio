@@ -38,7 +38,7 @@ const List<SoundSource> soundSources = [
     ],
   ),
   SoundSource(
-    name: "Made by Jacob Peters",
+    name: "Made by Nikita Zaloga",
     licence: "Part of the app",
     url: "https://github.com/Equirinya/quiz_studio",
     sounds: [

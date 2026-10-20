@@ -16,7 +16,7 @@ Synthesised by `tool/make_effects.js`, `tool/make_effects2.js` and
 - `effects/steal/riser.wav`, `effects/reveal/pop_up.wav`
 - `effects/times_up/game_show_buzzer.wav`, `buzzers/buzzer.wav`, `buzzers/soft.wav`
 
-## Made by Jacob Peters
+## Made by Nikita Zaloga
 
 Made in FL Studio (2024–2025):
 
@@ -49,9 +49,3 @@ From "Interface Sounds" (https://opengameart.org/content/interface-sounds):
 - `effects/drumroll/snare.ogg`: "Drum roll 1 S" (#2400)
 - `effects/joke/rimshot.ogg`: "Battery joke #3" (#2410)
 - `effects/countdown/alarm_clock_ticking.ogg`: "Tic Tac Mechanical Alarm Clock #3" (#2656)
-
-## Still to check
-
-- `assets/buzzer.mp3` (the "Classic" buzzer, outside this folder) was added
-  to v1 in September 2024. Its source is not recorded; note it here, or
-  replace it if its licence is unclear.

@@ -221,7 +221,7 @@ void main() {
       ),
     ));
     expect(find.text('Own sound'), findsOneWidget);
-    expect(find.text('Classic'), findsOneWidget);
+    expect(find.text('Buzzer'), findsOneWidget);
     expect(find.text('Uploading…'), findsOneWidget);
     // The spinner of an upload never settles; the menus are tried without it.
     await tester.pumpWidget(MaterialApp(

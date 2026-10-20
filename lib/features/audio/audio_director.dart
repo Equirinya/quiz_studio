@@ -40,7 +40,7 @@ class AudioDirector {
     required this.backend,
     required this.resolve,
     this.teamSound,
-    this.buzzerAsset = 'buzzer.mp3',
+    this.buzzerAsset = 'sounds/buzzers/buzzer.wav',
   }) {
     _subs = [
       host.states.listen((_) => sync()),
