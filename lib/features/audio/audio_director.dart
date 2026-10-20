@@ -9,6 +9,12 @@ abstract class AudioBackend {
   /// before. Null fades to silence.
   void setMusic(String? path);
 
+  /// 0 to 1, for the music only.
+  void setMusicVolume(double volume);
+
+  /// Loops the bundled [asset] quietly while nothing else plays; null stops it.
+  void setAmbience(String? asset);
+
   /// The open question's own sound. A new [path] starts from the beginning;
   /// the same path follows [playback] (pause keeps the position).
   void setMedia(String? path, MediaPlayback playback);
@@ -58,6 +64,8 @@ class AudioDirector {
   late final List<StreamSubscription<dynamic>> _subs;
   String? _music;
   String? _media;
+  String? _ambience;
+  double _volume = 1;
   MediaPlayback _playback = MediaPlayback.stopped;
 
   MusicConfig get _sounds =>
@@ -79,21 +87,57 @@ class AudioDirector {
     }
 
     final question = state.current == null ? null : host.game?.question(state.current!);
-    final media = state.media == MediaPlayback.stopped ? null : _path(question?.music);
+    final media = state.media == MediaPlayback.stopped ? null : _path(question?.musicAt(state.revealed));
     final playback = media == null ? MediaPlayback.stopped : state.media;
     if (media != _media || playback != _playback) {
       _media = media;
       _playback = playback;
       backend.setMedia(media, playback);
     }
+
+    final volume = state.musicVolume / 100;
+    if (volume != _volume) {
+      _volume = volume;
+      backend.setMusicVolume(volume);
+    }
+
+    // The noise only fills silence: music or the question's sound take over.
+    final quiet = music == null && playback != MediaPlayback.playing;
+    final ambience = quiet ? ambienceAssets[state.ambience] : null;
+    if (ambience != _ambience) {
+      _ambience = ambience;
+      backend.setAmbience(ambience);
+    }
   }
 
   void _onEffect(Effect effect) {
     switch (effect) {
       case SoundEffect(:final key):
-        final path = _path(_sounds.effects[key]);
-        if (path != null) backend.playFile(path);
+        final chosen = _sounds.effects[key];
+        if (chosen == silentSound) return;
+        // A built-in sound picked in the editor for this moment.
+        final picked = chosen != null && chosen.startsWith(builtinSoundPrefix) ? builtinSound(chosen) : null;
+        if (picked != null) {
+          backend.playAsset(picked.asset);
+          return;
+        }
+        final path = _path(chosen);
+        if (path != null) {
+          backend.playFile(path);
+          return;
+        }
+        // One that comes with the app: asked for by name, or the default for
+        // a moment the game has no sound of its own for.
+        final builtin = builtinSound(key) ?? builtinSound(defaultEffectSounds[key] ?? '');
+        if (builtin != null && (key.startsWith(builtinSoundPrefix) || !_sounds.effects.containsKey(key))) {
+          backend.playAsset(builtin.asset);
+        }
       case BuzzerSound(:final teamId):
+        final builtin = builtinBuzzer(host.state.team(teamId)?.sound);
+        if (builtin != null) {
+          backend.playAsset(builtin.asset);
+          return;
+        }
         final own = teamSound?.call(teamId);
         own == null ? backend.playAsset(buzzerAsset) : backend.playFile(own);
       case VisualEffect():

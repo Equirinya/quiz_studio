@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:quiz_show/core/web_links.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// What the signed-in user may do in a game; mirrors the three access arrays
@@ -61,15 +62,15 @@ class GameInvite {
 
   bool isExpired(DateTime now) => expiresAtMillis != null && expiresAtMillis! <= now.millisecondsSinceEpoch;
 
-  /// What gets shared. The app's own scheme, as for the companion QR codes.
-  String get link => buildInviteLink(gameId, id);
+  /// What gets shared: a web link that opens the app, as the session QR codes do.
+  String get link => toWebLink(buildInviteLink(gameId, id));
 }
 
 String buildInviteLink(String gameId, String inviteId) => 'quiz-studio://join/$gameId/$inviteId';
 
 /// Reads an invite from a pasted link, or from a bare `gameId/inviteId`.
 ({String gameId, String inviteId})? parseInviteLink(String input) {
-  var text = input.trim();
+  var text = toAppLink(input);
   const prefix = 'quiz-studio://join/';
   if (text.startsWith(prefix)) text = text.substring(prefix.length);
   final parts = text.split('/');

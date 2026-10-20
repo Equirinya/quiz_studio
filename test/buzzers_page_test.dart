@@ -204,6 +204,7 @@ void main() {
   testWidgets('team sounds: who has one, who is uploading, and the buttons', (tester) async {
     final chosen = <String>[];
     final cleared = <String>[];
+    final builtin = <String>[];
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: TeamSoundsList(
@@ -215,16 +216,37 @@ void main() {
           uploading: const {'green'},
           onChoose: (team) => chosen.add(team.id),
           onClear: (team) => cleared.add(team.id),
+          onBuiltin: (team, key) => builtin.add('${team.id} $key'),
         ),
       ),
     ));
     expect(find.text('Own sound'), findsOneWidget);
-    expect(find.text('Built-in buzzer'), findsOneWidget);
+    expect(find.text('Classic'), findsOneWidget);
     expect(find.text('Uploading…'), findsOneWidget);
-    await tester.tap(find.text('Change'));
-    await tester.tap(find.text('Choose'));
+    // The spinner of an upload never settles; the menus are tried without it.
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: TeamSoundsList(
+          teams: const [Team(id: 'red', name: 'Red', sound: 'horn.mp3'), Team(id: 'blue', name: 'Blue')],
+          uploading: const {},
+          onChoose: (team) => chosen.add(team.id),
+          onClear: (team) => cleared.add(team.id),
+          onBuiltin: (team, key) => builtin.add('${team.id} $key'),
+        ),
+      ),
+    ));
+    // Red uploads another sound of its own, Blue takes the game-show buzzer.
+    await tester.tap(find.text('Choose').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Upload own sound…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Game show'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Back to the built-in buzzer'));
-    expect(chosen, ['red', 'blue']);
+    expect(chosen, ['red']);
+    expect(builtin, ['blue builtin:buzzer/game_show']);
     expect(cleared, ['red']);
   });
 }

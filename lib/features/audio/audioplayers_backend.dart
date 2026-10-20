@@ -13,6 +13,8 @@ class AudioplayersBackend implements AudioBackend {
   }
 
   AudioPlayer? _music;
+  AudioPlayer? _ambience;
+  double _musicVolume = 1;
   final AudioPlayer _media = AudioPlayer();
   String? _mediaPath;
   late final StreamSubscription<void> _mediaDone;
@@ -28,22 +30,42 @@ class AudioplayersBackend implements AudioBackend {
     });
   }
 
+  /// How long one piece of music takes to give way to the next: the old one
+  /// fades out while the new one fades in.
+  static const Duration crossfade = Duration(milliseconds: 1500);
+
+  /// The noise is only there to keep the speakers awake, so it stays low.
+  static const double ambienceVolume = 0.2;
+
   @override
   void setMusic(String? path) {
     final old = _music;
     _music = null;
-    if (old != null) _guard(() => _fadeOut(old));
+    if (old != null) _guard(() => _fadeOut(old, duration: crossfade));
     if (path == null) return;
     final player = AudioPlayer();
     _music = player;
     _guard(() async {
       await player.setReleaseMode(ReleaseMode.loop);
+      await player.setVolume(0);
       await player.play(DeviceFileSource(path));
+      await _fadeTo(player, () => identical(_music, player) ? _musicVolume : player.volume, crossfade);
     });
   }
 
+  /// Raises [player] to [target] over [duration]; [target] is read on every
+  /// step, so a volume change in the middle of a fade is followed.
+  Future<void> _fadeTo(AudioPlayer player, double Function() target, Duration duration) async {
+    const steps = 20;
+    for (var i = 1; i <= steps; i++) {
+      await Future<void>.delayed(duration ~/ steps);
+      if (_disposed || (!identical(_music, player) && !identical(_ambience, player))) return;
+      await player.setVolume(target() * i / steps);
+    }
+  }
+
   Future<void> _fadeOut(AudioPlayer player, {Duration duration = const Duration(milliseconds: 500)}) async {
-    const steps = 10;
+    const steps = 20;
     final volume = player.volume;
     for (var i = 1; i <= steps; i++) {
       await Future<void>.delayed(duration ~/ steps);
@@ -81,6 +103,29 @@ class AudioplayersBackend implements AudioBackend {
   }
 
   @override
+  void setMusicVolume(double volume) {
+    _musicVolume = volume;
+    final player = _music;
+    if (player != null) _guard(() => player.setVolume(volume));
+  }
+
+  @override
+  void setAmbience(String? asset) {
+    final old = _ambience;
+    _ambience = null;
+    if (old != null) _guard(() => _fadeOut(old, duration: crossfade));
+    if (asset == null) return;
+    final player = AudioPlayer();
+    _ambience = player;
+    _guard(() async {
+      await player.setReleaseMode(ReleaseMode.loop);
+      await player.setVolume(0);
+      await player.play(AssetSource(asset));
+      await _fadeTo(player, () => ambienceVolume, crossfade);
+    });
+  }
+
+  @override
   void playFile(String path) => _once(DeviceFileSource(path));
 
   @override
@@ -92,6 +137,7 @@ class AudioplayersBackend implements AudioBackend {
     await _mediaDone.cancel();
     await _completed.close();
     await _music?.dispose();
+    await _ambience?.dispose();
     await _media.dispose();
   }
 }

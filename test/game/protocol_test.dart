@@ -11,7 +11,6 @@ void main() {
   test('session state survives a JSON round trip', () {
     final s = run(fixtureState(), [
       const SetQueueBuzzers(true),
-      const SetThumbnails(false),
       const SetTeamSound('blue', 'horn.mp3'),
       const OpenQuestion(free),
       const CloseQuestion(),
@@ -27,7 +26,6 @@ void main() {
     final copy = SessionState.fromJson(jsonDecode(jsonEncode(s.toJson())) as Map<String, dynamic>);
     expect(copy.toJson(), s.toJson());
     expect(copy.current, reveal);
-    expect(copy.thumbnails, isFalse);
     expect(copy.team('blue')!.sound, 'horn.mp3');
     expect(copy.team('red')!.sound, isNull);
     expect(copy.answerRound!.answers['red']!.drawing, 'strokes');
@@ -63,7 +61,6 @@ void main() {
       RenameTeam('t', 'Other'),
       RemoveTeam('t'),
       SetQueueBuzzers(true),
-      SetThumbnails(false),
       SetTeamSound('red', 'horn.mp3'),
       SetTeamSound('red', null),
       OpenAnswers(CompanionSpec(kind: CompanionKind.slider, min: 0, max: 10, step: 0.5, unit: 'kg', solution: 4, timerSeconds: 20)),
@@ -208,7 +205,7 @@ void main() {
       expect(host.dispatch(const Buzz('red')), isTrue);
       expect(host.dispatch(const Judge(correct: true)), isTrue);
       expect(seqs, [1, 2, 3]);
-      expect(effects.map((e) => e.runtimeType), [BuzzerSound, SoundEffect]);
+      expect(effects.map((e) => e.runtimeType), [SoundEffect, BuzzerSound, SoundEffect]);
       expect(host.state.team('red')!.points, 100);
       await host.dispose();
     });

@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/auth/user_service.dart';
 import 'package:quiz_show/features/auth/widgets/auth_form.dart';
+import 'package:quiz_show/features/settings/sound_credits.dart';
 
 const String _termsUrl = 'https://equirinya.github.io/quiz_studio/terms.html';
 const String _privacyUrl = 'https://equirinya.github.io/quiz_studio/privacy.html';
@@ -206,6 +207,12 @@ class AccountView extends StatelessWidget {
           title: const Text("About and licences"),
           subtitle: Text(version == null ? "Quiz Studio" : "Quiz Studio $version"),
           onTap: () => showLicensePage(context: context, applicationName: "Quiz Studio", applicationVersion: version),
+        ),
+        ListTile(
+          leading: const Icon(Icons.library_music_outlined),
+          title: const Text("Sound credits"),
+          subtitle: const Text("Where the built-in sounds are from"),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SoundCreditsPage())),
         ),
       ],
     );

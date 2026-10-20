@@ -5,6 +5,7 @@ library;
 import 'commands.dart';
 import 'companion.dart';
 import 'content.dart';
+import 'rapid_fire.dart';
 import 'session_state.dart';
 
 /// Something the presenter should do once, as opposed to state it should show.
@@ -44,7 +45,10 @@ class Reduction {
 bool buzzersOpen(SessionState state, GameContent? game) {
   if (state.phase == Phase.buzzerTest) return true;
   final ref = state.current;
-  if (ref == null || game?.question(ref)?.buzzerable != true) return false;
+  final question = ref == null ? null : game?.question(ref);
+  if (question == null || !question.buzzerable) return false;
+  // A Fragenhagel whose last item is done has nothing left to buzz for.
+  if (question.type == QuestionType.rapidFire && state.revealed >= question.maxReveal) return false;
   return state.phase == Phase.question || (state.phase == Phase.buzzered && state.queueBuzzers);
 }
 
@@ -94,8 +98,9 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
 
     case OpenQuestion(:final ref):
       if (s.phase == Phase.buzzerTest || game?.question(ref) == null) return _no(s);
-      final companion = game!.question(ref)!.companion;
-      return _ok(_backToBoard(s).copyWith(
+      final opened = game!.question(ref)!;
+      final companion = opened.companion;
+      final next = _backToBoard(s).copyWith(
         phase: Phase.question,
         current: ref,
         groupId: game.groupOfCategory(ref.categoryId)?.id ?? s.groupId,
@@ -103,7 +108,9 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
         // A question with a companion screen puts it on the teams' devices
         // the moment it opens.
         answerRound: companion == null ? null : _newRound(companion, now),
-      ));
+      );
+      // A Fragenhagel starts with its first item, sound and all.
+      return _ok(opened.type == QuestionType.rapidFire ? _rapidAt(next, opened, 0, now) : next, const [SoundEffect(effectQuestionOpen)]);
 
     case CloseQuestion(:final markPlayed):
       if (s.current == null) return _no(s);
@@ -139,6 +146,14 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
     case Judge(:final correct):
       if (s.phase != Phase.buzzered || s.buzzQueue.isEmpty || question == null || !question.defaultJudging) return _no(s);
       final team = s.buzzQueue.first;
+      if (correct && question.type == QuestionType.rapidFire) {
+        // Right: the points, and straight on to the next item.
+        final finished = s.revealed + 1 >= question.maxReveal;
+        return _ok(
+          _rapidAt(s.copyWith(teams: _addPoints(s.teams, team, question.pointsPlus)), question, s.revealed + 1, now),
+          [const SoundEffect(effectAnswerCorrect), if (finished) const SoundEffect(effectFanfare)],
+        );
+      }
       if (correct) {
         return _ok(
           _backToBoard(s).copyWith(
@@ -163,7 +178,7 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
         phase: Phase.question,
         buzzQueue: const [],
         wrongAttempts: 0,
-        media: question.hasMusic ? MediaPlayback.playing : null,
+        media: question.musicAt(s.revealed) != null ? MediaPlayback.playing : null,
       ));
 
     // ── reveals ──────────────────────────────────────────────────────────────
@@ -171,6 +186,17 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       if (!questionOpen || question == null || delta == 0) return _no(s);
       final revealed = s.revealed + delta;
       if (revealed < 0 || revealed > question.maxReveal) return _no(s);
+      if (question.type == QuestionType.rapidFire) {
+        final devices = question.rapidFire?.mode == RapidMode.devices;
+        // Points for an item on the devices are given when moving on, so
+        // going back would count them twice.
+        if (devices && delta < 0) return _no(s);
+        final scored = devices ? _scoreRapidItem(s, question) : s;
+        final finished = revealed >= question.maxReveal;
+        return _ok(_rapidAt(scored, question, revealed, now), [
+          if (delta > 0) SoundEffect(finished ? effectFanfare : effectNextItem),
+        ]);
+      }
       // The enlarged image follows a new reveal and never points past the
       // last revealed one.
       final focus = delta > 0 ? revealed : (s.imageFocus > revealed ? revealed : s.imageFocus);
@@ -202,12 +228,16 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
           phase: Phase.answerRevealed,
           teams: _addPoints(s.teams, s.buzzQueue.first, feudPoints(question, revealed)),
         ),
-        const [SoundEffect(effectReveal)],
+        const [SoundEffect(effectFanfare)],
       );
 
     case FeudWrong():
       if (!_feudAnswering(s, question) || s.wrongAttempts >= 3) return _no(s);
-      return _ok(s.copyWith(wrongAttempts: s.wrongAttempts + 1), const [SoundEffect(effectAnswerWrong)]);
+      // The third strike hands the other team its chance to steal.
+      return _ok(s.copyWith(wrongAttempts: s.wrongAttempts + 1), [
+        const SoundEffect(effectAnswerWrong),
+        if (s.wrongAttempts + 1 == 3) const SoundEffect(effectSteal),
+      ]);
 
     case FeudSteal(:final success):
       if (!_feudAnswering(s, question) || s.wrongAttempts < 3) return _no(s);
@@ -231,7 +261,7 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       if (playback == s.media) return _no(s);
       if (playback != MediaPlayback.stopped) {
         final listening = s.phase == Phase.question || s.phase == Phase.buzzered;
-        if (!listening || question?.hasMusic != true) return _no(s);
+        if (!listening || question?.musicAt(s.revealed) == null) return _no(s);
       }
       // The question's own sound and the background music never overlap.
       return _ok(s.copyWith(media: playback, music: playback == MediaPlayback.playing ? null : s.music));
@@ -242,6 +272,15 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
         music: slot,
         media: slot != null && s.media == MediaPlayback.playing ? MediaPlayback.paused : null,
       ));
+
+    case SetAmbience(:final slot):
+      if (slot == s.ambience || (slot != null && !ambienceAssets.containsKey(slot))) return _no(s);
+      return _ok(s.copyWith(ambience: slot));
+
+    case SetMusicVolume(:final volume):
+      final clamped = volume.clamp(0, 100);
+      if (clamped == s.musicVolume) return _no(s);
+      return _ok(s.copyWith(musicVolume: clamped));
 
     case PlayEffect(:final key):
       return Reduction(s, effects: [SoundEffect(key)]);
@@ -284,10 +323,6 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
         ),
       ));
 
-    case SetThumbnails(:final on):
-      if (on == s.thumbnails) return _no(s);
-      return _ok(s.copyWith(thumbnails: on));
-
     case SetTeamSound(:final teamId, :final sound):
       final name = sound == null || sound.isEmpty ? null : sound;
       if (s.team(teamId) == null || s.team(teamId)!.sound == name) return _no(s);
@@ -312,9 +347,12 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       final round = s.answerRound;
       if (round == null || !round.open || !round.spec.lockable || s.team(teamId) == null) return _no(s);
       if (round.answers[teamId]?.locked == true) return _no(s);
-      return _ok(s.copyWith(
-        answerRound: _withAnswer(s, round, teamId, (round.answers[teamId] ?? const PlayerAnswer()).asLocked(true, atMillis: now)),
-      ));
+      return _ok(
+        s.copyWith(
+          answerRound: _withAnswer(s, round, teamId, (round.answers[teamId] ?? const PlayerAnswer()).asLocked(true, atMillis: now)),
+        ),
+        const [SoundEffect(effectLockIn)],
+      );
 
     case GuessConnection(:final teamId, :final positions):
       final round = s.answerRound;
@@ -503,8 +541,43 @@ SessionState _nextBuzzer(SessionState s, Question question) {
   return s.copyWith(
     phase: Phase.question,
     buzzQueue: const [],
-    media: question.hasMusic ? MediaPlayback.playing : null,
+    media: question.musicAt(s.revealed) != null ? MediaPlayback.playing : null,
   );
+}
+
+/// A Fragenhagel at item [index]: everyone may answer again, the item's sound
+/// plays, and on the devices a fresh round asks it. At the end nothing is
+/// asked any more.
+SessionState _rapidAt(SessionState s, Question question, int index, int? now) {
+  final done = index >= question.maxReveal;
+  final music = done ? null : question.musicAt(index);
+  final companion = question.companion;
+  return s.copyWith(
+    revealed: index,
+    phase: done ? Phase.answerRevealed : Phase.question,
+    buzzQueue: const [],
+    wrongAttempts: 0,
+    media: music == null ? MediaPlayback.stopped : MediaPlayback.playing,
+    music: music == null ? _keepTimer : null,
+    answerRound: companion == null || done ? null : _newRound(companion, now),
+  );
+}
+
+/// Devices mode: the item being asked is scored, each team that picked gets
+/// the question's points for a right pick and loses its minus points for a
+/// wrong one.
+SessionState _scoreRapidItem(SessionState s, Question question) {
+  final item = question.rapidFire?.itemAt(s.revealed);
+  final round = s.answerRound;
+  if (item == null || round == null) return s;
+  var teams = s.teams;
+  for (final team in s.teams) {
+    final choice = round.answers[team.id]?.choice;
+    if (choice == null) continue;
+    final right = (choice == 0) == item.isTrue;
+    teams = _addPoints(teams, team.id, right ? question.pointsPlus : -question.pointsMinus);
+  }
+  return s.copyWith(teams: teams);
 }
 
 bool _feudAnswering(SessionState s, Question? question) =>

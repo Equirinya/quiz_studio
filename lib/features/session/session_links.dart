@@ -1,3 +1,4 @@
+import 'package:quiz_show/core/web_links.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// What a device needs to join a session, as carried by the QR code the
@@ -32,9 +33,13 @@ class SessionJoinLink {
       '${teamId == null ? '' : '/$teamId'}'
       '${lan.isEmpty ? '' : '?lan=${lan.join(',')}'}';
 
+  /// What the QR code carries: [link] as a web link a camera app can open.
+  String get webLink => toWebLink(link);
+
+  /// Reads [link] or [webLink].
   static SessionJoinLink? tryParse(String input) {
     const prefix = 'quiz-studio://session/';
-    var text = input.trim();
+    var text = toAppLink(input);
     if (!text.startsWith(prefix)) return null;
     var lan = const <String>[];
     final query = text.indexOf('?');

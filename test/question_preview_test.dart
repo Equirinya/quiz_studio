@@ -65,7 +65,7 @@ void main() {
     expect(find.text('banana'), findsNothing);
   });
 
-  testWidgets('progressing reveal: the picture strip follows, and can be taken away', (tester) async {
+  testWidgets('progressing reveal: the picture strip follows', (tester) async {
     await preview(tester, reveal);
     // Two of the three hints have a picture.
     expect(find.text('?'), findsNWidgets(2));
@@ -73,9 +73,16 @@ void main() {
     // Its file is not on this device: the number stands in for the picture.
     expect(find.text('?'), findsOneWidget);
     expect(find.text('hint 1'), findsOneWidget);
+  });
 
-    await tester.tap(find.byTooltip('Without the picture strip'));
-    await tester.pump(const Duration(milliseconds: 300));
+  testWidgets('a question with the picture strip switched off has none', (tester) async {
+    final stored = game.question(reveal)!;
+    final question = Question.fromMap(stored.id, {...stored.data, 'pictureStrip': false});
+    expect(stored.pictureStrip, isTrue, reason: 'on unless switched off');
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: Center(child: QuestionPreview(gameId: game.id, categoryId: reveal.categoryId, question: question))),
+    ));
+    await next(tester);
     expect(find.text('?'), findsNothing);
     expect(find.text('hint 1'), findsOneWidget);
   });
@@ -94,14 +101,8 @@ void main() {
       return host;
     }
 
-    testWidgets('the gamemaster switches the strip off and on', (tester) async {
-      final host = await present(tester, const [OpenQuestion(reveal)]);
-      expect(find.text('?'), findsNWidgets(2));
-      host.dispatch(const SetThumbnails(false));
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('?'), findsNothing);
-      host.dispatch(const SetThumbnails(true));
-      await tester.pump(const Duration(milliseconds: 300));
+    testWidgets('a question with pictures shows the strip', (tester) async {
+      await present(tester, const [OpenQuestion(reveal)]);
       expect(find.text('?'), findsNWidgets(2));
     });
 

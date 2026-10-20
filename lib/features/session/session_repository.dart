@@ -93,7 +93,8 @@ class SessionRepository {
   /// Chooses the game a session plays. The presenting device picks the change
   /// up from the document and resets the board; if none is presenting, the
   /// next one to start does.
-  Future<void> setGame(String sessionId, String? gameId) => session(sessionId).update({'gameId': gameId});
+  Future<void> setGame(String sessionId, String? gameId, {String? name}) =>
+      session(sessionId).update({'gameId': gameId, 'name': ?name});
 
   /// Deletes the session and what belongs to it. Best effort for the
   /// subcollections: a document that slips through is unreachable anyway.

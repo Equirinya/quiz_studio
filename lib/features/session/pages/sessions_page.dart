@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:quiz_show/core/widgets/dialogs.dart';
+import 'package:quiz_show/core/widgets/near_mouse.dart';
 import 'package:quiz_show/features/audio/audio_director.dart';
 import 'package:quiz_show/features/audio/audioplayers_backend.dart';
 import 'package:quiz_show/features/audio/team_sounds.dart';
@@ -41,6 +42,7 @@ class _SessionsPageState extends State<SessionsPage> {
   StreamSubscription<List<GameSummary>>? _gamesSub;
 
   SessionRepository get _repo => SessionRepository.instance;
+  Map<String, String> get _gameNames => {for (final game in _playable) game.id: game.name};
 
   @override
   void initState() {
@@ -58,11 +60,12 @@ class _SessionsPageState extends State<SessionsPage> {
   }
 
   Future<void> _create() async {
-    final result = await showNewSessionSheet(context, games: _playable);
-    if (result == null || !mounted) return;
+    final picked = await showNewSessionSheet(context, games: _playable);
+    if (picked == null || !mounted) return;
     await guarded(
       context,
-      () => _repo.createSession(name: result.name, gameId: result.gameId),
+      // Saved with the game's name for devices that cannot open the game.
+      () => _repo.createSession(name: _gameNames[picked.gameId] ?? "", gameId: picked.gameId),
       failure: "Could not create the session.",
     );
   }
@@ -70,7 +73,7 @@ class _SessionsPageState extends State<SessionsPage> {
   Future<void> _changeGame(SessionSummary session) async {
     final gameId = await showGamePicker(context, games: _playable, selected: session.gameId);
     if (gameId == null || gameId == session.gameId || !mounted) return;
-    await guarded(context, () => _repo.setGame(session.id, gameId));
+    await guarded(context, () => _repo.setGame(session.id, gameId, name: _gameNames[gameId]));
   }
 
   Future<void> _present(SessionSummary session) async {
@@ -89,14 +92,18 @@ class _SessionsPageState extends State<SessionsPage> {
   }
 
   void _control(SessionSummary session) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => ControlPage(sessionId: session.id, title: session.name)));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ControlPage(sessionId: session.id, title: sessionTitle(session, _gameNames)),
+      ),
+    );
   }
 
   Future<void> _delete(SessionSummary session) async {
     final sure = await confirm(
       context,
       title: "Delete session",
-      message: "\"${session.name}\" with its teams and points will be deleted.",
+      message: "The session of \"${sessionTitle(session, _gameNames)}\" with its teams and points will be deleted.",
       action: "Delete",
     );
     if (!sure || !mounted) return;
@@ -133,7 +140,7 @@ class _SessionsPageState extends State<SessionsPage> {
           if (sessions == null) return const Center(child: CupertinoActivityIndicator());
           return SessionsList(
             sessions: sessions,
-            gameNames: {for (final game in _playable) game.id: game.name},
+            gameNames: _gameNames,
             onControl: _control,
             onPresent: _present,
             onChangeGame: _changeGame,
@@ -192,8 +199,34 @@ class SessionsList extends StatelessWidget {
                 children: [
                   Row(
                     children: [
+                      // The game is the card's title, so it is picked here
+                      // and not somewhere inside the running show.
                       Expanded(
-                        child: Text(session.name.isEmpty ? "Unnamed" : session.name, style: theme.textTheme.titleMedium),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () => onChangeGame(session),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      sessionTitle(session, gameNames),
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        color: session.gameId == null ? theme.colorScheme.primary : null,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Icon(Icons.arrow_drop_down, color: theme.colorScheme.onSurfaceVariant),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                       PopupMenuButton<VoidCallback>(
                         onSelected: (action) => action(),
@@ -204,15 +237,11 @@ class SessionsList extends StatelessWidget {
                       ),
                     ],
                   ),
-                  // The game is part of the card, so it is picked here and
-                  // not somewhere inside the running show.
-                  ActionChip(
-                    avatar: const Icon(Icons.quiz_outlined, size: 18),
-                    label: Text(
-                      session.gameId == null ? "Choose a game" : (gameNames[session.gameId] ?? "A game you cannot open"),
+                  if (session.createdAtMillis != null)
+                    Text(
+                      "Created ${formatSessionDate(DateTime.fromMillisecondsSinceEpoch(session.createdAtMillis!))}",
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
-                    onPressed: () => onChangeGame(session),
-                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -243,17 +272,29 @@ class SessionsList extends StatelessWidget {
   }
 }
 
+/// What a session is called on screen: the game it plays.
+String sessionTitle(SessionSummary session, Map<String, String> gameNames) {
+  if (session.gameId == null) return "Choose a game";
+  final name = gameNames[session.gameId];
+  if (name != null) return name.isEmpty ? "Unnamed game" : name;
+  return session.name.isEmpty ? "A game you cannot open" : session.name;
+}
+
+/// "17 Oct, 20:15", with the year when it is not this one.
+String formatSessionDate(DateTime date, {DateTime? now}) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  String two(int n) => n.toString().padLeft(2, '0');
+  final year = date.year == (now ?? DateTime.now()).year ? '' : ' ${date.year}';
+  return "${date.day} ${months[date.month - 1]}$year, ${two(date.hour)}:${two(date.minute)}";
+}
+
 /// Lets the user pick one of [games]; returns its id.
 Future<String?> showGamePicker(BuildContext context, {required List<GameSummary> games, String? selected}) {
   return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (context) => _GameChoices(
-      games: games,
-      selected: selected,
-      onPicked: (id) => Navigator.of(context).pop(id),
-    ),
+    builder: (context) => _GameChoices(games: games, selected: selected, onPicked: (id) => Navigator.of(context).pop(id)),
   );
 }
 
@@ -288,9 +329,9 @@ class _GameChoices extends StatelessWidget {
   }
 }
 
-/// Name and game for a new session, in one step.
-Future<({String name, String? gameId})?> showNewSessionSheet(BuildContext context, {required List<GameSummary> games}) {
-  return showModalBottomSheet<({String name, String? gameId})>(
+/// The game for a new session; null when the sheet was dismissed.
+Future<({String? gameId})?> showNewSessionSheet(BuildContext context, {required List<GameSummary> games}) {
+  return showModalBottomSheet<({String? gameId})>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -308,14 +349,7 @@ class _NewSessionSheet extends StatefulWidget {
 }
 
 class _NewSessionSheetState extends State<_NewSessionSheet> {
-  final TextEditingController _name = TextEditingController(text: "Quiz night");
   late String? _gameId = widget.games.length == 1 ? widget.games.first.id : null;
-
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -327,9 +361,7 @@ class _NewSessionSheetState extends State<_NewSessionSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text("New session", style: theme.textTheme.titleLarge),
-          const SizedBox(height: 12),
-          TextField(controller: _name, decoration: const InputDecoration(labelText: "Name")),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Text("Game", style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
           ConstrainedBox(
             constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.35),
@@ -339,10 +371,7 @@ class _NewSessionSheetState extends State<_NewSessionSheet> {
           SizedBox(
             height: 52,
             child: FilledButton(
-              onPressed: () {
-                final name = _name.text.trim();
-                Navigator.of(context).pop((name: name.isEmpty ? "Quiz night" : name, gameId: _gameId));
-              },
+              onPressed: () => Navigator.of(context).pop((gameId: _gameId)),
               child: Text(_gameId == null ? "Create without a game" : "Create"),
             ),
           ),
@@ -389,10 +418,7 @@ class _ControlPageState extends State<ControlPage> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
-          ValueListenableBuilder<LinkStatus>(
-            valueListenable: _connection.link!,
-            builder: (context, status, _) => LinkStatusIcon(status),
-          ),
+          ValueListenableBuilder<LinkStatus>(valueListenable: _connection.link!, builder: (context, status, _) => LinkStatusIcon(status)),
         ],
       ),
       body: Column(
@@ -414,9 +440,7 @@ class _ControlPageState extends State<ControlPage> {
               onConnectDevices: widget.joinLink != null ? null : () => openConnectDevices(context, _connection),
               // No buzzer box on a controller, but the teams' sounds are
               // saved with the session and can be chosen from here.
-              onBuzzerSetup: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => BuzzersPage(connection: _connection),
-              )),
+              onBuzzerSetup: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BuzzersPage(connection: _connection))),
             ),
           ),
         ],
@@ -431,17 +455,16 @@ Future<void> openConnectDevices(BuildContext context, SessionConnection connecti
   final endpoints = connection.isPresenting
       ? connection.lanEndpoints.value
       : await SessionRepository.instance
-          .watchLanEndpoints(connection.sessionId)
-          .first
-          .timeout(const Duration(seconds: 2), onTimeout: () => const <String>[])
-          .catchError((Object _) => const <String>[]);
-  navigator.push(MaterialPageRoute(
-    builder: (_) => ConnectDevicesPage(
-      sessionId: connection.sessionId,
-      teams: connection.state.value?.teams ?? const [],
-      lanEndpoints: endpoints,
+            .watchLanEndpoints(connection.sessionId)
+            .first
+            .timeout(const Duration(seconds: 2), onTimeout: () => const <String>[])
+            .catchError((Object _) => const <String>[]);
+  navigator.push(
+    MaterialPageRoute(
+      builder: (_) =>
+          ConnectDevicesPage(sessionId: connection.sessionId, teams: connection.state.value?.teams ?? const [], lanEndpoints: endpoints),
     ),
-  ));
+  );
 }
 
 /// Makes this device the presenter: it runs the show and displays it.
@@ -469,51 +492,54 @@ class _PresentPageState extends State<PresentPage> {
   @override
   void initState() {
     super.initState();
-    SessionConnection.present(widget.sessionId).then((connection) {
-      if (!mounted) {
-        connection.dispose();
-        return;
-      }
-      connection.displaced!.addListener(_onDisplaced);
-      // Sound comes out of the presenting device only.
-      // A team's own sound is fetched when it is chosen; until this device
-      // has it, the team buzzes with the built-in sound.
-      void fetchTeamSounds() {
-        for (final team in connection.state.value?.teams ?? const <Team>[]) {
-          if (team.sound != null) TeamSounds.instance.ensureCached(widget.sessionId, team.sound!);
+    SessionConnection.present(widget.sessionId).then(
+      (connection) {
+        if (!mounted) {
+          connection.dispose();
+          return;
         }
-      }
+        connection.displaced!.addListener(_onDisplaced);
+        // Sound comes out of the presenting device only.
+        // A team's own sound is fetched when it is chosen; until this device
+        // has it, the team buzzes with the built-in sound.
+        void fetchTeamSounds() {
+          for (final team in connection.state.value?.teams ?? const <Team>[]) {
+            if (team.sound != null) TeamSounds.instance.ensureCached(widget.sessionId, team.sound!);
+          }
+        }
 
-      connection.state.addListener(fetchTeamSounds);
-      TeamSounds.instance.init().then((_) => fetchTeamSounds());
-      final audio = AudioDirector(
-        host: connection.host!,
-        backend: AudioplayersBackend(),
-        teamSound: (teamId) => TeamSounds.instance.pathFor(widget.sessionId, connection.host!.state.team(teamId)?.sound),
-        resolve: (gameId, name) {
-          final file = MediaService.instance.localFile(gameId, name);
-          return file.existsSync() ? file.path : null;
-        },
-      );
-      // Files still downloading when a sound was asked for start once they are in.
-      connection.missingMedia.addListener(audio.sync);
-      // The buzzer box is plugged into this device, so its presses go
-      // straight into the host: no network in between.
-      // Subscribed once, for as long as this device presents. Whether a
-      // press counts right now is decided by the host, not by listening or
-      // not listening.
-      Buzzers.instance.start();
-      _buzzers = Buzzers.instance.link.pressed.listen((id) {
-        final teamId = Buzzers.instance.teamFor(widget.sessionId, id, connection.host!.state.teams);
-        if (teamId != null) connection.host!.dispatch(Buzz(teamId));
-      });
-      setState(() {
-        _connection = connection;
-        _audio = audio;
-      });
-    }, onError: (Object error) {
-      if (mounted) setState(() => _error = error);
-    });
+        connection.state.addListener(fetchTeamSounds);
+        TeamSounds.instance.init().then((_) => fetchTeamSounds());
+        final audio = AudioDirector(
+          host: connection.host!,
+          backend: AudioplayersBackend(),
+          teamSound: (teamId) => TeamSounds.instance.pathFor(widget.sessionId, connection.host!.state.team(teamId)?.sound),
+          resolve: (gameId, name) {
+            final file = MediaService.instance.localFile(gameId, name);
+            return file.existsSync() ? file.path : null;
+          },
+        );
+        // Files still downloading when a sound was asked for start once they are in.
+        connection.missingMedia.addListener(audio.sync);
+        // The buzzer box is plugged into this device, so its presses go
+        // straight into the host: no network in between.
+        // Subscribed once, for as long as this device presents. Whether a
+        // press counts right now is decided by the host, not by listening or
+        // not listening.
+        Buzzers.instance.start();
+        _buzzers = Buzzers.instance.link.pressed.listen((id) {
+          final teamId = Buzzers.instance.teamFor(widget.sessionId, id, connection.host!.state.teams);
+          if (teamId != null) connection.host!.dispatch(Buzz(teamId));
+        });
+        setState(() {
+          _connection = connection;
+          _audio = audio;
+        });
+      },
+      onError: (Object error) {
+        if (mounted) setState(() => _error = error);
+      },
+    );
   }
 
   void _onDisplaced() {
@@ -603,7 +629,10 @@ class _PresentPageState extends State<PresentPage> {
   Widget build(BuildContext context) {
     final connection = _connection;
     if (_error != null) {
-      return Scaffold(appBar: AppBar(), body: const Center(child: Text("Could not start presenting this session.")));
+      return Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: Text("Could not start presenting this session.")),
+      );
     }
     if (connection == null) return const Scaffold(body: Center(child: CupertinoActivityIndicator()));
     final faint = Theme.of(context).colorScheme.outlineVariant;
@@ -613,11 +642,7 @@ class _PresentPageState extends State<PresentPage> {
         appBar: AppBar(
           title: const Text("Controlling"),
           actions: [
-            TextButton.icon(
-              onPressed: _bringBack,
-              icon: const Icon(Icons.close_fullscreen),
-              label: const Text("Close presenter window"),
-            ),
+            TextButton.icon(onPressed: _bringBack, icon: const Icon(Icons.close_fullscreen), label: const Text("Close presenter window")),
             IconButton(icon: const Icon(Icons.close), tooltip: "Stop presenting", onPressed: () => Navigator.of(context).pop()),
           ],
         ),
@@ -627,9 +652,7 @@ class _PresentPageState extends State<PresentPage> {
             child: ControllerView(
               connection: connection,
               onConnectDevices: () => openConnectDevices(context, connection),
-              onBuzzerSetup: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => BuzzersPage(connection: connection),
-              )),
+              onBuzzerSetup: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BuzzersPage(connection: connection))),
             ),
           ),
         ),
@@ -643,48 +666,59 @@ class _PresentPageState extends State<PresentPage> {
             connection: connection,
             onConnectDevices: () => openConnectDevices(context, connection),
             // Team sounds are set up there too, so it is offered everywhere.
-            onBuzzerSetup: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => BuzzersPage(connection: connection),
-            )),
+            onBuzzerSetup: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BuzzersPage(connection: connection))),
           ),
         ),
       ),
       body: Stack(
         children: [
           Positioned.fill(child: PresenterView(connection: connection, videoCards: true)),
-          // Kept faint: the audience is looking at this screen.
+          // Kept faint: the audience is looking at this screen. Only Close
+          // stays; the rest come up when the mouse gets near.
           Positioned(
-            top: 4,
-            right: 4,
+            top: 0,
+            right: 0,
             child: Builder(
-              builder: (context) => Column(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.close, color: faint),
-                    tooltip: "Stop presenting",
-                    onPressed: () => Navigator.of(context).pop(),
+              builder: (context) => NearMouse(
+                builder: (near) => Padding(
+                  padding: const EdgeInsets.fromLTRB(96, 4, 4, 96),
+                  child: Column(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.close, color: faint),
+                        tooltip: "Stop presenting",
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      RevealedWhen(
+                        near,
+                        child: Column(
+                          children: [
+                            if (PresenterWindow.supported && connection.windowAccess != null)
+                              IconButton(
+                                icon: Icon(Icons.open_in_new, color: faint),
+                                tooltip: "Open in a new window, to drag onto another screen",
+                                onPressed: () => _openWindow(connection),
+                              ),
+                            if (_canFullscreen)
+                              IconButton(
+                                icon: Icon(_fullscreen ? Icons.fullscreen_exit : Icons.fullscreen, color: faint),
+                                tooltip: "Fullscreen",
+                                onPressed: () {
+                                  setState(() => _fullscreen = !_fullscreen);
+                                  windowManager.setFullScreen(_fullscreen);
+                                },
+                              ),
+                            IconButton(
+                              icon: Icon(Icons.tune, color: faint),
+                              tooltip: "Controls",
+                              onPressed: () => Scaffold.of(context).openEndDrawer(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  if (PresenterWindow.supported && connection.windowAccess != null)
-                    IconButton(
-                      icon: Icon(Icons.open_in_new, color: faint),
-                      tooltip: "Open in a new window, to drag onto another screen",
-                      onPressed: () => _openWindow(connection),
-                    ),
-                  if (_canFullscreen)
-                    IconButton(
-                      icon: Icon(_fullscreen ? Icons.fullscreen_exit : Icons.fullscreen, color: faint),
-                      tooltip: "Fullscreen",
-                      onPressed: () {
-                        setState(() => _fullscreen = !_fullscreen);
-                        windowManager.setFullScreen(_fullscreen);
-                      },
-                    ),
-                  IconButton(
-                    icon: Icon(Icons.tune, color: faint),
-                    tooltip: "Controls",
-                    onPressed: () => Scaffold.of(context).openEndDrawer(),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

@@ -8,6 +8,8 @@ library;
 
 import 'cards.dart';
 import 'companion.dart';
+import 'matching.dart';
+import 'rapid_fire.dart';
 
 // Music slots and built-in effect keys (v1 names, also used as stored keys).
 const String musicBackground = 'musicBackground';
@@ -15,11 +17,145 @@ const String musicCalm = 'musicCalm';
 const String musicExciting = 'musicExciting';
 const List<String> musicSlots = [musicBackground, musicCalm, musicExciting];
 
+// Quiet loops that come with the app and keep the speakers from switching
+// themselves off when no music should play. Played like music, but never set
+// up per game: the slot names the bundled asset.
+const String ambienceWhiteNoise = 'ambienceWhiteNoise';
+const String ambienceSoftNoise = 'ambienceSoftNoise';
+/// Sound effects that come with the app (assets/sounds/effects). Played
+/// with the key `builtin:<id>`; a game's own effect of the same moment wins.
+class BuiltinSound {
+  const BuiltinSound(this.id, this.label, this.asset);
+
+  final String id;
+  final String label;
+  final String asset;
+
+  String get key => '$builtinSoundPrefix$id';
+}
+
+const String builtinSoundPrefix = 'builtin:';
+
+/// Picked by Jacob from generated and CC0 sounds (credits in
+/// assets/sounds/CREDITS.md). The first of each moment is its default.
+const List<BuiltinSound> builtinSounds = [
+  BuiltinSound('right_answer/ding_ding', "Ding ding", 'sounds/effects/right_answer/ding_ding.wav'),
+  BuiltinSound('right_answer/voice_correct_female', "\"Correct!\" (female)", 'sounds/effects/right_answer/voice_correct_female.ogg'),
+  BuiltinSound('right_answer/voice_correct_male', "\"Correct!\" (male)", 'sounds/effects/right_answer/voice_correct_male.ogg'),
+  BuiltinSound('right_answer/confirm', "Confirm", 'sounds/effects/right_answer/confirm.ogg'),
+  BuiltinSound('right_answer/counter_bell', "Counter bell", 'sounds/effects/right_answer/counter_bell.ogg'),
+  BuiltinSound('wrong_answer/bwomp', "Bwomp", 'sounds/effects/wrong_answer/bwomp.wav'),
+  BuiltinSound('wrong_answer/voice_wrong_female', "\"Wrong!\" (female)", 'sounds/effects/wrong_answer/voice_wrong_female.ogg'),
+  BuiltinSound('wrong_answer/voice_wrong_male', "\"Wrong!\" (male)", 'sounds/effects/wrong_answer/voice_wrong_male.ogg'),
+  BuiltinSound('wrong_answer/error_low', "Error, low", 'sounds/effects/wrong_answer/error_low.ogg'),
+  BuiltinSound('wrong_answer/error_short', "Error, short", 'sounds/effects/wrong_answer/error_short.ogg'),
+  BuiltinSound('fanfare/brass', "Fanfare", 'sounds/effects/fanfare/brass.wav'),
+  BuiltinSound('fanfare/voice_congratulations', "\"Congratulations!\"", 'sounds/effects/fanfare/voice_congratulations.ogg'),
+  BuiltinSound('question_open/brass_stab', "Brass stab", 'sounds/effects/question_open/brass_stab.wav'),
+  BuiltinSound('reveal/pluck', "Pluck", 'sounds/effects/reveal/pluck.ogg'),
+  BuiltinSound('reveal/rise_high', "Rise", 'sounds/effects/reveal/rise_high.ogg'),
+  BuiltinSound('reveal/pop_up', "Pop up", 'sounds/effects/reveal/pop_up.wav'),
+  BuiltinSound('reveal/rise_soft', "Soft rise", 'sounds/effects/reveal/rise_soft.ogg'),
+  BuiltinSound('countdown/alarm_clock_ticking', "Ticking clock", 'sounds/effects/countdown/alarm_clock_ticking.ogg'),
+  BuiltinSound('times_up/game_show_buzzer', "Game-show buzzer", 'sounds/effects/times_up/game_show_buzzer.wav'),
+  BuiltinSound('lock_in/pop', "Pop", 'sounds/effects/lock_in/pop.wav'),
+  BuiltinSound('lock_in/select', "Select", 'sounds/effects/lock_in/select.ogg'),
+  BuiltinSound('next_item/woodblock', "Woodblock", 'sounds/effects/next_item/woodblock.wav'),
+  BuiltinSound('steal/riser', "Riser", 'sounds/effects/steal/riser.wav'),
+  BuiltinSound('applause/crowd_40', "Applause", 'sounds/effects/applause/crowd_40.ogg'),
+  BuiltinSound('applause/bar_short', "Applause, short", 'sounds/effects/applause/bar_short.ogg'),
+  BuiltinSound('drumroll/snare', "Drumroll", 'sounds/effects/drumroll/snare.ogg'),
+  BuiltinSound('joke/rimshot', "Ba-dum-tss", 'sounds/effects/joke/rimshot.ogg'),
+  BuiltinSound('announcer/ready', "\"Ready\"", 'sounds/effects/announcer/ready.ogg'),
+  BuiltinSound('announcer/set', "\"Set\"", 'sounds/effects/announcer/set.ogg'),
+  BuiltinSound('announcer/go', "\"Go!\"", 'sounds/effects/announcer/go.ogg'),
+  BuiltinSound('announcer/hurry_up', "\"Hurry up!\"", 'sounds/effects/announcer/hurry_up.ogg'),
+  BuiltinSound('announcer/final_round', "\"Final round\"", 'sounds/effects/announcer/final_round.ogg'),
+  BuiltinSound('announcer/its_a_tie', "\"It's a tie\"", 'sounds/effects/announcer/its_a_tie.ogg'),
+  BuiltinSound('announcer/game_over', "\"Game over\"", 'sounds/effects/announcer/game_over.ogg'),
+];
+
+/// Buzzer sounds a team can have without uploading one. The first is what
+/// every team gets until it picks another.
+const List<BuiltinSound> builtinBuzzers = [
+  BuiltinSound('buzzer/classic', "Classic", 'buzzer.mp3'),
+  BuiltinSound('buzzer/game_show', "Game show", 'sounds/buzzers/game_show.wav'),
+  BuiltinSound('buzzer/horn', "Horn", 'sounds/buzzers/horn.wav'),
+];
+
+BuiltinSound? builtinBuzzer(String? key) => builtinBuzzers.where((sound) => sound.key == key).firstOrNull;
+
+/// The ones the gamemaster plays by hand from the Effects sheet.
+const List<String> handSoundMoments = ['applause', 'drumroll', 'joke', 'fanfare', 'countdown', 'times_up', 'announcer'];
+
+BuiltinSound? builtinSound(String key) =>
+    builtinSounds.where((sound) => sound.key == key || sound.id == key).firstOrNull;
+
+/// The folder of built-in sounds each moment can choose from.
+const Map<String, String> effectMoments = {
+  effectAnswerCorrect: 'right_answer',
+  effectAnswerWrong: 'wrong_answer',
+  effectReveal: 'reveal',
+  effectQuestionOpen: 'question_open',
+  effectLockIn: 'lock_in',
+  effectNextItem: 'next_item',
+  effectCountdown: 'countdown',
+  effectTimesUp: 'times_up',
+  effectSteal: 'steal',
+  effectFanfare: 'fanfare',
+};
+
+/// The built-in sounds [effectKey] can be set to.
+List<BuiltinSound> builtinSoundsFor(String effectKey) =>
+    [for (final sound in builtinSounds) if (sound.id.split('/').first == effectMoments[effectKey]) sound];
+
+/// Stored for a moment that should stay silent, even if a level above has a sound.
+const String silentSound = 'off';
+
+/// What plays for a built-in moment when the game set nothing for it.
+const Map<String, String> defaultEffectSounds = {
+  effectReveal: 'reveal/pluck',
+  effectAnswerCorrect: 'right_answer/ding_ding',
+  effectAnswerWrong: 'wrong_answer/bwomp',
+  effectQuestionOpen: 'question_open/brass_stab',
+  effectLockIn: 'lock_in/pop',
+  effectNextItem: 'next_item/woodblock',
+  effectCountdown: 'countdown/alarm_clock_ticking',
+  effectTimesUp: 'times_up/game_show_buzzer',
+  effectSteal: 'steal/riser',
+  effectFanfare: 'fanfare/brass',
+};
+
+const Map<String, String> ambienceAssets = {
+  ambienceWhiteNoise: 'sounds/ambience/white_noise.wav',
+  ambienceSoftNoise: 'sounds/ambience/soft_noise.wav',
+};
+
 const String effectReveal = 'musicEffectReveal';
 const String effectAnswerCorrect = 'musicEffectAnswerCorrect';
 const String effectAnswerWrong = 'musicEffectAnswerWrong';
 const String effectAnswerClosed = 'musicEffectAnswerClosed';
-const List<String> builtInEffects = [effectAnswerCorrect, effectAnswerWrong, effectAnswerClosed, effectReveal];
+// Moments added in v2; v1 never stored these.
+const String effectQuestionOpen = 'musicEffectQuestionOpen';
+const String effectLockIn = 'musicEffectLockIn';
+const String effectNextItem = 'musicEffectNextItem';
+const String effectCountdown = 'musicEffectCountdown';
+const String effectTimesUp = 'musicEffectTimesUp';
+const String effectSteal = 'musicEffectSteal';
+const String effectFanfare = 'musicEffectFanfare';
+const List<String> builtInEffects = [
+  effectAnswerCorrect,
+  effectAnswerWrong,
+  effectAnswerClosed,
+  effectReveal,
+  effectQuestionOpen,
+  effectLockIn,
+  effectNextItem,
+  effectCountdown,
+  effectTimesUp,
+  effectSteal,
+  effectFanfare,
+];
 
 /// A copy of [value] holding only what JSON can represent.
 Object? _jsonSafe(Object? value) {
@@ -83,7 +219,9 @@ class MusicConfig {
     return MusicConfig(slots: slots, effects: effects);
   }
 
-  Iterable<String> get mediaPaths => [...slots.values, ...effects.values];
+  /// Files to download: built-in sounds and silence come with the app.
+  Iterable<String> get mediaPaths =>
+      [...slots.values, ...effects.values].where((name) => !name.startsWith(builtinSoundPrefix) && name != silentSound);
 }
 
 enum QuestionType {
@@ -92,7 +230,13 @@ enum QuestionType {
   progressingReveal("Progressing Reveal"),
   feud("Feud"),
   connections("Connections"),
+  rapidFire("Fragenhagel"),
+  matching("Matching"),
   unsupported("Unsupported");
+
+  /// Played only on the teams' own devices: without them there is nothing
+  /// to answer with.
+  bool get needsDevices => this == connections || this == matching;
 
   const QuestionType(this.uiString);
 
@@ -121,7 +265,10 @@ class Question {
     this.informationMusic = const [],
     this.percentages = const [],
     this.absoluteValues = false,
+    this.pictureStrip = true,
     this.connectionGroups = const [],
+    this.rapidFire,
+    this.matching,
     this.sounds = MusicConfig.empty,
     this.data = const {},
   });
@@ -156,8 +303,21 @@ class Question {
   final List<double> percentages;
   final bool absoluteValues;
 
+  /// progressingReveal with pictures: the row of small pictures under the
+  /// question on the big screen. Stored only when switched off.
+  final bool pictureStrip;
+
   /// connections: the four groups, easiest first. Stored as `connections`.
   final List<ConnectionGroup> connectionGroups;
+
+  /// rapidFire: its items and how they are played. Stored as `rapidFire`.
+  final RapidFire? rapidFire;
+
+  /// matching: its pairs, in the right pairing. Stored as `matching`.
+  final Matching? matching;
+
+  /// Whether this question can only be played with the teams' devices.
+  bool get needsDevices => type.needsDevices || (type == QuestionType.rapidFire && rapidFire?.mode == RapidMode.devices);
 
   final MusicConfig sounds;
 
@@ -185,9 +345,12 @@ class Question {
       informationMusic: _strings(data['informationMusic']),
       percentages: percentages is List ? [for (final e in percentages) e is num ? e.toDouble() : 0.0] : const [],
       absoluteValues: data['absoluteValues'] == true,
+      pictureStrip: data['pictureStrip'] != false,
       connectionGroups: QuestionType.fromString(data['type']) == QuestionType.connections
           ? ConnectionGroup.listFrom(data['connections'])
           : const [],
+      rapidFire: QuestionType.fromString(data['type']) == QuestionType.rapidFire ? RapidFire.fromMap(data['rapidFire']) : null,
+      matching: QuestionType.fromString(data['type']) == QuestionType.matching ? Matching.fromMap(data['matching']) : null,
       sounds: MusicConfig.fromMap(data),
       data: data,
     );
@@ -196,6 +359,26 @@ class Question {
   /// The screen the teams' own devices show while this question is open,
   /// if it has one. For "pick one" the options are the ABCD answers.
   CompanionSpec? get companion {
+    if (type == QuestionType.matching) {
+      // Always on the teams' devices; the `companion` map holds the timer and
+      // whether teams may lock in. Pictures are shown on the big screen and
+      // named on the devices.
+      final pairs = matching ?? const Matching();
+      final numbers = pairs.rightNumbers(id);
+      final stored = data['companion'] is Map ? Map<String, dynamic>.from(data['companion'] as Map) : <String, dynamic>{};
+      final spec = CompanionSpec.fromMap({...stored, 'kind': CompanionKind.match.name});
+      return CompanionSpec(
+        kind: CompanionKind.match,
+        timerSeconds: spec?.timerSeconds,
+        lockable: spec?.lockable ?? true,
+        options: [for (var i = 0; i < pairs.pairs.length; i++) pairs.leftLabel(i)],
+        targets: [for (var i = 0; i < pairs.pairs.length; i++) pairs.rightLabel(i, numbers)],
+      );
+    }
+    if (type == QuestionType.rapidFire) {
+      // Right or wrong for each statement; a fresh round for every item.
+      return rapidFire?.mode == RapidMode.devices ? const CompanionSpec(kind: CompanionKind.choice, options: rapidChoices) : null;
+    }
     if (type == QuestionType.connections) {
       // Always played on the teams' devices. The `companion` map holds the
       // timer, the mistakes allowed and whether teams may lock in.
@@ -209,15 +392,25 @@ class Question {
 
   bool get buzzerable => switch (type) {
         QuestionType.free => !noBuzzer,
-        QuestionType.connections => false,
+        QuestionType.connections || QuestionType.matching => false,
+        QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
         _ => true,
       };
 
   /// Whether the generic "answer right / answer wrong" judging applies. Feud
-  /// and Connections award points through their own flow.
-  bool get defaultJudging => type != QuestionType.feud && type != QuestionType.connections;
+  /// and Connections award points through their own flow, and so does a
+  /// Fragenhagel played on the teams' devices.
+  bool get defaultJudging => switch (type) {
+        QuestionType.feud || QuestionType.connections => false,
+        QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
+        _ => true,
+      };
 
   bool get hasMusic => music != null;
+
+  /// The sound to play at reveal counter [revealed]: a Fragenhagel item's own
+  /// one, or the question's.
+  String? musicAt(int revealed) => type == QuestionType.rapidFire ? (rapidFire?.itemAt(revealed)?.music ?? music) : music;
 
   bool get hasInformationImages => informationImages.any((e) => e.isNotEmpty);
 
@@ -229,6 +422,8 @@ class Question {
         QuestionType.progressingReveal => information.length + 1,
         // One step per group, easiest first.
         QuestionType.connections => kConnectionsGroups,
+        // One step per item; the last one ends the round.
+        QuestionType.rapidFire => rapidFire?.items.length ?? 0,
         _ => 0,
       };
 
@@ -239,6 +434,8 @@ class Question {
         ...informationImages.where((e) => e.isNotEmpty),
         ...informationMusic.where((e) => e.isNotEmpty),
         ?companion?.backgroundImage,
+        ...?rapidFire?.mediaPaths,
+        ...?matching?.mediaPaths,
         ...sounds.mediaPaths,
       ];
 }
@@ -269,6 +466,9 @@ class Category {
   final List<Question> questions;
   final MusicConfig sounds;
   final Map<String, dynamic> data;
+
+  /// Cards offered while one of this category's questions is open.
+  List<CueCard> get cards => CueCard.listFrom(data['cards']);
 }
 
 /// How a category group is shown on the presenter.
@@ -329,6 +529,9 @@ class CategoryGroup {
 
   bool get isUngrouped => id == ungroupedId;
 
+  /// Cards offered while this board is played.
+  List<CueCard> get cards => CueCard.listFrom(data['cards']);
+
   Iterable<String> get mediaPaths => [?imagePath, ...sounds.mediaPaths];
 }
 
@@ -362,8 +565,13 @@ class QuestionRef {
 
 /// A card prepared in the editor for the gamemaster to show during the
 /// show: rules of a round, a sponsor's logo, a "back in ten minutes".
+///
+/// Stored as `cards` on the game, a group or a category. The game's list
+/// also holds the pictures that come with the app ([builtinImages]): they are
+/// offered unless switched off ([hidden]), and a game that never saved them
+/// gets them appended ([withBuiltins]).
 class CueCard {
-  const CueCard({this.title = '', this.text = '', this.image, this.video});
+  const CueCard({this.title = '', this.text = '', this.image, this.video, this.hidden = false});
 
   final String title;
   final String text;
@@ -372,7 +580,22 @@ class CueCard {
   /// A video clip; when set the card plays it instead of showing text.
   final String? video;
 
-  Map<String, dynamic> toMap() => {'title': title, 'text': text, 'image': image, 'video': video};
+  /// Kept in the list but not offered during the show.
+  final bool hidden;
+
+  /// One of the pictures that come with the app.
+  bool get isBuiltin => isBuiltinImage(image);
+
+  /// Files of the game this card needs; built-in pictures come with the app.
+  Iterable<String> get mediaPaths => [if (!isBuiltin) ?image, ?video];
+
+  Map<String, dynamic> toMap() => {
+        'title': title,
+        'text': text,
+        'image': image,
+        'video': video,
+        if (hidden) 'hidden': true,
+      };
 
   static List<CueCard> listFrom(Object? stored) => [
         if (stored is List)
@@ -383,7 +606,15 @@ class CueCard {
                 text: entry['text'] is String ? entry['text'] as String : '',
                 image: _str(entry['image']),
                 video: _str(entry['video']),
+                hidden: entry['hidden'] == true,
               ),
+      ];
+
+  /// [cards] with every built-in picture they do not mention added at the end.
+  static List<CueCard> withBuiltins(List<CueCard> cards) => [
+        ...cards,
+        for (final image in builtinImages)
+          if (!cards.any((card) => card.image == image.name)) CueCard(image: image.name),
       ];
 }
 
@@ -396,8 +627,17 @@ class GameContent {
     this.data = const {},
   });
 
-  /// Cards prepared for this game; stored as `cards` on the game document.
-  List<CueCard> get cards => CueCard.listFrom(data['cards']);
+  /// Cards of the whole game, switched off ones and built-in pictures
+  /// included, in the order they are offered.
+  List<CueCard> get cards => CueCard.withBuiltins(CueCard.listFrom(data['cards']));
+
+  /// The cards to offer: those of the open question's category, then of its
+  /// group (or the board shown when no question is open), then the game's.
+  List<CueCard> cardsFor({QuestionRef? ref, String? groupId}) {
+    final category = ref == null ? null : this.category(ref.categoryId);
+    final group = ref == null ? this.group(groupId) : groupOfCategory(ref.categoryId);
+    return [...?category?.cards, ...?group?.cards, ...cards].where((card) => !card.hidden).toList();
+  }
 
   final String id;
   final String name;
@@ -575,11 +815,13 @@ class GameContent {
   Set<String> get mediaPaths => {
         ...sounds.mediaPaths,
         // Built-in pictures come with the app; there is nothing to download.
-        for (final card in cards) ...[if (!isBuiltinImage(card.image)) ?card.image, ?card.video],
+        for (final card in cards) ...card.mediaPaths,
         for (final group in groups) ...[
           ...group.mediaPaths,
+          for (final card in group.cards) ...card.mediaPaths,
           for (final category in group.categories) ...[
             ...category.sounds.mediaPaths,
+            for (final card in category.cards) ...card.mediaPaths,
             for (final question in category.questions) ...question.mediaPaths,
           ],
         ],

@@ -13,6 +13,7 @@ import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/pages/video_card.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/features/session/pages/rapid_fire_display.dart';
 
 /// What the audience sees: scores, the board, and the open question as far
 /// as the gamemaster has revealed it. Everything scales with the screen
@@ -285,8 +286,11 @@ class QuestionDisplay extends StatelessWidget {
     if (question.type == QuestionType.connections) {
       return _ConnectionsDisplay(state: state, question: question, unit: unit);
     }
+    if (question.type == QuestionType.rapidFire) {
+      return RapidFireDisplay(state: state, question: question, unit: unit, file: _file);
+    }
     final strip =
-        state.thumbnails && round == null && question.type == QuestionType.progressingReveal && question.hasInformationImages;
+        question.pictureStrip && round == null && question.type == QuestionType.progressingReveal && question.hasInformationImages;
     return Column(
       children: [
         if (question.description != null)
@@ -340,6 +344,15 @@ class QuestionDisplay extends StatelessWidget {
             ),
           ),
         ),
+        // Matching: the pieces with the letters and numbers the devices name.
+        if (question.type == QuestionType.matching)
+          Expanded(
+            flex: 5,
+            child: Padding(
+              padding: EdgeInsets.only(top: unit * 1.5),
+              child: _MatchingBoard(question: question, unit: unit, file: _file),
+            ),
+          ),
         if (strip)
           Padding(
             padding: EdgeInsets.only(top: unit * 1.5),
@@ -532,6 +545,81 @@ class _ConnectionsDisplay extends StatelessWidget {
 /// The pictures of a progressing reveal in a row: the ones revealed so far
 /// in small, a question mark for each still to come, and a frame around the
 /// one that is shown big.
+/// The two sides of a matching question: left items A, B, C… in their
+/// order, right items by their shuffled numbers.
+class _MatchingBoard extends StatelessWidget {
+  const _MatchingBoard({required this.question, required this.unit, required this.file});
+
+  final Question question;
+  final double unit;
+  final File? Function(String? name) file;
+
+  @override
+  Widget build(BuildContext context) {
+    final matching = question.matching ?? const Matching();
+    final numbers = matching.rightNumbers(question.id);
+    final right = [for (var i = 0; i < matching.pairs.length; i++) (numbers[i], matching.pairs[i].right)]
+      ..sort((a, b) => a.$1.compareTo(b.$1));
+    return Column(
+      children: [
+        Expanded(
+          child: _row([
+            for (final (i, pair) in matching.pairs.indexed) (Matching.letter(i), pair.left),
+          ], context),
+        ),
+        SizedBox(height: unit * 1.5),
+        Expanded(child: _row([for (final (number, side) in right) ('$number', side)], context)),
+      ],
+    );
+  }
+
+  Widget _row(List<(String, MatchSide)> items, BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        for (final (label, side) in items)
+          Expanded(
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: unit * 0.6),
+              padding: EdgeInsets.all(unit),
+              decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 2)),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: unit * 2.4,
+                    backgroundColor: scheme.primary,
+                    child: Text(label, style: TextStyle(fontSize: unit * 2.6, color: scheme.onPrimary, fontWeight: FontWeight.w700)),
+                  ),
+                  SizedBox(height: unit * 0.6),
+                  if (file(side.image) != null)
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(unit),
+                        child: Image.file(file(side.image)!, fit: BoxFit.contain),
+                      ),
+                    )
+                  else if (side.image != null)
+                    Expanded(child: Icon(Icons.image_outlined, size: unit * 6, color: scheme.outline)),
+                  if (side.text.isNotEmpty)
+                    Padding(
+                      padding: EdgeInsets.only(top: unit * 0.5),
+                      child: Text(
+                        side.text,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: unit * 2.6),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _PictureStrip extends StatelessWidget {
   const _PictureStrip({required this.unit, required this.files, required this.names, required this.revealed, required this.focus});
 

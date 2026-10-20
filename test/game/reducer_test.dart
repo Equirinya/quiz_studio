@@ -380,13 +380,62 @@ void main() {
       categories: {},
       questions: {},
     );
-    expect(withCards.cards.map((c) => (c.title, c.text, c.image, c.video)), [
+    expect(withCards.cards.take(3).map((c) => (c.title, c.text, c.image, c.video)), [
       ('Rules', 'No phones', null, null),
       ('', '', 'sponsor.png', null),
       ('Intro', '', null, 'intro.mp4'),
     ]);
+    // The pictures that come with the app follow, and need no download.
+    expect(withCards.cards.skip(3).map((c) => c.image), [for (final image in builtinImages) image.name]);
     expect(withCards.mediaPaths, {'sponsor.png', 'intro.mp4'});
-    expect(fixtureGame().cards, isEmpty);
+    expect(fixtureGame().cards, hasLength(builtinImages.length));
+  });
+
+  test('cards of the category and the board come first; switched off ones are not offered', () {
+    final game = GameContent.assemble(
+      id: 'g',
+      game: {
+        'cards': [
+          {'title': 'Rules'},
+          {'title': 'Old', 'hidden': true},
+          {'image': 'builtin:correct', 'hidden': true},
+        ],
+      },
+      groups: {
+        'b': {
+          'name': 'Board',
+          'categoryGroupIndex': 0,
+          'cards': [
+            {'title': 'Round rules', 'image': 'round.png'},
+          ],
+        },
+      },
+      categories: {
+        'c': {
+          'name': 'Cat',
+          'categoryGroup': 'b',
+          'cards': [
+            {'title': 'Category intro', 'video': 'cat.mp4'},
+          ],
+        },
+      },
+      questions: {
+        'c': {
+          'q': {'type': 'free', 'question': 'Q', 'pointsPlus': 100},
+        },
+      },
+    );
+    final open = game.cardsFor(ref: const QuestionRef('c', 'q'));
+    expect(open.take(3).map((c) => c.title), ['Category intro', 'Round rules', 'Rules']);
+    expect(open.any((c) => c.title == 'Old' || c.image == 'builtin:correct'), isFalse);
+    expect(open.where((c) => c.isBuiltin), hasLength(builtinImages.length - 1));
+    // On the board, without a question: the board's and the game's.
+    expect(game.cardsFor(groupId: 'b').first.title, 'Round rules');
+    expect(game.cardsFor(groupId: 'b').any((c) => c.title == 'Category intro'), isFalse);
+    expect(game.mediaPaths, containsAll(['round.png', 'cat.mp4']));
+    // Switched off survives the round trip; switched on is not written.
+    expect(const CueCard(title: 'x', hidden: true).toMap()['hidden'], isTrue);
+    expect(const CueCard(title: 'x').toMap().containsKey('hidden'), isFalse);
   });
 
   group('team sounds and the picture strip', () {
@@ -417,16 +466,7 @@ void main() {
     test('players cannot change either', () {
       const player = Sender(Role.player, teamId: 'red');
       expect(mayIssue(player, const SetTeamSound('red', 'x.mp3')), isFalse);
-      expect(mayIssue(player, const SetThumbnails(false)), isFalse);
       expect(mayIssue(const Sender(Role.controller), const SetTeamSound('red', 'x.mp3')), isTrue);
-    });
-
-    test('the strip is on until switched off, and a state from before has it on', () {
-      expect(fixtureState().thumbnails, isTrue);
-      final off = apply(fixtureState(), const SetThumbnails(false));
-      expect(off.state.thumbnails, isFalse);
-      expect(apply(off.state, const SetThumbnails(false)).accepted, isFalse);
-      expect(SessionState.fromJson((fixtureState().toJson())..remove('thumbnails')).thumbnails, isTrue);
     });
   });
 }

@@ -97,7 +97,6 @@ class SessionState {
     this.current,
     this.played = const {},
     this.queueBuzzers = false,
-    this.thumbnails = true,
     this.cardAnimation = CardAnimation.fade,
     this.buzzQueue = const [],
     this.revealed = 0,
@@ -106,6 +105,8 @@ class SessionState {
     this.wrongAttempts = 0,
     this.media = MediaPlayback.stopped,
     this.music,
+    this.ambience = ambienceSoftNoise,
+    this.musicVolume = 100,
     this.answerRound,
     this.overlay,
   });
@@ -127,10 +128,6 @@ class SessionState {
 
   /// When true, later buzzes queue up behind the first instead of being lost.
   final bool queueBuzzers;
-
-  /// Progressing reveal with images: whether the row of small pictures is
-  /// shown under the question.
-  final bool thumbnails;
 
   /// How cards come on screen and go again.
   final CardAnimation cardAnimation;
@@ -156,6 +153,14 @@ class SessionState {
 
   /// The music slot playing (one of `musicSlots`), or null for silence.
   final String? music;
+
+  /// A noise from `ambienceAssets` that fills every silence, so the speakers
+  /// never switch themselves off; null for none. Music and a question's own
+  /// sound play instead of it while they play.
+  final String? ambience;
+
+  /// 0 to 100: how loud the music plays.
+  final int musicVolume;
   final AnswerRound? answerRound;
 
   /// The card currently shown on top of the screen, if any.
@@ -177,7 +182,6 @@ class SessionState {
     Object? current = _unset,
     Set<String>? played,
     bool? queueBuzzers,
-    bool? thumbnails,
     CardAnimation? cardAnimation,
     List<String>? buzzQueue,
     int? revealed,
@@ -186,6 +190,8 @@ class SessionState {
     int? wrongAttempts,
     MediaPlayback? media,
     Object? music = _unset,
+    Object? ambience = _unset,
+    int? musicVolume,
     Object? answerRound = _unset,
     Object? overlay = _unset,
   }) =>
@@ -198,7 +204,6 @@ class SessionState {
         current: identical(current, _unset) ? this.current : current as QuestionRef?,
         played: played ?? this.played,
         queueBuzzers: queueBuzzers ?? this.queueBuzzers,
-        thumbnails: thumbnails ?? this.thumbnails,
         cardAnimation: cardAnimation ?? this.cardAnimation,
         buzzQueue: buzzQueue ?? this.buzzQueue,
         revealed: revealed ?? this.revealed,
@@ -207,6 +212,8 @@ class SessionState {
         wrongAttempts: wrongAttempts ?? this.wrongAttempts,
         media: media ?? this.media,
         music: music is String? ? music : this.music,
+        ambience: identical(ambience, _unset) ? this.ambience : ambience as String?,
+        musicVolume: musicVolume ?? this.musicVolume,
         answerRound: identical(answerRound, _unset) ? this.answerRound : answerRound as AnswerRound?,
         overlay: identical(overlay, _unset) ? this.overlay : overlay as OverlayCard?,
       );
@@ -220,7 +227,6 @@ class SessionState {
         'current': current?.key,
         'played': played.toList()..sort(),
         'queueBuzzers': queueBuzzers,
-        'thumbnails': thumbnails,
         'cardAnimation': cardAnimation.name,
         'buzzQueue': buzzQueue,
         'revealed': revealed,
@@ -229,6 +235,8 @@ class SessionState {
         'wrongAttempts': wrongAttempts,
         'media': media.name,
         'music': music,
+        'ambience': ambience,
+        'musicVolume': musicVolume,
         'answerRound': answerRound?.toJson(),
         'overlay': overlay?.toJson(),
       };
@@ -242,7 +250,6 @@ class SessionState {
         current: QuestionRef.tryParse(json['current']),
         played: {...(json['played'] as List? ?? const []).cast<String>()},
         queueBuzzers: json['queueBuzzers'] == true,
-        thumbnails: json['thumbnails'] != false,
         cardAnimation: CardAnimation.fromName(json['cardAnimation']),
         buzzQueue: (json['buzzQueue'] as List? ?? const []).cast<String>().toList(),
         revealed: (json['revealed'] as num?)?.toInt() ?? 0,
@@ -251,6 +258,9 @@ class SessionState {
         wrongAttempts: (json['wrongAttempts'] as num?)?.toInt() ?? 0,
         media: MediaPlayback.values.byName(json['media'] as String? ?? MediaPlayback.stopped.name),
         music: json['music'] as String?,
+        // Sessions from before the switch get it on, like new ones.
+        ambience: json.containsKey('ambience') ? json['ambience'] as String? : ambienceSoftNoise,
+        musicVolume: (json['musicVolume'] as num?)?.toInt().clamp(0, 100) ?? 100,
         answerRound:
             json['answerRound'] == null ? null : AnswerRound.fromJson(Map<String, dynamic>.from(json['answerRound'] as Map)),
         overlay: json['overlay'] == null ? null : OverlayCard.fromJson(Map<String, dynamic>.from(json['overlay'] as Map)),

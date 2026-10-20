@@ -3,6 +3,8 @@ library;
 
 import 'companion.dart';
 import 'content.dart';
+import 'matching.dart';
+import 'rapid_fire.dart';
 
 String _number(double value) => value % 1 == 0 ? value.toInt().toString() : value.toString();
 
@@ -37,12 +39,27 @@ String questionAsText(Question q) {
       for (final (i, group) in q.connectionGroups.indexed) {
         out.writeln('  ${colours[i]}: ${group.name} – ${group.words.join(', ')}');
       }
+    case QuestionType.rapidFire:
+      final rapid = q.rapidFire ?? const RapidFire();
+      final devices = rapid.mode == RapidMode.devices;
+      out.writeln(devices ? '  Right or wrong on the teams\' devices' : '  Teams buzz');
+      for (final (i, item) in rapid.items.indexed) {
+        final media = [if (item.image != null) 'picture', if (item.music != null) 'sound'];
+        final solution = devices ? (item.isTrue ? 'right' : 'wrong') : item.answer;
+        out.writeln('  ${i + 1}. ${item.question}${solution.isEmpty ? '' : ' – $solution'}${media.isEmpty ? '' : ' [${media.join(', ')}]'}');
+      }
+    case QuestionType.matching:
+      final pairs = q.matching ?? const Matching();
+      for (final pair in pairs.pairs) {
+        String side(MatchSide s) => [if (s.text.isNotEmpty) s.text, if (s.image != null) '[picture]'].join(' ');
+        out.writeln('  ${side(pair.left)} = ${side(pair.right)}');
+      }
     case QuestionType.free:
       if (q.noBuzzer && q.companion == null) out.writeln('  No buzzers');
     case QuestionType.unsupported:
       break;
   }
-  final companion = q.companion;
+  final companion = q.type == QuestionType.rapidFire || q.type == QuestionType.matching ? null : q.companion;
   if (companion != null && q.type == QuestionType.connections) {
     final timer = companion.timerSeconds == null ? '' : ', ${companion.timerSeconds} s';
     out.writeln('  ${companion.mistakes} mistakes allowed$timer');

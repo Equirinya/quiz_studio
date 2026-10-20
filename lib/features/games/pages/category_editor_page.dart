@@ -6,8 +6,10 @@ import 'package:flutter/services.dart';
 
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
+import 'package:quiz_show/features/games/widgets/cards_dialog.dart';
 import 'package:quiz_show/features/games/widgets/companion_editor.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
+import 'package:quiz_show/features/games/widgets/settings_strip.dart';
 import 'package:quiz_show/features/games/widgets/question_preview.dart';
 import 'package:quiz_show/features/games/widgets/question_type_editors.dart';
 import 'package:quiz_show/features/games/widgets/sounds_dialog.dart';
@@ -100,6 +102,12 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
     });
   }
 
+  /// Who of the limited members sees this category besides its creator.
+  static String _sharedSummary(Category category) {
+    final count = category.data['access'] is List ? (category.data['access'] as List).length : 0;
+    return count == 0 ? "Not shared" : (count == 1 ? "With 1 person" : "With $count people");
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<GameSnapshot>(
@@ -107,55 +115,87 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
       builder: (context, snapshot) {
         final category = snapshot.data?.content.category(widget.categoryId);
         if (snapshot.hasError || (snapshot.hasData && category == null)) {
-          return Scaffold(appBar: AppBar(), body: const Center(child: Text("This category is not available.")));
+          return Scaffold(
+            appBar: AppBar(),
+            body: const Center(child: Text("This category is not available.")),
+          );
         }
         if (category == null) {
-          return Scaffold(appBar: AppBar(), body: const Center(child: CupertinoActivityIndicator()));
+          return Scaffold(
+            appBar: AppBar(),
+            body: const Center(child: CupertinoActivityIndicator()),
+          );
         }
         return Scaffold(
           appBar: AppBar(
             title: Text(category.name.isEmpty ? "Unnamed" : category.name),
-            actions: [
-              if (_canShare(snapshot.data!, category))
-                IconButton(
-                  icon: const Icon(Icons.person_add_alt),
-                  tooltip: "Share with limited members",
-                  onPressed: () => _share(snapshot.data!, category),
-                ),
-              IconButton(
-                icon: const Icon(Icons.queue_music),
-                tooltip: "Music and effects",
-                onPressed: () => showSoundsDialog(
-                  context,
-                  gameId: widget.gameId,
-                  title: "Sounds for this category",
-                  data: category.data,
-                  save: (update) => guarded(context, () => _repo.updateCategory(widget.gameId, category.id, update)),
-                ),
-              ),
-              IconButton(icon: const Icon(Icons.edit_outlined), tooltip: "Rename", onPressed: () => _rename(category)),
-            ],
+            actions: [IconButton(icon: const Icon(Icons.edit_outlined), tooltip: "Rename", onPressed: () => _rename(category))],
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => _addQuestion(category),
             icon: const Icon(Icons.add),
             label: const Text("Add question"),
           ),
-          body: category.questions.isEmpty
-              ? const Center(child: Text("No questions yet."))
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 96),
-                  children: [
-                    for (final question in category.questions)
-                      QuestionCard(
-                        key: ValueKey(question.id),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 96),
+            children: [
+              // What this category brings beyond its questions.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+                child: SettingsStrip(
+                  tiles: [
+                    SettingTile(
+                      icon: Icons.queue_music,
+                      title: "Music & sounds",
+                      summary: soundsSummary(category.sounds, inherited: "Uses the board's"),
+                      isSet: category.sounds.slots.isNotEmpty || category.sounds.effects.isNotEmpty,
+                      onTap: () => showSoundsDialog(
+                        context,
                         gameId: widget.gameId,
-                        categoryId: category.id,
-                        question: question,
-                        initiallyExpanded: question.id == _fresh,
+                        title: "Sounds for this category",
+                        data: category.data,
+                        save: (update) => guarded(context, () => _repo.updateCategory(widget.gameId, category.id, update)),
+                      ),
+                    ),
+                    SettingTile(
+                      icon: Icons.style_outlined,
+                      title: "Cards",
+                      summary: cardsSummary(category.cards, none: "Only the board's and game's"),
+                      isSet: category.cards.isNotEmpty,
+                      onTap: () => showCardsDialog(
+                        context,
+                        gameId: widget.gameId,
+                        title: "Cards for this category",
+                        cards: category.cards,
+                        save: (cards) => guarded(context, () => _repo.updateCategory(widget.gameId, category.id, {'cards': cards})),
+                      ),
+                    ),
+                    if (_canShare(snapshot.data!, category))
+                      SettingTile(
+                        icon: Icons.person_add_alt,
+                        title: "Share",
+                        summary: _sharedSummary(category),
+                        isSet: _sharedSummary(category) != "Not shared",
+                        onTap: () => _share(snapshot.data!, category),
                       ),
                   ],
                 ),
+              ),
+              if (category.questions.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: Text("No questions yet.")),
+                ),
+              for (final question in category.questions)
+                QuestionCard(
+                  key: ValueKey(question.id),
+                  gameId: widget.gameId,
+                  categoryId: category.id,
+                  question: question,
+                  initiallyExpanded: question.id == _fresh,
+                ),
+            ],
+          ),
         );
       },
     );
@@ -165,13 +205,7 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
 /// Edits one question. Text is written a moment after typing stops, so the
 /// stream echoing a change back never moves the cursor.
 class QuestionCard extends StatefulWidget {
-  const QuestionCard({
-    super.key,
-    required this.gameId,
-    required this.categoryId,
-    required this.question,
-    this.initiallyExpanded = false,
-  });
+  const QuestionCard({super.key, required this.gameId, required this.categoryId, required this.question, this.initiallyExpanded = false});
 
   final String gameId;
   final String categoryId;
@@ -228,15 +262,15 @@ class _QuestionCardState extends State<QuestionCard> {
   }
 
   Widget _points(TextEditingController controller, String label, String field) => SizedBox(
-        width: 110,
-        child: TextField(
-          controller: controller,
-          decoration: InputDecoration(labelText: label),
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          onChanged: (value) => _save({field: int.tryParse(value) ?? 0}),
-        ),
-      );
+    width: 110,
+    child: TextField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label),
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      onChanged: (value) => _save({field: int.tryParse(value) ?? 0}),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -248,10 +282,7 @@ class _QuestionCardState extends State<QuestionCard> {
         shape: const Border(),
         leading: CircleAvatar(
           backgroundColor: theme.colorScheme.primaryContainer,
-          child: Text(
-            _q.pointsPlus.toString(),
-            style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onPrimaryContainer),
-          ),
+          child: Text(_q.pointsPlus.toString(), style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onPrimaryContainer)),
         ),
         title: Text(_q.text.isEmpty ? "New question" : _q.text, maxLines: 2, overflow: TextOverflow.ellipsis),
         subtitle: Text(_q.type.uiString),
@@ -276,28 +307,13 @@ class _QuestionCardState extends State<QuestionCard> {
               ),
               _points(_plus, "If right +", 'pointsPlus'),
               _points(_minus, "If wrong −", 'pointsMinus'),
-              MediaButton(
-                gameId: widget.gameId,
-                kind: MediaKind.image,
-                name: _q.image,
-                onChanged: (name) => _save({'image': name}),
-              ),
-              MediaButton(
-                gameId: widget.gameId,
-                kind: MediaKind.audio,
-                name: _q.music,
-                onChanged: (name) => _save({'music': name}),
-              ),
+              MediaButton(gameId: widget.gameId, kind: MediaKind.image, name: _q.image, onChanged: (name) => _save({'image': name})),
+              MediaButton(gameId: widget.gameId, kind: MediaKind.audio, name: _q.music, onChanged: (name) => _save({'music': name})),
               IconButton(
                 icon: const Icon(Icons.queue_music),
                 tooltip: "Music and effects",
-                onPressed: () => showSoundsDialog(
-                  context,
-                  gameId: widget.gameId,
-                  title: "Sounds for this question",
-                  data: _q.data,
-                  save: _save,
-                ),
+                onPressed: () =>
+                    showSoundsDialog(context, gameId: widget.gameId, title: "Sounds for this question", data: _q.data, save: _save),
               ),
               IconButton(
                 icon: const Icon(Icons.visibility_outlined),
@@ -344,7 +360,9 @@ class _QuestionCardState extends State<QuestionCard> {
               _hint.text = answerHint;
             },
           ),
-          CompanionEditor(key: ValueKey('companion-${_q.type}'), gameId: widget.gameId, question: _q, save: _save),
+          // A Fragenhagel brings its own screen for the teams' devices.
+          if (_q.type != QuestionType.rapidFire && _q.type != QuestionType.matching)
+            CompanionEditor(key: ValueKey('companion-${_q.type}'), gameId: widget.gameId, question: _q, save: _save),
         ],
       ),
     );

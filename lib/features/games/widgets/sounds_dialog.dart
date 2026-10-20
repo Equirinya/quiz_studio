@@ -1,12 +1,13 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/game/game.dart';
 
 const Map<String, String> _slotLabels = {
-  musicBackground: "Background music",
+  musicBackground: "Board music",
   musicCalm: "Calm music",
-  musicExciting: "Exciting music",
+  musicExciting: "Thrilling music",
 };
 
 const Map<String, String> _effectLabels = {
@@ -14,6 +15,13 @@ const Map<String, String> _effectLabels = {
   effectAnswerWrong: "Wrong answer",
   effectAnswerClosed: "Question closed",
   effectReveal: "Reveal",
+  effectQuestionOpen: "Question opens",
+  effectLockIn: "Team locks in",
+  effectNextItem: "Next Fragenhagel item",
+  effectCountdown: "Last 10 seconds",
+  effectTimesUp: "Time's up",
+  effectSteal: "Feud steal",
+  effectFanfare: "Fully solved",
 };
 
 /// Music and sound effects of one level: the game, a group, a category or a
@@ -26,22 +34,26 @@ Future<void> showSoundsDialog(
   required String title,
   required Map<String, dynamic> data,
   required void Function(Map<String, dynamic> update) save,
+  bool isGame = false,
 }) =>
     showDialog<void>(
       context: context,
-      builder: (_) => _SoundsDialog(gameId: gameId, title: title, data: data, save: save),
+      builder: (_) => SoundsDialog(gameId: gameId, title: title, data: data, save: save, isGame: isGame),
     );
 
-class _SoundsDialog extends StatefulWidget {
-  const _SoundsDialog({required this.gameId, required this.title, required this.data, required this.save});
+class SoundsDialog extends StatefulWidget {
+  const SoundsDialog({super.key, required this.gameId, required this.title, required this.data, required this.save, this.isGame = false});
 
   final String gameId;
   final String title;
   final Map<String, dynamic> data;
   final void Function(Map<String, dynamic> update) save;
 
+  /// The game's own sounds, the top level: nothing above it but the app's.
+  final bool isGame;
+
   @override
-  State<_SoundsDialog> createState() => _SoundsDialogState();
+  State<SoundsDialog> createState() => _SoundsDialogState();
 }
 
 class _CustomEffect {
@@ -51,7 +63,7 @@ class _CustomEffect {
   String? file;
 }
 
-class _SoundsDialogState extends State<_SoundsDialog> {
+class _SoundsDialogState extends State<SoundsDialog> {
   late final Map<String, String> _slots;
   late final Map<String, String> _builtIn;
   late final List<_CustomEffect> _custom;
@@ -77,6 +89,7 @@ class _SoundsDialogState extends State<_SoundsDialog> {
     for (final effect in _custom) {
       effect.name.dispose();
     }
+    _preview?.dispose();
     super.dispose();
   }
 
@@ -99,6 +112,77 @@ class _SoundsDialogState extends State<_SoundsDialog> {
         ],
       );
 
+  // Made on the first listen: a player per dialog is only needed then.
+  AudioPlayer? _preview;
+
+  static const String _ownFile = '\u0000own';
+
+  /// One moment: a menu of what can play, and for an own file the button to
+  /// pick it. A built-in sound can be listened to right here.
+  Widget _effectRow(String key) {
+    final value = _builtIn[key];
+    final builtins = builtinSoundsFor(key);
+    final isOwn = value != null && value != silentSound && !value.startsWith(builtinSoundPrefix);
+    final picked = value != null && value.startsWith(builtinSoundPrefix) ? builtinSound(value) : null;
+    final fallback = widget.isGame
+        ? (defaultEffectSounds[key] == null ? "Nothing" : "App default: ${builtinSound(defaultEffectSounds[key]!)?.label}")
+        : "As set above";
+    void set(String? next) {
+      setState(() => next == null ? _builtIn.remove(key) : _builtIn[key] = next);
+      _saveEffects();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              key: ValueKey('$key/$value'),
+              initialValue: isOwn ? _ownFile : value ?? '',
+              isExpanded: true,
+              decoration: InputDecoration(labelText: _effectLabels[key], isDense: true),
+              items: [
+                DropdownMenuItem(value: '', child: Text(fallback)),
+                for (final sound in builtins) DropdownMenuItem(value: sound.key, child: Text(sound.label)),
+                const DropdownMenuItem(value: silentSound, child: Text("Silent")),
+                DropdownMenuItem(value: _ownFile, child: Text(isOwn ? "Own file" : "Own file…")),
+              ],
+              onChanged: (next) {
+                if (next == null || next == _ownFile) {
+                  // Picking the file happens with the button next to it.
+                  if (!isOwn) setState(() => _choosingOwn.add(key));
+                  return;
+                }
+                _choosingOwn.remove(key);
+                set(next.isEmpty ? null : next);
+              },
+            ),
+          ),
+          if (picked != null)
+            IconButton(
+              icon: const Icon(Icons.play_arrow),
+              tooltip: "Listen",
+              onPressed: () => (_preview ??= AudioPlayer()).play(AssetSource(picked.asset)),
+            ),
+          if (isOwn || _choosingOwn.contains(key))
+            MediaButton(
+              gameId: widget.gameId,
+              kind: MediaKind.audio,
+              name: isOwn ? value : null,
+              onChanged: (name) {
+                _choosingOwn.remove(key);
+                set(name);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Moments where "Own file…" was chosen but no file picked yet.
+  final Set<String> _choosingOwn = {};
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -115,19 +199,20 @@ class _SoundsDialogState extends State<_SoundsDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text("Anything left empty here is taken from the level above.", style: theme.textTheme.bodySmall),
+              Text(
+                widget.isGame
+                    ? "What plays during this game. Anything not set uses the sounds that come with the app."
+                    : "Anything left on \"As set above\" comes from the board or the game.",
+                style: theme.textTheme.bodySmall,
+              ),
               header("Music"),
               for (final slot in musicSlots)
                 _row(_slotLabels[slot]!, _slots[slot], (name) {
                   setState(() => name == null ? _slots.remove(slot) : _slots[slot] = name);
                   widget.save({slot: name});
                 }),
-              header("Effects"),
-              for (final key in builtInEffects)
-                _row(_effectLabels[key]!, _builtIn[key], (name) {
-                  setState(() => name == null ? _builtIn.remove(key) : _builtIn[key] = name);
-                  _saveEffects();
-                }),
+              header("Sounds at moments of the show"),
+              for (final key in builtInEffects) _effectRow(key),
               header("Your own effects"),
               for (final effect in _custom)
                 Padding(

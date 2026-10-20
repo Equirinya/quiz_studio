@@ -67,7 +67,7 @@ class _ConnectDevicesPageState extends State<ConnectDevicesPage> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                  child: QrImageView(data: link.link, size: 260),
+                  child: QrImageView(data: link.webLink, size: 260),
                 ),
               ),
               const SizedBox(height: 16),
@@ -99,7 +99,7 @@ class _ConnectDevicesPageState extends State<ConnectDevicesPage> {
               Center(
                 child: TextButton.icon(
                   onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: link.link));
+                    await Clipboard.setData(ClipboardData(text: link.webLink));
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Link copied")));
                     }

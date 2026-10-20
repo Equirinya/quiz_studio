@@ -80,6 +80,8 @@ sealed class Command {
       'feudResetWrong' => const FeudResetWrong(),
       'setMedia' => SetMedia(MediaPlayback.values.byName(j['playback'] as String)),
       'setMusic' => SetMusic(j['slot'] as String?),
+      'setAmbience' => SetAmbience(j['slot'] as String?),
+      'setMusicVolume' => SetMusicVolume((j['volume'] as num).toInt()),
       'playEffect' => PlayEffect(j['key'] as String),
       'adjustPoints' => AdjustPoints(j['teamId'] as String, (j['delta'] as num).toInt()),
       'setPoints' => SetPoints(j['teamId'] as String, (j['points'] as num).toInt()),
@@ -87,7 +89,6 @@ sealed class Command {
       'renameTeam' => RenameTeam(j['teamId'] as String, j['name'] as String),
       'removeTeam' => RemoveTeam(j['teamId'] as String),
       'setQueueBuzzers' => SetQueueBuzzers(j['on'] as bool),
-      'setThumbnails' => SetThumbnails(j['on'] as bool),
       'setCardAnimation' => SetCardAnimation(CardAnimation.fromName(j['animation'])),
       'guessConnection' => GuessConnection(j['teamId'] as String, [for (final p in j['positions'] as List) (p as num).toInt()]),
       'awardConnections' => const AwardConnections(),
@@ -270,6 +271,26 @@ class SetMedia extends Command {
   Map<String, dynamic> get _args => {'playback': playback.name};
 }
 
+/// Keeps the speakers awake with a noise from `ambienceAssets`, or stops it.
+class SetAmbience extends Command {
+  const SetAmbience(this.slot);
+  final String? slot;
+  @override
+  String get type => 'setAmbience';
+  @override
+  Map<String, dynamic> get _args => {'slot': slot};
+}
+
+/// How loud the music plays, 0 to 100.
+class SetMusicVolume extends Command {
+  const SetMusicVolume(this.volume);
+  final int volume;
+  @override
+  String get type => 'setMusicVolume';
+  @override
+  Map<String, dynamic> get _args => {'volume': volume};
+}
+
 class SetMusic extends Command {
   const SetMusic(this.slot);
 
@@ -359,16 +380,6 @@ class SetQueueBuzzers extends Command {
   final bool on;
   @override
   String get type => 'setQueueBuzzers';
-  @override
-  Map<String, dynamic> get _args => {'on': on};
-}
-
-/// Shows or hides the row of small pictures under a progressing reveal.
-class SetThumbnails extends Command {
-  const SetThumbnails(this.on);
-  final bool on;
-  @override
-  String get type => 'setThumbnails';
   @override
   Map<String, dynamic> get _args => {'on': on};
 }
@@ -530,7 +541,18 @@ class HideCard extends Command {
 /// Names of the one-shot animations the presenter can play.
 const String screenEffectConfetti = 'confetti';
 const String screenEffectFlash = 'flash';
-const List<String> screenEffects = [screenEffectConfetti, screenEffectFlash];
+const String screenEffectFireworks = 'fireworks';
+const String screenEffectBalloons = 'balloons';
+const String screenEffectStars = 'stars';
+const String screenEffectSpotlight = 'spotlight';
+const List<String> screenEffects = [
+  screenEffectConfetti,
+  screenEffectFlash,
+  screenEffectFireworks,
+  screenEffectBalloons,
+  screenEffectStars,
+  screenEffectSpotlight,
+];
 
 /// Plays a one-shot animation over the screen, e.g. confetti.
 class ScreenEffect extends Command {

@@ -8,8 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:quiz_show/core/animated_background.dart';
+import 'package:quiz_show/core/incoming_links.dart';
 import 'package:quiz_show/features/auth/user_service.dart';
 import 'package:quiz_show/features/auth/widgets/auth_form.dart';
+import 'package:quiz_show/features/player/pages/join_session_page.dart';
+import 'package:quiz_show/features/session/session_links.dart';
 
 // Hosted on GitHub Pages (see /docs). jekyll-relative-links serves these as .html.
 const String _termsUrl = 'https://equirinya.github.io/quiz_studio/terms.html';
@@ -64,12 +67,43 @@ class _WelcomePageState extends State<WelcomePage> {
     _usernameCtrl.addListener(() {
       if (mounted) setState(() {});
     });
+    // A session code scanned with the camera app goes straight in, no
+    // account to set up first.
+    IncomingLinks.instance.pending.addListener(_onLink);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onLink());
   }
 
   @override
   void dispose() {
+    IncomingLinks.instance.pending.removeListener(_onLink);
     _usernameCtrl.dispose();
     super.dispose();
+  }
+
+  void _onLink() {
+    final link = IncomingLinks.instance.pending.value;
+    // Game invites need an account; they wait for the home page.
+    if (!mounted || link == null || SessionJoinLink.tryParse(link) == null) return;
+    IncomingLinks.instance.take();
+    _joinAsGuest(link: link);
+  }
+
+  bool _joining = false;
+
+  /// A team's device needs no name and no profile: an anonymous account is
+  /// enough to join, and without the internet it joins over the local
+  /// network anyway. Becoming a gamemaster later only asks for a name.
+  Future<void> _joinAsGuest({String? link}) async {
+    if (_joining) return;
+    setState(() => _joining = true);
+    try {
+      if (FirebaseAuth.instance.currentUser == null) await FirebaseAuth.instance.signInAnonymously();
+    } catch (_) {
+      // Offline: the code's local addresses still work.
+    }
+    if (!mounted) return;
+    setState(() => _joining = false);
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => JoinSessionPage(initialLink: link, asGuest: true)));
   }
 
   // ── navigation ─────────────────────────────────────────────────────────────
@@ -246,6 +280,7 @@ class _WelcomePageState extends State<WelcomePage> {
         return _ShowcasePage(
           onLogin: () => setState(() => step = _Step.login),
           onStart: () => setState(() => step = _Step.name),
+          onJoin: _joining ? null : _joinAsGuest,
         );
       case _Step.login:
         return SingleChildScrollView(
@@ -306,6 +341,18 @@ class _WelcomePageState extends State<WelcomePage> {
                   padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: _termsText(),
                 ),
+                // Someone who only plays along never needs a name.
+                if (widget.nameOnly)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Center(
+                      child: TextButton.icon(
+                        onPressed: _joining ? null : _joinAsGuest,
+                        icon: const Icon(Icons.qr_code_scanner, color: Colors.black87),
+                        label: const Text("Just join a show", style: TextStyle(color: Colors.black87)),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -404,10 +451,13 @@ ThemeData onboardingTheme() {
 // ───────────────────────────────────────────────────────────────────────────
 
 class _ShowcasePage extends StatelessWidget {
-  const _ShowcasePage({required this.onLogin, required this.onStart});
+  const _ShowcasePage({required this.onLogin, required this.onStart, required this.onJoin});
 
   final VoidCallback onLogin;
   final VoidCallback onStart;
+
+  /// A team's device: scan the code, nothing else.
+  final VoidCallback? onJoin;
 
   @override
   Widget build(BuildContext context) {
@@ -425,8 +475,14 @@ class _ShowcasePage extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
           child: Column(
             children: [
-              FilledButton(onPressed: onStart, child: const Text('Get started')),
+              FilledButton.icon(
+                onPressed: onJoin,
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text('Join a show'),
+              ),
               const SizedBox(height: 8),
+              OutlinedButton(onPressed: onStart, child: const Text('Create my own quizzes')),
+              const SizedBox(height: 4),
               TextButton(onPressed: onLogin, child: const Text('I already have an account')),
             ],
           ),

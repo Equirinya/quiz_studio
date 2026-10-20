@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Open in Quiz Studio</title>
+  <meta name="description" content="Open this session code or game invite in the Quiz Studio app." />
+  <meta name="robots" content="noindex" />
+  <style>
+    :root {
+      --red: #FF4800;
+      --orange: #FFA144;
+      --ink: #1f2330;
+      --muted: #6b7280;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(135deg, var(--red), var(--orange));
+    }
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border-radius: 24px;
+      padding: 40px 28px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+    }
+    .badge {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 20px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      background: linear-gradient(135deg, var(--red), var(--orange));
+    }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    #status { margin: 0 0 28px; color: var(--muted); font-size: 15px; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px 18px;
+      margin: 10px 0;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform .05s ease, box-shadow .2s ease;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--red), var(--orange));
+      box-shadow: 0 8px 20px rgba(255, 72, 0, 0.35);
+    }
+    .btn-store {
+      color: var(--ink);
+      border: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+    }
+    .btn-store svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .divider {
+      margin: 28px 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .stores-label { font-weight: 600; color: var(--ink); }
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      padding: 10px 16px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.75);
+    }
+    footer a { color: inherit; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    footer span { margin: 0 5px; opacity: .5; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="badge">🎤</div>
+    <h1 id="title">Open in Quiz Studio</h1>
+    <p id="status">Already have the app? Tap below to open it.</p>
+
+    <a id="openApp" class="btn btn-primary" href="#">Open in the app</a>
+
+    <p class="divider">
+      <span class="stores-label">Don’t have the app yet?</span><br/>
+      Install it first, then scan the code again.
+    </p>
+
+    <a id="play" class="btn btn-store" href="https://play.google.com/store/apps/details?id=de.equirinya.quiz_show">
+      <svg viewBox="0 0 512 512" aria-hidden="true"><path fill="#FF4800" d="M48 59.5C42 65.3 38.5 74.3 38.5 86v340c0 11.7 3.5 20.7 9.5 26.5l1.9 1.8 190.5-190.5v-4.5L49.9 57.7 48 59.5z"/><path fill="#FFA144" d="M303.8 327.9l-63.4-63.6v-4.5l63.5-63.6 1.4.8 75.2 42.7c21.5 12.2 21.5 32.2 0 44.5l-75.2 42.7-1.5.8z"/><path fill="#34A853" d="M305.2 327.1L240.4 262 48 454.3c7.1 7.5 18.8 8.4 32 1L305.2 327.1"/><path fill="#4285F4" d="M305.2 196.9L80 69.6c-13.2-7.5-24.9-6.5-32 1l192.4 192.3 64.8-65.9z"/></svg>
+      Google Play
+    </a>
+  </main>
+
+  <footer>
+    <a href="./">Home</a><span>·</span>
+    <a href="./privacy.html">Privacy</a><span>·</span>
+    <a href="./terms.html">Terms</a><span>·</span>
+    <a href="mailto:equirinya@gmail.com?subject=Quiz%20Studio%20Support%20Question">Support</a>
+  </footer>
+
+  <script>
+    (function () {
+      // Session codes and invites carry everything after the "#", which the
+      // browser never sends to the server, e.g.
+      //   open.html#session/{id}/player/{token}/{team}?lan=192.168.1.20:47800
+      //   open.html#join/{gameId}/{inviteId}
+      // The app is opened with the same path under its own scheme.
+      var path = window.location.hash.replace(/^#/, '');
+      var valid = /^(session|join)\/[A-Za-z0-9_\-\/]+(\?lan=[0-9.:,]+)?$/.test(path);
+
+      var ua = navigator.userAgent || navigator.vendor || '';
+      var isIOS = /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
+      // No App Store listing yet: on an iPhone the store button would lead nowhere.
+      if (isIOS) document.getElementById('play').style.display = 'none';
+
+      if (!valid) {
+        document.getElementById('status').textContent = 'This link is incomplete. Scan the code again.';
+        document.getElementById('openApp').style.display = 'none';
+        return;
+      }
+
+      var isSession = path.indexOf('session/') === 0;
+      document.getElementById('title').textContent = isSession ? 'Join the show' : 'Join a game';
+      document.title = (isSession ? 'Join the show' : 'Join a game') + ' · Quiz Studio';
+
+      var appUrl = 'quiz-studio://' + path;
+      document.getElementById('openApp').setAttribute('href', appUrl);
+
+      // Try to open the app right away.
+      window.location.href = appUrl;
+
+      // Still here a moment later: the browser asked first, or the app is not installed.
+      setTimeout(function () {
+        document.getElementById('status').textContent = 'Already have the app? Tap below to open it. Otherwise install it first, then scan the code again.';
+      }, 1500);
+    })();
+  </script>
+</body>
+</html>

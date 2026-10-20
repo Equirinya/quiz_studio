@@ -50,7 +50,7 @@ class _BuzzersPageState extends State<BuzzersPage> {
     try {
       final name = await TeamSounds.instance.upload(_sessionId, path);
       widget.connection.send(SetTeamSound(team.id, name));
-      if (team.sound != null) TeamSounds.instance.delete(_sessionId, team.sound!);
+      if (team.sound != null && builtinBuzzer(team.sound) == null) TeamSounds.instance.delete(_sessionId, team.sound!);
     } on UnsupportedError catch (error) {
       messenger.showSnackBar(SnackBar(content: Text(error.message ?? "This file cannot be used.")));
     } catch (_) {
@@ -59,9 +59,14 @@ class _BuzzersPageState extends State<BuzzersPage> {
     if (mounted) setState(() => _uploading.remove(team.id));
   }
 
-  void _clearSound(Team team) {
-    widget.connection.send(SetTeamSound(team.id, null));
-    if (team.sound != null) TeamSounds.instance.delete(_sessionId, team.sound!);
+  void _clearSound(Team team) => _useBuiltin(team, null);
+
+  /// [key] of one of [builtinBuzzers], or null for the default one. An
+  /// uploaded sound the team had is deleted.
+  void _useBuiltin(Team team, String? key) {
+    widget.connection.send(SetTeamSound(team.id, key));
+    final old = team.sound;
+    if (old != null && builtinBuzzer(old) == null) TeamSounds.instance.delete(_sessionId, old);
   }
 
   @override
@@ -98,7 +103,7 @@ class _BuzzersPageState extends State<BuzzersPage> {
                   "A USB buzzer box works on Windows, macOS and Linux. Phones and tablets can still be buzzers: see Connect devices.",
                 ),
               const Divider(height: 40),
-              TeamSoundsList(teams: teams, uploading: _uploading, onChoose: _chooseSound, onClear: _clearSound),
+              TeamSoundsList(teams: teams, uploading: _uploading, onChoose: _chooseSound, onClear: _clearSound, onBuiltin: _useBuiltin),
             ],
           );
         },
@@ -109,7 +114,14 @@ class _BuzzersPageState extends State<BuzzersPage> {
 
 /// A buzzer sound per team, whatever the team buzzes with.
 class TeamSoundsList extends StatelessWidget {
-  const TeamSoundsList({super.key, required this.teams, required this.uploading, required this.onChoose, required this.onClear});
+  const TeamSoundsList({
+    super.key,
+    required this.teams,
+    required this.uploading,
+    required this.onChoose,
+    required this.onClear,
+    this.onBuiltin,
+  });
 
   final List<Team> teams;
 
@@ -117,6 +129,9 @@ class TeamSoundsList extends StatelessWidget {
   final Set<String> uploading;
   final ValueChanged<Team> onChoose;
   final ValueChanged<Team> onClear;
+
+  /// One of the buzzers that come with the app; null for the default.
+  final void Function(Team team, String? key)? onBuiltin;
 
   @override
   Widget build(BuildContext context) {
@@ -139,15 +154,29 @@ class TeamSoundsList extends StatelessWidget {
             subtitle: Text(uploading.contains(team.id)
                 ? "Uploading…"
                 : team.sound == null
-                    ? "Built-in buzzer"
-                    : "Own sound"),
+                    ? builtinBuzzers.first.label
+                    : builtinBuzzer(team.sound)?.label ?? "Own sound"),
             trailing: uploading.contains(team.id)
                 ? const SizedBox(width: 48, child: Center(child: CupertinoActivityIndicator()))
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextButton(onPressed: () => onChoose(team), child: Text(team.sound == null ? "Choose" : "Change")),
-                      if (team.sound != null)
+                      PopupMenuButton<String>(
+                        tooltip: "Choose a buzzer sound",
+                        onSelected: (choice) => choice == '' ? onChoose(team) : onBuiltin?.call(team, choice == builtinBuzzers.first.key ? null : choice),
+                        itemBuilder: (context) => [
+                          for (final sound in builtinBuzzers)
+                            CheckedPopupMenuItem(
+                              value: sound.key,
+                              checked: (team.sound ?? builtinBuzzers.first.key) == sound.key,
+                              child: Text(sound.label),
+                            ),
+                          const PopupMenuDivider(),
+                          const PopupMenuItem(value: '', child: Text("Upload own sound…")),
+                        ],
+                        child: const Padding(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Text("Choose")),
+                      ),
+                      if (team.sound != null && builtinBuzzer(team.sound) == null)
                         IconButton(
                           icon: const Icon(Icons.close),
                           tooltip: "Back to the built-in buzzer",

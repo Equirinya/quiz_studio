@@ -37,7 +37,6 @@ class QuestionPreview extends StatefulWidget {
 
 class _QuestionPreviewState extends State<QuestionPreview> {
   int _revealed = 0;
-  bool _thumbnails = true;
 
   Question get _q => widget.question;
 
@@ -56,7 +55,6 @@ class _QuestionPreviewState extends State<QuestionPreview> {
         // The newest picture is the big one, as when the gamemaster steps through.
         imageFocus: _q.type == QuestionType.progressingReveal ? _revealed : 0,
         feudRevealed: _q.type == QuestionType.feud ? [for (var i = 0; i < _revealed; i++) i] : const [],
-        thumbnails: _thumbnails,
       );
 
   @override
@@ -99,12 +97,6 @@ class _QuestionPreviewState extends State<QuestionPreview> {
                   onPressed: _revealed >= steps ? null : () => setState(() => _revealed++),
                 ),
               ],
-              if (_q.type == QuestionType.progressingReveal && _q.hasInformationImages)
-                IconButton(
-                  icon: Icon(_thumbnails ? Icons.view_carousel : Icons.view_carousel_outlined),
-                  tooltip: _thumbnails ? "Without the picture strip" : "With the picture strip",
-                  onPressed: () => setState(() => _thumbnails = !_thumbnails),
-                ),
               const Spacer(),
               TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Close")),
             ],

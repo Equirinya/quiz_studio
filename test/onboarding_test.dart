@@ -14,7 +14,8 @@ void main() {
     await pumpWelcome(tester);
     expect(find.text('I already have an account'), findsOneWidget);
 
-    await tester.tap(find.text('Get started'));
+    expect(find.text('Join a show'), findsOneWidget, reason: 'a team device needs no account');
+    await tester.tap(find.text('Create my own quizzes'));
     await tester.pump(const Duration(milliseconds: 100));
     expect(startButton(tester).onPressed, isNull);
 
@@ -28,13 +29,15 @@ void main() {
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('Get started'), findsOneWidget);
+    expect(find.text('Create my own quizzes'), findsOneWidget);
   });
 
   testWidgets('name-only mode starts on the name step with no way back', (tester) async {
     await pumpWelcome(tester, nameOnly: true);
     expect(find.byType(TextField), findsOneWidget);
     expect(find.byTooltip('Back'), findsNothing);
+    // Signed in for playing along only: still no name needed for that.
+    expect(find.text('Just join a show'), findsOneWidget);
   });
 
   testWidgets('login step shows the credential form', (tester) async {

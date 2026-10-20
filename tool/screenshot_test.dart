@@ -12,11 +12,14 @@ import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/buzzers/buzzer_link.dart';
 import 'package:quiz_show/features/buzzers/buzzers_page.dart';
 import 'package:quiz_show/features/companion/whiteboard.dart';
+import 'package:quiz_show/features/auth/pages/onboarding_page.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/games/pages/category_editor_page.dart';
+import 'package:quiz_show/features/games/pages/game_editor_page.dart';
 import 'package:quiz_show/features/games/widgets/cards_dialog.dart';
 import 'package:quiz_show/features/games/widgets/question_preview.dart';
+import 'package:quiz_show/features/games/widgets/sounds_dialog.dart';
 import 'package:quiz_show/features/games/widgets/map_editor.dart';
 import 'package:quiz_show/features/player/pages/player_page.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
@@ -27,6 +30,7 @@ import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/boards/map_board.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
+import 'package:quiz_show/features/session/pages/rapid_progress.dart';
 import 'package:quiz_show/features/session/presenter_window.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
@@ -34,8 +38,10 @@ import 'package:quiz_show/game/game.dart';
 import '../test/fake_buzzer_port.dart';
 import '../test/game/connections_fixture.dart';
 import '../test/game/fixture.dart';
+import '../test/game/rapid_fixture.dart';
 
-const _fonts = '/home/jacob/development/flutter/bin/cache/artifacts/material_fonts';
+/// The fonts that come with the Flutter SDK running the test.
+final _fonts = '${Platform.environment['FLUTTER_ROOT'] ?? '/home/jacob/development/flutter'}/bin/cache/artifacts/material_fonts';
 
 Future<void> _loadFonts() async {
   Future<ByteData> read(String name) => Future.value(ByteData.view(File('$_fonts/$name').readAsBytesSync().buffer));
@@ -47,7 +53,7 @@ Future<void> _loadFonts() async {
   final icons = FontLoader('MaterialIcons')..addFont(read('MaterialIcons-Regular.otf'));
   await icons.load();
   // Stands in for whatever fixed-width font the computer has.
-  const mono = '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf';
+  final mono = Platform.isWindows ? r'C:\Windows\Fonts\consola.ttf' : '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf';
   if (File(mono).existsSync()) {
     await (FontLoader('monospace')..addFont(Future.value(ByteData.view(File(mono).readAsBytesSync().buffer)))).load();
   }
@@ -62,12 +68,17 @@ void main() {
   ThemeData theme(Brightness brightness) => buildAppTheme(brightness);
 
   /// The controller as on a phone.
-  Future<void> phone(WidgetTester tester, List<Command> commands, {Brightness brightness = Brightness.light}) async {
+  Future<void> phone(
+    WidgetTester tester,
+    List<Command> commands, {
+    Brightness brightness = Brightness.light,
+    GameContent? game,
+  }) async {
     tester.view.physicalSize = const Size(412, 892);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     host = SessionHost(initial: fixtureState());
-    final connection = SessionConnection.local(host, game: fixtureGame());
+    final connection = SessionConnection.local(host, game: game ?? fixtureGame());
     addTearDown(connection.dispose);
     for (final command in commands) {
       host.dispatch(command);
@@ -87,12 +98,12 @@ void main() {
   }
 
   /// The presenter as on a 16:9 screen.
-  Future<void> screen(WidgetTester tester, List<Command> commands) async {
+  Future<void> screen(WidgetTester tester, List<Command> commands, {GameContent? game}) async {
     tester.view.physicalSize = const Size(1600, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     host = SessionHost(initial: fixtureState());
-    final connection = SessionConnection.local(host, game: fixtureGame());
+    final connection = SessionConnection.local(host, game: game ?? fixtureGame());
     addTearDown(connection.dispose);
     for (final command in commands) {
       host.dispatch(command);
@@ -133,6 +144,20 @@ void main() {
     await shot('controller_board_sheet');
   });
 
+  testWidgets('controller: fragenhagel on the devices', (tester) async {
+    await phone(
+      tester,
+      const [OpenQuestion(devicesRound), SubmitAnswer('red', PlayerAnswer(choice: 0)), LockAnswer('red'), SubmitAnswer('blue', PlayerAnswer(choice: 1))],
+      game: rapidGame(),
+    );
+    await shot('controller_fragenhagel');
+  });
+
+  testWidgets('controller: fragenhagel, a team buzzed', (tester) async {
+    await phone(tester, const [OpenQuestion(buzzerRound), Reveal(1), Buzz('blue')], game: rapidGame());
+    await shot('controller_fragenhagel_buzzed');
+  });
+
   testWidgets('controller: answering', (tester) async {
     await phone(tester, const [SetQueueBuzzers(true), OpenQuestion(abcd), Reveal(1), Reveal(1), Buzz('red'), Buzz('blue')]);
     await shot('controller_answering');
@@ -167,6 +192,95 @@ void main() {
   testWidgets('presenter: abcd', (tester) async {
     await screen(tester, const [OpenQuestion(abcd), Reveal(1), Reveal(1), Reveal(1), Buzz('red')]);
     await shot('presenter_abcd');
+  });
+
+  /// The Fragenhagel fixture with another progress style.
+  GameContent rapidWith(ProgressStyle style, {String mode = 'buzzer'}) {
+    final base = rapidGame();
+    final question = base.question(mode == 'buzzer' ? buzzerRound : devicesRound)!;
+    final data = {
+      ...question.data,
+      'rapidFire': {...question.rapidFire!.toMap(), 'progress': style.name},
+    };
+    return GameContent.assemble(
+      id: 'game',
+      game: {'name': 'Rapid'},
+      groups: {
+        'g': {'name': 'Round', 'categoryGroupIndex': 0},
+      },
+      categories: {
+        'r': {'name': 'Rapid', 'categoryGroup': 'g', 'categoryIndex': 0},
+      },
+      questions: {
+        'r': {question.id: data},
+      },
+    );
+  }
+
+  testWidgets('fragenhagel: big screen with the flux capacitor charging', (tester) async {
+    await screen(tester, const [OpenQuestion(buzzerRound), Reveal(1)], game: rapidGame());
+    await tester.pump(const Duration(milliseconds: 900));
+    await shot('fragenhagel_presenter_flux');
+  });
+
+  testWidgets('fragenhagel: the flux capacitor lets go at the end', (tester) async {
+    await screen(tester, const [OpenQuestion(buzzerRound), Reveal(1), Reveal(1)], game: rapidGame());
+    await tester.pump(const Duration(milliseconds: 900));
+    host.dispatch(const Reveal(1));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 450));
+    await shot('fragenhagel_presenter_beam');
+  });
+
+  testWidgets('fragenhagel: devices with a battery', (tester) async {
+    await screen(
+      tester,
+      const [OpenQuestion(devicesRound), SubmitAnswer('red', PlayerAnswer(choice: 0)), LockAnswer('red')],
+      game: rapidWith(ProgressStyle.battery, mode: 'devices'),
+    );
+    await tester.pump(const Duration(milliseconds: 900));
+    await shot('fragenhagel_presenter_devices');
+  });
+
+  testWidgets('fragenhagel: every progress style', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1300);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    const unit = 7.0;
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.dark),
+      home: Scaffold(
+        body: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            for (final style in ProgressStyle.values.where((s) => s != ProgressStyle.off && s != ProgressStyle.flux)) ...[
+              Text(style.uiString),
+              const SizedBox(height: 8),
+              RapidProgress(style: style, done: 6, total: 10, unit: unit),
+              const SizedBox(height: 28),
+            ],
+            const Text("Thermometer: 2 of 10, 10 of 10"),
+            const SizedBox(height: 8),
+            RapidProgress(style: ProgressStyle.thermometer, done: 2, total: 10, unit: unit),
+            const SizedBox(height: 8),
+            RapidProgress(style: ProgressStyle.thermometer, done: 10, total: 10, unit: unit),
+            const SizedBox(height: 28),
+            const Text("Flux capacitor: 3 of 10, 9 of 10"),
+            const SizedBox(height: 8),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                RapidProgress(style: ProgressStyle.flux, done: 3, total: 10, unit: unit),
+                RapidProgress(style: ProgressStyle.flux, done: 9, total: 10, unit: unit),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 900));
+    await shot('fragenhagel_progress_styles');
   });
 
   testWidgets('presenter: feud', (tester) async {
@@ -225,13 +339,22 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
   }
 
+  testWidgets('welcome: join a show without an account', (tester) async {
+    tester.view.physicalSize = const Size(412, 892);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(debugShowCheckedModeBanner: false, home: WelcomePage(onFinished: () {})));
+    await tester.pump(const Duration(milliseconds: 500));
+    await shot('welcome');
+  });
+
   testWidgets('sessions: list', (tester) async {
     await page(
       tester,
       SessionsList(
         sessions: const [
-          SessionSummary(id: 's1', name: 'Quiz night', gameId: 'g1'),
-          SessionSummary(id: 's2', name: 'Birthday', gameId: null),
+          SessionSummary(id: 's1', name: 'Pub quiz', gameId: 'g1', createdAtMillis: 1792260000000),
+          SessionSummary(id: 's2', name: '', gameId: null, createdAtMillis: 1791900000000),
         ],
         gameNames: {for (final game in games) game.id: game.name},
         onControl: (_) {},
@@ -264,6 +387,28 @@ void main() {
       ShowCard(OverlayCard(title: 'Short break', text: 'Grab a drink. We continue with the finale in ten minutes.')),
     ]);
     await shot('presenter_card');
+  });
+
+  for (final effect in [screenEffectFireworks, screenEffectBalloons, screenEffectStars, screenEffectSpotlight]) {
+    testWidgets('presenter: $effect', (tester) async {
+      await screen(tester, const [AdjustPoints('red', 900), AdjustPoints('blue', 700)]);
+      tester.state<ScreenEffectLayerState>(find.byType(ScreenEffectLayer)).play(effect);
+      await tester.pump();
+      await tester.pump(Duration(milliseconds: effect == screenEffectStars ? 700 : 2200));
+      await shot('presenter_$effect');
+      await tester.pump(const Duration(seconds: 7));
+    });
+  }
+
+  testWidgets('fragenhagel: a team buzzed', (tester) async {
+    await screen(tester, const [OpenQuestion(buzzerRound), Reveal(1), Buzz('blue'), Buzz('red')], game: rapidWith(ProgressStyle.bar));
+    await tester.pump(const Duration(milliseconds: 600));
+    await shot('fragenhagel_presenter_buzzed');
+  });
+
+  testWidgets('matching: big screen during the round', (tester) async {
+    await screen(tester, const [OpenQuestion(matchingRound), SubmitAnswer('red', PlayerAnswer(pairs: [0, 1, 2, 3]))], game: matchingGame());
+    await shot('matching_presenter');
   });
 
   testWidgets('presenter: confetti', (tester) async {
@@ -556,6 +701,107 @@ void main() {
       'pointsMinus': 0,
       'companion': {'kind': 'whiteboard', 'timer': 30, 'background': 'list', 'listRows': 5},
     });
+  });
+
+  testWidgets('editor: reveal with pictures has the picture strip switch', (tester) async {
+    await questionCard(tester, 'editor_question_picture_strip', {
+      'type': 'progressingReveal',
+      'question': 'Which city is this?',
+      'answerHint': 'Rome',
+      'pointsPlus': 300,
+      'pointsMinus': 0,
+      'information': ['A river', 'Seven hills', 'The Colosseum'],
+      'informationImage': ['1.png', '', '3.png'],
+      'informationMusic': ['', '', ''],
+      'pictureStrip': false,
+    });
+  });
+
+  testWidgets('editor: fragenhagel, teams buzz', (tester) async {
+    await questionCard(tester, 'editor_fragenhagel', {
+      ...rapidGame().question(buzzerRound)!.data,
+    });
+  });
+
+  testWidgets('editor: fragenhagel on the devices', (tester) async {
+    await questionCard(tester, 'editor_fragenhagel_devices', {
+      ...rapidGame().question(devicesRound)!.data,
+    });
+  });
+
+  testWidgets('editor: matching question', (tester) async {
+    await questionCard(tester, 'editor_matching', {...matchingGame().question(matchingRound)!.data});
+  });
+
+  Future<void> gameEditor(WidgetTester tester, {Size size = const Size(900, 1000)}) async {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final base = fixtureGame();
+    final cards = [const CueCard(title: 'Rules').toMap(), const CueCard(image: 'builtin:wrong', hidden: true).toMap()];
+    final game = GameContent(id: base.id, name: base.name, groups: base.groups, sounds: base.sounds, data: {...base.data, 'cards': cards});
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: GameEditorView(
+        snapshot: GameSnapshot(
+          content: game,
+          role: GameRole.admin,
+          data: {
+            ...game.data,
+            'admin': ['me'],
+            'full': ['ann', 'bob'],
+            'cards': [const CueCard(title: 'Rules').toMap(), const CueCard(image: 'builtin:wrong', hidden: true).toMap()],
+          },
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
+  testWidgets('editor: game with its settings and boards', (tester) async {
+    await gameEditor(tester);
+    await shot('editor_game');
+  });
+
+  testWidgets('editor: game on a phone', (tester) async {
+    await gameEditor(tester, size: const Size(412, 892));
+    await shot('editor_game_phone');
+  });
+
+  testWidgets('editor: music and sounds of the game', (tester) async {
+    tester.view.physicalSize = const Size(700, 1300);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        body: SoundsDialog(
+          gameId: 'g',
+          title: 'Sounds for the whole game',
+          isGame: true,
+          data: const {
+            'musicBackground': 'theme.mp3',
+            'musicEffects': {
+              'musicEffectAnswerCorrect': 'builtin:right_answer/voice_correct_female',
+              'musicEffectAnswerWrong': 'buzz.mp3',
+              'musicEffectLockIn': 'off',
+            },
+          },
+          save: (_) {},
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('editor_sounds');
+  });
+
+  testWidgets('editor: board settings', (tester) async {
+    await gameEditor(tester);
+    await tapText(tester, find.text('Board settings').first);
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('editor_board_settings');
   });
 
   testWidgets('editor: question with pairs to match', (tester) async {
@@ -896,9 +1142,6 @@ void main() {
     ));
     await tester.pump(const Duration(milliseconds: 400));
     await shot('presenter_picture_strip');
-    host.dispatch(const SetThumbnails(false));
-    await tester.pump(const Duration(milliseconds: 400));
-    await shot('presenter_picture_strip_off');
   });
 
   testWidgets('editor: question preview', (tester) async {
@@ -1158,7 +1401,18 @@ void main() {
 
   testWidgets('cards: effects sheet with built-in pictures', (tester) async {
     await loadBuiltins(tester);
-    await phone(tester, const [SetCardAnimation(CardAnimation.bounce)]);
+    final base = fixtureGame();
+    // The game's own cards first, two built-in pictures switched off.
+    final game = GameContent(id: base.id, name: base.name, groups: base.groups, sounds: base.sounds, data: {
+      ...base.data,
+      'cards': [
+        const CueCard(title: 'Rules', text: 'No phones.').toMap(),
+        const CueCard(title: 'Intro', video: 'intro.mp4').toMap(),
+        const CueCard(image: 'builtin:correct', hidden: true).toMap(),
+        const CueCard(image: 'builtin:wrong', hidden: true).toMap(),
+      ],
+    });
+    await phone(tester, const [SetCardAnimation(CardAnimation.bounce)], game: game);
     await tapText(tester, find.text('Effects'));
     await tester.pump(const Duration(milliseconds: 400));
     await shot('cards_effects_sheet');
@@ -1212,12 +1466,12 @@ void main() {
       home: Scaffold(
         body: CardsDialog(
           gameId: 'g',
-          cards: const [
+          cards: CueCard.withBuiltins(const [
             CueCard(title: 'Rules', text: 'No phones. Answers in by the buzzer only.'),
-            CueCard(image: 'builtin:break'),
             CueCard(title: 'Intro', video: 'intro.mp4'),
             CueCard(image: 'builtin:winner', text: 'Drumroll please'),
-          ],
+            CueCard(image: 'builtin:correct', hidden: true),
+          ]),
           save: (_) {},
         ),
       ),

@@ -219,18 +219,20 @@ void main() {
       expect([for (final card in saved.last) card['title']], ['Two', 'Three', 'One']);
     });
 
-    testWidgets('a built-in picture is chosen from the grid and can be taken away', (tester) async {
-      final saved = await pumpDialog(tester, const [CueCard(title: 'Answer')]);
-      await tester.tap(find.byTooltip('Use a built-in picture'));
+    testWidgets('a built-in picture is switched off, not removed; an own card can be removed', (tester) async {
+      final saved = await pumpDialog(tester, const [CueCard(title: 'Answer'), CueCard(image: 'builtin:correct')]);
+      // Only the own card has a remove button.
+      expect(find.byTooltip('Remove card'), findsOneWidget);
+      await tester.tap(find.byType(Switch).last);
       await tester.pumpAndSettle();
-      await tester.tap(find.bySemanticsLabel('Correct!'));
+      expect(saved.last.last, containsPair('hidden', true));
+      expect(saved.last.last['image'], 'builtin:correct');
+      await tester.tap(find.byType(Switch).last);
       await tester.pumpAndSettle();
-      expect(saved.last.single['image'], 'builtin:correct');
-      await tester.tap(find.byTooltip('Change built-in picture'));
+      expect(saved.last.last.containsKey('hidden'), isFalse);
+      await tester.tap(find.byTooltip('Remove card'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Remove'));
-      await tester.pumpAndSettle();
-      expect(saved.last.single['image'], isNull);
+      expect([for (final card in saved.last) card['image']], ['builtin:correct']);
     });
   });
 }

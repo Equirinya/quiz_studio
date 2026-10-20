@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/companion/answer_view.dart';
 import 'package:quiz_show/features/games/pages/game_editor_page.dart' show BoardTypeIcon;
+import 'package:quiz_show/features/games/widgets/cards_dialog.dart' show CardThumbnail;
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/game/game.dart';
@@ -213,13 +214,6 @@ class _ControllerViewState extends State<ControllerView> {
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text("Picture strip"),
-                subtitle: const Text("Small pictures under a question that reveals pictures one by one"),
-                value: state.thumbnails,
-                onChanged: (value) => _send(SetThumbnails(value)),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
                 title: const Text("Buzzer test"),
                 subtitle: const Text("Buzzers light up their team; only from the board"),
                 value: state.phase == Phase.buzzerTest,
@@ -343,6 +337,7 @@ String _status(SessionState state, Question? question) {
     case Phase.overview:
       return "Board";
     case Phase.question:
+      if (question?.rapidFire?.mode == RapidMode.devices) return "Teams pick right or wrong on their devices";
       return question?.buzzerable == false ? "Question open · no buzzers" : "Question open · waiting for a buzz";
     case Phase.buzzered:
       final next = state.buzzQueue.skip(1).map(name).join(", ");
@@ -426,7 +421,24 @@ class _NowPanel extends StatelessWidget {
             child: Text(q.answerHint!, style: theme.textTheme.bodyLarge?.copyWith(color: scheme.onTertiaryContainer)),
           ),
         const SizedBox(height: 8),
-        if (round != null)
+        if (q.type == QuestionType.rapidFire) _RapidPanel(state: state, question: q),
+        // Matching: the solution, as the big screen names the pieces.
+        if (q.type == QuestionType.matching)
+          Builder(builder: (context) {
+            final matching = q.matching ?? const Matching();
+            final numbers = matching.rightNumbers(q.id);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < matching.pairs.length; i++)
+                    Text("${matching.leftLabel(i)}  →  ${matching.rightLabel(i, numbers)}", style: theme.textTheme.bodyMedium),
+                ],
+              ),
+            );
+          }),
+        if (round != null && q.type != QuestionType.rapidFire)
           _AnswersPanel(state: state, round: round, question: q, send: send, hostClock: hostClock, backgroundImage: backgroundImage),
         if (q.type == QuestionType.abcd)
           for (final (i, answer) in q.answers.indexed)
@@ -520,6 +532,122 @@ class _NowPanel extends StatelessWidget {
   }
 }
 
+/// Fragenhagel: every item with its answer for the gamemaster, the one being
+/// asked highlighted; in devices mode what each team has picked for it.
+class _RapidPanel extends StatelessWidget {
+  const _RapidPanel({required this.state, required this.question});
+
+  final SessionState state;
+  final Question question;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final rapid = question.rapidFire ?? const RapidFire();
+    final devices = rapid.mode == RapidMode.devices;
+    final round = state.answerRound;
+    if (rapid.items.isEmpty) return Text("This Fragenhagel has no items yet.", style: TextStyle(color: scheme.outline));
+    final answering = state.phase == Phase.buzzered && state.buzzQueue.isNotEmpty ? state.team(state.buzzQueue.first) : null;
+    final current = rapid.itemAt(state.revealed);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Who buzzed, big, with the answer to check right next to it.
+        if (answering != null)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(color: scheme.primary, borderRadius: BorderRadius.circular(16)),
+            child: Row(
+              children: [
+                Icon(Icons.notifications_active, color: scheme.onPrimary, size: 32),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        answering.name,
+                        style: theme.textTheme.headlineSmall?.copyWith(color: scheme.onPrimary, fontWeight: FontWeight.w800),
+                      ),
+                      if (current != null && current.answer.isNotEmpty)
+                        Text("Answer: ${current.answer}", style: theme.textTheme.bodyLarge?.copyWith(color: scheme.onPrimary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        Text(
+          state.revealed >= rapid.items.length ? "All ${rapid.items.length} done" : "Item ${state.revealed + 1} of ${rapid.items.length}",
+          style: theme.textTheme.labelLarge,
+        ),
+        for (final (i, item) in rapid.items.indexed)
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: i == state.revealed ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    SizedBox(width: 28, child: Text("${i + 1}.", style: theme.textTheme.labelLarge)),
+                    Expanded(
+                      child: Text(
+                        item.question,
+                        style: i < state.revealed ? theme.textTheme.bodyMedium?.copyWith(color: scheme.outline) : theme.textTheme.bodyLarge,
+                      ),
+                    ),
+                    if (item.image != null) Icon(Icons.image_outlined, size: 16, color: scheme.outline),
+                    if (item.music != null) Icon(Icons.music_note, size: 16, color: scheme.outline),
+                    if (i < state.revealed) Icon(Icons.check, size: 16, color: scheme.outline),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 28),
+                  child: Text(
+                    devices ? (item.isTrue ? "Right" : "Wrong") : item.answer,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontStyle: FontStyle.italic,
+                      color: devices ? (item.isTrue ? Colors.green.shade700 : scheme.error) : null,
+                    ),
+                  ),
+                ),
+                if (devices && i == state.revealed && round != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 28, top: 4),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        for (final team in state.teams)
+                          Builder(builder: (context) {
+                            final answer = round.answers[team.id];
+                            final choice = answer?.choice;
+                            return Chip(
+                              visualDensity: VisualDensity.compact,
+                              avatar: Icon(answer?.locked == true ? Icons.lock : Icons.lock_open, size: 16),
+                              label: Text(
+                                "${team.name}: ${choice == null ? "–" : rapidChoices.elementAtOrNull(choice) ?? "?"}",
+                              ),
+                            );
+                          }),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 String feudValueLabel(Question question, int index) {
   final value = question.percentages.elementAtOrNull(index) ?? 0;
   final text = value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
@@ -566,9 +694,12 @@ class _ActionPad extends StatelessWidget {
     final canReveal = q != null && q.maxReveal > 0 && state.current != null;
     final round = state.answerRound;
     final answerSteps = !canReveal && round != null;
+    final rapid = q?.type == QuestionType.rapidFire;
+    // On the devices an item is scored when moving on, so there is no way back.
+    final rapidBackLocked = rapid && q!.rapidFire?.mode == RapidMode.devices;
     final Command? back = answerSteps
         ? (round.revealed.isEmpty ? null : RevealAnswer(round.revealed.last, show: false))
-        : canReveal && state.revealed > 0
+        : canReveal && state.revealed > 0 && !rapidBackLocked
             ? const Reveal(-1)
             : null;
     final Command? next = answerSteps
@@ -577,7 +708,7 @@ class _ActionPad extends StatelessWidget {
             ? const Reveal(1)
             : null;
     final playing = state.media == MediaPlayback.playing;
-    final Command? sound = q != null && q.hasMusic && listening
+    final Command? sound = q != null && q.musicAt(state.revealed) != null && listening
         ? SetMedia(playing ? MediaPlayback.paused : MediaPlayback.playing)
         : null;
     final queued = state.buzzQueue.length > 1;
@@ -665,11 +796,13 @@ class _ActionPad extends StatelessWidget {
               small(
                 answerSteps
                     ? "Show answer"
-                    : q?.type == QuestionType.abcd && state.revealed == q!.answers.length
-                        ? "Solution"
-                        : q?.type == QuestionType.connections
-                            ? "Reveal group"
-                            : "Reveal",
+                    : rapid
+                        ? (state.revealed >= q!.maxReveal - 1 ? "Finish" : "Next item")
+                        : q?.type == QuestionType.abcd && state.revealed == q!.answers.length
+                            ? "Solution"
+                            : q?.type == QuestionType.connections
+                                ? "Reveal group"
+                                : "Reveal",
                 Icons.navigate_next,
                 next,
                 ask: revealEarly ? askReveal : null,
@@ -867,9 +1000,10 @@ class _BoardSheetState extends State<_BoardSheet> {
               ),
             ),
           const SizedBox(height: 8),
-          // The preview keeps its height, so the button below never jumps.
+          // The preview keeps its height, so the button below never jumps. It
+          // takes a good part of the screen: a question with a hint is long.
           Container(
-            height: 112,
+            height: (MediaQuery.sizeOf(context).height * 0.24).clamp(140.0, 260.0),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(16)),
             child: question == null
@@ -922,13 +1056,20 @@ class _BoardSheetState extends State<_BoardSheet> {
   }
 }
 
-const Map<String, String> _slotNames = {musicBackground: "Background", musicCalm: "Calm", musicExciting: "Exciting"};
+const Map<String, String> _slotNames = {musicBackground: "Board", musicCalm: "Calm", musicExciting: "Thrilling"};
 
 const Map<String, String> _effectNames = {
   effectAnswerCorrect: "Right",
   effectAnswerWrong: "Wrong",
   effectAnswerClosed: "Closed",
   effectReveal: "Reveal",
+  effectQuestionOpen: "Question",
+  effectLockIn: "Locked in",
+  effectNextItem: "Next item",
+  effectCountdown: "Countdown",
+  effectTimesUp: "Time's up",
+  effectSteal: "Steal",
+  effectFanfare: "Fanfare",
 };
 
 /// Everything for the eyes and ears that is not part of a question: cards
@@ -947,6 +1088,14 @@ class _EffectsSheet extends StatefulWidget {
 class _EffectsSheetState extends State<_EffectsSheet> {
   final TextEditingController _text = TextEditingController();
 
+  /// The music volume while the slider is being dragged.
+  int? _volume;
+
+  bool _awakeDetails = false;
+
+  /// The noise picked last, for switching back on.
+  String? _lastAmbience;
+
   @override
   void dispose() {
     _text.dispose();
@@ -962,7 +1111,7 @@ class _EffectsSheetState extends State<_EffectsSheet> {
     final sounds = game?.soundsFor(ref: state.current, groupId: state.groupId) ?? MusicConfig.empty;
     final question = state.current == null ? null : game?.question(state.current!);
     final listening = state.phase == Phase.question || state.phase == Phase.buzzered;
-    final cards = game?.cards ?? const <CueCard>[];
+    final cards = game?.cardsFor(ref: state.current, groupId: state.groupId) ?? const <CueCard>[];
     Widget header(String text) => Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 8),
           child: Text(text, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
@@ -996,37 +1145,34 @@ class _EffectsSheetState extends State<_EffectsSheet> {
             ],
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            height: 76,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (final image in builtinImages)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Tooltip(
-                      message: image.label,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: () => send(ShowCard(OverlayCard(image: image.name))),
-                        child: Container(
-                          width: 128,
-                          clipBehavior: Clip.antiAlias,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              width: 3,
-                              color: state.overlay?.image == image.name ? theme.colorScheme.primary : Colors.transparent,
-                            ),
-                          ),
-                          child: Image.asset(image.asset, fit: BoxFit.cover, semanticLabel: image.label),
-                        ),
+          // Every card the editor prepared, pictures that come with the app
+          // included: those of the open question's category and board first.
+          if (cards.isEmpty)
+            const Text("No cards. Prepare some in the editor.")
+          else
+            SizedBox(
+              height: 76,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (final card in cards)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _CardTile(
+                        gameId: game!.id,
+                        card: card,
+                        onScreen: _isOnScreen(state.overlay, card),
+                        onTap: () => send(ShowCard(OverlayCard(
+                          title: card.title.isEmpty ? null : card.title,
+                          text: card.text.isEmpty ? null : card.text,
+                          image: card.image,
+                          video: card.video,
+                        ))),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -1042,27 +1188,26 @@ class _EffectsSheetState extends State<_EffectsSheet> {
                 label: const Text("Flash"),
                 onPressed: () => send(const ScreenEffect(screenEffectFlash)),
               ),
-              for (final card in cards)
-                ActionChip(
-                  avatar: Icon(
-                    card.video != null
-                        ? Icons.movie_outlined
-                        : card.image == null
-                            ? Icons.article_outlined
-                            : Icons.image_outlined,
-                    size: 18,
-                  ),
-                  label: Text(
-                    card.title.isNotEmpty ? card.title : (card.text.isNotEmpty ? card.text : (card.video != null ? "Video" : "Image")),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onPressed: () => send(ShowCard(OverlayCard(
-                    title: card.title.isEmpty ? null : card.title,
-                    text: card.text.isEmpty ? null : card.text,
-                    image: card.image,
-                    video: card.video,
-                  ))),
-                ),
+              ActionChip(
+                avatar: const Icon(Icons.auto_awesome_outlined, size: 18),
+                label: const Text("Fireworks"),
+                onPressed: () => send(const ScreenEffect(screenEffectFireworks)),
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.bubble_chart_outlined, size: 18),
+                label: const Text("Balloons"),
+                onPressed: () => send(const ScreenEffect(screenEffectBalloons)),
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.star_outline, size: 18),
+                label: const Text("Stars"),
+                onPressed: () => send(const ScreenEffect(screenEffectStars)),
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.highlight_outlined, size: 18),
+                label: const Text("Spotlight"),
+                onPressed: () => send(const ScreenEffect(screenEffectSpotlight)),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1105,12 +1250,85 @@ class _EffectsSheetState extends State<_EffectsSheet> {
                   ),
             ],
           ),
+          Row(
+            children: [
+              Icon(Icons.volume_down, color: theme.colorScheme.onSurfaceVariant),
+              Expanded(
+                child: Slider(
+                  value: (_volume ?? state.musicVolume).toDouble(),
+                  max: 100,
+                  divisions: 20,
+                  label: "${(_volume ?? state.musicVolume).round()} %",
+                  // Follows the finger here; the big screen gets the value when let go.
+                  onChanged: (value) => setState(() => _volume = value.round()),
+                  onChangeEnd: (value) {
+                    send(SetMusicVolume(value.round()));
+                    setState(() => _volume = null);
+                  },
+                ),
+              ),
+              Icon(Icons.volume_up, color: theme.colorScheme.onSurfaceVariant),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // On by default; the details are a tap away for whoever wonders.
+          Material(
+            color: theme.colorScheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(16),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text("Keep speakers awake"),
+                  secondary: IconButton(
+                    icon: Icon(_awakeDetails ? Icons.expand_less : Icons.expand_more),
+                    tooltip: _awakeDetails ? "Fewer details" : "What is this?",
+                    onPressed: () => setState(() => _awakeDetails = !_awakeDetails),
+                  ),
+                  value: state.ambience != null,
+                  onChanged: (on) => send(SetAmbience(on ? (_lastAmbience ?? ambienceSoftNoise) : null)),
+                ),
+                if (_awakeDetails)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Many speakers switch themselves off after a few minutes of silence and miss the start of the next sound. "
+                          "This plays a very quiet noise whenever nothing else plays; music and question sounds take over as they start.",
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 8),
+                        SegmentedButton<String>(
+                          segments: const [
+                            ButtonSegment(value: ambienceSoftNoise, label: Text("Soft noise")),
+                            ButtonSegment(value: ambienceWhiteNoise, label: Text("White noise")),
+                          ],
+                          selected: {state.ambience ?? _lastAmbience ?? ambienceSoftNoise},
+                          onSelectionChanged: (selected) {
+                            setState(() => _lastAmbience = selected.first);
+                            send(SetAmbience(selected.first));
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
           header("Sound effects"),
-          if (sounds.effects.isEmpty) const Text("This game has no sound effects."),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
+              // Come with the app, in every game.
+              for (final sound in builtinSounds.where((s) => handSoundMoments.contains(s.id.split('/').first)))
+                ActionChip(
+                  avatar: const Icon(Icons.graphic_eq, size: 18),
+                  label: Text(sound.label),
+                  onPressed: () => send(PlayEffect(sound.key)),
+                ),
               for (final key in sounds.effects.keys)
                 ActionChip(
                   avatar: const Icon(Icons.volume_up_outlined, size: 18),
@@ -1143,6 +1361,67 @@ class _EffectsSheetState extends State<_EffectsSheet> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+bool _isOnScreen(OverlayCard? overlay, CueCard card) =>
+    overlay != null &&
+    (overlay.title ?? '') == card.title &&
+    (overlay.text ?? '') == card.text &&
+    overlay.image == card.image &&
+    overlay.video == card.video;
+
+/// One card to put on screen: its picture, or an icon for text and video,
+/// with its title over it.
+class _CardTile extends StatelessWidget {
+  const _CardTile({required this.gameId, required this.card, required this.onScreen, required this.onTap});
+
+  final String gameId;
+  final CueCard card;
+  final bool onScreen;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final builtin = builtinImage(card.image);
+    final label = card.title.isNotEmpty ? card.title : (card.text.isNotEmpty ? card.text : null);
+    return Tooltip(
+      message: label ?? builtin?.label ?? (card.video != null ? "Video" : "Picture"),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          width: 128,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(width: 3, color: onScreen ? scheme.primary : Colors.transparent),
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              CardThumbnail(gameId: gameId, image: card.image, video: card.video, width: 128),
+              if (label != null)
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    width: double.infinity,
+                    color: Colors.black54,
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

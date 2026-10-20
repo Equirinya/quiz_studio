@@ -145,6 +145,16 @@ void main() {
       expect(SessionJoinLink.tryParse(controller.link)!.teamId, isNull);
     });
 
+    test('the QR code carries a web link a camera app opens, with the token after the #', () {
+      const player = SessionJoinLink(sessionId: 'S1', token: 'tok', role: Role.player, teamId: 'red', lan: ['192.168.1.20:47800']);
+      expect(player.webLink, 'https://equirinya.github.io/quiz_studio/open.html#session/S1/player/tok/red?lan=192.168.1.20:47800');
+      final parsed = SessionJoinLink.tryParse(player.webLink)!;
+      expect((parsed.sessionId, parsed.token, parsed.teamId, parsed.lan.single), ('S1', 'tok', 'red', '192.168.1.20:47800'));
+      // Invites are shared the same way and read back in either form.
+      expect(parseInviteLink('https://equirinya.github.io/quiz_studio/open.html#join/game/invite'), (gameId: 'game', inviteId: 'invite'));
+      expect(parseInviteLink('quiz-studio://join/game/invite'), (gameId: 'game', inviteId: 'invite'));
+    });
+
     test('rejects other links, unknown roles and a missing or surplus team', () {
       expect(SessionJoinLink.tryParse('quiz-studio://join/g/i'), isNull);
       expect(SessionJoinLink.tryParse('quiz-studio://session/S1/host/tok'), isNull);

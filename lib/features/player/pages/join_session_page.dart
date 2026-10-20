@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:quiz_show/features/player/pages/player_page.dart';
 import 'package:quiz_show/features/player/recent_sessions.dart';
@@ -14,7 +15,15 @@ import 'package:quiz_show/game/game.dart';
 /// Joins a session from the code on the presenter's screen: scanned with the
 /// camera where there is one, pasted as a link everywhere.
 class JoinSessionPage extends StatefulWidget {
-  const JoinSessionPage({super.key});
+  const JoinSessionPage({super.key, this.initialLink, this.asGuest = false});
+
+  /// A code the system handed over, scanned with the camera app: joined
+  /// right away.
+  final String? initialLink;
+
+  /// Reached from the welcome screen, without setting up an account: says
+  /// what joining agrees to.
+  final bool asGuest;
 
   @override
   State<JoinSessionPage> createState() => _JoinSessionPageState();
@@ -36,6 +45,10 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
     RecentSessions.load().then((recent) {
       if (mounted) setState(() => _recent = recent);
     });
+    if (widget.initialLink != null) {
+      _link.text = widget.initialLink!;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _join(widget.initialLink!));
+    }
   }
 
   @override
@@ -117,6 +130,18 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
             width: double.infinity,
             child: FilledButton(onPressed: _busy ? null : () => _join(_link.text), child: const Text("Join")),
           ),
+          if (widget.asGuest)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: TextButton(
+                onPressed: () => launchUrl(Uri.parse('https://equirinya.github.io/quiz_studio/privacy.html'), mode: LaunchMode.externalApplication),
+                child: const Text(
+                  "By joining you agree to the terms and privacy policy. No account or name needed.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+            ),
         ],
       ),
     );

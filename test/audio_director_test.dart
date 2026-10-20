@@ -8,10 +8,17 @@ import 'game/fixture.dart';
 
 class FakeBackend implements AudioBackend {
   final List<String> log = [];
+
+  /// Kept apart: the noise is on in every session and would crowd [log].
+  final List<String> ambience = [];
   final StreamController<void> completed = StreamController<void>.broadcast(sync: true);
 
   @override
   void setMusic(String? path) => log.add('music $path');
+  @override
+  void setMusicVolume(double volume) => log.add('volume $volume');
+  @override
+  void setAmbience(String? asset) => ambience.add('$asset');
   @override
   void setMedia(String? path, MediaPlayback playback) => log.add('media $path ${playback.name}');
   @override
@@ -63,6 +70,64 @@ void main() {
     expect(backend.log, ['music /game/bg.mp3']);
   });
 
+  test('the noise that keeps the speakers awake is on, and fills every silence, in any game', () {
+    expect(backend.ambience, ['sounds/ambience/soft_noise.wav']);
+    // Music takes over, and the noise comes back when it stops.
+    host.dispatch(const SetMusic(musicBackground));
+    expect(backend.ambience.last, 'null');
+    host.dispatch(const SetMusic(null));
+    expect(backend.ambience.last, 'sounds/ambience/soft_noise.wav');
+    // So does a question's own sound.
+    host
+      ..dispatch(const OpenQuestion(song))
+      ..dispatch(const SetMedia(MediaPlayback.playing));
+    expect(backend.ambience.last, 'null');
+    // Switched off, it stays off.
+    host
+      ..dispatch(const SetMedia(MediaPlayback.stopped))
+      ..dispatch(const SetAmbience(null));
+    expect(backend.ambience.last, 'null');
+  });
+
+  test('sounds that come with the app play by name, and fill in for a reveal the game has no sound for', () {
+    host.dispatch(const PlayEffect('builtin:drumroll/snare'));
+    expect(backend.log, ['asset sounds/effects/drumroll/snare.ogg']);
+    host
+      ..dispatch(const OpenQuestion(feud))
+      ..dispatch(const Buzz('red'))
+      ..dispatch(const FeudToggle(0));
+    expect(backend.log.last, 'asset sounds/effects/reveal/pluck.ogg');
+  });
+
+  test('a team can have one of the buzzers that come with the app', () {
+    host
+      ..dispatch(const SetTeamSound('blue', 'builtin:buzzer/game_show'))
+      ..dispatch(const OpenQuestion(free))
+      ..dispatch(const Buzz('blue'));
+    expect(backend.log, ['asset sounds/effects/question_open/brass_stab.wav', 'asset sounds/buzzers/game_show.wav']);
+  });
+
+  test('a moment can be set to a built-in sound, or to silence', () {
+    final base = fixtureGame();
+    host.setGame(GameContent(id: base.id, name: base.name, groups: base.groups, data: base.data, sounds: MusicConfig.fromMap({
+      'musicEffects': {
+        effectQuestionOpen: silentSound,
+        effectAnswerCorrect: 'builtin:right_answer/voice_correct_male',
+      },
+    })));
+    host
+      ..dispatch(const OpenQuestion(free))
+      ..dispatch(const Buzz('red'))
+      ..dispatch(const Judge(correct: true));
+    expect(backend.log, ['asset buzzer.mp3', 'asset sounds/effects/right_answer/voice_correct_male.ogg']);
+  });
+
+  test('the music volume follows the session', () {
+    host.dispatch(const SetMusicVolume(40));
+    expect(backend.log, ['volume 0.4']);
+    expect(host.state.musicVolume, 40);
+  });
+
   test('a slot without a file is silence', () {
     host.dispatch(const SetMusic(musicCalm));
     expect(backend.log, isEmpty);
@@ -92,18 +157,19 @@ void main() {
     expect(backend.log.last, 'media null stopped');
   });
 
-  test('effects play their file; an effect nobody set is skipped', () {
+  test('effects play their file; a moment the game has none for gets the built-in one', () {
     host
       ..dispatch(const OpenQuestion(free))
       ..dispatch(const Buzz('red'))
       ..dispatch(const Judge(correct: false));
-    expect(backend.log, ['asset buzzer.mp3', 'file /game/wrong.mp3']);
+    // Opening plays the built-in question sound, as the game has none.
+    expect(backend.log, ['asset sounds/effects/question_open/brass_stab.wav', 'asset buzzer.mp3', 'file /game/wrong.mp3']);
     backend.log.clear();
     // No "right answer" sound is configured in the fixture game.
     host
       ..dispatch(const Buzz('red'))
       ..dispatch(const Judge(correct: true));
-    expect(backend.log, ['asset buzzer.mp3']);
+    expect(backend.log, ['asset buzzer.mp3', 'asset sounds/effects/right_answer/ding_ding.wav']);
     host.dispatch(const PlayEffect('airhorn'));
     expect(backend.log.last, 'file /game/horn.mp3');
   });
@@ -122,7 +188,7 @@ void main() {
       ..dispatch(const OpenQuestion(free))
       ..dispatch(const Buzz('red'))
       ..dispatch(const Buzz('blue'));
-    expect(backend.log, ['file /sounds/red.mp3', 'asset buzzer.mp3']);
+    expect(backend.log, ['asset sounds/effects/question_open/brass_stab.wav', 'file /sounds/red.mp3', 'asset buzzer.mp3']);
   });
 
   test('a question can override an effect', () {

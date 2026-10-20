@@ -23,6 +23,13 @@ class SessionHost {
 
   /// Locks the running answer round when its time is up.
   Timer? _roundTimer;
+
+  /// Starts the countdown sound ten seconds before that.
+  Timer? _countdownTimer;
+
+  /// How long before the end the countdown sound starts; rounds shorter
+  /// than twice this get none.
+  static const int countdownMillis = 10000;
   int? _armedFor;
 
   SessionState _state;
@@ -88,17 +95,26 @@ class SessionHost {
     final endsAt = round != null && round.open ? round.endsAtMillis : null;
     if (endsAt == _armedFor) return;
     _roundTimer?.cancel();
+    _countdownTimer?.cancel();
     _armedFor = endsAt;
     if (endsAt == null) return;
     final remaining = endsAt - _clock();
     _roundTimer = Timer(Duration(milliseconds: remaining < 0 ? 0 : remaining), () {
       _armedFor = null;
-      dispatch(const LockAnswers());
+      if (dispatch(const LockAnswers())) _effects.add(const SoundEffect(effectTimesUp));
     });
+    final opened = round!.openedAtMillis;
+    final length = opened == null ? remaining : endsAt - opened;
+    if (length >= 2 * countdownMillis && remaining > countdownMillis) {
+      _countdownTimer = Timer(Duration(milliseconds: remaining - countdownMillis), () {
+        if (!_effects.isClosed) _effects.add(const SoundEffect(effectCountdown));
+      });
+    }
   }
 
   Future<void> dispose() async {
     _roundTimer?.cancel();
+    _countdownTimer?.cancel();
     await _states.close();
     await _effects.close();
   }

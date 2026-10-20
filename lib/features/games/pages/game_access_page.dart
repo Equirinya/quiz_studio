@@ -187,21 +187,30 @@ String _remaining(int millis) {
 }
 
 /// Paste an invite link, see what it grants, join. Returns the game's id.
-Future<String?> showJoinGameDialog(BuildContext context) =>
-    showDialog<String>(context: context, builder: (_) => const _JoinGameDialog());
+/// With [link] (one tapped elsewhere) it is looked up right away.
+Future<String?> showJoinGameDialog(BuildContext context, {String? link}) =>
+    showDialog<String>(context: context, builder: (_) => _JoinGameDialog(link: link));
 
 class _JoinGameDialog extends StatefulWidget {
-  const _JoinGameDialog();
+  const _JoinGameDialog({this.link});
+
+  final String? link;
 
   @override
   State<_JoinGameDialog> createState() => _JoinGameDialogState();
 }
 
 class _JoinGameDialogState extends State<_JoinGameDialog> {
-  final TextEditingController _link = TextEditingController();
+  late final TextEditingController _link = TextEditingController(text: widget.link);
   GameInvite? _invite;
   String? _error;
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.link != null) WidgetsBinding.instance.addPostFrameCallback((_) => _lookUp());
+  }
 
   @override
   void dispose() {

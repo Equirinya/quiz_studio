@@ -7,13 +7,19 @@ import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'core/crash_log.dart';
+import 'core/incoming_links.dart';
 import 'core/theme.dart';
 import 'core/version_gate.dart';
 import 'features/auth/auth_gate.dart';
+import 'features/games/game_repository.dart';
 import 'features/games/media_service.dart';
+import 'features/games/pages/game_access_page.dart';
+import 'features/games/pages/game_editor_page.dart';
 import 'features/games/pages/games_page.dart';
 import 'features/session/pages/sessions_page.dart';
+import 'features/player/pages/join_session_page.dart';
 import 'features/session/presenter_window.dart';
+import 'features/session/session_links.dart';
 import 'features/settings/account_page.dart';
 import 'firebase_options.dart';
 
@@ -23,6 +29,7 @@ void main(List<String> args) async {
   if (window != null) return runPresenterWindow(window);
   WidgetsFlutterBinding.ensureInitialized();
   await CrashLog.init();
+  IncomingLinks.instance.start();
   if (Platform.isWindows || Platform.isMacOS) {
     await windowManager.ensureInitialized();
     windowManager.setTitle("Quiz Studio");
@@ -66,6 +73,34 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _tab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    IncomingLinks.instance.pending.addListener(_onLink);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onLink());
+  }
+
+  @override
+  void dispose() {
+    IncomingLinks.instance.pending.removeListener(_onLink);
+    super.dispose();
+  }
+
+  /// A code scanned with the camera app or an invite tapped elsewhere.
+  Future<void> _onLink() async {
+    if (!mounted || IncomingLinks.instance.pending.value == null) return;
+    final link = IncomingLinks.instance.take()!;
+    final navigator = Navigator.of(context);
+    if (SessionJoinLink.tryParse(link) != null) {
+      navigator.push(MaterialPageRoute(builder: (_) => JoinSessionPage(initialLink: link)));
+    } else if (parseInviteLink(link) != null) {
+      final gameId = await showJoinGameDialog(context, link: link);
+      if (gameId != null && mounted) {
+        navigator.push(MaterialPageRoute(builder: (_) => GameEditorPage(gameId: gameId)));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

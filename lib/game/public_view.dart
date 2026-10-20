@@ -160,6 +160,16 @@ Map<String, dynamic> _visibleQuestion(SessionState state, Question question) {
       view['revealedGroups'] = [
         for (var level = 0; level < state.revealed.clamp(0, kConnectionsGroups); level++) _groupView(spec, level, positionOf),
       ];
+    case QuestionType.rapidFire:
+      // Only the item being asked, without its answer or whether it is right.
+      final rapid = question.rapidFire;
+      final item = rapid?.itemAt(state.revealed);
+      view['itemCount'] = rapid?.items.length ?? 0;
+      view['itemIndex'] = state.revealed;
+      if (item != null) view['text'] = item.question;
+    case QuestionType.matching:
+      // The pairs travel in the answer round, without their pairing.
+      break;
     case QuestionType.free:
     case QuestionType.unsupported:
       break;
