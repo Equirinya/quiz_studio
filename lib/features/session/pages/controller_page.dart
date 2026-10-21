@@ -1167,6 +1167,7 @@ class _EffectsSheetState extends State<_EffectsSheet> {
                           text: card.text.isEmpty ? null : card.text,
                           image: card.image,
                           video: card.video,
+                          style: card.style,
                         ))),
                       ),
                     ),
@@ -1370,7 +1371,8 @@ bool _isOnScreen(OverlayCard? overlay, CueCard card) =>
     (overlay.title ?? '') == card.title &&
     (overlay.text ?? '') == card.text &&
     overlay.image == card.image &&
-    overlay.video == card.video;
+    overlay.video == card.video &&
+    overlay.style == card.style;
 
 /// One card to put on screen: its picture, or an icon for text and video,
 /// with its title over it.

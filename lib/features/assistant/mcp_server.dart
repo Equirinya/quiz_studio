@@ -130,7 +130,8 @@ class McpServer {
           'serverInfo': {'name': name, 'version': version},
           'instructions': 'Tools for editing the quiz games of Quiz Studio, the app this server runs in. '
               'Start with list_games and get_game. Changes appear in the app at once. '
-              'Pictures, sounds and videos cannot be added from here.',
+              'Pictures, sounds and videos are uploaded with upload_media from files on this computer. '
+              'Leave sounds and music alone unless the user asks for them.',
         });
       case 'ping':
         return result(<String, dynamic>{});

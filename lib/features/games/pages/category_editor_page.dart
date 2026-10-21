@@ -97,6 +97,8 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
         category.id,
         pointsPlus: (last?.pointsPlus ?? 0) + (step > 0 ? step : 100),
         pointsMinus: last?.pointsMinus ?? 0,
+        // A category in its own order keeps it: the new question goes last.
+        data: {if (last?.position != null) 'questionIndex': last!.position! + 1},
       );
       if (mounted) setState(() => _fresh = id);
     });

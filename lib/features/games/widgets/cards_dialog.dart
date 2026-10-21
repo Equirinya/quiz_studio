@@ -37,13 +37,15 @@ class _CardRow {
       text = TextEditingController(text: card.text),
       image = card.image,
       video = card.video,
-      hidden = card.hidden;
+      hidden = card.hidden,
+      style = card.style;
 
   final TextEditingController title;
   final TextEditingController text;
   String? image;
   String? video;
   bool hidden;
+  CardStyle style;
 
   bool get builtin => isBuiltinImage(image);
 
@@ -112,6 +114,7 @@ class _CardsDialogState extends State<CardsDialog> {
         image: row.image,
         video: row.video,
         hidden: row.hidden,
+        style: row.style,
       ).toMap(),
   ]);
 
@@ -209,6 +212,27 @@ class _CardsDialogState extends State<CardsDialog> {
                                 maxLines: 4,
                                 onChanged: (_) => _save(),
                               ),
+                              // How the words look on screen; a picture of the app's own stays as it is.
+                              if (!builtin)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: DropdownButton<CardStyle>(
+                                    value: row.style,
+                                    isDense: true,
+                                    underline: const SizedBox.shrink(),
+                                    style: theme.textTheme.bodySmall,
+                                    icon: const Icon(Icons.arrow_drop_down, size: 18),
+                                    items: [
+                                      for (final style in CardStyle.values)
+                                        DropdownMenuItem(value: style, child: Text("Look: ${style.uiString}")),
+                                    ],
+                                    onChanged: (style) {
+                                      if (style == null) return;
+                                      setState(() => row.style = style);
+                                      _save();
+                                    },
+                                  ),
+                                ),
                             ],
                           ),
                         ),

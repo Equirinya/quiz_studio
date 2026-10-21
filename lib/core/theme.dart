@@ -35,3 +35,8 @@ ThemeData buildAppTheme(Brightness brightness) {
 const String kMonospaceFamily = 'monospace';
 const List<String> kMonospaceFallback = ['Consolas', 'Cascadia Mono', 'Menlo', 'SF Mono', 'Courier New'];
 
+
+/// Serif text, for the silent-film cards. "serif" is a family name on Linux
+/// and Android; elsewhere the fallbacks find one.
+const String kSerifFamily = 'serif';
+const List<String> kSerifFallback = ['Georgia', 'Times New Roman', 'Noto Serif', 'DejaVu Serif'];

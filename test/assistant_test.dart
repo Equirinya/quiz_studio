@@ -82,7 +82,7 @@ class FakeBackend implements GameToolsBackend {
 
   @override
   Future<String> addQuestion(String gameId, String categoryId, Map<String, dynamic> data) async {
-    final id = _id('q');
+    final id = _id('question');
     (questions[categoryId] ??= {})[id] = Map.of(data);
     return id;
   }
@@ -94,6 +94,21 @@ class FakeBackend implements GameToolsBackend {
   @override
   Future<void> deleteQuestion(String gameId, String categoryId, String questionId) async =>
       questions[categoryId]!.remove(questionId);
+
+  @override
+  Future<void> updateGroup(String gameId, String groupId, Map<String, dynamic> data) async =>
+      groups[gameId]![groupId]!.addAll(data);
+
+  @override
+  Future<void> deleteGroup(String gameId, String groupId) async => groups[gameId]!.remove(groupId);
+
+  final List<String> uploads = [];
+
+  @override
+  Future<String> uploadMedia(String gameId, String path) async {
+    uploads.add(path);
+    return 'media${uploads.length}.png';
+  }
 }
 
 void main() {
@@ -295,6 +310,151 @@ void main() {
       expect(activity, isEmpty);
       expect(backend.questions['c1'], hasLength(1));
     });
+
+    Future<List<Map>> described() async {
+      final game = await tools.call('get_game', {'gameId': 'g'}) as Map;
+      return [for (final q in ((game['groups'] as List).single['categories'] as List).single['questions'] as List) q as Map];
+    }
+
+    test('a Fragenhagel and a matching question, read back as they were given', () async {
+      final rapid = {
+        'mode': 'buzzer',
+        'progress': 'flux',
+        'items': [
+          {'question': 'Who is Marty McFly played by?', 'answer': 'Michael J. Fox'},
+          {'question': 'HAL is the computer in which film?', 'answer': '2001'},
+        ],
+      };
+      await tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', 'type': 'rapidFire', 'question': 'Fragenhagel', 'pointsPlus': 20, 'rapidFire': rapid});
+      final pairs = [
+        {'left': 'Jaws', 'right': '1975'},
+        {'left': 'Alien', 'right': '1979'},
+      ];
+      await tools.call('add_question', {
+        'gameId': 'g',
+        'categoryId': 'c1',
+        'type': 'matching',
+        'question': 'When did they come out?',
+        'pointsPlus': 300,
+        'pairs': pairs,
+        'companion': {'timer': 60},
+      });
+      final game = await backend.loadGame('g');
+      final questions = game.groups.single.categories.single.questions;
+      expect(questions.first.rapidFire!.items[1].answer, '2001');
+      expect(questions.first.rapidFire!.progress, ProgressStyle.flux);
+      expect(questions.last.companion!.targets, hasLength(2));
+      expect(questions.last.companion!.timerSeconds, 60);
+
+      final read = await described();
+      final rapidRead = read.firstWhere((q) => q['type'] == 'rapidFire');
+      expect((rapidRead['rapidFire'] as Map)['items'][0]['answer'], 'Michael J. Fox');
+      final matchingRead = read.firstWhere((q) => q['type'] == 'matching');
+      expect(matchingRead['pairs'], pairs);
+      expect(matchingRead['companion'], {'kind': 'match', 'timer': 60});
+    });
+
+    test('a Fragenhagel on the devices takes statements', () async {
+      await tools.call('add_question', {
+        'gameId': 'g',
+        'categoryId': 'c1',
+        'type': 'rapidFire',
+        'question': 'Fact or fiction?',
+        'rapidFire': {
+          'mode': 'devices',
+          'items': [
+            {'question': 'Darth Vader breathes in George Lucas\'s voice.', 'true': false},
+          ],
+        },
+      });
+      final question = (await backend.loadGame('g')).groups.single.categories.single.questions.first;
+      expect(question.rapidFire!.mode, RapidMode.devices);
+      expect(question.rapidFire!.items.single.isTrue, false);
+      expect(question.buzzerable, false);
+    });
+
+    test('a Fragenhagel needs items, a matching question two pairs', () async {
+      for (final args in <Map<String, dynamic>>[
+        {'type': 'rapidFire', 'question': 'x'},
+        {'type': 'rapidFire', 'question': 'x', 'rapidFire': {'items': []}},
+        {'type': 'rapidFire', 'question': 'x', 'rapidFire': {'mode': 'shout', 'items': [{'question': 'y'}]}},
+        {'type': 'matching', 'question': 'x', 'pairs': [{'left': 'a', 'right': 'b'}]},
+        {'type': 'matching', 'question': 'x', 'pairs': [{'left': 'a'}, {'left': 'b', 'right': 'c'}]},
+        {'question': 'x', 'pairs': [{'left': 'a', 'right': 'b'}, {'left': 'c', 'right': 'd'}]},
+      ]) {
+        await expectLater(tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', ...args}), throwsA(isA<ToolError>()), reason: '$args');
+      }
+    });
+
+    test('an own order beats the points, and new questions join at the end', () async {
+      final id = (await tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', 'question': 'Hagel', 'pointsPlus': 20}) as Map)['questionId'];
+      expect([for (final q in await described()) q['id']], [id, 'q1']);
+      await tools.call('reorder_questions', {'gameId': 'g', 'categoryId': 'c1', 'questionIds': ['q1', id]});
+      final added = (await tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', 'question': 'Last', 'pointsPlus': 10}) as Map)['questionId'];
+      expect([for (final q in await described()) q['id']], ['q1', id, added]);
+      await expectLater(
+          tools.call('reorder_questions', {'gameId': 'g', 'categoryId': 'c1', 'questionIds': ['q1', id]}), throwsA(isA<ToolError>()));
+    });
+
+    test('pictures go up and onto questions, whiteboards and hints', () async {
+      final name = (await tools.call('upload_media', {'gameId': 'g', 'path': r'C:\pics\moon.png'}) as Map)['name'];
+      expect(backend.uploads, [r'C:\pics\moon.png']);
+      await tools.call('update_question', {
+        'gameId': 'g',
+        'categoryId': 'c1',
+        'questionId': 'q1',
+        'type': 'progressingReveal',
+        'information': ['', 'Clue'],
+        'informationImages': [name],
+        'companion': {'kind': 'whiteboard', 'background': 'image', 'backgroundImage': name},
+      });
+      final question = (await backend.loadGame('g')).groups.single.categories.single.questions.single;
+      expect(question.informationImages, [name, '']);
+      expect(question.companion!.backgroundImage, name);
+    });
+
+    test('cards and sounds of a category', () async {
+      await tools.call('set_cards', {
+        'gameId': 'g',
+        'categoryId': 'c1',
+        'cards': [
+          {'text': 'Thanks for having me!', 'style': 'silentFilm'},
+          {'image': 'builtin:applause'},
+        ],
+      });
+      final category = (await backend.loadGame('g')).groups.single.categories.single;
+      expect([for (final card in category.cards) card.text], ['Thanks for having me!', '']);
+      expect([for (final card in category.cards) card.style], [CardStyle.silentFilm, CardStyle.standard]);
+      await expectLater(
+          tools.call('set_cards', {'gameId': 'g', 'categoryId': 'c1', 'cards': [{'text': 'x', 'style': 'gothic'}]}), throwsA(isA<ToolError>()));
+      expect(OverlayCard.fromJson(const OverlayCard(text: 'x', style: CardStyle.poster).toJson()).style, CardStyle.poster);
+      await expectLater(
+          tools.call('set_cards', {'gameId': 'g', 'categoryId': 'c1', 'cards': [{'image': 'builtin:nope'}]}), throwsA(isA<ToolError>()));
+
+      final sound = builtinSoundsFor(effectAnswerCorrect).first.key;
+      await tools.call('set_sounds', {
+        'gameId': 'g',
+        'categoryId': 'c1',
+        'questionId': 'q1',
+        'effects': {effectAnswerCorrect: sound, effectAnswerWrong: 'off'},
+      });
+      await tools.call('set_sounds', {'gameId': 'g', 'categoryId': 'c1', 'questionId': 'q1', 'effects': {effectAnswerWrong: ''}});
+      final question = (await backend.loadGame('g')).groups.single.categories.single.questions.single;
+      expect(question.sounds.effects, {effectAnswerCorrect: sound});
+      await expectLater(tools.call('set_sounds', {'gameId': 'g', 'categoryId': 'c1', 'music': {'disco': 'x.mp3'}}), throwsA(isA<ToolError>()));
+    });
+
+    test('changing and deleting a group', () async {
+      await tools.call('update_category_group', {'gameId': 'g', 'groupId': 'r1', 'name': 'Finale', 'board': 'display', 'color': '#102030'});
+      final group = (await backend.loadGame('g')).groups.single;
+      expect(group.name, 'Finale');
+      expect(group.type, BoardType.display);
+      expect(group.color, 0xff102030);
+      await expectLater(tools.call('delete_category_group', {'gameId': 'g', 'groupId': 'r1'}), throwsA(isA<ToolError>()));
+      await tools.call('delete_category', {'gameId': 'g', 'categoryId': 'c1'});
+      await tools.call('delete_category_group', {'gameId': 'g', 'groupId': 'r1'});
+      expect(backend.groups['g'], isEmpty);
+    });
   });
 
   group('server', () {
@@ -419,6 +579,26 @@ void main() {
       for (final address in others) {
         await expectLater(Socket.connect(address, server.port, timeout: const Duration(seconds: 2)), throwsA(anything));
       }
+    });
+  });
+
+  group('clients', () {
+    const url = 'http://localhost:47820/mcp';
+
+    test('every program gets the address, as a command or as valid JSON', () {
+      for (final client in AssistantClient.values) {
+        final snippet = client.snippet(url);
+        expect(snippet, contains(url), reason: client.label);
+        if (!client.isCommand) expect(() => jsonDecode(snippet), returnsNormally, reason: client.label);
+      }
+    });
+
+    test('Claude Desktop goes through the bridge', () {
+      final config = jsonDecode(AssistantClient.claudeDesktop.snippet(url)) as Map;
+      expect(config['mcpServers']['quiz-studio'], {
+        'command': 'npx',
+        'args': ['-y', 'mcp-remote', url],
+      });
     });
   });
 

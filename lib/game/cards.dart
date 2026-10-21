@@ -64,3 +64,18 @@ enum CardAnimation {
   static CardAnimation fromName(Object? name) =>
       CardAnimation.values.where((a) => a.name == name).firstOrNull ?? CardAnimation.fade;
 }
+
+/// How a card with text looks on the big screen. Stored on the card as
+/// `style`, only when it is not [standard].
+enum CardStyle {
+  standard("Standard"),
+  silentFilm("Silent film"),
+  poster("Poster"),
+  plain("Just the words");
+
+  const CardStyle(this.uiString);
+
+  final String uiString;
+
+  static CardStyle fromName(Object? name) => CardStyle.values.where((s) => s.name == name).firstOrNull ?? CardStyle.standard;
+}

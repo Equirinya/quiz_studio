@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// The card the gamemaster put over the screen: a title, a text, an image,
@@ -116,7 +117,7 @@ class CardOverlay extends StatelessWidget {
                     : video != null
                         ? Center(key: ValueKey('video-${card.video}'), child: videoBuilder!(video))
                         : _CardBody(
-                            key: ValueKey('${card.title}|${card.text}|${card.image}'),
+                            key: ValueKey('${card.title}|${card.text}|${card.image}|${card.style.name}'),
                             card: card,
                             box: box,
                             imageFile: imageFile,
@@ -145,6 +146,7 @@ class _CardBody extends StatelessWidget {
     final file = card.image == null || builtin != null ? null : imageFile(card.image!);
     final ImageProvider? image = builtin != null ? AssetImage(builtin.asset) : (file == null ? null : FileImage(file));
     final hasText = (card.title ?? '').isNotEmpty || (card.text ?? '').isNotEmpty;
+    if (card.style == CardStyle.silentFilm) return _SilentFilmCard(card: card, image: image, unit: unit);
     // A picture on its own fills the screen, without a frame around it.
     if (image != null && !hasText) {
       return Center(
@@ -157,19 +159,47 @@ class _CardBody extends StatelessWidget {
         ),
       );
     }
+    final poster = card.style == CardStyle.poster;
+    final plain = card.style == CardStyle.plain;
+    // Words straight on the dimmed screen need a shadow to stand out.
+    final shadows = plain ? [Shadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: unit * 1.5)] : null;
+    final titleStyle = switch (card.style) {
+      CardStyle.poster => TextStyle(
+          fontSize: unit * 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: unit * 0.3,
+          height: 1.05,
+          color: scheme.onPrimary,
+        ),
+      CardStyle.plain => TextStyle(fontSize: unit * 9, fontWeight: FontWeight.w800, color: Colors.white, shadows: shadows),
+      _ => TextStyle(fontSize: unit * 6, fontWeight: FontWeight.w700, color: scheme.primary),
+    };
+    final textStyle = switch (card.style) {
+      CardStyle.poster => TextStyle(fontSize: unit * 5, fontWeight: FontWeight.w600, color: scheme.onPrimary),
+      CardStyle.plain => TextStyle(fontSize: unit * 6.5, fontWeight: FontWeight.w600, color: Colors.white, shadows: shadows),
+      _ => TextStyle(fontSize: unit * 4.5, color: scheme.onSurface),
+    };
     return Center(
       child: Container(
-        constraints: BoxConstraints(maxWidth: box.maxWidth * 0.8, maxHeight: box.maxHeight * 0.84),
-        padding: EdgeInsets.all(unit * 4),
-        decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 4)),
+        constraints: BoxConstraints(maxWidth: box.maxWidth * (plain ? 0.9 : 0.8), maxHeight: box.maxHeight * 0.84),
+        padding: EdgeInsets.all(unit * (poster ? 5 : 4)),
+        decoration: plain
+            ? null
+            : poster
+                ? BoxDecoration(
+                    color: scheme.primary,
+                    border: Border.all(color: scheme.onPrimary, width: unit * 0.8),
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: unit * 4, offset: Offset(0, unit))],
+                  )
+                : BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 4)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if ((card.title ?? '').isNotEmpty)
               Text(
-                card.title!,
+                poster ? card.title!.toUpperCase() : card.title!,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: unit * 6, fontWeight: FontWeight.w700, color: scheme.primary),
+                style: titleStyle,
               ),
             if (image != null)
               Flexible(
@@ -184,17 +214,210 @@ class _CardBody extends StatelessWidget {
             if ((card.text ?? '').isNotEmpty)
               Padding(
                 padding: EdgeInsets.only(top: (card.title ?? '').isNotEmpty && image == null ? unit * 2 : 0),
-                child: Text(
-                  card.text!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: unit * 4.5, color: scheme.onSurface),
-                ),
+                child: Text(card.text!, textAlign: TextAlign.center, style: textStyle),
               ),
           ],
         ),
       ),
     );
   }
+}
+
+/// An intertitle of a silent film: cream serif letters on black inside an
+/// Art Deco frame, with the grain, scratches and vignette of old film stock.
+/// A picture is shown in sepia.
+class _SilentFilmCard extends StatelessWidget {
+  const _SilentFilmCard({required this.card, required this.image, required this.unit});
+
+  final OverlayCard card;
+  final ImageProvider? image;
+  final double unit;
+
+  static const Color cream = Color(0xFFEDE3C8);
+  static const Color black = Color(0xFF0D0B08);
+
+  /// Turns any picture brown like an old print.
+  static const ColorFilter sepia = ColorFilter.matrix([
+    0.393, 0.769, 0.189, 0, 0, //
+    0.349, 0.686, 0.168, 0, 0,
+    0.272, 0.534, 0.131, 0, 0,
+    0, 0, 0, 1, 0,
+  ]);
+
+  @override
+  Widget build(BuildContext context) {
+    final title = card.title ?? '';
+    final text = card.text ?? '';
+    final serif = TextStyle(fontFamily: kSerifFamily, fontFamilyFallback: kSerifFallback, color: cream, height: 1.35);
+    return ColoredBox(
+      color: black,
+      child: CustomPaint(
+        // The same card gets the same specks every time it is shown.
+        foregroundPainter: _FilmStockPainter(seed: Object.hash(title, text, card.image), unit: unit),
+        child: CustomPaint(
+          painter: _IntertitleFramePainter(unit: unit, color: cream),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: unit * 16, vertical: unit * 12),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (title.isNotEmpty)
+                    Text(
+                      title.toUpperCase(),
+                      textAlign: TextAlign.center,
+                      style: serif.copyWith(fontSize: unit * 5.5, letterSpacing: unit * 0.8, fontWeight: FontWeight.w600),
+                    ),
+                  if (title.isNotEmpty && (text.isNotEmpty || image != null))
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: unit * 2.5),
+                      child: _Flourish(unit: unit, color: cream),
+                    ),
+                  if (image != null)
+                    Flexible(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: text.isNotEmpty ? unit * 3 : 0),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(border: Border.all(color: cream, width: unit * 0.3)),
+                          child: ColorFiltered(colorFilter: sepia, child: Image(image: image!, fit: BoxFit.contain)),
+                        ),
+                      ),
+                    ),
+                  if (text.isNotEmpty)
+                    Text(text, textAlign: TextAlign.center, style: serif.copyWith(fontSize: unit * 5.6)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A short rule with a diamond in the middle, between title and text.
+class _Flourish extends StatelessWidget {
+  const _Flourish({required this.unit, required this.color});
+
+  final double unit;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget line() => Container(width: unit * 12, height: unit * 0.25, color: color);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        line(),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: unit * 1.5),
+          child: Transform.rotate(angle: pi / 4, child: Container(width: unit * 1.4, height: unit * 1.4, color: color)),
+        ),
+        line(),
+      ],
+    );
+  }
+}
+
+/// Two thin rules around the screen with stepped Art Deco corners.
+class _IntertitleFramePainter extends CustomPainter {
+  _IntertitleFramePainter({required this.unit, required this.color});
+
+  final double unit;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = unit * 0.3;
+    final outer = Rect.fromLTWH(unit * 5, unit * 5, size.width - unit * 10, size.height - unit * 10);
+    final inner = outer.deflate(unit * 1.6);
+    canvas.drawRect(outer, paint);
+    canvas.drawRect(inner, paint..strokeWidth = unit * 0.15);
+    // Each corner: two steps cut inwards and a diamond where they meet.
+    final step = unit * 3;
+    final fill = Paint()..color = color;
+    for (final (corner, dx, dy) in [
+      (inner.topLeft, 1.0, 1.0),
+      (inner.topRight, -1.0, 1.0),
+      (inner.bottomLeft, 1.0, -1.0),
+      (inner.bottomRight, -1.0, -1.0),
+    ]) {
+      final path = Path()
+        ..moveTo(corner.dx + dx * step * 2, corner.dy)
+        ..lineTo(corner.dx + dx * step * 2, corner.dy + dy * step)
+        ..lineTo(corner.dx + dx * step, corner.dy + dy * step)
+        ..lineTo(corner.dx + dx * step, corner.dy + dy * step * 2)
+        ..lineTo(corner.dx, corner.dy + dy * step * 2);
+      canvas.drawPath(path, paint..strokeWidth = unit * 0.25);
+      final centre = Offset(corner.dx + dx * step * 2, corner.dy + dy * step * 2);
+      final d = unit * 0.9;
+      canvas.drawPath(
+        Path()
+          ..moveTo(centre.dx, centre.dy - d)
+          ..lineTo(centre.dx + d, centre.dy)
+          ..lineTo(centre.dx, centre.dy + d)
+          ..lineTo(centre.dx - d, centre.dy)
+          ..close(),
+        fill,
+      );
+    }
+    // A small fan in the middle of the top and bottom rules.
+    for (final (y, dir) in [(inner.top, 1.0), (inner.bottom, -1.0)]) {
+      final x = inner.center.dx;
+      for (var i = -2; i <= 2; i++) {
+        canvas.drawLine(Offset(x, y), Offset(x + i * unit * 1.2, y + dir * unit * 2.4), paint..strokeWidth = unit * 0.15);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_IntertitleFramePainter old) => old.unit != unit || old.color != color;
+}
+
+/// Old film stock over the card: dust, a few scratches, a dark vignette.
+class _FilmStockPainter extends CustomPainter {
+  _FilmStockPainter({required this.seed, required this.unit});
+
+  final int seed;
+  final double unit;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final random = Random(seed);
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = RadialGradient(
+          radius: 0.9,
+          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+          stops: const [0.55, 1],
+        ).createShader(rect),
+    );
+    final dust = Paint();
+    for (var i = 0; i < 900; i++) {
+      final light = random.nextBool();
+      dust.color = (light ? const Color(0xFFEDE3C8) : Colors.black).withValues(alpha: 0.05 + random.nextDouble() * 0.12);
+      canvas.drawCircle(
+        Offset(random.nextDouble() * size.width, random.nextDouble() * size.height),
+        unit * (0.04 + random.nextDouble() * 0.12),
+        dust,
+      );
+    }
+    final scratch = Paint()..strokeWidth = unit * 0.08;
+    for (var i = 0; i < 4; i++) {
+      final x = random.nextDouble() * size.width;
+      final top = random.nextDouble() * size.height * 0.5;
+      scratch.color = const Color(0xFFEDE3C8).withValues(alpha: 0.08 + random.nextDouble() * 0.1);
+      canvas.drawLine(Offset(x, top), Offset(x + (random.nextDouble() - 0.5) * unit, top + size.height * (0.3 + random.nextDouble() * 0.5)), scratch);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_FilmStockPainter old) => old.seed != seed || old.unit != unit;
 }
 
 /// Plays one-shot animations over the screen as they come in on [effects].

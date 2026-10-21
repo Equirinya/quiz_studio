@@ -56,10 +56,12 @@ class Team {
 /// image, a video, or text with a picture. A card stays until it is hidden;
 /// a video takes itself off when it has played to the end.
 class OverlayCard {
-  const OverlayCard({this.title, this.text, this.image, this.video});
+  const OverlayCard({this.title, this.text, this.image, this.video, this.style = CardStyle.standard});
 
   final String? title;
   final String? text;
+
+  final CardStyle style;
 
   /// A media file of the game.
   final String? image;
@@ -75,6 +77,7 @@ class OverlayCard {
         if (text != null) 'text': text,
         if (image != null) 'image': image,
         if (video != null) 'video': video,
+        if (style != CardStyle.standard) 'style': style.name,
       };
 
   factory OverlayCard.fromJson(Map<String, dynamic> json) => OverlayCard(
@@ -82,6 +85,7 @@ class OverlayCard {
         text: json['text'] as String?,
         image: json['image'] as String?,
         video: json['video'] as String?,
+        style: CardStyle.fromName(json['style']),
       );
 }
 

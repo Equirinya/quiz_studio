@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:quiz_show/features/assistant/assistant.dart';
 import 'package:quiz_show/features/assistant/assistant_card.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,6 +57,11 @@ Future<void> _loadFonts() async {
   final mono = Platform.isWindows ? r'C:\Windows\Fonts\consola.ttf' : '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf';
   if (File(mono).existsSync()) {
     await (FontLoader('monospace')..addFont(Future.value(ByteData.view(File(mono).readAsBytesSync().buffer)))).load();
+  }
+  // And for the computer's serif font, used by the silent-film cards.
+  final serif = Platform.isWindows ? r'C:\Windows\Fonts\georgia.ttf' : '/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf';
+  if (File(serif).existsSync()) {
+    await (FontLoader('serif')..addFont(Future.value(ByteData.view(File(serif).readAsBytesSync().buffer)))).load();
   }
 }
 
@@ -1044,31 +1050,44 @@ void main() {
     await shot('account_email');
   });
 
-  testWidgets('account: assistant on', (tester) async {
-    await page(
-      tester,
-      AccountView(
-        username: 'Jacob',
-        email: 'jacob@example.com',
-        guest: false,
-        version: '2.0.0',
-        onRename: () {},
-        onUpgrade: () {},
-        onSignOut: () {},
-        assistant: AssistantCard(
-          running: true,
-          url: 'http://localhost:47820/mcp',
-          command: 'claude mcp add --transport http quiz-studio http://localhost:47820/mcp',
-          activity: const [
-            'Added to "Capitals": Which city is the capital of Australia? (300)',
-            'Added to "Capitals": Capital of France? (100)',
-            'Added category "Capitals"',
-          ],
-          onChanged: (_) {},
+  Future<void> assistantPage(WidgetTester tester, AssistantClient client, List<String> activity) => page(
+        tester,
+        AccountView(
+          username: 'Jacob',
+          email: 'jacob@example.com',
+          guest: false,
+          version: '2.0.0',
+          onRename: () {},
+          onUpgrade: () {},
+          onSignOut: () {},
+          assistant: AssistantCard(
+            running: true,
+            url: 'http://localhost:47820/mcp',
+            client: client,
+            onClientChanged: (_) {},
+            activity: activity,
+            onChanged: (_) {},
+          ),
         ),
-      ),
-    );
+      );
+
+  testWidgets('account: assistant on', (tester) async {
+    await assistantPage(tester, AssistantClient.claudeCode, const [
+      'Added to "Capitals": Which city is the capital of Australia? (300)',
+      'Added to "Capitals": Capital of France? (100)',
+      'Added category "Capitals"',
+    ]);
     await shot('account_assistant');
+  });
+
+  testWidgets('account: assistant for Claude Desktop', (tester) async {
+    await assistantPage(tester, AssistantClient.claudeDesktop, const []);
+    await shot('account_assistant_claude_desktop');
+  });
+
+  testWidgets('account: assistant for OpenCode', (tester) async {
+    await assistantPage(tester, AssistantClient.openCode, const []);
+    await shot('account_assistant_opencode');
   });
 
   // ── brought back from v1 ───────────────────────────────────────────────────
@@ -1449,6 +1468,46 @@ void main() {
 
   testWidgets('cards: sliding in from the bottom', (tester) async {
     await cardScreen(tester, CardAnimation.slideUp, const OverlayCard(title: 'Round 2', text: 'Pictures and sounds'), const Duration(milliseconds: 140), 'cards_slide_midway');
+  });
+
+  testWidgets('cards: silent film', (tester) async {
+    await cardScreen(
+      tester,
+      CardAnimation.fade,
+      const OverlayCard(text: 'Sorry for being late! I was finishing one of my favourite films, from when I was only 13.', style: CardStyle.silentFilm),
+      const Duration(seconds: 1),
+      'cards_style_silent_film',
+    );
+  });
+
+  testWidgets('cards: silent film with a title and a picture', (tester) async {
+    await cardScreen(
+      tester,
+      CardAnimation.fade,
+      const OverlayCard(title: 'Chapter One', text: 'The guest arrives', image: 'builtin:applause', style: CardStyle.silentFilm),
+      const Duration(seconds: 1),
+      'cards_style_silent_film_picture',
+    );
+  });
+
+  testWidgets('cards: poster', (tester) async {
+    await cardScreen(
+      tester,
+      CardAnimation.fade,
+      const OverlayCard(title: 'Final round', text: 'Double points from here on', style: CardStyle.poster),
+      const Duration(seconds: 1),
+      'cards_style_poster',
+    );
+  });
+
+  testWidgets('cards: just the words', (tester) async {
+    await cardScreen(
+      tester,
+      CardAnimation.fade,
+      const OverlayCard(title: 'Quiet please', text: 'The jury is deciding', style: CardStyle.plain),
+      const Duration(seconds: 1),
+      'cards_style_plain',
+    );
   });
 
   testWidgets('cards: flipping in', (tester) async {

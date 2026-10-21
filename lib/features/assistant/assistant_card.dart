@@ -1,12 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/assistant/assistant.dart';
 
 /// The assistant switch on the account page, bound to [Assistant.instance].
-class AssistantSection extends StatelessWidget {
+/// Remembers which program the user connects with.
+class AssistantSection extends StatefulWidget {
   const AssistantSection({super.key});
+
+  @override
+  State<AssistantSection> createState() => _AssistantSectionState();
+}
+
+class _AssistantSectionState extends State<AssistantSection> {
+  static const String _clientKey = 'assistant_client';
+  AssistantClient _client = AssistantClient.claudeCode;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      final saved = AssistantClient.values.where((c) => c.name == prefs.getString(_clientKey)).firstOrNull;
+      if (saved != null && mounted) setState(() => _client = saved);
+    }).catchError((_) {});
+  }
+
+  void _pick(AssistantClient client) {
+    setState(() => _client = client);
+    SharedPreferences.getInstance().then((prefs) => prefs.setString(_clientKey, client.name)).catchError((_) => false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +40,8 @@ class AssistantSection extends StatelessWidget {
       builder: (context, _) => AssistantCard(
         running: assistant.running,
         url: assistant.url,
-        command: assistant.connectCommand,
+        client: _client,
+        onClientChanged: _pick,
         activity: assistant.activity,
         onChanged: (on) async {
           final messenger = ScaffoldMessenger.of(context);
@@ -31,20 +56,23 @@ class AssistantSection extends StatelessWidget {
   }
 }
 
-/// The assistant switch and, while it is on, how to connect and what was done.
+/// The assistant switch and, while it is on, how to connect from the chosen
+/// program and what was done.
 class AssistantCard extends StatelessWidget {
   const AssistantCard({
     super.key,
     required this.running,
     required this.url,
-    required this.command,
+    required this.client,
+    required this.onClientChanged,
     required this.activity,
     required this.onChanged,
   });
 
   final bool running;
   final String? url;
-  final String? command;
+  final AssistantClient client;
+  final ValueChanged<AssistantClient> onClientChanged;
   final List<String> activity;
   final ValueChanged<bool> onChanged;
 
@@ -57,6 +85,7 @@ class AssistantCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final snippet = url == null ? null : client.snippet(url!);
     final mono = theme.textTheme.bodySmall?.copyWith(
       fontFamily: kMonospaceFamily,
       fontFamilyFallback: kMonospaceFallback,
@@ -67,14 +96,14 @@ class AssistantCard extends StatelessWidget {
       children: [
         SwitchListTile(
           secondary: const Icon(Icons.auto_awesome_outlined),
-          title: const Text("Let Claude edit my games"),
+          title: const Text("Let an AI assistant edit my games"),
           subtitle: Text(running
               ? "On until you switch it off or close the app"
-              : "Claude on this computer can read your games and add categories and questions"),
+              : "An AI assistant on this computer, such as Claude, can read your games and edit them"),
           value: running,
           onChanged: onChanged,
         ),
-        if (running && command != null)
+        if (running && url != null)
           Container(
             margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
@@ -82,18 +111,25 @@ class AssistantCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Run this once in a terminal, then ask Claude about your games:", style: theme.textTheme.bodyMedium),
+                Text("Connect with", style: theme.textTheme.labelLarge),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(child: SelectableText(command!, style: mono)),
-                    IconButton(
-                      tooltip: "Copy command",
-                      icon: const Icon(Icons.copy_outlined),
-                      onPressed: () => _copy(context, command!),
-                    ),
-                  ],
-                ),
+                _ClientPicker(client: client, onChanged: onClientChanged),
+                const SizedBox(height: 12),
+                Text(client.instructions, style: theme.textTheme.bodyMedium),
+                if (snippet != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: SelectableText(snippet, style: mono)),
+                      IconButton(
+                        tooltip: client.isCommand ? "Copy command" : "Copy settings",
+                        icon: const Icon(Icons.copy_outlined),
+                        onPressed: () => _copy(context, snippet),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Text(
                   "Any program on this computer can use this connection while it is on. Other devices cannot reach it.",
@@ -120,4 +156,71 @@ class AssistantCard extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The programs as one segmented button. There are more than fit side by
+/// side, so the row scrolls, and it brings the chosen one into view.
+class _ClientPicker extends StatefulWidget {
+  const _ClientPicker({required this.client, required this.onChanged});
+
+  final AssistantClient client;
+  final ValueChanged<AssistantClient> onChanged;
+
+  @override
+  State<_ClientPicker> createState() => _ClientPickerState();
+}
+
+class _ClientPickerState extends State<_ClientPicker> {
+  final Map<AssistantClient, GlobalKey> _keys = {for (final c in AssistantClient.values) c: GlobalKey()};
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _reveal(animate: false);
+  }
+
+  @override
+  void didUpdateWidget(_ClientPicker old) {
+    super.didUpdateWidget(old);
+    if (old.client != widget.client) _reveal(animate: true);
+  }
+
+  /// Centres the chosen program in the row. Only this row moves, never the
+  /// page around it.
+  void _reveal({required bool animate}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final label = _keys[widget.client]?.currentContext?.findRenderObject() as RenderBox?;
+      final row = context.findRenderObject() as RenderBox?;
+      if (!mounted || label == null || row == null || !_scroll.hasClients) return;
+      final centre = label.localToGlobal(label.size.center(Offset.zero), ancestor: row).dx;
+      final target = (_scroll.offset + centre - row.size.width / 2).clamp(0.0, _scroll.position.maxScrollExtent);
+      if (animate) {
+        _scroll.animateTo(target, duration: const Duration(milliseconds: 250), curve: Curves.easeOutCubic);
+      } else {
+        _scroll.jumpTo(target);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+        controller: _scroll,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.only(right: 8),
+        child: SegmentedButton<AssistantClient>(
+          segments: [
+            for (final c in AssistantClient.values) ButtonSegment(value: c, label: Text(c.label, key: _keys[c])),
+          ],
+          selected: {widget.client},
+          showSelectedIcon: false,
+          onSelectionChanged: (picked) => widget.onChanged(picked.single),
+        ),
+      );
 }

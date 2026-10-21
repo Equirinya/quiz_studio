@@ -267,6 +267,7 @@ class Question {
     this.music,
     this.pointsPlus = 0,
     this.pointsMinus = 0,
+    this.position,
     this.noBuzzer = false,
     this.answers = const [],
     this.answersCorrect = const [],
@@ -296,6 +297,10 @@ class Question {
   final String? music;
   final int pointsPlus;
   final int pointsMinus;
+
+  /// Place in the category, stored as `questionIndex`. Without it the
+  /// questions of a category go by [pointsPlus]; see [sortQuestions].
+  final int? position;
 
   /// Free questions only: no buzzing, e.g. for estimation questions.
   final bool noBuzzer;
@@ -347,6 +352,7 @@ class Question {
       music: _str(data['music']),
       pointsPlus: _int(data['pointsPlus']),
       pointsMinus: _int(data['pointsMinus']),
+      position: data['questionIndex'] is num ? (data['questionIndex'] as num).toInt() : null,
       noBuzzer: data['noBuzzer'] == true,
       answers: _strings(data['answers']),
       answersCorrect: correct is List ? [for (final e in correct) e == true] : const [],
@@ -450,6 +456,17 @@ class Question {
       ];
 }
 
+/// Puts the questions of one category in playing order: by their positions
+/// when every question has one, otherwise by points as in v1. A position
+/// lets a Fragenhagel worth 20 a question come after one worth 300.
+void sortQuestions(List<Question> questions) {
+  if (questions.isNotEmpty && questions.every((q) => q.position != null)) {
+    questions.sort((a, b) => a.position != b.position ? a.position!.compareTo(b.position!) : a.pointsPlus.compareTo(b.pointsPlus));
+  } else {
+    questions.sort((a, b) => a.pointsPlus.compareTo(b.pointsPlus));
+  }
+}
+
 class Category {
   Category({
     required this.id,
@@ -472,7 +489,7 @@ class Category {
   final bool active;
   final int? createdAtMillis;
 
-  /// Sorted by [Question.pointsPlus], ascending.
+  /// In playing order; see [sortQuestions].
   final List<Question> questions;
   final MusicConfig sounds;
   final Map<String, dynamic> data;
@@ -581,11 +598,14 @@ class QuestionRef {
 /// offered unless switched off ([hidden]), and a game that never saved them
 /// gets them appended ([withBuiltins]).
 class CueCard {
-  const CueCard({this.title = '', this.text = '', this.image, this.video, this.hidden = false});
+  const CueCard({this.title = '', this.text = '', this.image, this.video, this.hidden = false, this.style = CardStyle.standard});
 
   final String title;
   final String text;
   final String? image;
+
+  /// How the card looks on the big screen.
+  final CardStyle style;
 
   /// A video clip; when set the card plays it instead of showing text.
   final String? video;
@@ -605,6 +625,7 @@ class CueCard {
         'image': image,
         'video': video,
         if (hidden) 'hidden': true,
+        if (style != CardStyle.standard) 'style': style.name,
       };
 
   static List<CueCard> listFrom(Object? stored) => [
@@ -617,6 +638,7 @@ class CueCard {
                 image: _str(entry['image']),
                 video: _str(entry['video']),
                 hidden: entry['hidden'] == true,
+                style: CardStyle.fromName(entry['style']),
               ),
       ];
 
@@ -684,7 +706,8 @@ class GameContent {
       final categoryQuestions = [
         for (final entry in (questions[categoryId] ?? const <String, Map<String, dynamic>>{}).entries)
           Question.fromMap(entry.key, entry.value),
-      ]..sort((a, b) => a.pointsPlus.compareTo(b.pointsPlus));
+      ];
+      sortQuestions(categoryQuestions);
       byGroup[target]!.add(Category(
         id: categoryId,
         name: data['name'] is String ? data['name'] as String : '',
