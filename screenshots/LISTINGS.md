@@ -1,195 +1,155 @@
 # Store listings
 
 Texts for Google Play, the App Store and the Microsoft Store, in English and
-German. Lengths are counted and within each store's limit (in brackets).
-The images in this folder are made by
-`flutter test tool/store_screenshots_test.dart --update-goldens`.
+German. The number after each text is its length; the store's limit is in
+brackets.
 
 ## Images
 
 | Folder | Size (px) | Where it goes |
 | --- | --- | --- |
-| `playstore_phone/` | 1080 × 1920 | Google Play, phone screenshots (2–8) |
+| `playstore_phone/` | 1080 × 1920 | Google Play, phone screenshots |
 | `playstore_tablet/` | 1800 × 2560 | Google Play, 7" and 10" tablet screenshots |
 | `playstore_feature_graphic.png` | 1024 × 500 | Google Play, feature graphic |
 | `appstore_iphone_6_5/` | 1284 × 2778 | App Store, iPhone 6.5" display |
 | `appstore_ipad_13/` | 2064 × 2752 | App Store, iPad 13" display |
 | `microsoft_store/` | 1920 × 1080 | Microsoft Store, desktop screenshots |
 
-Suggested order: board, controller, whiteboards, connections, feud, editor.
-All images are RGB without transparency, which the App Store requires.
-
-The App Store also accepts 6.9" iPhone screenshots (1320 × 2868). If App Store
-Connect asks for that size, add it to `_specs` in
-`tool/store_screenshots_test.dart` and run the command again.
+Order: board, controller, whiteboards, connections, feud, editor. Made with
+`flutter test tool/store_screenshots_test.dart --update-goldens`. If App Store
+Connect asks for 6.9" iPhone images (1320 × 2868), add that size to `_specs`
+in that file.
 
 ## English
 
-**App name** [30]: `Quiz Studio: Host a Quiz Show` (29)
+**App name** [30]: `Quiz Studio: Your Quiz Show` (27)
 
 **Short description**, Google Play [80]:
-Host your own quiz show: big screen, phone buzzers, music and effects. (70)
+Host a quiz night like on TV. Your guests buzz in and answer on their phones. (77)
 
-**Subtitle**, App Store [30]: `Your own quiz show night` (24)
+**Subtitle**, App Store [30]: `Host a quiz night like on TV` (28)
 
 **Promotional text**, App Store [170]:
-Put your quiz on the big screen and run it from your phone. Teams buzz in and answer on their own phones, even without internet. (128)
+The quiz on the big screen, your phone as the remote, and every guest's phone as a buzzer. Your next party just became a game show. (131)
 
 **Keywords**, App Store [100]:
-`quiz,trivia,pub quiz,game show,buzzer,party,quiz night,whiteboard,quiz maker,family game,team` (93)
+`quiz,trivia,pub quiz,game show,buzzer,party game,quiz night,family game,team,questions,host` (91)
 
 **Description** [4000]:
 
 ```
-Host your own quiz show, at home, at a party or in the pub.
+Ever wanted to host your own quiz show? Quiz Studio turns your living room, party or pub into a TV game show.
 
-Quiz Studio puts your quiz on the TV or projector and lets you run the whole evening from your phone. Teams scan a code and their phones become buzzers and answer pads.
+The quiz plays on the big screen, you host it from your phone, and your guests play with their own phones. They buzz in, write their answers and race to solve puzzles. No paper, no pens, no adding up points by hand.
 
-THE BIG SCREEN
-• Boards as a wheel, a grid or a map of categories with branching paths
-• Team scores, question pictures, music bars and a picture strip for reveals
-• Confetti, fireworks, balloons, a spotlight and cards with pictures or video
-• On Windows the show opens in its own window, full screen on the projector
+PERFECT FOR
+• Birthdays and family get-togethers
+• Pub quizzes and club nights
+• Office parties and team events
+• School classes and youth groups
+• Christmas, New Year's Eve and weddings
 
-RUN IT FROM YOUR PHONE
-• Right, Wrong, Reveal and Next always sit in the same place
-• Open questions from the board, give points, play sounds
-• A second person can help from their own phone
+WHAT MAKES IT FUN
+• Real buzzers: every phone becomes a buzzer, and everyone sees who was first
+• Write and draw: teams answer on their phones, then you reveal the answers one by one on the big screen
+• Game show rounds: multiple choice, survey rounds where you guess the most popular answers, pictures that reveal bit by bit, quick-fire rounds and word puzzles where you find four groups of four
+• Atmosphere: music, sound effects, confetti and fireworks at the push of a button
+• Scores on screen: points are counted for you and always visible
 
-BUZZERS
-• Every team's phone is a buzzer, no account needed
-• USB buzzer boxes work too, and reconnect by themselves
-• Buzz order, team sounds and a clear banner for whoever buzzed first
+EASY FOR THE HOST
+• Write your quiz in minutes, or together with friends who each add a category
+• Big buttons for right and wrong
+• Guests join by scanning a code, no sign-up needed
+• Keeps going even when the internet drops, as long as everyone is on the same Wi-Fi
 
-ANSWERS ON THE TEAMS' DEVICES
-• Whiteboards to write or draw on, text, numbers and sliders
-• Pick one, put in order and match pairs
-• Show the answers one by one and rate them, many rate themselves
-• Optional timer, and teams can lock in early
+WHAT YOU NEED
+A Windows computer connected to your TV or projector shows the quiz. You host from your phone, and every team plays on a phone or tablet.
 
-QUESTION TYPES
-• Free questions and ABCD
-• Picture and clue reveals
-• Survey rounds: guess the most popular answers
-• Connections: find four groups of four
-• Matching and quick-fire rounds
-
-MUSIC AND SOUNDS
-• Background music for calm and thrilling moments
-• A sound for every moment: right, wrong, reveal, time's up and more
-• Use the built-in sounds or upload your own
-
-BUILT TOGETHER
-• Write games with friends and invite them with a link
-• Share single categories so nobody spoils the rest of the evening
-
-WORKS ON THE LOCAL NETWORK
-Phones on the same Wi-Fi talk straight to the big screen, so the show keeps going when the internet drops.
-
-Quiz Studio is free and open source.
+Free and without ads.
 ```
 
 **What's new** (version 2.0):
 
 ```
-Quiz Studio 2 is a complete rewrite: a new controller, map boards, whiteboards and answer screens on the teams' phones, Connections, matching and quick-fire rounds, new sounds and music, and play over the local network.
+Quiz Studio 2 is all new: teams answer on their own phones, new game show rounds, music and effects, and hosting that is easier than ever.
 ```
 
-**Microsoft Store, product features** (up to 20, 200 each):
+**Microsoft Store, product features**:
 
-- Put your quiz on the TV or projector in its own full-screen window
-- Run the show from your phone: right, wrong, reveal, points and sounds
-- Teams use their phones as buzzers, or plug in a USB buzzer box
-- Whiteboards, numbers, sliders and other answer screens on the teams' devices
-- Survey rounds, Connections, matching, picture reveals and quick-fire rounds
-- Background music, sound effects, confetti and fireworks
-- Write games together with friends
-- Keeps working over the local Wi-Fi when the internet drops
+- Host a quiz night like on TV, on your TV or projector
+- Your phone is the remote: right, wrong, points and sounds
+- Every guest's phone becomes a buzzer
+- Teams write and draw their answers on their phones
+- Survey rounds, picture reveals, quick-fire rounds and word puzzles
+- Music, sound effects, confetti and fireworks
+- Write your quiz together with friends
+- Free and without ads
 
 ## Deutsch
 
-**App-Name** [30]: `Quiz Studio: Quizshow-Abend` (27)
+**App-Name** [30]: `Quiz Studio: Deine Quizshow` (27)
 
 **Kurzbeschreibung**, Google Play [80]:
-Deine eigene Quizshow: großer Bildschirm, Handys als Buzzer, Musik und Effekte. (79)
+Dein Quizabend wie im Fernsehen. Deine Gäste buzzern und antworten am Handy. (76)
 
-**Untertitel**, App Store [30]: `Deine eigene Quizshow` (21)
+**Untertitel**, App Store [30]: `Dein Quizabend wie im TV` (24)
 
 **Werbetext**, App Store [170]:
-Zeig dein Quiz auf dem großen Bildschirm und steuere es vom Handy. Teams buzzern und antworten auf ihren eigenen Handys, auch ohne Internet. (140)
+Das Quiz auf dem Fernseher, dein Handy als Fernbedienung und jedes Handy deiner Gäste als Buzzer. Deine nächste Party wird zur Spielshow. (137)
 
 **Keywords**, App Store [100]:
-`quiz,quizshow,kneipenquiz,buzzer,party,spieleabend,whiteboard,fragen,ratespiel,quizabend,team` (93)
+`quiz,quizshow,kneipenquiz,buzzer,partyspiel,spieleabend,quizabend,fragen,ratespiel,team` (87)
 
 **Beschreibung** [4000]:
 
 ```
-Deine eigene Quizshow, zu Hause, auf der Party oder in der Kneipe.
+Wolltest du schon immer deine eigene Quizshow moderieren? Quiz Studio macht aus deinem Wohnzimmer, deiner Party oder deiner Kneipe eine Spielshow wie im Fernsehen.
 
-Quiz Studio bringt dein Quiz auf den Fernseher oder Beamer, und du steuerst den ganzen Abend vom Handy aus. Teams scannen einen Code und ihre Handys werden zu Buzzern und Antwortfeldern.
+Das Quiz läuft auf dem großen Bildschirm, du moderierst vom Handy aus, und deine Gäste spielen mit ihren eigenen Handys. Sie buzzern, schreiben ihre Antworten und lösen Rätsel um die Wette. Kein Papier, keine Stifte, kein Punktezählen von Hand.
 
-DER GROSSE BILDSCHIRM
-• Spielbretter als Rad, Raster oder als Karte mit verzweigten Wegen
-• Punktestand der Teams, Bilder zur Frage, Musikbalken und ein Bilderstreifen für Aufdeckfragen
-• Konfetti, Feuerwerk, Ballons, ein Scheinwerfer und Karten mit Bildern oder Videos
-• Unter Windows läuft die Show in einem eigenen Fenster im Vollbild auf dem Beamer
+PERFEKT FÜR
+• Geburtstage und Familienfeiern
+• Kneipenquiz und Vereinsabende
+• Firmenfeiern und Teamevents
+• Schulklassen und Jugendgruppen
+• Weihnachten, Silvester und Hochzeiten
 
-STEUERUNG VOM HANDY
-• Richtig, Falsch, Aufdecken und Weiter sind immer an derselben Stelle
-• Fragen vom Spielbrett öffnen, Punkte vergeben, Sounds abspielen
-• Eine zweite Person kann vom eigenen Handy aus mithelfen
+DAS MACHT SPASS
+• Echte Buzzer: Jedes Handy wird zum Buzzer, und alle sehen, wer zuerst war
+• Schreiben und malen: Die Teams antworten auf dem Handy, du deckst die Antworten nacheinander auf dem großen Bildschirm auf
+• Runden wie im Fernsehen: Multiple Choice, Umfragerunden, in denen die häufigsten Antworten gesucht sind, Bilder, die sich nach und nach zeigen, Fragenhagel und Worträtsel, bei denen vier Gruppen zu je vier Begriffen gefunden werden
+• Stimmung: Musik, Soundeffekte, Konfetti und Feuerwerk auf Knopfdruck
+• Punkte im Blick: Die Punkte werden für dich gezählt und stehen immer auf dem Bildschirm
 
-BUZZER
-• Das Handy jedes Teams ist ein Buzzer, ganz ohne Konto
-• USB-Buzzer funktionieren auch und verbinden sich von selbst wieder
-• Reihenfolge, Teamsounds und ein deutlicher Hinweis, wer zuerst gebuzzert hat
+EINFACH ZU MODERIEREN
+• Dein Quiz ist in wenigen Minuten geschrieben, allein oder mit Freunden, die je eine Kategorie beisteuern
+• Große Knöpfe für richtig und falsch
+• Gäste machen mit, indem sie einen Code scannen, ganz ohne Anmeldung
+• Läuft weiter, wenn das Internet ausfällt, solange alle im selben WLAN sind
 
-ANTWORTEN AUF DEN GERÄTEN DER TEAMS
-• Whiteboards zum Schreiben und Malen, Text, Zahlen und Schieberegler
-• Eins auswählen, in Reihenfolge bringen und Paare zuordnen
-• Antworten nacheinander zeigen und bewerten, viele bewerten sich selbst
-• Mit Timer, und Teams können früher einloggen
+DAS BRAUCHST DU
+Ein Windows-Computer am Fernseher oder Beamer zeigt das Quiz. Du moderierst vom Handy, und jedes Team spielt auf einem Handy oder Tablet.
 
-FRAGETYPEN
-• Freie Fragen und ABCD
-• Bilder und Hinweise nach und nach aufdecken
-• Umfragerunden: die häufigsten Antworten erraten
-• Connections: Finde vier Gruppen zu je vier Begriffen
-• Zuordnen und Fragenhagel
-
-MUSIK UND SOUNDS
-• Hintergrundmusik für ruhige und spannende Momente
-• Ein Sound für jeden Moment: richtig, falsch, aufdecken, Zeit um und mehr
-• Eingebaute Sounds oder eigene Dateien
-
-GEMEINSAM ERSTELLT
-• Spiele mit Freunden schreiben und sie per Link einladen
-• Einzelne Kategorien teilen, damit niemand den Rest des Abends verrät
-
-FUNKTIONIERT IM LOKALEN NETZ
-Handys im selben WLAN sprechen direkt mit dem großen Bildschirm, so läuft die Show weiter, wenn das Internet ausfällt.
-
-Quiz Studio ist kostenlos und Open Source.
+Kostenlos und ohne Werbung.
 ```
 
 **Neuigkeiten** (Version 2.0):
 
 ```
-Quiz Studio 2 ist komplett neu geschrieben: neue Steuerung, Karten als Spielbrett, Whiteboards und Antwortfelder auf den Handys der Teams, Connections, Zuordnen und Fragenhagel, neue Sounds und Musik, und Spielen im lokalen Netz.
+Quiz Studio 2 ist komplett neu: Teams antworten auf ihren eigenen Handys, neue Runden wie in der Spielshow, Musik und Effekte, und Moderieren war noch nie so einfach.
 ```
 
 **Microsoft Store, Produktfunktionen**:
 
-- Dein Quiz im eigenen Vollbildfenster auf dem Fernseher oder Beamer
-- Steuerung vom Handy: richtig, falsch, aufdecken, Punkte und Sounds
-- Handys als Buzzer, oder ein USB-Buzzer
-- Whiteboards, Zahlen, Schieberegler und weitere Antwortfelder auf den Geräten der Teams
-- Umfragerunden, Connections, Zuordnen, Bilder aufdecken und Fragenhagel
-- Hintergrundmusik, Soundeffekte, Konfetti und Feuerwerk
-- Spiele gemeinsam mit Freunden schreiben
-- Läuft im lokalen WLAN weiter, wenn das Internet ausfällt
+- Dein Quizabend wie im Fernsehen, auf dem Fernseher oder Beamer
+- Dein Handy ist die Fernbedienung: richtig, falsch, Punkte und Sounds
+- Jedes Handy deiner Gäste wird zum Buzzer
+- Teams schreiben und malen ihre Antworten auf dem Handy
+- Umfragerunden, Bilderrätsel, Fragenhagel und Worträtsel
+- Musik, Soundeffekte, Konfetti und Feuerwerk
+- Schreib dein Quiz gemeinsam mit Freunden
+- Kostenlos und ohne Werbung
 
 ## Before publishing
 
-- The store images show the app's English interface. German store pages can use them as they are, or new ones can be made once the app has a German interface.
-- The App Store and Microsoft Store links on the website are not there yet; add them to `docs/index.html` once the listings exist.
+The store images show the app's English screens. German store pages can use them as they are, or get their own once the app speaks German.

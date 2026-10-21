@@ -259,35 +259,35 @@ Widget _editor() {
 
 final _scenes = <String, Scene>{
   'board': Scene(
-    "Your quiz show on the big screen",
-    "Boards, scores, music and effects on the TV or projector. You control the show from your phone.",
+    "Your own TV quiz show",
+    "The quiz plays on the big screen. You host it from your phone.",
     (tester, wide) {
       final controller = _host(const [OpenQuestion(QuestionRef('music', 'q2')), Buzz('quizzards')]);
       return _pair(wide, _presenter(_host(const [])), _phone, _controller(controller), width: 400);
     },
   ),
-  'controller': Scene("Every button where you expect it", "Right, wrong, reveal: the controller never moves its buttons around.", (tester, wide) {
+  'controller': Scene("Hosting made easy", "Big buttons for right and wrong. The points are counted for you.", (tester, wide) {
     final host = _host(_abcd);
     return _pair(wide, _presenter(host), _phone, _controller(host), width: 420, left: true);
   }),
   'whiteboards': Scene(
-    "Phones become whiteboards",
-    "Teams write or draw their answer. You show and rate them one by one.",
+    "Write it, draw it, reveal it",
+    "Every team answers on their phone. You reveal the answers one by one.",
     (tester, wide) {
       final writing = _host(_whiteboards().take(1).toList());
       return _pair(wide, _presenter(_host(_rated())), _tabletWide, _player(writing, 'owls'), width: 760);
     },
     act: _writeEight,
   ),
-  'connections': Scene("Puzzle rounds, beautifully animated", "Connections, matching, ordering, sliders and more, on every team's device.", (tester, wide) {
+  'connections': Scene("Puzzles for the whole room", "Find four groups of four, put things in order, match the pairs.", (tester, wide) {
     final h = _connections();
     return _pair(wide, _presenter(h), _tabletTall, _player(h, 'owls'), width: 540);
   }),
-  'feud': Scene("Buzz in!", "Phones as buzzers, or real USB buzzers. Survey rounds, quick-fire rounds and picture reveals.", (tester, wide) {
+  'feud': Scene("Who was first?", "Every phone becomes a buzzer. Survey rounds, picture reveals and quick-fire rounds.", (tester, wide) {
     final buzzer = _host(const [OpenQuestion(QuestionRef('music', 'q2'))]);
     return _pair(wide, _presenter(_host(_feud)), _phone, _player(buzzer, 'pants'), width: 340, drop: 0.92);
   }),
-  'editor': Scene("Build quizzes together", "Write categories and questions with friends, then spin the wheel on the big screen.", (tester, wide) {
+  'editor': Scene("Make your own quiz", "Write your questions in minutes, alone or with friends. Then spin the wheel.", (tester, wide) {
     return _pair(wide, _presenter(_host(const [SelectGroup('speed')])), _tabletTall, _editor(), width: 520, left: true, drop: 0.92);
   }),
 };
@@ -444,9 +444,9 @@ void main() {
             child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
               _logo(30),
               const SizedBox(height: 26),
-              const Text("Host your own quiz show", style: TextStyle(fontSize: 36, height: 1.1, fontWeight: FontWeight.w900)),
+              const Text("Your own TV quiz show", style: TextStyle(fontSize: 36, height: 1.1, fontWeight: FontWeight.w900)),
               const SizedBox(height: 12),
-              Text("Big screen, phone buzzers, music and effects.", style: TextStyle(fontSize: 18, color: Colors.white.withValues(alpha: 0.92))),
+              Text("Play on the big screen, buzz in with your phone.", style: TextStyle(fontSize: 18, color: Colors.white.withValues(alpha: 0.92))),
             ]),
           ),
           const SizedBox(width: 24),
