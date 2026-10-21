@@ -1045,9 +1045,15 @@ void main() {
         onRename: () {},
         onUpgrade: () {},
         onSignOut: () {},
+        onDelete: () {},
       ),
     );
     await shot('account_email');
+  });
+
+  testWidgets('account: deleting asks for the password', (tester) async {
+    await page(tester, const Center(child: DeleteAccountDialog(email: 'jacob@example.com')));
+    await shot('account_delete');
   });
 
   Future<void> assistantPage(WidgetTester tester, AssistantClient client, List<String> activity) => page(

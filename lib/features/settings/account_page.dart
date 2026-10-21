@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/auth/user_service.dart';
 import 'package:quiz_show/features/auth/widgets/auth_form.dart';
+import 'package:quiz_show/features/settings/account_deletion.dart';
 import 'package:quiz_show/features/settings/sound_credits.dart';
 
 const String _termsUrl = 'https://equirinya.github.io/quiz_studio/terms.html';
@@ -97,6 +98,35 @@ class _AccountPageState extends State<AccountPage> {
     await FirebaseAuth.instance.signOut();
   }
 
+  Future<void> _delete() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final password = await showDialog<String>(context: context, builder: (_) => DeleteAccountDialog(email: user.email));
+    if (password == null || !mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const PopScope(
+        canPop: false,
+        child: AlertDialog(content: Row(children: [CircularProgressIndicator(), SizedBox(width: 20), Expanded(child: Text("Deleting your account…"))])),
+      ),
+    );
+    try {
+      await Assistant.instance.stop();
+      await deleteAccount(password: user.email == null ? null : password);
+      navigator.popUntil((route) => route.isFirst);
+      messenger.showSnackBar(const SnackBar(content: Text("Your account and its data are deleted.")));
+    } on FirebaseAuthException catch (e) {
+      navigator.pop();
+      messenger.showSnackBar(SnackBar(content: Text(deletionErrorMessage(e.code))));
+    } catch (_) {
+      navigator.pop();
+      messenger.showSnackBar(const SnackBar(content: Text("The account could not be deleted. Check the connection and try again.")));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -110,6 +140,7 @@ class _AccountPageState extends State<AccountPage> {
         onRename: _rename,
         onUpgrade: _upgrade,
         onSignOut: () => _signOut(user?.isAnonymous ?? true),
+        onDelete: _delete,
         assistant: Assistant.supported ? const AssistantSection() : null,
       ),
     );
@@ -127,6 +158,7 @@ class AccountView extends StatelessWidget {
     required this.onRename,
     required this.onUpgrade,
     required this.onSignOut,
+    this.onDelete,
     this.assistant,
   });
 
@@ -137,6 +169,9 @@ class AccountView extends StatelessWidget {
   final VoidCallback onRename;
   final VoidCallback onUpgrade;
   final VoidCallback onSignOut;
+
+  /// Deleting the account; null hides it.
+  final VoidCallback? onDelete;
 
   /// The assistant switch, on computers.
   final Widget? assistant;
@@ -192,6 +227,13 @@ class AccountView extends StatelessWidget {
             subtitle: const Text("Sign in with this address on your other devices"),
           ),
         ListTile(leading: const Icon(Icons.logout), title: const Text("Sign out"), onTap: onSignOut),
+        if (onDelete != null)
+          ListTile(
+            leading: Icon(Icons.delete_forever_outlined, color: scheme.error),
+            title: Text("Delete account", style: TextStyle(color: scheme.error)),
+            subtitle: const Text("Your profile, your own games and your sessions"),
+            onTap: onDelete,
+          ),
         if (assistant != null) ...[const Divider(height: 32), assistant!],
         const Divider(height: 32),
         ListTile(
@@ -218,3 +260,72 @@ class AccountView extends StatelessWidget {
     );
   }
 }
+
+/// Asks before deleting the account, and for the password of one with an
+/// email address. Pops with the password ('' for a guest), or null.
+class DeleteAccountDialog extends StatefulWidget {
+  const DeleteAccountDialog({super.key, required this.email});
+
+  final String? email;
+
+  @override
+  State<DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
+  final TextEditingController _password = TextEditingController();
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final needsPassword = widget.email != null;
+    return AlertDialog(
+      icon: Icon(Icons.delete_forever_outlined, color: scheme.error),
+      title: const Text("Delete account?"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "This deletes your profile, the games only you are in, with their pictures and sounds, and the sessions you host. "
+            "Games you share stay with the others; if you are their only admin, a co-author becomes admin. "
+            "This cannot be undone.",
+          ),
+          if (needsPassword) ...[
+            const SizedBox(height: 16),
+            TextField(
+              controller: _password,
+              obscureText: true,
+              autofocus: true,
+              decoration: InputDecoration(labelText: "Password", helperText: widget.email),
+              onChanged: (_) => setState(() {}),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Cancel")),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: scheme.error, foregroundColor: scheme.onError),
+          onPressed: needsPassword && _password.text.isEmpty ? null : () => Navigator.of(context).pop(needsPassword ? _password.text : ''),
+          child: const Text("Delete"),
+        ),
+      ],
+    );
+  }
+}
+
+/// What to tell someone whose account could not be deleted.
+String deletionErrorMessage(String code) => switch (code) {
+      'wrong-password' || 'invalid-credential' || 'invalid-login-credentials' => "That password is not right.",
+      'too-many-requests' => "Too many tries. Wait a moment and try again.",
+      'requires-recent-login' => "Sign out, sign in again and then delete the account.",
+      'network-request-failed' => "No connection. Try again when you are online.",
+      _ => "The account could not be deleted. Try again.",
+    };
