@@ -145,6 +145,8 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
 
     case Judge(:final correct):
       if (s.phase != Phase.buzzered || s.buzzQueue.isEmpty || question == null || !question.defaultJudging) return _no(s);
+      // Top answers: right means tapping the answer the team named.
+      if (correct && question.type == QuestionType.topAnswers) return _no(s);
       final team = s.buzzQueue.first;
       if (correct && question.type == QuestionType.rapidFire) {
         // Right: the points, and straight on to the next item.
@@ -256,6 +258,51 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       if (!_feudAnswering(s, question) || s.wrongAttempts == 0) return _no(s);
       return _ok(s.copyWith(wrongAttempts: 0));
 
+    case TopAnswerToggle(:final index):
+      final top = question?.topAnswers;
+      if (!questionOpen || question?.type != QuestionType.topAnswers || top == null) return _no(s);
+      if (index < 0 || index >= top.items.length) return _no(s);
+      final finder = s.foundBy[index];
+      if (s.feudRevealed.contains(index)) {
+        // Covered again: whoever found it gives the points back.
+        return _ok(s.copyWith(
+          feudRevealed: [...s.feudRevealed]..remove(index),
+          foundBy: {...s.foundBy}..remove(index),
+          teams: finder == null ? null : _addPoints(s.teams, finder, -top.pointsOf(index, question!.pointsPlus)),
+          phase: s.phase == Phase.answerRevealed ? Phase.question : null,
+        ));
+      }
+      final revealed = [...s.feudRevealed, index];
+      final all = revealed.length >= top.items.length;
+      final answering = !top.onDevices && s.phase == Phase.buzzered && s.buzzQueue.isNotEmpty ? s.buzzQueue.first : null;
+      if (answering == null) {
+        return _ok(
+          s.copyWith(feudRevealed: revealed, phase: all && !top.onDevices ? Phase.answerRevealed : null),
+          [SoundEffect(all ? effectFanfare : effectReveal)],
+        );
+      }
+      // The answering team named it: its points, and the others may buzz again.
+      final next = s.copyWith(
+        feudRevealed: revealed,
+        foundBy: {...s.foundBy, index: answering},
+        teams: _addPoints(s.teams, answering, top.pointsOf(index, question!.pointsPlus)),
+        buzzQueue: const [],
+        phase: all ? Phase.answerRevealed : Phase.question,
+        media: !all && question.musicAt(s.revealed) != null ? MediaPlayback.playing : null,
+      );
+      return _ok(next, [const SoundEffect(effectAnswerCorrect), if (all) const SoundEffect(effectFanfare)]);
+
+    case MarkTopAnswers(:final teamId, :final found):
+      final top = question?.topAnswers;
+      final round = s.answerRound;
+      if (round == null || top == null || s.team(teamId) == null) return _no(s);
+      final indices = {for (final i in found) if (i >= 0 && i < top.items.length) i}.toList()..sort();
+      final before = [...?round.found[teamId]]..sort();
+      if (_sameList(indices, before) && round.awarded.containsKey(teamId)) return _no(s);
+      final points = top.pointsFor(indices, question!.pointsPlus);
+      final marked = round.copyWith(found: {...round.found, teamId: indices});
+      return _ok(_award(s, marked, teamId, points, verdict: indices.isNotEmpty));
+
     // ── audio ────────────────────────────────────────────────────────────────
     case SetMedia(:final playback):
       if (playback == s.media) return _no(s);
@@ -320,7 +367,9 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
           revealed: [...round.revealed]..remove(teamId),
           verdicts: {...round.verdicts}..remove(teamId),
           awarded: {...round.awarded}..remove(teamId),
+          found: {...round.found}..remove(teamId),
         ),
+        foundBy: {for (final entry in s.foundBy.entries) if (entry.value != teamId) entry.key: entry.value},
       ));
 
     case SetTeamSound(:final teamId, :final sound):
@@ -530,6 +579,7 @@ SessionState _backToBoard(SessionState s) => s.copyWith(
       revealed: 0,
       imageFocus: 0,
       feudRevealed: const [],
+      foundBy: const {},
       wrongAttempts: 0,
       media: MediaPlayback.stopped,
       answerRound: null,

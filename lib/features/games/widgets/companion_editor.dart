@@ -38,6 +38,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
   late final TextEditingController _step;
   late final TextEditingController _unit;
   late final TextEditingController _solution;
+  late final TextEditingController _tolerance;
   late final List<TextEditingController> _options;
   late final List<TextEditingController> _targets;
 
@@ -63,6 +64,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
     _step = TextEditingController(text: n(spec?.step));
     _unit = TextEditingController(text: spec?.unit ?? '');
     _solution = TextEditingController(text: n(spec?.solution));
+    _tolerance = TextEditingController(text: n(spec?.tolerance));
     _options = [for (final option in spec?.options ?? const <String>[]) TextEditingController(text: option)];
     _targets = [
       for (var i = 0; i < _options.length; i++) TextEditingController(text: spec?.targets.elementAtOrNull(i) ?? ''),
@@ -71,7 +73,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
 
   @override
   void dispose() {
-    for (final controller in [_min, _max, _step, _unit, _solution, ..._options, ..._targets]) {
+    for (final controller in [_min, _max, _step, _unit, _solution, _tolerance, ..._options, ..._targets]) {
       controller.dispose();
     }
     super.dispose();
@@ -107,6 +109,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
         step: kind == CompanionKind.slider ? n(_step) : null,
         unit: _hasRange && _unit.text.trim().isNotEmpty ? _unit.text.trim() : null,
         solution: _hasRange ? n(_solution) : null,
+        tolerance: _hasRange ? n(_tolerance) : null,
         options: _hasItems ? [for (final c in _options) c.text] : const [],
         targets: kind == CompanionKind.match ? [for (final c in _targets) c.text] : const [],
         lockable: _lockable,
@@ -208,7 +211,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
                   Text(_backgroundImage == null ? "Choose the picture to draw on" : "Picture set"),
                 ],
               ),
-            if (kind == CompanionKind.whiteboard && _background == 'list')
+            if ((kind == CompanionKind.whiteboard && _background == 'list') || kind == CompanionKind.list)
               DropdownMenu<int>(
                 label: const Text("Rows"),
                 initialSelection: _listRows,
@@ -217,6 +220,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
               ),
             if (_hasRange) ...[
               _number(_solution, "Right value"),
+              _number(_tolerance, "Right within ±"),
               SizedBox(
                 width: 110,
                 child: TextField(

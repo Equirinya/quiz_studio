@@ -5,6 +5,7 @@ import 'companion.dart';
 import 'content.dart';
 import 'matching.dart';
 import 'rapid_fire.dart';
+import 'top_answers.dart';
 
 String _number(double value) => value % 1 == 0 ? value.toInt().toString() : value.toString();
 
@@ -34,6 +35,12 @@ String questionAsText(Question q) {
         final shown = value == null ? '-' : '${_number(value)}${q.absoluteValues ? '' : ' %'}';
         out.writeln('  $shown  $information');
       }
+    case QuestionType.topAnswers:
+      final top = q.topAnswers ?? const TopAnswers();
+      out.writeln('  ${top.mode.uiString}');
+      for (final (i, item) in top.items.indexed) {
+        out.writeln('  ${i + 1}. ${item.answer} (${top.pointsOf(i, q.pointsPlus)})');
+      }
     case QuestionType.connections:
       const colours = ['yellow', 'green', 'blue', 'purple'];
       for (final (i, group) in q.connectionGroups.indexed) {
@@ -59,7 +66,7 @@ String questionAsText(Question q) {
     case QuestionType.unsupported:
       break;
   }
-  final companion = q.type == QuestionType.rapidFire || q.type == QuestionType.matching ? null : q.companion;
+  final companion = q.type == QuestionType.rapidFire || q.type == QuestionType.matching || q.type == QuestionType.topAnswers ? null : q.companion;
   if (companion != null && q.type == QuestionType.connections) {
     final timer = companion.timerSeconds == null ? '' : ', ${companion.timerSeconds} s';
     out.writeln('  ${companion.mistakes} mistakes allowed$timer');

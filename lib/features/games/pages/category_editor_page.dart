@@ -363,7 +363,7 @@ class _QuestionCardState extends State<QuestionCard> {
             },
           ),
           // A Fragenhagel brings its own screen for the teams' devices.
-          if (_q.type != QuestionType.rapidFire && _q.type != QuestionType.matching)
+          if (_q.type != QuestionType.rapidFire && _q.type != QuestionType.matching && _q.type != QuestionType.topAnswers)
             CompanionEditor(key: ValueKey('companion-${_q.type}'), gameId: widget.gameId, question: _q, save: _save),
         ],
       ),

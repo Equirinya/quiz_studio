@@ -106,6 +106,7 @@ class SessionState {
     this.revealed = 0,
     this.imageFocus = 0,
     this.feudRevealed = const [],
+    this.foundBy = const {},
     this.wrongAttempts = 0,
     this.media = MediaPlayback.stopped,
     this.music,
@@ -146,8 +147,12 @@ class SessionState {
   /// 0 shows the question's own image.
   final int imageFocus;
 
-  /// Feud: indices of the answers uncovered so far.
+  /// Survey duel and top answers: indices of the answers uncovered so far.
   final List<int> feudRevealed;
+
+  /// Top answers played with buzzers: which team found each answer on the
+  /// list, by its index.
+  final Map<int, String> foundBy;
 
   /// Feud: strikes of the answering team.
   final int wrongAttempts;
@@ -191,6 +196,7 @@ class SessionState {
     int? revealed,
     int? imageFocus,
     List<int>? feudRevealed,
+    Map<int, String>? foundBy,
     int? wrongAttempts,
     MediaPlayback? media,
     Object? music = _unset,
@@ -213,6 +219,7 @@ class SessionState {
         revealed: revealed ?? this.revealed,
         imageFocus: imageFocus ?? this.imageFocus,
         feudRevealed: feudRevealed ?? this.feudRevealed,
+        foundBy: foundBy ?? this.foundBy,
         wrongAttempts: wrongAttempts ?? this.wrongAttempts,
         media: media ?? this.media,
         music: music is String? ? music : this.music,
@@ -236,6 +243,7 @@ class SessionState {
         'revealed': revealed,
         'imageFocus': imageFocus,
         'feudRevealed': feudRevealed,
+        if (foundBy.isNotEmpty) 'foundBy': {for (final entry in foundBy.entries) '${entry.key}': entry.value},
         'wrongAttempts': wrongAttempts,
         'media': media.name,
         'music': music,
@@ -259,6 +267,10 @@ class SessionState {
         revealed: (json['revealed'] as num?)?.toInt() ?? 0,
         imageFocus: (json['imageFocus'] as num?)?.toInt() ?? 0,
         feudRevealed: [for (final index in json['feudRevealed'] as List? ?? const []) (index as num).toInt()],
+        foundBy: {
+          for (final entry in (json['foundBy'] as Map? ?? const {}).entries)
+            if (int.tryParse('${entry.key}') != null) int.parse('${entry.key}'): '${entry.value}',
+        },
         wrongAttempts: (json['wrongAttempts'] as num?)?.toInt() ?? 0,
         media: MediaPlayback.values.byName(json['media'] as String? ?? MediaPlayback.stopped.name),
         music: json['music'] as String?,

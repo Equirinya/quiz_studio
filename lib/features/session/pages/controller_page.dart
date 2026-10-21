@@ -438,6 +438,7 @@ class _NowPanel extends StatelessWidget {
               ),
             );
           }),
+        if (q.type == QuestionType.topAnswers) _TopAnswersPanel(state: state, question: q, send: send),
         if (round != null && q.type != QuestionType.rapidFire)
           _AnswersPanel(state: state, round: round, question: q, send: send, hostClock: hostClock, backgroundImage: backgroundImage),
         if (q.type == QuestionType.abcd)
@@ -648,6 +649,83 @@ class _RapidPanel extends StatelessWidget {
   }
 }
 
+/// Top answers: the list, to uncover answers on the big screen. With
+/// buzzers, tapping the answer the team named gives it the points; on the
+/// devices, who found what is ticked per team further down.
+class _TopAnswersPanel extends StatelessWidget {
+  const _TopAnswersPanel({required this.state, required this.question, required this.send});
+
+  final SessionState state;
+  final Question question;
+  final void Function(Command) send;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final top = question.topAnswers ?? const TopAnswers();
+    if (top.items.isEmpty) return Text("This question has no answers on its list yet.", style: TextStyle(color: scheme.outline));
+    final answering = !top.onDevices && state.phase == Phase.buzzered && state.buzzQueue.isNotEmpty ? state.team(state.buzzQueue.first) : null;
+    final round = state.answerRound;
+    final hint = top.onDevices
+        ? "Tap an answer to uncover it on the big screen."
+        : answering != null
+            ? "Tap the answer ${answering.name} named. Wrong if it is not on the list."
+            : "When a team buzzes, tap the answer it names.";
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(hint, style: theme.textTheme.bodyMedium?.copyWith(color: answering != null ? scheme.primary : scheme.outline)),
+          const SizedBox(height: 4),
+          for (final (i, item) in top.items.indexed)
+            Builder(builder: (context) {
+              final shown = state.feudRevealed.contains(i);
+              final finder = state.foundBy[i] == null ? null : state.team(state.foundBy[i]!);
+              final finders = [
+                for (final team in state.teams)
+                  if (round?.found[team.id]?.contains(i) == true) team.name,
+              ];
+              final who = finder?.name ?? (finders.isEmpty ? null : finders.join(", "));
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Material(
+                  color: shown ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => send(TopAnswerToggle(i)),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      child: Row(
+                        children: [
+                          SizedBox(width: 28, child: Text("${i + 1}.", style: theme.textTheme.labelLarge)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item.answer, style: theme.textTheme.bodyLarge),
+                                if (who != null) Text(who, style: theme.textTheme.bodySmall?.copyWith(color: scheme.primary)),
+                              ],
+                            ),
+                          ),
+                          Text("+${top.pointsOf(i, question.pointsPlus)}", style: theme.textTheme.labelLarge),
+                          const SizedBox(width: 8),
+                          Icon(shown ? Icons.visibility : Icons.visibility_off_outlined, size: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
 String feudValueLabel(Question question, int index) {
   final value = question.percentages.elementAtOrNull(index) ?? 0;
   final text = value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
@@ -676,7 +754,8 @@ class _ActionPad extends StatelessWidget {
     final steal = feud && answering && state.wrongAttempts >= 3;
 
     // Top row: the verdict, and closing the question.
-    final Command? right = !answering || q == null
+    // Top answers: a right answer is the one tapped on the list.
+    final Command? right = !answering || q == null || q.type == QuestionType.topAnswers
         ? null
         : feud
             ? (steal ? const FeudSteal(success: true) : null)
@@ -1460,13 +1539,10 @@ class _AnswersSheetState extends State<_AnswersSheet> {
       Navigator.of(context).pop();
     }
 
-    final automatic = round == null || round.kind == CompanionKind.connections
-        ? const <String, bool>{}
-        : {
-            for (final team in state.teams)
-              team.id: ?autoVerdict(round.spec, round.answers[team.id], choiceCorrect: question?.answersCorrect ?? const []),
-          };
-    final closest = round == null ? const <String>[] : closestTeams(round.spec, round.answers);
+    final automatic = round == null || question == null ? const <Command>[] : autoRating(state, round, question);
+    final estimates = round == null || question == null || round.spec.solution == null
+        ? const <EstimateScoring>[]
+        : EstimateScoring.values;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -1522,18 +1598,9 @@ class _AnswersSheetState extends State<_AnswersSheet> {
                   Icons.tv,
                   state.teams.every((team) => round.revealed.contains(team.id)) ? null : () => send(const RevealAnswers()),
                 ),
-                if (automatic.isNotEmpty)
-                  action("Rate automatically", Icons.auto_fix_high, () {
-                    automatic.forEach((teamId, verdict) => send(RateAnswer(teamId, correct: verdict)));
-                  }),
-                if (closest.isNotEmpty && automatic.values.every((right) => !right))
-                  action("Closest wins", Icons.adjust, () {
-                    for (final team in state.teams) {
-                      if (round.answers[team.id]?.number != null) {
-                        send(RateAnswer(team.id, correct: closest.contains(team.id)));
-                      }
-                    }
-                  }),
+                if (automatic.isNotEmpty) action("Rate automatically", Icons.auto_fix_high, () => automatic.forEach(send)),
+                for (final scoring in estimates)
+                  action(scoring.uiString, Icons.adjust, () => estimateRating(round, question!, scoring).forEach(send)),
                 if (round.kind == CompanionKind.connections)
                   action("Give points for groups", Icons.emoji_events_outlined, () => send(const AwardConnections())),
                 action("Discard", Icons.delete_outline, () => send(const ClearAnswers())),
@@ -1591,9 +1658,35 @@ class _AnswersPanel extends StatelessWidget {
       _ => null,
     };
     final connections = spec.kind == CompanionKind.connections;
+    final top = question.type == QuestionType.topAnswers ? question.topAnswers : null;
+    final automatic = autoRating(state, round, question);
+    final half = (question.pointsPlus / 2).round();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (automatic.isNotEmpty || spec.solution != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                if (automatic.isNotEmpty)
+                  ActionChip(
+                    avatar: const Icon(Icons.auto_fix_high, size: 18),
+                    label: const Text("Rate automatically"),
+                    onPressed: () => automatic.forEach(send),
+                  ),
+                if (spec.solution != null)
+                  for (final scoring in EstimateScoring.values)
+                    ActionChip(
+                      avatar: const Icon(Icons.adjust, size: 18),
+                      label: Text(scoring.uiString),
+                      onPressed: () => estimateRating(round, question, scoring).forEach(send),
+                    ),
+              ],
+            ),
+          ),
         if (round.open && round.endsAtMillis != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -1609,9 +1702,12 @@ class _AnswersPanel extends StatelessWidget {
             final answer = round.answers[team.id];
             final shown = round.revealed.contains(team.id);
             final verdict = round.verdicts[team.id];
-            final suggestion = connections
+            final partial = partialScore(spec, answer);
+            final suggestion = connections || top != null || partial != null
                 ? null
                 : autoVerdict(spec, answer, choiceCorrect: question.answersCorrect) ?? (closest.contains(team.id) ? true : null);
+            final found = foundBy(round, team.id);
+            final suggested = top == null ? const <int?>[] : suggestionsFor(question, answer);
             final awarded = round.awarded[team.id];
             final took = answer?.secondsTaken(round);
             return Card(
@@ -1642,14 +1738,11 @@ class _AnswersPanel extends StatelessWidget {
                             style: theme.textTheme.labelLarge,
                           ),
                         ),
-                        if (suggestion != null && verdict == null)
-                          Tooltip(
-                            message: suggestion ? "Looks right" : "Looks wrong",
-                            child: Icon(
-                              suggestion ? Icons.thumb_up_alt_outlined : Icons.thumb_down_alt_outlined,
-                              size: 18,
-                              color: scheme.outline,
-                            ),
+                        // What rating automatically would make of it.
+                        if (verdict == null && (partial != null || suggestion != null))
+                          Text(
+                            partial != null ? "${partial.right} of ${partial.of} right" : (suggestion! ? "Looks right" : "Looks wrong"),
+                            style: theme.textTheme.labelMedium?.copyWith(color: scheme.outline),
                           ),
                       ],
                     ),
@@ -1677,10 +1770,15 @@ class _AnswersPanel extends StatelessWidget {
                                 color: shown ? scheme.primary : null,
                                 onPressed: () => send(RevealAnswer(team.id, show: !shown)),
                               ),
-                              IconButton(
+                              PopupMenuButton<String>(
                                 tooltip: "Other points",
                                 icon: const Icon(Icons.exposure_outlined),
-                                onPressed: () => _customPoints(context, team),
+                                onSelected: (choice) =>
+                                    choice == 'half' ? send(AwardAnswer(team.id, half)) : _customPoints(context, team),
+                                itemBuilder: (context) => [
+                                  PopupMenuItem(value: 'half', child: Text("Half points (+$half)")),
+                                  const PopupMenuItem(value: 'other', child: Text("Other points…")),
+                                ],
                               ),
                               IconButton(
                                 tooltip: "Right",
@@ -1699,6 +1797,26 @@ class _AnswersPanel extends StatelessWidget {
                         ),
                       ],
                     ),
+                    // Top answers: tick what the team found; its points
+                    // follow. Lines it typed that look like one are marked.
+                    if (top != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6, right: 8),
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            for (final (i, item) in top.items.indexed)
+                              FilterChip(
+                                visualDensity: VisualDensity.compact,
+                                avatar: !found.contains(i) && suggested.contains(i) ? const Icon(Icons.auto_awesome, size: 16) : null,
+                                label: Text("${i + 1}. ${item.answer}"),
+                                selected: found.contains(i),
+                                onSelected: (_) => send(MarkTopAnswers(team.id, toggled(found, i))),
+                              ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
