@@ -238,8 +238,8 @@ enum QuestionType {
   free("Free Question"),
   abcd("ABCD"),
   progressingReveal("Progressing Reveal"),
-  feud("Feud"),
-  connections("Connections"),
+  feud("Top answers"),
+  connections("Word groups"),
   rapidFire("Fragenhagel"),
   matching("Matching"),
   unsupported("Unsupported");

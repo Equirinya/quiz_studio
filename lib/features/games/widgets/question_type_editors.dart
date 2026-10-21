@@ -12,7 +12,7 @@ String questionTypeExplanation(QuestionType type) => switch (type) {
         "The most basic question: no answer options and nothing to reveal. Buzzers can be disabled, e.g. for estimation questions.",
       QuestionType.abcd => "Shows right and wrong answer suggestions, which the gamemaster reveals one by one.",
       QuestionType.progressingReveal => "The gamemaster reveals more information piece by piece.",
-      QuestionType.feud => "Inspired by Family Feud: a list of answers, each worth a share of the points.",
+      QuestionType.feud => "A survey: teams guess the most popular answers, each worth a share of the points.",
       QuestionType.connections =>
         "Sixteen words in four groups of four. Every team solves it on its own device; each group found is worth a quarter of the points.",
       QuestionType.rapidFire =>

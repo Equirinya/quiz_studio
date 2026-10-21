@@ -13,7 +13,7 @@ enum CompanionKind {
   choice("Pick one"),
   order("Put in order"),
   match("Match pairs"),
-  connections("Connections");
+  connections("Word groups");
 
   const CompanionKind(this.uiString);
 

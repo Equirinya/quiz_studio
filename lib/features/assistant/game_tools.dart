@@ -60,8 +60,8 @@ final Map<String, dynamic> _questionFields = {
     'type': 'string',
     'enum': ['free', 'abcd', 'progressingReveal', 'feud', 'connections'],
     'description': 'free: plain question. abcd: four answer options. progressingReveal: hints revealed one by one. '
-        'feud: Family Feud style list of answers, each worth a share of the points. '
-        'connections: like the NYT puzzle, sixteen words in four groups of four, solved by every team on its own '
+        'feud: a survey, the most popular answers, each worth a share of the points. '
+        'connections: sixteen words in four groups of four, solved by every team on its own '
         'device; each group found is worth a quarter of pointsPlus.',
   },
   'question': {'type': 'string', 'description': 'The question as shown to the audience.'},
@@ -312,7 +312,7 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     if (companion is! Map) throw const ToolError('"companion" must be an object.');
     final spec = CompanionSpec.fromMap(companion);
     if (spec == null || spec.kind == CompanionKind.connections) {
-      throw const ToolError('"companion" needs a known "kind"; for Connections use the question type instead.');
+      throw const ToolError('"companion" needs a known "kind"; for word groups use the connections question type instead.');
     }
     if ((spec.kind == CompanionKind.order || spec.kind == CompanionKind.match) && spec.options.length < 2) {
       throw const ToolError('This companion screen needs at least two "options".');

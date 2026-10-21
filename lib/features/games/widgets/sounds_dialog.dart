@@ -20,7 +20,7 @@ const Map<String, String> _effectLabels = {
   effectNextItem: "Next Fragenhagel item",
   effectCountdown: "Last 10 seconds",
   effectTimesUp: "Time's up",
-  effectSteal: "Feud steal",
+  effectSteal: "Steal",
   effectFanfare: "Fully solved",
 };
 

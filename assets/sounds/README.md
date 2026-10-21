@@ -22,13 +22,13 @@ moment (any name), get a line in `CREDITS.md`, and an entry in
 |---|---|---|
 | `effects/right_answer/` | a team answers right | Right answer (Nikita Zaloga) |
 | `effects/wrong_answer/` | a team answers wrong | Bwomp |
-| `effects/reveal/` | a reveal step, Feud answer, Connections group | Pluck |
+| `effects/reveal/` | a reveal step, a top answer, a word group | Pluck |
 | `effects/question_open/` | a question opens | Brass stab |
 | `effects/lock_in/` | a team locks its answer in | Pop |
 | `effects/next_item/` | the next Fragenhagel item | Woodblock |
 | `effects/countdown/` | the last 10 seconds of a timer of 20 s or more | Ticking clock |
 | `effects/times_up/` | a timer runs out | Game-show buzzer |
-| `effects/steal/` | Feud: the third strike | Riser |
+| `effects/steal/` | Top answers: the third strike | Riser |
 | `effects/fanfare/` | a question fully solved | Fanfare (Nikita Zaloga) |
 | `effects/applause/`, `drumroll/`, `joke/`, `announcer/` | by hand, from the Effects sheet | |
 | `buzzers/` | a team's buzzer, chosen on the Buzzers page: Buzzer, Power, Light, Soft | Buzzer |
