@@ -78,6 +78,8 @@ sealed class Command {
       'feudWrong' => const FeudWrong(),
       'feudSteal' => FeudSteal(success: j['success'] as bool),
       'feudResetWrong' => const FeudResetWrong(),
+      'topAnswer' => TopAnswerToggle((j['index'] as num).toInt()),
+      'markTopAnswers' => MarkTopAnswers(j['teamId'] as String, [for (final i in j['found'] as List) (i as num).toInt()]),
       'setMedia' => SetMedia(MediaPlayback.values.byName(j['playback'] as String)),
       'setMusic' => SetMusic(j['slot'] as String?),
       'setAmbience' => SetAmbience(j['slot'] as String?),
@@ -258,6 +260,31 @@ class FeudResetWrong extends Command {
   const FeudResetWrong();
   @override
   String get type => 'feudResetWrong';
+}
+
+/// Top answers: uncovers answer [index] on the big screen, or covers it
+/// again. With buzzers and a team answering, that team found it and gets its
+/// points; covering it again takes them back.
+class TopAnswerToggle extends Command {
+  const TopAnswerToggle(this.index);
+  final int index;
+  @override
+  String get type => 'topAnswer';
+  @override
+  Map<String, dynamic> get _args => {'index': index};
+}
+
+/// Top answers on the devices: the answers on the list a team found, as the
+/// gamemaster ticked them. The team gets their points, replacing what it got
+/// for this round before.
+class MarkTopAnswers extends Command {
+  const MarkTopAnswers(this.teamId, this.found);
+  final String teamId;
+  final List<int> found;
+  @override
+  String get type => 'markTopAnswers';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId, 'found': found};
 }
 
 // ── audio ────────────────────────────────────────────────────────────────────

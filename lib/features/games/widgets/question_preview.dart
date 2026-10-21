@@ -45,6 +45,7 @@ class _QuestionPreviewState extends State<QuestionPreview> {
         // One more than the answers: the last step marks right and wrong.
         QuestionType.abcd => _q.answers.length + 1,
         QuestionType.progressingReveal || QuestionType.feud => _q.information.length,
+        QuestionType.topAnswers => _q.topAnswers?.items.length ?? 0,
         _ => 0,
       };
 
@@ -54,7 +55,7 @@ class _QuestionPreviewState extends State<QuestionPreview> {
         revealed: _revealed,
         // The newest picture is the big one, as when the gamemaster steps through.
         imageFocus: _q.type == QuestionType.progressingReveal ? _revealed : 0,
-        feudRevealed: _q.type == QuestionType.feud ? [for (var i = 0; i < _revealed; i++) i] : const [],
+        feudRevealed: _q.type == QuestionType.feud || _q.type == QuestionType.topAnswers ? [for (var i = 0; i < _revealed; i++) i] : const [],
       );
 
   @override

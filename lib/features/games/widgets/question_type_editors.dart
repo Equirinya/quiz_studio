@@ -12,7 +12,10 @@ String questionTypeExplanation(QuestionType type) => switch (type) {
         "The most basic question: no answer options and nothing to reveal. Buzzers can be disabled, e.g. for estimation questions.",
       QuestionType.abcd => "Shows right and wrong answer suggestions, which the gamemaster reveals one by one.",
       QuestionType.progressingReveal => "The gamemaster reveals more information piece by piece.",
-      QuestionType.feud => "A survey: teams guess the most popular answers, each worth a share of the points.",
+      QuestionType.feud =>
+        "A duel over a survey: the team that buzzed uncovers answers until its third strike, then the other team may steal them all.",
+      QuestionType.topAnswers =>
+        "Name the most popular answers: teams find answers on a list, by buzzing or on their devices, and get the points of each one.",
       QuestionType.connections =>
         "Sixteen words in four groups of four. Every team solves it on its own device; each group found is worth a quarter of the points.",
       QuestionType.rapidFire =>
@@ -51,6 +54,7 @@ class QuestionTypeEditor extends StatelessWidget {
       QuestionType.connections => _ConnectionsEditor(question: question, save: save),
       QuestionType.rapidFire => _RapidFireEditor(gameId: gameId, question: question, save: save),
       QuestionType.matching => _MatchingEditor(gameId: gameId, question: question, save: save),
+      QuestionType.topAnswers => _TopAnswersEditor(question: question, save: save),
       QuestionType.unsupported => const SizedBox(),
     };
     if (!question.needsDevices) return editor;
@@ -840,6 +844,190 @@ class _MatchingEditorState extends State<_MatchingEditor> {
             onPressed: () => _change(() => _rows.add(_MatchRow(const MatchPair()))),
             icon: const Icon(Icons.add),
             label: const Text("Add pair"),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TopRow {
+  _TopRow(TopAnswer item)
+      : answer = TextEditingController(text: item.answer),
+        points = TextEditingController(text: item.points?.toString() ?? '');
+
+  final TextEditingController answer;
+  final TextEditingController points;
+
+  TopAnswer get item => TopAnswer(answer: answer.text, points: int.tryParse(points.text.trim()));
+
+  void dispose() {
+    answer.dispose();
+    points.dispose();
+  }
+}
+
+/// Top answers: the list, most popular first, each answer with its points,
+/// and how the teams answer.
+class _TopAnswersEditor extends StatefulWidget {
+  const _TopAnswersEditor({required this.question, required this.save});
+
+  final Question question;
+  final SaveQuestion save;
+
+  @override
+  State<_TopAnswersEditor> createState() => _TopAnswersEditorState();
+}
+
+class _TopAnswersEditorState extends State<_TopAnswersEditor> {
+  static const _timers = [null, 30, 60, 90, 120, 180, 300];
+
+  late final TopAnswers _stored = widget.question.topAnswers ?? const TopAnswers();
+  late TopAnswersMode _mode = _stored.mode;
+  late final List<_TopRow> _rows = [for (final item in _stored.items) _TopRow(item)];
+  late final CompanionSpec? _companion = CompanionSpec.fromMap({...?_storedCompanion, 'kind': CompanionKind.text.name});
+  late int? _timer = _companion?.timerSeconds;
+  late bool _lock = _companion?.lockable ?? true;
+
+  Map<String, dynamic>? get _storedCompanion {
+    final stored = widget.question.data['companion'];
+    return stored is Map ? Map<String, dynamic>.from(stored) : null;
+  }
+
+  @override
+  void dispose() {
+    for (final row in _rows) {
+      row.dispose();
+    }
+    super.dispose();
+  }
+
+  void _write() => widget.save({
+        'topAnswers': TopAnswers(mode: _mode, items: [for (final row in _rows) row.item]).toMap(),
+        'companion': {'timer': _timer, 'lock': _lock},
+      });
+
+  void _change(VoidCallback change) {
+    setState(change);
+    _write();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final devices = _mode != TopAnswersMode.buzzer;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            SegmentedButton<TopAnswersMode>(
+              segments: const [
+                ButtonSegment(value: TopAnswersMode.buzzer, icon: Icon(Icons.notifications_active_outlined), label: Text("Teams buzz")),
+                ButtonSegment(value: TopAnswersMode.typed, icon: Icon(Icons.keyboard_outlined), label: Text("Typed in")),
+                ButtonSegment(value: TopAnswersMode.whiteboard, icon: Icon(Icons.draw_outlined), label: Text("Whiteboard")),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (selected) => _change(() => _mode = selected.first),
+            ),
+            if (devices) ...[
+              DropdownMenu<int?>(
+                label: const Text("Time"),
+                width: 160,
+                initialSelection: _timer,
+                dropdownMenuEntries: [
+                  for (final seconds in _timers) DropdownMenuEntry(value: seconds, label: seconds == null ? "No timer" : "$seconds s"),
+                ],
+                onSelected: (seconds) => _change(() => _timer = seconds),
+              ),
+              FilterChip(
+                label: const Text("Teams can lock in early"),
+                selected: _lock,
+                onSelected: (on) => _change(() => _lock = on),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          switch (_mode) {
+            TopAnswersMode.buzzer =>
+              "A team buzzes and names an answer. Tap the one it named: it is uncovered and the team gets its points. Then everyone may buzz again.",
+            TopAnswersMode.typed =>
+              "Every team types its answers into a list on its device. You tick the ones it found, with suggestions for what it typed.",
+            TopAnswersMode.whiteboard => "Every team writes its answers on a numbered whiteboard. You tick the ones it found.",
+          },
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "Most popular first. Without its own points an answer is worth the points above. Other spellings to accept go after a /.",
+          style: theme.textTheme.bodySmall,
+        ),
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          itemCount: _rows.length,
+          // onReorderItem replaces this from Flutter 3.41 on; kept for older SDKs in CI.
+          // ignore: deprecated_member_use
+          onReorder: (oldIndex, newIndex) => _change(() {
+            if (oldIndex < newIndex) newIndex -= 1;
+            _rows.insert(newIndex, _rows.removeAt(oldIndex));
+          }),
+          itemBuilder: (context, i) {
+            final row = _rows[i];
+            return Padding(
+              key: ObjectKey(row),
+              padding: const EdgeInsets.only(top: 12),
+              child: Row(
+                children: [
+                  ReorderableDragStartListener(
+                    index: i,
+                    child: const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.drag_indicator)),
+                  ),
+                  SizedBox(width: 28, child: Text("${i + 1}.", style: theme.textTheme.titleMedium)),
+                  Expanded(
+                    child: TextField(
+                      controller: row.answer,
+                      decoration: const InputDecoration(labelText: "Answer", isDense: true),
+                      onChanged: (_) => _write(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 96,
+                    child: TextField(
+                      controller: row.points,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(labelText: "Points", hintText: "${widget.question.pointsPlus}", isDense: true),
+                      onChanged: (_) => _write(),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: "Remove",
+                    onPressed: () => _change(() {
+                      final removed = _rows.removeAt(i);
+                      WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
+                    }),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => _change(() => _rows.add(_TopRow(const TopAnswer()))),
+            icon: const Icon(Icons.add),
+            label: const Text("Add answer"),
           ),
         ),
       ],

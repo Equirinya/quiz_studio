@@ -9,6 +9,7 @@ library;
 import 'cards.dart';
 import 'companion.dart';
 import 'matching.dart';
+import 'top_answers.dart';
 import 'rapid_fire.dart';
 
 // Music slots and built-in effect keys (v1 names, also used as stored keys).
@@ -238,10 +239,11 @@ enum QuestionType {
   free("Free Question"),
   abcd("ABCD"),
   progressingReveal("Progressing Reveal"),
-  feud("Top answers"),
+  feud("Survey duel"),
   connections("Word groups"),
   rapidFire("Fragenhagel"),
   matching("Matching"),
+  topAnswers("Top answers"),
   unsupported("Unsupported");
 
   /// Played only on the teams' own devices: without them there is nothing
@@ -279,6 +281,7 @@ class Question {
     this.connectionGroups = const [],
     this.rapidFire,
     this.matching,
+    this.topAnswers,
     this.sounds = MusicConfig.empty,
     this.data = const {},
   });
@@ -326,8 +329,13 @@ class Question {
   /// matching: its pairs, in the right pairing. Stored as `matching`.
   final Matching? matching;
 
+  /// topAnswers: the list and how teams answer. Stored as `topAnswers`.
+  final TopAnswers? topAnswers;
+
   /// Whether this question can only be played with the teams' devices.
-  bool get needsDevices => type.needsDevices || (type == QuestionType.rapidFire && rapidFire?.mode == RapidMode.devices);
+  bool get needsDevices => type.needsDevices ||
+      (type == QuestionType.rapidFire && rapidFire?.mode == RapidMode.devices) ||
+      (type == QuestionType.topAnswers && topAnswers?.onDevices == true);
 
   final MusicConfig sounds;
 
@@ -361,6 +369,7 @@ class Question {
           : const [],
       rapidFire: QuestionType.fromString(data['type']) == QuestionType.rapidFire ? RapidFire.fromMap(data['rapidFire']) : null,
       matching: QuestionType.fromString(data['type']) == QuestionType.matching ? Matching.fromMap(data['matching']) : null,
+      topAnswers: QuestionType.fromString(data['type']) == QuestionType.topAnswers ? TopAnswers.fromMap(data['topAnswers']) : null,
       sounds: MusicConfig.fromMap(data),
       data: data,
     );
@@ -389,6 +398,24 @@ class Question {
       // Right or wrong for each statement; a fresh round for every item.
       return rapidFire?.mode == RapidMode.devices ? const CompanionSpec(kind: CompanionKind.choice, options: rapidChoices) : null;
     }
+    if (type == QuestionType.topAnswers) {
+      // On the devices: one line per answer on the list. The `companion` map
+      // holds the timer and whether teams may lock in.
+      final top = topAnswers ?? const TopAnswers();
+      if (!top.onDevices) return null;
+      final stored = data['companion'] is Map ? Map<String, dynamic>.from(data['companion'] as Map) : <String, dynamic>{};
+      final spec = CompanionSpec.fromMap({...stored, 'kind': CompanionKind.text.name});
+      final rows = top.items.isEmpty ? 1 : top.items.length;
+      return top.mode == TopAnswersMode.typed
+          ? CompanionSpec(kind: CompanionKind.list, timerSeconds: spec?.timerSeconds, lockable: spec?.lockable ?? true, listRows: rows)
+          : CompanionSpec(
+              kind: CompanionKind.whiteboard,
+              timerSeconds: spec?.timerSeconds,
+              lockable: spec?.lockable ?? true,
+              background: 'list',
+              listRows: rows,
+            );
+    }
     if (type == QuestionType.connections) {
       // Always played on the teams' devices. The `companion` map holds the
       // timer, the mistakes allowed and whether teams may lock in.
@@ -404,6 +431,7 @@ class Question {
         QuestionType.free => !noBuzzer,
         QuestionType.connections || QuestionType.matching => false,
         QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
+        QuestionType.topAnswers => topAnswers?.onDevices != true,
         _ => true,
       };
 
@@ -413,6 +441,9 @@ class Question {
   bool get defaultJudging => switch (type) {
         QuestionType.feud || QuestionType.connections => false,
         QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
+        // Buzzing for an answer on the list: Wrong as usual, Right by
+        // picking the answer the team named.
+        QuestionType.topAnswers => topAnswers?.onDevices != true,
         _ => true,
       };
 

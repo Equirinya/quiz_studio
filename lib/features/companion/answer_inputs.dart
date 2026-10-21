@@ -67,9 +67,17 @@ class _CompanionInputState extends State<CompanionInput> {
   late final List<String> _left = (widget.spec['options'] as List? ?? const []).cast<String>();
   late final List<int> _pairs = List.filled(_left.length, -1);
 
+  // list: one field per answer
+  late final List<TextEditingController> _lines = [
+    for (var i = 0; i < ((widget.spec['listRows'] as num?)?.toInt() ?? 5).clamp(1, 20); i++) TextEditingController(),
+  ];
+
   @override
   void dispose() {
     _debounce?.cancel();
+    for (final line in _lines) {
+      line.dispose();
+    }
     _text.dispose();
     super.dispose();
   }
@@ -270,6 +278,26 @@ class _CompanionInputState extends State<CompanionInput> {
       case CompanionKind.connections:
         // Played on a screen of its own; see ConnectionsPlay.
         return const SizedBox();
+
+      case CompanionKind.list:
+        return ListView(
+          shrinkWrap: true,
+          children: [
+            for (final (i, line) in _lines.indexed)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: TextField(
+                  controller: line,
+                  enabled: enabled,
+                  autofocus: i == 0,
+                  textInputAction: i == _lines.length - 1 ? TextInputAction.done : TextInputAction.next,
+                  style: theme.textTheme.titleLarge,
+                  decoration: InputDecoration(prefixText: "${i + 1}.  ", hintText: "Answer ${i + 1}"),
+                  onChanged: (_) => _later(() => PlayerAnswer(items: [for (final line in _lines) line.text.trim()])),
+                ),
+              ),
+          ],
+        );
     }
   }
 }

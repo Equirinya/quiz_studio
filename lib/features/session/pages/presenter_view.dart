@@ -365,7 +365,10 @@ class QuestionDisplay extends StatelessWidget {
             ),
           ),
         SizedBox(height: unit * 2),
-        if (round != null)
+        // Top answers: the list takes over once its first answer is uncovered.
+        if (question.type == QuestionType.topAnswers && (round == null || state.feudRevealed.isNotEmpty))
+          Expanded(flex: 4, child: _TopAnswersBoard(state: state, question: question, unit: unit))
+        else if (round != null)
           Expanded(
             flex: 3,
             child: _AnswerRoundDisplay(
@@ -447,6 +450,104 @@ class QuestionDisplay extends StatelessWidget {
     final value = question.percentages.elementAtOrNull(index) ?? 0;
     final text = value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
     return question.absoluteValues ? text : "$text%";
+  }
+}
+
+/// Top answers on the big screen: numbered bars, uncovered one by one, each
+/// with its points and the teams that found it.
+class _TopAnswersBoard extends StatelessWidget {
+  const _TopAnswersBoard({required this.state, required this.question, required this.unit});
+
+  final SessionState state;
+  final Question question;
+  final double unit;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final top = question.topAnswers ?? const TopAnswers();
+    final items = top.items;
+    if (items.isEmpty) return const SizedBox();
+    final round = state.answerRound;
+    final columns = items.length <= 6 ? 1 : 2;
+    final perColumn = (items.length / columns).ceil();
+    Widget bar(int i) {
+      final shown = state.feudRevealed.contains(i);
+      final finders = [
+        if (state.foundBy[i] != null) ?state.team(state.foundBy[i]!),
+        for (final team in state.teams)
+          if (round?.found[team.id]?.contains(i) == true) team,
+      ];
+      return Padding(
+        padding: EdgeInsets.all(unit * 0.5),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutBack,
+          padding: EdgeInsets.symmetric(horizontal: unit * 2),
+          decoration: BoxDecoration(
+            color: shown ? scheme.primaryContainer : scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(unit * 1.5),
+          ),
+          child: Row(
+            children: [
+              Text("${i + 1}", style: TextStyle(fontSize: unit * 3, fontWeight: FontWeight.w800, color: scheme.tertiary)),
+              SizedBox(width: unit * 2),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(scale: Tween(begin: 0.6, end: 1.0).animate(animation), child: child),
+                  ),
+                  layoutBuilder: (current, previous) => Stack(alignment: Alignment.center, children: [...previous, ?current]),
+                  child: shown
+                      ? Text(
+                          items[i].answer.split(RegExp(r'[/|;]')).first.trim(),
+                          key: const ValueKey('shown'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: unit * 3, fontWeight: FontWeight.w600, color: scheme.onPrimaryContainer),
+                        )
+                      : const SizedBox(key: ValueKey('covered')),
+                ),
+              ),
+              if (shown)
+                for (final team in finders)
+                  Padding(
+                    padding: EdgeInsets.only(left: unit),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: unit * 1.2, vertical: unit * 0.4),
+                      decoration: BoxDecoration(color: scheme.primary, borderRadius: BorderRadius.circular(unit)),
+                      child: Text(team.name, style: TextStyle(fontSize: unit * 1.9, color: scheme.onPrimary, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+              if (shown) ...[
+                SizedBox(width: unit * 1.5),
+                Text(
+                  "${top.pointsOf(i, question.pointsPlus)}",
+                  style: TextStyle(fontSize: unit * 3, fontWeight: FontWeight.w800, color: scheme.onPrimaryContainer),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var c = 0; c < columns; c++)
+          Expanded(
+            child: Column(
+              children: [
+                for (var r = 0; r < perColumn; r++)
+                  Expanded(child: c * perColumn + r < items.length ? bar(c * perColumn + r) : const SizedBox()),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 }
 

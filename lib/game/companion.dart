@@ -13,7 +13,10 @@ enum CompanionKind {
   choice("Pick one"),
   order("Put in order"),
   match("Match pairs"),
-  connections("Word groups");
+  connections("Word groups"),
+
+  /// A numbered list of short answers, e.g. for top answers.
+  list("Answer list");
 
   const CompanionKind(this.uiString);
 
@@ -106,7 +109,10 @@ List<String> _strings(Object? v) => [
 ///                           to draw on, e.g. a map to mark or a form to fill
 ///   min, max, step, unit:   number and slider
 ///   solution:    number and slider: the right value, for the gamemaster
-///   options:     choice: what to pick from · order: the items, in the RIGHT
+///   tolerance:   number and slider: how far from the solution still counts
+///                as right; absent = exactly
+///   listRows:    list: how many answers a team can give
+///   options:    choice: what to pick from · order: the items, in the RIGHT
 ///                order · match: the left-hand items
 ///   targets:     match: the right-hand items, aligned with `options`
 ///   lock:        whether teams may lock their answer in before the time is
@@ -127,6 +133,7 @@ class CompanionSpec {
     this.step,
     this.unit,
     this.solution,
+    this.tolerance,
     this.options = const [],
     this.targets = const [],
     this.lockable = true,
@@ -144,6 +151,7 @@ class CompanionSpec {
   final double? step;
   final String? unit;
   final double? solution;
+  final double? tolerance;
   final List<String> options;
   final List<String> targets;
   final bool lockable;
@@ -171,6 +179,7 @@ class CompanionSpec {
       step: _num(stored['step']),
       unit: stored['unit'] is String && (stored['unit'] as String).isNotEmpty ? stored['unit'] as String : null,
       solution: _num(stored['solution']),
+      tolerance: _num(stored['tolerance']) != null && _num(stored['tolerance'])! > 0 ? _num(stored['tolerance']) : null,
       options: _strings(stored['options']),
       targets: _strings(stored['targets']),
       lockable: stored['lock'] != false,
@@ -184,12 +193,13 @@ class CompanionSpec {
         if (timerSeconds != null) 'timer': timerSeconds,
         if (kind == CompanionKind.whiteboard) 'background': background,
         if (kind == CompanionKind.whiteboard && backgroundImage != null) 'backgroundImage': backgroundImage,
-        if (kind == CompanionKind.whiteboard && background == 'list') 'listRows': listRows,
+        if ((kind == CompanionKind.whiteboard && background == 'list') || kind == CompanionKind.list) 'listRows': listRows,
         if (min != null) 'min': min,
         if (max != null) 'max': max,
         if (step != null) 'step': step,
         if (unit != null) 'unit': unit,
         if (solution != null) 'solution': solution,
+        if (tolerance != null) 'tolerance': tolerance,
         if (options.isNotEmpty) 'options': options,
         if (targets.isNotEmpty) 'targets': targets,
         if (!lockable) 'lock': false,
@@ -217,6 +227,7 @@ class CompanionSpec {
         step: step,
         unit: unit,
         solution: solution,
+        tolerance: tolerance,
         options: options,
         targets: targets,
         lockable: lockable,
@@ -283,7 +294,7 @@ class CompanionSpec {
       if (kind == CompanionKind.whiteboard) 'background': background,
       // Only the name; the picture itself reaches the device separately.
       if (kind == CompanionKind.whiteboard && backgroundImage != null) 'backgroundImage': backgroundImage,
-      if (kind == CompanionKind.whiteboard && background == 'list') 'listRows': listRows,
+      if ((kind == CompanionKind.whiteboard && background == 'list') || kind == CompanionKind.list) 'listRows': listRows,
       if (min != null) 'min': min,
       if (max != null) 'max': max,
       if (step != null) 'step': step,
@@ -339,6 +350,7 @@ class PlayerAnswer {
     this.order,
     this.pairs,
     this.drawing,
+    this.items,
     this.connections,
     this.locked = false,
     this.lockedAtMillis,
@@ -360,6 +372,9 @@ class PlayerAnswer {
   /// Encoded strokes; see drawing.dart.
   final String? drawing;
 
+  /// "Answer list": the team's answers, one per line, empty lines kept.
+  final List<String>? items;
+
   /// Connections only; built by the host from the team's guesses, never sent
   /// by a device.
   final ConnectionsProgress? connections;
@@ -372,7 +387,14 @@ class PlayerAnswer {
   final int? lockedAtMillis;
 
   bool get isEmpty =>
-      text == null && number == null && choice == null && order == null && pairs == null && drawing == null && connections == null;
+      text == null &&
+      number == null &&
+      choice == null &&
+      order == null &&
+      pairs == null &&
+      drawing == null &&
+      (items == null || items!.every((item) => item.trim().isEmpty)) &&
+      connections == null;
 
   /// Seconds from the start of [round] until the team locked in.
   double? secondsTaken(AnswerRound round) => lockedAtMillis == null || round.openedAtMillis == null
@@ -382,7 +404,7 @@ class PlayerAnswer {
   /// Whether a device may send this as its answer to a round of [kind].
   bool matches(CompanionKind kind) {
     if (connections != null) return false;
-    final set = [text, number, choice, order, pairs, drawing].where((v) => v != null).length;
+    final set = [text, number, choice, order, pairs, drawing, items].where((v) => v != null).length;
     if (set != 1) return false;
     return switch (kind) {
       CompanionKind.whiteboard => drawing != null,
@@ -392,6 +414,7 @@ class PlayerAnswer {
       CompanionKind.order => order != null,
       CompanionKind.match => pairs != null,
       CompanionKind.connections => false,
+      CompanionKind.list => items != null,
     };
   }
 
@@ -403,6 +426,7 @@ class PlayerAnswer {
         order: order,
         pairs: pairs,
         drawing: drawing,
+        items: items,
         connections: connections,
         locked: locked,
         lockedAtMillis: locked ? (atMillis ?? lockedAtMillis) : null,
@@ -415,6 +439,7 @@ class PlayerAnswer {
         if (order != null) 'order': order,
         if (pairs != null) 'pairs': pairs,
         if (drawing != null) 'drawing': drawing,
+        if (items != null) 'items': items,
         if (connections != null) 'connections': connections!.toJson(),
         if (locked) 'locked': true,
         if (lockedAtMillis != null) 'lockedAt': lockedAtMillis,
@@ -429,6 +454,7 @@ class PlayerAnswer {
       order: ints(json['order']),
       pairs: ints(json['pairs']),
       drawing: json['drawing'] as String?,
+      items: json['items'] is List ? [for (final e in json['items'] as List) '$e'] : null,
       connections: json['connections'] is Map
           ? ConnectionsProgress.fromJson(Map<String, dynamic>.from(json['connections'] as Map))
           : null,
@@ -450,6 +476,7 @@ class AnswerRound {
     this.revealed = const [],
     this.verdicts = const {},
     this.awarded = const {},
+    this.found = const {},
   });
 
   final CompanionSpec spec;
@@ -476,6 +503,10 @@ class AnswerRound {
   /// without counting twice.
   final Map<String, int> awarded;
 
+  /// Top answers on the devices: per team, the answers on the list the
+  /// gamemaster has ticked as found.
+  final Map<String, List<int>> found;
+
   CompanionKind get kind => spec.kind;
 
   AnswerRound copyWith({
@@ -487,6 +518,7 @@ class AnswerRound {
     List<String>? revealed,
     Map<String, bool>? verdicts,
     Map<String, int>? awarded,
+    Map<String, List<int>>? found,
   }) =>
       AnswerRound(
         spec: spec,
@@ -497,6 +529,7 @@ class AnswerRound {
         revealed: revealed ?? this.revealed,
         verdicts: verdicts ?? this.verdicts,
         awarded: awarded ?? this.awarded,
+        found: found ?? this.found,
       );
 
   Map<String, dynamic> toJson() => {
@@ -508,6 +541,7 @@ class AnswerRound {
         'revealed': revealed,
         'verdicts': verdicts,
         'awarded': awarded,
+        if (found.isNotEmpty) 'found': found,
       };
 
   factory AnswerRound.fromJson(Map<String, dynamic> json) => AnswerRound(
@@ -525,6 +559,10 @@ class AnswerRound {
         },
         awarded: {
           for (final entry in (json['awarded'] as Map? ?? const {}).entries) entry.key as String: (entry.value as num).toInt(),
+        },
+        found: {
+          for (final entry in (json['found'] as Map? ?? const {}).entries)
+            entry.key as String: [for (final e in entry.value as List) (e as num).toInt()],
         },
       );
 }
@@ -550,13 +588,87 @@ bool? autoVerdict(CompanionSpec spec, PlayerAnswer? answer, {List<bool> choiceCo
     case CompanionKind.number:
     case CompanionKind.slider:
       if (spec.solution == null || answer.number == null) return null;
-      return (answer.number! - spec.solution!).abs() < 1e-9;
+      return (answer.number! - spec.solution!).abs() <= (spec.tolerance ?? 0) + 1e-9;
     case CompanionKind.connections:
       final progress = answer.connections;
       return progress == null ? null : progress.solved.length == kConnectionsGroups;
     case CompanionKind.whiteboard:
     case CompanionKind.text:
+    case CompanionKind.list:
       return null;
+  }
+}
+
+/// "Put in order" and "match pairs": how many items a team got in the right
+/// place, out of how many. Null for other kinds or without an answer.
+({int right, int of})? partialScore(CompanionSpec spec, PlayerAnswer? answer) {
+  final list = switch (spec.kind) {
+    CompanionKind.order => answer?.order,
+    CompanionKind.match => answer?.pairs,
+    _ => null,
+  };
+  if (list == null) return null;
+  final total = spec.options.length;
+  var right = 0;
+  for (var i = 0; i < total && i < list.length; i++) {
+    if (list[i] == i) right++;
+  }
+  return (right: right, of: total);
+}
+
+/// The question's points shared out over the items in the right place.
+int partialPoints(({int right, int of}) score, int pointsPlus) =>
+    score.of == 0 ? 0 : (pointsPlus * score.right / score.of).round();
+
+/// Ways to share out the points of an estimate.
+enum EstimateScoring {
+  /// The closest team, or teams, get everything.
+  closest("Closest wins"),
+
+  /// The closest get everything, the next half, the third a quarter.
+  podium("1st, 2nd, 3rd"),
+
+  /// The closest get everything, the furthest nothing, everyone else in
+  /// proportion to how far off they were.
+  distance("By distance");
+
+  const EstimateScoring(this.uiString);
+
+  final String uiString;
+}
+
+/// Points per team for an estimate with a known solution, for every team
+/// that gave a number. Empty without a solution.
+Map<String, int> estimatePoints(CompanionSpec spec, Map<String, PlayerAnswer> answers, int pointsPlus, EstimateScoring scoring) {
+  final solution = spec.solution;
+  if (solution == null) return const {};
+  final distances = <String, double>{
+    for (final entry in answers.entries)
+      if (entry.value.number != null) entry.key: (entry.value.number! - solution).abs(),
+  };
+  if (distances.isEmpty) return const {};
+  final sorted = distances.values.toSet().toList()..sort();
+  switch (scoring) {
+    case EstimateScoring.closest:
+      return {for (final entry in distances.entries) entry.key: entry.value <= sorted.first + 1e-9 ? pointsPlus : 0};
+    case EstimateScoring.podium:
+      const shares = [1.0, 0.5, 0.25];
+      // Teams that are equally close share a place; the next team is one
+      // place further down, however many shared it.
+      return {
+        for (final entry in distances.entries)
+          entry.key: () {
+            final place = sorted.indexWhere((d) => (d - entry.value).abs() <= 1e-9);
+            return place < shares.length ? (pointsPlus * shares[place]).round() : 0;
+          }(),
+      };
+    case EstimateScoring.distance:
+      final best = sorted.first;
+      final worst = sorted.last;
+      return {
+        for (final entry in distances.entries)
+          entry.key: worst - best < 1e-9 ? pointsPlus : (pointsPlus * (worst - entry.value) / (worst - best)).round(),
+      };
   }
 }
 

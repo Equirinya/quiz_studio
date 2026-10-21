@@ -49,6 +49,20 @@ class AnswerView extends StatelessWidget {
         );
       case CompanionKind.text:
         return Text(answer.text ?? "", style: style);
+      case CompanionKind.list:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (i, item) in (answer.items ?? const <String>[]).indexed)
+              Text(
+                "${i + 1}. ${item.isEmpty ? "–" : item}",
+                style: item.isEmpty ? style.copyWith(color: scheme.outline) : style,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+          ],
+        );
       case CompanionKind.number:
       case CompanionKind.slider:
         return Text(

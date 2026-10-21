@@ -151,6 +151,13 @@ Map<String, dynamic> _visibleQuestion(SessionState state, Question question) {
         for (final index in state.feudRevealed)
           if (index >= 0 && index < question.information.length) '$index': question.information[index],
       };
+    case QuestionType.topAnswers:
+      final items = question.topAnswers?.items ?? const [];
+      view['informationCount'] = items.length;
+      view['information'] = {
+        for (final index in state.feudRevealed)
+          if (index >= 0 && index < items.length) '$index': items[index].answer,
+      };
     case QuestionType.connections:
       // The groups the gamemaster has put on the big screen, easiest first.
       final spec = question.companion!;
