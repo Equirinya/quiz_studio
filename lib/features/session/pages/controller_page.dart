@@ -1701,7 +1701,7 @@ class _AnswersPanel extends StatelessWidget {
             final shown = round.revealed.contains(team.id);
             final verdict = round.verdicts[team.id];
             final partial = partialScore(spec, answer);
-            final suggestion = connections || top != null || (partial != null && partial.right > 0 && partial.right < partial.of)
+            final suggestion = connections || top != null || partial != null
                 ? null
                 : autoVerdict(spec, answer, choiceCorrect: question.answersCorrect) ?? (closest.contains(team.id) ? true : null);
             final found = foundBy(round, team.id);
@@ -1736,16 +1736,11 @@ class _AnswersPanel extends StatelessWidget {
                             style: theme.textTheme.labelLarge,
                           ),
                         ),
-                        if (partial != null && partial.right > 0 && partial.right < partial.of && verdict == null)
-                          Text("${partial.right} of ${partial.of} right", style: theme.textTheme.labelMedium?.copyWith(color: scheme.outline)),
-                        if (suggestion != null && verdict == null)
-                          Tooltip(
-                            message: suggestion ? "Looks right" : "Looks wrong",
-                            child: Icon(
-                              suggestion ? Icons.thumb_up_alt_outlined : Icons.thumb_down_alt_outlined,
-                              size: 18,
-                              color: scheme.outline,
-                            ),
+                        // What rating automatically would make of it.
+                        if (verdict == null && (partial != null || suggestion != null))
+                          Text(
+                            partial != null ? "${partial.right} of ${partial.of} right" : (suggestion! ? "Looks right" : "Looks wrong"),
+                            style: theme.textTheme.labelMedium?.copyWith(color: scheme.outline),
                           ),
                       ],
                     ),
