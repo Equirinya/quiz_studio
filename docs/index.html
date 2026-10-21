@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quiz Studio</title>
+  <meta name="description" content="Host your own quiz show: build quizzes together, put them on the big screen and run the evening from your phone." />
+  <link rel="icon" href="./logo.png" />
+
+  <!-- Open Graph -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:url"         content="https://equirinya.github.io/quiz_studio/" />
+  <meta property="og:title"       content="Quiz Studio" />
+  <meta property="og:description" content="Host your own quiz show: build quizzes together, put them on the big screen and run the evening from your phone." />
+  <meta property="og:image"       content="https://equirinya.github.io/quiz_studio/images/big_screen_board.png" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:title"       content="Quiz Studio" />
+  <meta name="twitter:description" content="Host your own quiz show: build quizzes together, put them on the big screen and run the evening from your phone." />
+  <meta name="twitter:image"       content="https://equirinya.github.io/quiz_studio/images/big_screen_board.png" />
+  <style>
+    :root {
+      --red: #FF4800;
+      --orange: #FFA144;
+      --magenta: #CC4CD8;
+      --ink: #1f2330;
+      --muted: #6b7280;
+      --line: #ececf1;
+      --stage: #17100e;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background: #fff;
+      line-height: 1.5;
+    }
+    a { color: inherit; }
+
+    .hero {
+      color: #fff;
+      background:
+        radial-gradient(55% 60% at 15% 0%, rgba(204,76,216,0.75), transparent 70%),
+        radial-gradient(50% 60% at 100% 100%, rgba(255,161,68,0.9), transparent 70%),
+        linear-gradient(135deg, #FF6A2B, #E2552E);
+      padding: 48px 22px 0;
+      text-align: center;
+      overflow: hidden;
+    }
+    .logo {
+      width: 84px;
+      height: 84px;
+      border-radius: 22px;
+      display: block;
+      margin: 0 auto 14px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+    }
+    h1 {
+      font-size: clamp(32px, 6vw, 50px);
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+    .tagline {
+      font-size: clamp(16px, 2.4vw, 20px);
+      max-width: 580px;
+      margin: 0 auto 26px;
+      opacity: 0.95;
+    }
+    .stores {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 44px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 12px 20px;
+      border-radius: 14px;
+      font-size: 15.5px;
+      font-weight: 600;
+      text-decoration: none;
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+      transition: transform .05s ease, box-shadow .2s ease;
+    }
+    .btn:hover { box-shadow: 0 10px 26px rgba(0,0,0,0.22); }
+    .btn:active { transform: scale(.98); }
+    .btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+    .stage {
+      position: relative;
+      max-width: 980px;
+      margin: 0 auto;
+      padding-bottom: 60px;
+    }
+    .tv {
+      width: 88%;
+      border-radius: 14px;
+      border: 10px solid var(--stage);
+      background: var(--stage);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+      display: block;
+    }
+    .phone {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 22%;
+      border-radius: 26px;
+      border: 7px solid var(--stage);
+      background: var(--stage);
+      box-shadow: 0 20px 44px rgba(0,0,0,0.35);
+    }
+
+    main {
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 56px 22px 28px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 40px;
+      align-items: center;
+      margin-bottom: 64px;
+    }
+    .row.flip { grid-template-columns: 1fr 1.35fr; }
+    .row.flip .media { order: 2; }
+    .media img {
+      width: 100%;
+      display: block;
+      border-radius: 14px;
+      border: 8px solid var(--stage);
+      background: var(--stage);
+      box-shadow: 0 16px 40px rgba(31,35,48,0.18);
+    }
+    .media.device { text-align: center; }
+    .media.device img {
+      width: auto;
+      max-width: 70%;
+      max-height: 480px;
+      border-radius: 24px;
+      margin: 0 auto;
+    }
+    .row h2 { font-size: clamp(22px, 3vw, 28px); margin: 0 0 8px; letter-spacing: -0.01em; }
+    .row p { color: var(--muted); margin: 0; font-size: 16.5px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+      margin: 0 0 40px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px;
+    }
+    .card b { display: block; font-size: 16.5px; margin-bottom: 4px; }
+    .card span { color: var(--muted); font-size: 15px; }
+
+    footer {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      text-align: center;
+      font-size: 13.5px;
+      color: var(--muted);
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { text-decoration: underline; color: var(--ink); }
+    footer span { margin: 0 8px; opacity: .5; }
+
+    @media (max-width: 760px) {
+      .row, .row.flip { grid-template-columns: 1fr; gap: 18px; }
+      .row.flip .media { order: 0; }
+      .grid { grid-template-columns: 1fr; }
+      .tv { width: 100%; border-width: 6px; }
+      .phone { width: 30%; right: 0; bottom: 24px; border-width: 5px; border-radius: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <img class="logo" src="./logo.png" alt="Quiz Studio logo" />
+    <h1>Quiz Studio</h1>
+    <p class="tagline">Host your own quiz show. Build quizzes with friends, put them on the big screen and run the evening from your phone.</p>
+
+    <div class="stores">
+      <a class="btn" href="https://play.google.com/store/apps/details?id=de.equirinya.quiz_show">
+        <svg viewBox="0 0 512 512" aria-hidden="true"><path fill="#FF4800" d="M48 59.5C42 65.3 38.5 74.3 38.5 86v340c0 11.7 3.5 20.7 9.5 26.5l1.9 1.8 190.5-190.5v-4.5L49.9 57.7 48 59.5z"/><path fill="#FFA144" d="M303.8 327.9l-63.4-63.6v-4.5l63.5-63.6 1.4.8 75.2 42.7c21.5 12.2 21.5 32.2 0 44.5l-75.2 42.7-1.5.8z"/><path fill="#34A853" d="M305.2 327.1L240.4 262 48 454.3c7.1 7.5 18.8 8.4 32 1L305.2 327.1"/><path fill="#4285F4" d="M305.2 196.9L80 69.6c-13.2-7.5-24.9-6.5-32 1l192.4 192.3 64.8-65.9z"/></svg>
+        Google Play
+      </a>
+      <a class="btn" href="https://github.com/Equirinya/quiz_studio">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </div>
+
+    <div class="stage">
+      <img class="tv" src="./images/big_screen_board.png" alt="The board of a quiz on the big screen" />
+      <img class="phone" src="./images/phone_controller.png" alt="The controller on a phone" />
+    </div>
+  </section>
+
+  <main>
+    <section class="row">
+      <div class="media"><img src="./images/big_screen_abcd.png" alt="An ABCD question on the big screen" /></div>
+      <div>
+        <h2>Run the show from your phone</h2>
+        <p>Open questions, reveal answers, give points and play sounds. Right, Wrong and Reveal always sit in the same place, so you never have to look for them.</p>
+      </div>
+    </section>
+
+    <section class="row flip">
+      <div class="media device"><img src="./images/phone_buzzer.png" alt="A phone used as the team's buzzer" /></div>
+      <div>
+        <h2>Every phone is a buzzer</h2>
+        <p>Teams scan a code and their phone becomes their buzzer. No account needed, and it works over the local Wi-Fi even without internet. USB buzzer boxes work too.</p>
+      </div>
+    </section>
+
+    <section class="row">
+      <div class="media"><img src="./images/big_screen_whiteboards.png" alt="Whiteboard answers of three teams, rated" /></div>
+      <div>
+        <h2>Answers on the teams' devices</h2>
+        <p>Whiteboards, numbers, sliders, pick one, put in order and match pairs. You show the answers one by one and rate them, many rate themselves.</p>
+      </div>
+    </section>
+
+    <section class="row flip">
+      <div class="media device"><img src="./images/tablet_connections.png" alt="Connections on a tablet" /></div>
+      <div>
+        <h2>Puzzle rounds</h2>
+        <p>Connections, matching and quick-fire rounds, with animations on every device and the big screen.</p>
+      </div>
+    </section>
+
+    <section class="row">
+      <div class="media"><img src="./images/big_screen_feud.png" alt="A survey round on the big screen" /></div>
+      <div>
+        <h2>Survey rounds and more</h2>
+        <p>Family Feud style surveys, picture and clue reveals, music, confetti, fireworks and cards with pictures or video over the screen.</p>
+      </div>
+    </section>
+
+    <section class="row flip">
+      <div class="media device"><img src="./images/tablet_editor.png" alt="The game editor" /></div>
+      <div>
+        <h2>Build quizzes together</h2>
+        <p>Invite co-authors with a link and share single categories with them, so nobody spoils the rest of the evening.</p>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card"><b>Big screen on Windows</b><span>Open the show in its own window, full screen on the projector.</span></div>
+      <div class="card"><b>Boards your way</b><span>A wheel, a grid, or a map of categories with branching paths.</span></div>
+      <div class="card"><b>Keeps going offline</b><span>Phones on the same Wi-Fi talk straight to the big screen.</span></div>
+    </section>
+
+    <footer>
+      <a href="./privacy.html">Privacy</a><span>·</span>
+      <a href="./terms.html">Terms</a><span>·</span>
+      <a href="./delete-account.html">Delete account</a><span>·</span>
+      <a href="mailto:equirinya@gmail.com?subject=Quiz%20Studio%20Support%20Question">Support</a>
+    </footer>
+  </main>
+</body>
+</html>
