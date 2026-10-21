@@ -354,6 +354,54 @@ void main() {
       expect(matchingRead['companion'], {'kind': 'match', 'timer': 60});
     });
 
+    test('a top answers question and an estimate with a range, read back as they were given', () async {
+      final top = {
+        'mode': 'typed',
+        'items': [
+          {'answer': 'Titanic'},
+          {'answer': 'The Lion King / Lion King', 'points': 300},
+        ],
+      };
+      await tools.call('add_question', {
+        'gameId': 'g',
+        'categoryId': 'c1',
+        'type': 'topAnswers',
+        'question': 'Name the most popular films',
+        'pointsPlus': 100,
+        'topAnswers': top,
+        'companion': {'timer': 90},
+      });
+      await tools.call('add_question', {
+        'gameId': 'g',
+        'categoryId': 'c1',
+        'question': 'How tall is the Eiffel Tower?',
+        'pointsPlus': 200,
+        'companion': {'kind': 'number', 'solution': 330, 'tolerance': 10, 'unit': 'm'},
+      });
+      final questions = (await backend.loadGame('g')).groups.single.categories.single.questions;
+      final film = questions.firstWhere((q) => q.type == QuestionType.topAnswers);
+      expect(film.topAnswers!.mode, TopAnswersMode.typed);
+      expect(film.topAnswers!.pointsOf(1, film.pointsPlus), 300);
+      expect(film.companion!.kind, CompanionKind.list);
+      expect(film.companion!.timerSeconds, 90);
+      expect(questions.firstWhere((q) => q.text.startsWith('How tall')).companion!.tolerance, 10);
+
+      final read = await described();
+      final filmRead = read.firstWhere((q) => q['type'] == 'topAnswers');
+      expect(filmRead['topAnswers'], top);
+      expect(filmRead['companion'], {'timer': 90});
+      expect((read.firstWhere((q) => '${q['question']}'.startsWith('How tall'))['companion'] as Map)['tolerance'], 10);
+
+      for (final args in <Map<String, dynamic>>[
+        {'type': 'topAnswers', 'question': 'x'},
+        {'type': 'topAnswers', 'question': 'x', 'topAnswers': {'items': []}},
+        {'type': 'topAnswers', 'question': 'x', 'topAnswers': {'mode': 'shout', 'items': [{'answer': 'y'}]}},
+        {'question': 'x', 'topAnswers': {'items': [{'answer': 'y'}]}},
+      ]) {
+        await expectLater(tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', ...args}), throwsA(isA<ToolError>()), reason: '$args');
+      }
+    });
+
     test('a Fragenhagel on the devices takes statements', () async {
       await tools.call('add_question', {
         'gameId': 'g',

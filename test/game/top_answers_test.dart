@@ -159,6 +159,7 @@ void main() {
         OpenQuestion(films),
         SubmitAnswer('red', PlayerAnswer(items: ['Avatar', 'Star wars', 'x', '', ''])),
         SubmitAnswer('blue', PlayerAnswer(items: ['jurasic park', '', '', '', ''])),
+        LockAnswers(),
       ]);
       final commands = autoRating(s, s.answerRound!, game.question(films)!);
       final rated = play(game, commands, s);

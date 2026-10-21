@@ -9,7 +9,7 @@ SessionState withRound(CompanionSpec spec, Map<String, PlayerAnswer> answers) {
   for (final entry in answers.entries) {
     state = reduce(state, SubmitAnswer(entry.key, entry.value), fixtureGame()).state;
   }
-  return state;
+  return reduce(state, const LockAnswers(), fixtureGame()).state;
 }
 
 SessionState rated(SessionState state, List<Command> commands) {
@@ -98,6 +98,21 @@ void main() {
       expect(CompanionSpec.fromMap(near.toMap())!.tolerance, 5);
       expect(CompanionSpec.fromMap({'kind': 'number', 'tolerance': 0})!.tolerance, isNull);
     });
+  });
+
+  test('rate automatically only offers what is final and would change something', () {
+    const pick = CompanionSpec(kind: CompanionKind.order, options: ['a', 'b']);
+    var state = run(fixtureState(), const [OpenQuestion(estimate)]);
+    state = reduce(state, const OpenAnswers(pick), fixtureGame()).state;
+    state = reduce(state, const SubmitAnswer('red', PlayerAnswer(order: [0, 1])), fixtureGame()).state;
+    // Still being changed: nothing to rate yet.
+    expect(autoRating(state, state.answerRound!, question), isEmpty);
+    state = reduce(state, const LockAnswer('red'), fixtureGame()).state;
+    final commands = autoRating(state, state.answerRound!, question);
+    expect(commands, hasLength(1));
+    state = rated(state, commands);
+    // Done: the button has nothing left to do.
+    expect(autoRating(state, state.answerRound!, question), isEmpty);
   });
 
   test('half points replace what a team had', () {

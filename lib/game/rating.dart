@@ -8,12 +8,38 @@ import 'content.dart';
 import 'session_state.dart';
 import 'top_answers.dart';
 
-/// The ratings that can be worked out without a human, one command per team
-/// that has something to rate:
+/// The ratings that can be worked out without a human and would change
+/// something, one command per team:
 ///   * top answers typed in: the answers on the list the team's lines match
 ///   * put in order, match pairs: points for every item in the right place
 ///   * pick one, numbers with a solution: right or wrong
-List<Command> autoRating(SessionState state, AnswerRound round, Question question) {
+/// Only answers that are final count: locked in, or the round is closed.
+/// Empty when there is nothing the button would do, so it is not shown.
+List<Command> autoRating(SessionState state, AnswerRound round, Question question) => [
+      for (final command in _candidates(state, round, question))
+        if (_final(round, command) && _changes(round, command, question)) command,
+    ];
+
+bool _final(AnswerRound round, Command command) {
+  final teamId = switch (command) {
+    RateAnswer(:final teamId) || AwardAnswer(:final teamId) || MarkTopAnswers(:final teamId) => teamId,
+    _ => null,
+  };
+  return teamId != null && (!round.open || round.answers[teamId]?.locked == true);
+}
+
+bool _changes(AnswerRound round, Command command, Question question) => switch (command) {
+      RateAnswer(:final teamId, :final correct) => round.verdicts[teamId] != correct ||
+          round.awarded[teamId] != (correct == true ? question.pointsPlus : -question.pointsMinus),
+      AwardAnswer(:final teamId, :final points) => round.awarded[teamId] != points,
+      MarkTopAnswers(:final teamId, :final found) =>
+        !round.awarded.containsKey(teamId) || !_sameSet(round.found[teamId] ?? const [], found),
+      _ => true,
+    };
+
+bool _sameSet(List<int> a, List<int> b) => a.toSet().length == b.toSet().length && a.toSet().containsAll(b);
+
+List<Command> _candidates(SessionState state, AnswerRound round, Question question) {
   final top = question.topAnswers;
   if (question.type == QuestionType.topAnswers) {
     if (top == null || round.kind != CompanionKind.list) return const [];

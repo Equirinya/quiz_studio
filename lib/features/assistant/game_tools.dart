@@ -64,9 +64,12 @@ const Map<String, dynamic> _string = {'type': 'string'};
 final Map<String, dynamic> _questionFields = {
   'type': {
     'type': 'string',
-    'enum': ['free', 'abcd', 'progressingReveal', 'feud', 'connections', 'rapidFire', 'matching'],
+    'enum': ['free', 'abcd', 'progressingReveal', 'feud', 'connections', 'rapidFire', 'matching', 'topAnswers'],
     'description': 'free: plain question. abcd: four answer options. progressingReveal: hints revealed one by one. '
-        'feud: a survey, the most popular answers, each worth a share of the points. '
+        'feud ("Survey duel"): a survey; the team that buzzed uncovers answers until its third strike, then the other '
+        'team may steal; each answer is worth a share of the points. '
+        'topAnswers ("Top answers"): "name the five most popular ...": teams find answers on a list by buzzing or on '
+        'their devices and get the points of each answer found, see "topAnswers". '
         'connections: sixteen words in four groups of four, solved by every team on its own '
         'device; each group found is worth a quarter of pointsPlus. '
         'rapidFire ("Fragenhagel"): many short questions in a row inside this one, see "rapidFire"; pointsPlus is '
@@ -156,6 +159,33 @@ final Map<String, dynamic> _questionFields = {
     },
     'required': ['items'],
   },
+  'topAnswers': {
+    'type': 'object',
+    'description': 'topAnswers only: the list and how teams answer.',
+    'properties': {
+      'mode': {
+        'type': 'string',
+        'enum': ['buzzer', 'typed', 'whiteboard'],
+        'description': 'buzzer (default): a team buzzes and names an answer, the gamemaster taps it and the team gets its '
+            'points. typed: every team types a list on its device. whiteboard: every team writes on a numbered whiteboard. '
+            'On the devices the gamemaster ticks what each team found.',
+      },
+      'items': {
+        'type': 'array',
+        'minItems': 1,
+        'description': 'The answers, most popular first. Other spellings to accept go after a slash: "The Lion King / Lion King".',
+        'items': {
+          'type': 'object',
+          'properties': {
+            'answer': _string,
+            'points': {'type': 'integer', 'description': 'Optional; without it the answer is worth pointsPlus.'},
+          },
+          'required': ['answer'],
+        },
+      },
+    },
+    'required': ['items'],
+  },
   'pairs': {
     'type': 'array',
     'minItems': 2,
@@ -193,12 +223,12 @@ final Map<String, dynamic> _questionFields = {
   },
   'companion': {
     'type': 'object',
-    'description': 'Optional screen on the teams\' own devices while the question is open. For connections and '
-        'matching the screen is always there; only timer, lock (and mistakes) apply.',
+    'description': 'Optional screen on the teams\' own devices while the question is open. For connections, '
+        'matching and topAnswers the screen comes from the question; only timer, lock (and mistakes) apply.',
     'properties': {
       'kind': {
         'type': 'string',
-        'enum': ['whiteboard', 'text', 'number', 'slider', 'choice', 'order', 'match'],
+        'enum': ['whiteboard', 'text', 'number', 'slider', 'choice', 'order', 'match', 'list'],
       },
       'timer': {'type': 'integer', 'description': 'Seconds until answers lock; leave out for no timer.'},
       'background': {
@@ -207,12 +237,13 @@ final Map<String, dynamic> _questionFields = {
         'description': 'whiteboard only. image: draw on backgroundImage, e.g. a map to mark.',
       },
       'backgroundImage': {'type': 'string', 'description': 'whiteboard with image background: a name from upload_media.'},
-      'listRows': {'type': 'integer', 'description': 'whiteboard with list background.'},
+      'listRows': {'type': 'integer', 'description': 'whiteboard with list background, and list: how many lines.'},
       'min': {'type': 'number'},
       'max': {'type': 'number'},
       'step': {'type': 'number'},
       'unit': {'type': 'string'},
       'solution': {'type': 'number', 'description': 'number and slider: the right value.'},
+      'tolerance': {'type': 'number', 'description': 'number and slider: how far from the solution still counts as right.'},
       'options': {
         'type': 'array',
         'items': _string,
@@ -538,6 +569,22 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     throw const ToolError('A matching question needs "pairs".');
   }
 
+  final top = take<Map<dynamic, dynamic>>('topAnswers');
+  if (top != null) {
+    if (effective != QuestionType.topAnswers) throw const ToolError('"topAnswers" is for topAnswers questions.');
+    final mode = top['mode'] ?? TopAnswersMode.buzzer.name;
+    if (!TopAnswersMode.values.any((m) => m.name == mode)) throw const ToolError('"mode" must be buzzer, typed or whiteboard.');
+    final items = top['items'];
+    if (items is! List || items.isEmpty || items.any((i) => i is! Map || i['answer'] is! String || (i['answer'] as String).trim().isEmpty)) {
+      throw const ToolError('"topAnswers" needs "items", each with its "answer".');
+    }
+    if (items.length > 20) throw const ToolError('A top answers list has at most 20 answers.');
+    data['topAnswers'] = TopAnswers(mode: TopAnswersMode.fromName(mode), items: [for (final item in items) TopAnswer.fromMap(item)]).toMap();
+  }
+  if (!partial && effective == QuestionType.topAnswers && top == null) {
+    throw const ToolError('A topAnswers question needs "topAnswers" with its items.');
+  }
+
   final groups = args['groups'];
   if (groups != null) {
     if (effective != QuestionType.connections) throw const ToolError('"groups" is for connections questions.');
@@ -563,6 +610,11 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     // The pairs come from "pairs"; the screen keeps only its timer and lock.
     final spec = CompanionSpec.fromMap({...companion, 'kind': CompanionKind.match.name})!;
     data['companion'] = {'kind': CompanionKind.match.name, if (spec.timerSeconds != null) 'timer': spec.timerSeconds, if (!spec.lockable) 'lock': false};
+  } else if (companion != null && effective == QuestionType.topAnswers) {
+    if (companion is! Map) throw const ToolError('"companion" must be an object.');
+    // The screen follows from the mode; only its timer and lock are kept.
+    final spec = CompanionSpec.fromMap({...companion, 'kind': CompanionKind.text.name})!;
+    data['companion'] = {if (spec.timerSeconds != null) 'timer': spec.timerSeconds, if (!spec.lockable) 'lock': false};
   } else if (companion != null && effective == QuestionType.rapidFire) {
     throw const ToolError('A rapidFire question has no "companion"; devices mode gives every team right and wrong.');
   } else if (companion != null) {
@@ -624,10 +676,15 @@ Map<String, dynamic> _describeQuestion(Question q) => {
               if (pair.right.image != null) 'rightImage': pair.right.image,
             },
         ],
+      if (q.type == QuestionType.topAnswers && q.topAnswers != null) 'topAnswers': q.topAnswers!.toMap(),
       if (q.companion != null && q.type != QuestionType.rapidFire)
         'companion': switch (q.type) {
           QuestionType.connections => q.companion!.toMap()..remove('groups'),
           QuestionType.matching => q.companion!.toMap()..remove('options')..remove('targets'),
+          QuestionType.topAnswers => {
+              if (q.companion!.timerSeconds != null) 'timer': q.companion!.timerSeconds,
+              if (!q.companion!.lockable) 'lock': false,
+            },
           _ => q.companion!.toMap(),
         },
       if (q.image != null) 'image': q.image,
