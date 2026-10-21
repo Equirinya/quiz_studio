@@ -192,5 +192,4 @@ Quiz Studio 2 ist komplett neu geschrieben: neue Steuerung, Karten als Spielbret
 ## Before publishing
 
 - The store images show the app's English interface. German store pages can use them as they are, or new ones can be made once the app has a German interface.
-- "Free and open source" is in both descriptions; remove it if the repository stays private.
 - The App Store and Microsoft Store links on the website are not there yet; add them to `docs/index.html` once the listings exist.
