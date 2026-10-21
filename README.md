@@ -17,7 +17,7 @@ whole evening from your phone. Teams buzz in and answer on their own phones.
 
 <img src="screenshots/playstore_phone/controller.png" width="200" alt="Controller on the phone">
 <img src="screenshots/playstore_phone/whiteboards.png" width="200" alt="Whiteboards">
-<img src="screenshots/playstore_phone/connections.png" width="200" alt="Connections">
+<img src="screenshots/playstore_phone/connections.png" width="200" alt="Word puzzle">
 <img src="screenshots/playstore_phone/feud.png" width="200" alt="Buzzers and survey rounds">
 
 </div>
@@ -27,8 +27,8 @@ whole evening from your phone. Teams buzz in and answer on their own phones.
 - **📺 The big screen:** a wheel, a grid or a map of categories with branching paths, team scores, a picture strip and music bars. On Windows the show can open in its own window, full screen on the projector.
 - **🎮 A controller that stays put:** Right, Wrong, Reveal and the rest always sit in the same place on the phone, whatever is on screen.
 - **🔴 Buzzers:** players scan a code and their phone becomes the team's buzzer. USB buzzer boxes work too, with a connection that heals itself.
-- **✍️ Answers on the teams' devices:** whiteboards, text, numbers, sliders, pick one, put in order and match pairs, plus the Connections grid. You show and rate the answers one by one, many of them rate themselves.
-- **❓ Question types:** free questions, ABCD, picture and clue reveals, survey rounds (Family Feud style), Connections, matching and quick-fire rounds (Fragenhagel), buzzed or answered on the devices.
+- **✍️ Answers on the teams' devices:** whiteboards, text, numbers, sliders, pick one, put in order and match pairs, plus a word puzzle where teams find four groups of four. You show and rate the answers one by one, many of them rate themselves.
+- **❓ Question types:** free questions, ABCD, picture and clue reveals, survey rounds where teams guess the most popular answers, four groups of four, matching and quick-fire rounds (Fragenhagel), buzzed or answered on the devices.
 - **🎵 Music and effects:** background music, a sound for every moment, team buzzer sounds, confetti, fireworks, cards with pictures or video over the screen.
 - **👥 Built together:** invite co-authors with a link, share single categories so nobody spoils the rest.
 - **📶 Works on the local network:** phones on the same Wi-Fi talk straight to the big screen, so a show keeps going when the internet drops.
@@ -37,7 +37,7 @@ whole evening from your phone. Teams buzz in and answer on their own phones.
 <table>
   <tr>
     <td><img src="docs/images/big_screen_whiteboards.png" alt="Whiteboard answers, rated"></td>
-    <td><img src="docs/images/big_screen_connections.png" alt="Connections on the big screen"></td>
+    <td><img src="docs/images/big_screen_connections.png" alt="A word puzzle on the big screen"></td>
   </tr>
   <tr>
     <td><img src="docs/images/big_screen_abcd.png" alt="An ABCD question"></td>

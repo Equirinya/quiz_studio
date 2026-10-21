@@ -288,7 +288,7 @@ final _scenes = <String, Scene>{
     return _pair(wide, _presenter(_host(_feud)), _phone, _player(buzzer, 'pants'), width: 340, drop: 0.92);
   }),
   'editor': Scene("Make your own quiz", "Write your questions in minutes, alone or with friends. Then spin the wheel.", (tester, wide) {
-    return _pair(wide, _presenter(_host(const [SelectGroup('speed')])), _tabletTall, _editor(), width: 520, left: true, drop: 0.92);
+    return _pair(wide, _presenter(_host(const [SelectGroup('speed')])), _tabletWide, _editor(), width: 700, drop: 0.86);
   }),
 };
 

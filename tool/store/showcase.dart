@@ -22,13 +22,15 @@ const _texts = {
   'geography/q1': 'Which river flows through Vienna, Budapest and Belgrade?',
 };
 
-const _wheelNames = ['Sports', 'Food'];
-const _wheelIds = ['sports', 'food'];
+const _wheelNames = ['Sports', 'Food', 'History', 'Animals'];
+const _wheelIds = ['sports', 'food', 'history', 'animals'];
 
 const _hints = {'music/q2': 'Queen'};
 
 const _labels = {
   'sports': ['Football', 'Olympics', 'Tennis', 'Records'],
+  'history': ['Kings', 'Inventions', 'Dates', 'Empires'],
+  'animals': ['Pets', 'Birds', 'Ocean', 'Records'],
   'food': ['Fruit', 'Cheese', 'Spices', 'Dishes'],
   'warmup': ['Animals', 'Food', 'Sports', 'Spider'],
   'movies': ['Quotes', 'Actors', 'Oscars', 'Sequels'],
@@ -70,7 +72,7 @@ GameContent showcaseGame() => GameContent.assemble(
           _mapIds[i]: {'name': _mapNames[i], 'categoryGroup': 'road', 'categoryIndex': i, 'active': true},
         for (var i = 0; i < _wheelIds.length; i++)
           _wheelIds[i]: {'name': _wheelNames[i], 'categoryGroup': 'speed', 'categoryIndex': i, 'active': true},
-        'feud': {'name': 'Survey says', 'categoryGroup': 'final', 'categoryIndex': 0, 'active': true},
+        'feud': {'name': 'Top answers', 'categoryGroup': 'final', 'categoryIndex': 0, 'active': true},
       },
       questions: {
         for (final c in _mapIds)
