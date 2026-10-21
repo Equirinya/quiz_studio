@@ -22,7 +22,14 @@ const _texts = {
   'geography/q1': 'Which river flows through Vienna, Budapest and Belgrade?',
 };
 
+const _wheelNames = ['Sports', 'Food'];
+const _wheelIds = ['sports', 'food'];
+
+const _hints = {'music/q2': 'Queen'};
+
 const _labels = {
+  'sports': ['Football', 'Olympics', 'Tennis', 'Records'],
+  'food': ['Fruit', 'Cheese', 'Spices', 'Dishes'],
   'warmup': ['Animals', 'Food', 'Sports', 'Spider'],
   'movies': ['Quotes', 'Actors', 'Oscars', 'Sequels'],
   'geography': ['Capitals', 'Rivers', 'Flags', 'Borders'],
@@ -34,6 +41,7 @@ Map<String, dynamic> _plain(String category, int i) => {
       'type': 'free',
       'question': _texts['$category/q$i'] ?? '${_labels[category]![i]} question',
       'description': _labels[category]![i],
+      'answerHint': ?_hints['$category/q$i'],
       'pointsPlus': (i + 1) * 100,
       'pointsMinus': (i + 1) * 50,
     };
@@ -54,11 +62,14 @@ GameContent showcaseGame() => GameContent.assemble(
             ],
           },
         },
-        'final': {'name': 'Finale', 'categoryGroupType': 'category_display', 'categoryGroupIndex': 1},
+        'speed': {'name': 'Speed round', 'categoryGroupType': 'category_wheel', 'categoryGroupIndex': 1},
+        'final': {'name': 'Finale', 'categoryGroupType': 'category_display', 'categoryGroupIndex': 2},
       },
       categories: {
         for (var i = 0; i < _mapIds.length; i++)
           _mapIds[i]: {'name': _mapNames[i], 'categoryGroup': 'road', 'categoryIndex': i, 'active': true},
+        for (var i = 0; i < _wheelIds.length; i++)
+          _wheelIds[i]: {'name': _wheelNames[i], 'categoryGroup': 'speed', 'categoryIndex': i, 'active': true},
         'feud': {'name': 'Survey says', 'categoryGroup': 'final', 'categoryIndex': 0, 'active': true},
       },
       questions: {
@@ -88,6 +99,7 @@ GameContent showcaseGame() => GameContent.assemble(
                 'companion': {'kind': 'whiteboard', 'timer': 45},
               },
           },
+        for (final c in _wheelIds) c: {for (var i = 0; i < 4; i++) 'q$i': _plain(c, i)},
         'feud': {
           'beach': {
             'type': 'feud',

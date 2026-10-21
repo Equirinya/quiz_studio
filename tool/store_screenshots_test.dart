@@ -105,7 +105,6 @@ const _tabletTall = Size(820, 1180);
 
 Widget _tvDevice(Widget screen, double width) => Device(screen: _tv, width: width, dark: true, bezel: 0.012, radius: 0.012, child: screen);
 
-Widget _tabletDevice(Size size, Widget screen, double width) => Device(screen: size, width: width, radius: 0.04, child: screen);
 
 /// The big screen with a smaller device of [screen] size over its lower corner.
 (Size, Widget) _pair(bool wide, Widget tv, Size screen, Widget child, {required double width, bool left = false, bool dark = false, double drop = 0.62}) {
@@ -261,15 +260,10 @@ Widget _editor() {
 final _scenes = <String, Scene>{
   'board': Scene(
     "Your quiz show on the big screen",
-    "Boards, scores, music and effects on the TV. You run it all from your phone.",
+    "Boards, scores, music and effects on the TV or projector. You control the show from your phone.",
     (tester, wide) {
-      final host = _host(const []);
-      return _pair(wide, _presenter(host), _phone, _controller(host), width: 400);
-    },
-    act: (tester) async {
-      await tester.tap(find.widgetWithText(TextButton, 'Board'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 600));
+      final controller = _host(const [OpenQuestion(QuestionRef('music', 'q2')), Buzz('quizzards')]);
+      return _pair(wide, _presenter(_host(const [])), _phone, _controller(controller), width: 400);
     },
   ),
   'controller': Scene("Every button where you expect it", "Right, wrong, reveal: the controller never moves its buttons around.", (tester, wide) {
@@ -293,10 +287,8 @@ final _scenes = <String, Scene>{
     final buzzer = _host(const [OpenQuestion(QuestionRef('music', 'q2'))]);
     return _pair(wide, _presenter(_host(_feud)), _phone, _player(buzzer, 'pants'), width: 340, drop: 0.92);
   }),
-  'editor': Scene("Build quizzes together", "Write categories and questions with friends. Invite them with a link.", (tester, wide) {
-    return wide
-        ? (const Size(1400, 1000), Center(child: _tabletDevice(_tabletWide, _editor(), 1350)))
-        : (const Size(1000, 1250), Center(child: _tabletDevice(_tabletTall, _editor(), 860)));
+  'editor': Scene("Build quizzes together", "Write categories and questions with friends, then spin the wheel on the big screen.", (tester, wide) {
+    return _pair(wide, _presenter(_host(const [SelectGroup('speed')])), _tabletTall, _editor(), width: 520, left: true, drop: 0.92);
   }),
 };
 
