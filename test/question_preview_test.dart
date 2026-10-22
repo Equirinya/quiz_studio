@@ -45,15 +45,20 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await next(tester);
     }
-    expect(find.byIcon(Icons.check), findsNothing);
+    // The solution colours the tiles: green for right, red for wrong.
+    Finder tiles(Color color) => find.byWidgetPredicate(
+          (w) => w is AnimatedContainer && w.decoration is BoxDecoration && (w.decoration as BoxDecoration).color == color,
+        );
+    final red = Theme.of(tester.element(find.text('a'))).colorScheme.errorContainer;
+    expect(tiles(Colors.green.shade700), findsNothing);
     await next(tester);
-    expect(find.byIcon(Icons.check), findsOneWidget);
-    expect(find.byIcon(Icons.close), findsNWidgets(3));
+    expect(tiles(Colors.green.shade700), findsOneWidget);
+    expect(tiles(red), findsNWidgets(3));
     expect(tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.navigate_next)).onPressed, isNull);
 
     await tester.tap(find.byTooltip('Hide one'));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byIcon(Icons.check), findsNothing);
+    expect(tiles(Colors.green.shade700), findsNothing);
   });
 
   testWidgets('feud uncovers answers with their values', (tester) async {
