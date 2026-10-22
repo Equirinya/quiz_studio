@@ -388,7 +388,8 @@ class QuestionDisplay extends StatelessWidget {
               flex: 2,
               child: _Tiles(
                 unit: unit,
-                columns: 2,
+                // Up to four answers two by two, more three by three.
+                columns: question.answers.length <= 4 ? 2 : 3,
                 tiles: [
                   for (final (i, answer) in question.answers.indexed)
                     (

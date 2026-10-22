@@ -131,7 +131,7 @@ void main() {
       expect(questionDataFromArgs({'pointsPlus': 300, 'label': 'Hard'}, partial: true), {'pointsPlus': 300, 'description': 'Hard'});
     });
 
-    test('abcd needs four answers and four marks', () {
+    test('abcd takes 2 to 9 answers, each with its mark', () {
       final data = questionDataFromArgs({
         'type': 'abcd',
         'question': 'Pick',
@@ -141,9 +141,16 @@ void main() {
       expect(data['answers'], ['a', 'b', 'c', 'd']);
       expect(data['answersCorrect'], [false, true, false, false]);
       expect(
-        () => questionDataFromArgs({'type': 'abcd', 'question': 'Pick', 'answers': ['a', 'b'], 'correct': [true, false]}, partial: false),
-        throwsA(isA<ToolError>()),
+        questionDataFromArgs({'type': 'abcd', 'question': 'Pick', 'answers': ['a', 'b'], 'correct': [true, false]}, partial: false)['answers'],
+        ['a', 'b'],
       );
+      for (final args in <Map<String, dynamic>>[
+        {'answers': ['a'], 'correct': [true]},
+        {'answers': List.filled(10, 'x'), 'correct': List.filled(10, false)},
+        {'answers': ['a', 'b', 'c'], 'correct': [true, false]},
+      ]) {
+        expect(() => questionDataFromArgs({'type': 'abcd', 'question': 'Pick', ...args}, partial: false), throwsA(isA<ToolError>()), reason: '$args');
+      }
       expect(() => questionDataFromArgs({'type': 'abcd', 'question': 'Pick'}, partial: false), throwsA(isA<ToolError>()));
     });
 
@@ -583,7 +590,7 @@ void main() {
         'arguments': {'gameId': 'g', 'categoryId': 'c1', 'type': 'abcd', 'question': 'Pick'},
       });
       expect(reply['result']['isError'], true);
-      expect(reply['result']['content'][0]['text'], contains('four'));
+      expect(reply['result']['content'][0]['text'], contains('one entry per answer'));
       expect(backend.questions['c1'], hasLength(1));
     });
 

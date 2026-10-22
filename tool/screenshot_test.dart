@@ -329,6 +329,41 @@ void main() {
     await shot('player_waiting');
   });
 
+  testWidgets('player: pick one on a tablet held sideways, locked in', (tester) async {
+    tester.view.physicalSize = const Size(1180, 820);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    host = SessionHost(initial: fixtureState(), game: fixtureGame());
+    addTearDown(host.dispose);
+    const options = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn'];
+    host
+      ..dispatch(const OpenQuestion(abcd))
+      ..dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.choice, options: options)));
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        body: SafeArea(
+          child: StreamBuilder<SessionState>(
+            stream: host.states,
+            builder: (context, _) => PlayerView(
+              view: PublicView(host.publicState),
+              teamId: 'red',
+              send: (command) => host.dispatch(command, sender: const Sender(Role.player, teamId: 'red')),
+              onLeave: () {},
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Saturn'));
+    await tester.pump(const Duration(milliseconds: 300));
+    host.dispatch(const LockAnswer('red'), sender: const Sender(Role.player, teamId: 'red'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('player_choice_sideways_locked');
+  });
+
   testWidgets('player: choice', (tester) async {
     await player(tester, const [OpenQuestion(abcd), Reveal(1), Reveal(1), OpenAnswers(CompanionSpec(kind: CompanionKind.choice, options: ['a', 'b', 'c', 'd']))]);
     await shot('player_choice');

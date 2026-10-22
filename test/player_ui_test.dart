@@ -132,7 +132,7 @@ void main() {
       ..dispatch(const OpenQuestion(abcd))
       ..dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.choice, options: ['a', 'b', 'c', 'd'])));
     await pumpPlayer(tester, teamId: 'blue');
-    await tester.tap(find.text('C   c'));
+    await tester.tap(find.text('c'));
     await tester.pump();
     expect(host.state.answerRound!.answers['blue']!.choice, 2);
   });

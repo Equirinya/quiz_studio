@@ -256,6 +256,10 @@ class MusicConfig {
       [...slots.values, ...effects.values].where((name) => !name.startsWith(builtinSoundPrefix) && name != silentSound);
 }
 
+/// How many answers an ABCD question may have.
+const int kMinAbcdAnswers = 2;
+const int kMaxAbcdAnswers = 9;
+
 enum QuestionType {
   free("Free Question"),
   abcd("ABCD"),

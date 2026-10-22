@@ -163,11 +163,11 @@ class _CompanionEditorState extends State<CompanionEditor> {
                 initialSelection: kind,
                 dropdownMenuEntries: [
                   const DropdownMenuEntry(value: null, label: "Nothing"),
-                  for (final option in CompanionKind.values)
-                    // "Pick one" takes its options from an ABCD question.
-                    if ((option != CompanionKind.choice || widget.question.type == QuestionType.abcd) &&
-                      option != CompanionKind.connections)
-                      DropdownMenuEntry(value: option, label: option.uiString),
+                  for (final option in companionKindsFor(widget.question.type, current: kind))
+                    DropdownMenuEntry(
+                      value: option,
+                      label: option == recommendedCompanionKind(widget.question.type) ? "${option.uiString} (recommended)" : option.uiString,
+                    ),
                 ],
                 onSelected: (value) => _change(() => _kind = value),
               ),
@@ -307,3 +307,28 @@ class _CompanionEditorState extends State<CompanionEditor> {
     );
   }
 }
+
+/// The screens that make sense on the teams' devices for a question of
+/// [type]. A whiteboard always does. A screen already chosen ([current]) stays
+/// offered, so older questions keep theirs.
+List<CompanionKind> companionKindsFor(QuestionType type, {CompanionKind? current}) {
+  final kinds = switch (type) {
+    // The answers come from the question itself.
+    QuestionType.abcd => const [CompanionKind.choice, CompanionKind.whiteboard, CompanionKind.text],
+    QuestionType.free => const [
+        CompanionKind.whiteboard,
+        CompanionKind.text,
+        CompanionKind.number,
+        CompanionKind.slider,
+        CompanionKind.order,
+        CompanionKind.match,
+        CompanionKind.list,
+      ],
+    QuestionType.feud => const [CompanionKind.whiteboard, CompanionKind.text, CompanionKind.list],
+    _ => const [CompanionKind.whiteboard, CompanionKind.text],
+  };
+  return [...kinds, if (current != null && !kinds.contains(current) && current != CompanionKind.connections) current];
+}
+
+/// The screen a question of [type] is meant for, marked in the menu.
+CompanionKind? recommendedCompanionKind(QuestionType type) => type == QuestionType.abcd ? CompanionKind.choice : null;

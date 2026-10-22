@@ -165,29 +165,39 @@ class _CompanionInputState extends State<CompanionInput> {
         );
 
       case CompanionKind.choice:
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final (i, option) in _left.indexed)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: i == _choice
-                      ? FilledButton(onPressed: enabled ? () {} : null, child: Text("${String.fromCharCode(0x41 + i)}   $option"))
-                      : FilledButton.tonal(
-                          onPressed: !enabled
-                              ? null
-                              : () {
-                                  setState(() => _choice = i);
-                                  widget.onChanged(PlayerAnswer(choice: i));
-                                },
-                          child: Text("${String.fromCharCode(0x41 + i)}   $option"),
-                        ),
-                ),
+        // Held sideways the answers sit in a grid like on the big screen;
+        // upright one under the other. Either way they scroll when there are
+        // many, and the pick stays marked once it is locked in.
+        return LayoutBuilder(
+          builder: (context, box) {
+            final sideways = box.maxWidth > box.maxHeight * 1.15;
+            final columns = sideways ? (_left.length <= 4 ? 2 : 3) : 1;
+            final width = (box.maxWidth - (columns - 1) * 12) / columns;
+            return SingleChildScrollView(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final (i, option) in _left.indexed)
+                    SizedBox(
+                      width: width,
+                      child: _ChoiceTile(
+                        letter: String.fromCharCode(0x41 + i),
+                        text: option,
+                        selected: i == _choice,
+                        tall: sideways,
+                        onTap: !enabled
+                            ? null
+                            : () {
+                                setState(() => _choice = i);
+                                widget.onChanged(PlayerAnswer(choice: i));
+                              },
+                      ),
+                    ),
+                ],
               ),
-          ],
+            );
+          },
         );
 
       case CompanionKind.order:
@@ -299,5 +309,51 @@ class _CompanionInputState extends State<CompanionInput> {
           ],
         );
     }
+  }
+}
+
+/// One answer to pick: letter and text, filled in once picked, and still
+/// filled in after the answer is locked.
+class _ChoiceTile extends StatelessWidget {
+  const _ChoiceTile({required this.letter, required this.text, required this.selected, required this.tall, this.onTap});
+
+  final String letter;
+  final String text;
+  final bool selected;
+  final bool tall;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final locked = onTap == null;
+    final background = selected ? scheme.primary : scheme.secondaryContainer;
+    final foreground = selected ? scheme.onPrimary : scheme.onSecondaryContainer;
+    return Opacity(
+      opacity: locked && !selected ? 0.5 : 1,
+      child: Material(
+        color: background,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: tall ? 88 : 56),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  Text(letter, style: theme.textTheme.titleMedium?.copyWith(color: foreground, fontWeight: FontWeight.w800)),
+                  const SizedBox(width: 14),
+                  Expanded(child: Text(text, style: theme.textTheme.titleMedium?.copyWith(color: foreground))),
+                  if (selected) Icon(locked ? Icons.lock : Icons.check_circle, color: foreground),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

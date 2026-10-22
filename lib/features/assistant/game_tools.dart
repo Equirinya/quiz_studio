@@ -65,7 +65,7 @@ final Map<String, dynamic> _questionFields = {
   'type': {
     'type': 'string',
     'enum': ['free', 'abcd', 'progressingReveal', 'feud', 'connections', 'rapidFire', 'matching', 'topAnswers'],
-    'description': 'free: plain question. abcd: four answer options. progressingReveal: hints revealed one by one. '
+    'description': 'free: plain question. abcd: 2 to 9 answer options (A, B, C, ...). progressingReveal: hints revealed one by one. '
         'feud ("Survey duel"): a survey; the team that buzzed uncovers answers until its third strike, then the other '
         'team may steal; each answer is worth a share of the points. '
         'topAnswers ("Top answers"): "name the five most popular ...": teams find answers on a list by buzzing or on '
@@ -91,16 +91,16 @@ final Map<String, dynamic> _questionFields = {
   'answers': {
     'type': 'array',
     'items': _string,
-    'minItems': 4,
-    'maxItems': 4,
-    'description': 'abcd only: exactly four options, A to D.',
+    'minItems': 2,
+    'maxItems': 9,
+    'description': 'abcd only: 2 to 9 options, shown as A, B, C, ...',
   },
   'correct': {
     'type': 'array',
     'items': {'type': 'boolean'},
-    'minItems': 4,
-    'maxItems': 4,
-    'description': 'abcd only: which of the four options are right, aligned with answers.',
+    'minItems': 2,
+    'maxItems': 9,
+    'description': 'abcd only: which of the options are right, one entry per answer.',
   },
   'information': {
     'type': 'array',
@@ -469,13 +469,17 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
   final correct = list<bool>('correct');
   if (answers != null || correct != null) {
     if (effective != QuestionType.abcd) throw const ToolError('"answers" and "correct" are for abcd questions.');
-    if (answers != null && answers.length != 4) throw const ToolError('An abcd question needs exactly four answers.');
-    if (correct != null && correct.length != 4) throw const ToolError('"correct" needs exactly four entries.');
+    bool fits(List<Object> list) => list.length >= kMinAbcdAnswers && list.length <= kMaxAbcdAnswers;
+    if (answers != null && !fits(answers)) throw const ToolError('An abcd question needs 2 to 9 answers.');
+    if (correct != null && !fits(correct)) throw const ToolError('"correct" needs 2 to 9 entries.');
+    if (answers != null && correct != null && answers.length != correct.length) {
+      throw const ToolError('"correct" needs one entry per answer.');
+    }
     if (answers != null) data['answers'] = answers;
     if (correct != null) data['answersCorrect'] = correct;
   }
   if (!partial && effective == QuestionType.abcd && (answers == null || correct == null)) {
-    throw const ToolError('An abcd question needs "answers" and "correct", four entries each.');
+    throw const ToolError('An abcd question needs "answers" and "correct", one entry per answer each.');
   }
 
   final information = list<String>('information');

@@ -217,13 +217,16 @@ class _AbcdEditor extends StatefulWidget {
 }
 
 class _AbcdEditorState extends State<_AbcdEditor> {
-  static const int _count = 4;
+  /// Four for a new question, as before; 2 to 9 in all.
+  late final int _initial = widget.question.answers.length.clamp(kMinAbcdAnswers, kMaxAbcdAnswers) == widget.question.answers.length
+      ? widget.question.answers.length
+      : 4;
 
   late final List<TextEditingController> _answers = [
-    for (var i = 0; i < _count; i++) TextEditingController(text: widget.question.answers.elementAtOrNull(i) ?? ''),
+    for (var i = 0; i < _initial; i++) TextEditingController(text: widget.question.answers.elementAtOrNull(i) ?? ''),
   ];
   late final List<bool> _correct = [
-    for (var i = 0; i < _count; i++) widget.question.answersCorrect.elementAtOrNull(i) ?? false,
+    for (var i = 0; i < _initial; i++) widget.question.answersCorrect.elementAtOrNull(i) ?? false,
   ];
 
   @override
@@ -239,11 +242,28 @@ class _AbcdEditorState extends State<_AbcdEditor> {
         'answersCorrect': List<bool>.of(_correct),
       });
 
+  void _add() {
+    setState(() {
+      _answers.add(TextEditingController());
+      _correct.add(false);
+    });
+    _write();
+  }
+
+  void _remove(int i) {
+    final removed = _answers.removeAt(i);
+    _correct.removeAt(i);
+    setState(() {});
+    _write();
+    WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (var i = 0; i < _count; i++)
+        for (var i = 0; i < _answers.length; i++)
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Row(
@@ -257,14 +277,22 @@ class _AbcdEditorState extends State<_AbcdEditor> {
                 ),
                 Expanded(
                   child: TextField(
+                    key: ObjectKey(_answers[i]),
                     controller: _answers[i],
                     decoration: InputDecoration(labelText: "Answer ${String.fromCharCode(0x41 + i)}"),
                     onChanged: (_) => _write(),
                   ),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: "Remove answer",
+                  onPressed: _answers.length > kMinAbcdAnswers ? () => _remove(i) : null,
+                ),
               ],
             ),
           ),
+        if (_answers.length < kMaxAbcdAnswers)
+          TextButton.icon(onPressed: _add, icon: const Icon(Icons.add), label: const Text("Add answer")),
       ],
     );
   }
