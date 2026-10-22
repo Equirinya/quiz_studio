@@ -1169,6 +1169,38 @@ void main() {
     await shot('presenter_picture_strip');
   });
 
+  testWidgets('presenter: progressing reveal with long hints', (tester) async {
+    final game = GameContent.assemble(
+      id: 'hints',
+      game: {'name': 'Hints'},
+      groups: {
+        'g': {'name': 'Round', 'categoryGroupType': 'category_wheel', 'categoryGroupIndex': 0},
+      },
+      categories: {
+        'c': {'name': 'People', 'categoryGroup': 'g', 'categoryIndex': 0, 'active': true},
+      },
+      questions: {
+        'c': {
+          'q': {
+            'type': 'progressingReveal',
+            'question': 'Who is it?',
+            'information': [
+              'Born in 1879 in Ulm, in the Kingdom of Württemberg',
+              'Worked at the patent office in Bern while writing his most famous papers',
+              'Won the Nobel Prize in Physics in 1921',
+              'Played the violin and loved sailing',
+              'Turned down the presidency of Israel in 1952',
+              'E = mc²',
+            ],
+            'pointsPlus': 500,
+          },
+        },
+      },
+    );
+    await screen(tester, const [OpenQuestion(QuestionRef('c', 'q')), Reveal(1), Reveal(1), Reveal(1), Reveal(1)], game: game);
+    await shot('presenter_reveal_hints');
+  });
+
   testWidgets('editor: question preview', (tester) async {
     tester.view.physicalSize = const Size(1100, 760);
     tester.view.devicePixelRatio = 1;

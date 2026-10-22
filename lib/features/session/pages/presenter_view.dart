@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -289,6 +290,9 @@ class QuestionDisplay extends StatelessWidget {
     if (question.type == QuestionType.rapidFire) {
       return RapidFireDisplay(state: state, question: question, unit: unit, file: _file);
     }
+    if (question.type == QuestionType.progressingReveal && round == null) {
+      return _RevealDisplay(state: state, question: question, unit: unit, file: _file);
+    }
     final strip =
         question.pictureStrip && round == null && question.type == QuestionType.progressingReveal && question.hasInformationImages;
     return Column(
@@ -450,6 +454,188 @@ class QuestionDisplay extends StatelessWidget {
     final value = question.percentages.elementAtOrNull(index) ?? 0;
     final text = value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
     return question.absoluteValues ? text : "$text%";
+  }
+}
+
+/// Progressing reveal on the big screen. With pictures, the newest one shown
+/// takes nearly the whole screen, the question above it in one line and the
+/// strip of all pictures below. With hints only, the question stays small and
+/// the hints get the room, in a grid that fits them all.
+class _RevealDisplay extends StatelessWidget {
+  const _RevealDisplay({required this.state, required this.question, required this.unit, required this.file});
+
+  final SessionState state;
+  final Question question;
+  final double unit;
+  final File? Function(String? name) file;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final infos = question.information;
+    final shown = state.revealed.clamp(0, infos.length);
+    final focus = state.imageFocus;
+    final focused = focus > 0 ? file(question.informationImages.elementAtOrNull(focus - 1)) : null;
+    final caption = focus > 0 ? (infos.elementAtOrNull(focus - 1) ?? '').trim() : '';
+    final pictures = question.hasInformationImages;
+    final strip = pictures && question.pictureStrip;
+    final mainImage = file(question.image);
+
+    // The question, with the bars that dance while its sound plays.
+    Widget questionText(double size, int lines) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (question.hasMusic)
+              Padding(
+                padding: EdgeInsets.only(right: size * 0.5),
+                child: MiniMusicVisualizer(
+                  animate: state.media == MediaPlayback.playing,
+                  color: scheme.primary,
+                  width: size * 0.3,
+                  height: size,
+                  radius: size * 0.08,
+                ),
+              ),
+            Flexible(
+              child: Text(
+                question.text,
+                textAlign: TextAlign.center,
+                maxLines: lines,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: size, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        );
+
+    final picturesStrip = strip
+        ? Padding(
+            padding: EdgeInsets.only(top: unit * 1.5),
+            child: _PictureStrip(
+              unit: unit,
+              files: [for (final name in question.informationImages) file(name)],
+              names: question.informationImages,
+              revealed: state.revealed,
+              focus: focus,
+            ),
+          )
+        : const SizedBox();
+
+    // The newest picture, nearly full screen.
+    if (focused != null) {
+      return Column(
+        children: [
+          questionText(unit * 3.2, 1),
+          SizedBox(height: unit),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(unit * 2),
+              child: Image.file(focused, fit: BoxFit.contain),
+            ),
+          ),
+          if (caption.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: unit),
+              child: Text(caption, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: unit * 3.2)),
+            ),
+          picturesStrip,
+        ],
+      );
+    }
+
+    final texts = [for (final info in infos) info.trim()];
+    final hasTexts = texts.any((t) => t.isNotEmpty);
+    // About as many columns as rows, never more than four: hints stay wide
+    // enough to read in two or three lines.
+    final int columns = texts.isEmpty ? 1 : sqrt(texts.length).ceil().clamp(1, 4).toInt();
+    final rows = texts.isEmpty ? 1 : (texts.length / columns).ceil();
+    return Column(
+      children: [
+        if (question.description != null)
+          Padding(
+            padding: EdgeInsets.only(bottom: unit),
+            child: Chip(label: Text(question.description!, style: TextStyle(fontSize: unit * 2.4))),
+          ),
+        Flexible(
+          flex: 2,
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: unit * 3, vertical: unit * 1.5),
+            decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 3)),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (mainImage != null)
+                  Flexible(
+                    child: Padding(
+                      padding: EdgeInsets.only(right: unit * 2),
+                      child: ClipRRect(borderRadius: BorderRadius.circular(unit * 2), child: Image.file(mainImage, fit: BoxFit.contain)),
+                    ),
+                  ),
+                Flexible(flex: 2, child: Center(child: questionText(unit * 4, 3))),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: unit * 1.5),
+        if (hasTexts)
+          Expanded(
+            flex: 5,
+            child: Column(
+              children: [
+                for (var r = 0; r < rows; r++)
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var c = 0; c < columns; c++)
+                          Expanded(
+                            child: Builder(builder: (context) {
+                              final i = r * columns + c;
+                              if (i >= texts.length) return const SizedBox();
+                              final visible = i < shown;
+                              return AnimatedOpacity(
+                                duration: const Duration(milliseconds: 300),
+                                opacity: visible ? 1 : 0.3,
+                                child: Container(
+                                  margin: EdgeInsets.all(unit * 0.6),
+                                  padding: EdgeInsets.symmetric(horizontal: unit * 2, vertical: unit),
+                                  decoration: BoxDecoration(color: scheme.surfaceContainerLow, borderRadius: BorderRadius.circular(unit * 1.5)),
+                                  child: Row(
+                                    children: [
+                                      Text("${i + 1}", style: TextStyle(fontSize: unit * 2.6, fontWeight: FontWeight.bold, color: scheme.tertiary)),
+                                      SizedBox(width: unit * 1.5),
+                                      Expanded(
+                                        // Long hints shrink to fit rather than being cut off.
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: ConstrainedBox(
+                                            constraints: BoxConstraints(maxWidth: unit * 160 / columns),
+                                            child: Text(
+                                              visible ? texts[i] : "",
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(fontSize: unit * 3.2, height: 1.2),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          )
+        else
+          const Spacer(),
+        picturesStrip,
+      ],
+    );
   }
 }
 
