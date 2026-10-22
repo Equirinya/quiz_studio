@@ -199,7 +199,13 @@ class _PlayerViewState extends State<PlayerView> {
             ? (kind == CompanionKind.connections ? "Find four groups of four" : "Answer here")
             : view.isRevealed(team.id)
                 ? "Your answer is being shown"
-                : "Answers are in";
+                : view.answersOpen
+                    ? "Locked in, waiting for the others"
+                    : "Answers are in";
+    // While answering, the question stays the big line and where the team
+    // stands goes under it.
+    final question = view.question?['text'] as String? ?? '';
+    final questionFirst = kind != null && kind != CompanionKind.connections && question.trim().isNotEmpty;
 
     final teamLine = Row(
       children: [
@@ -226,20 +232,24 @@ class _PlayerViewState extends State<PlayerView> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
-        headline,
+        questionFirst ? question : headline,
         textAlign: TextAlign.center,
+        maxLines: questionFirst ? 4 : null,
+        overflow: questionFirst ? TextOverflow.ellipsis : null,
         style: theme.textTheme.titleMedium?.copyWith(color: highlighted ? scheme.onPrimary : null),
       ),
     );
-    final questionText = view.question == null
-        ? null
-        : Text(
-            view.question!['text'] as String? ?? '',
-            textAlign: TextAlign.center,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyLarge,
-          );
+    final questionText = questionFirst
+        ? Text(headline, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline))
+        : view.question == null
+            ? null
+            : Text(
+                question,
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyLarge,
+              );
 
     if (kind == CompanionKind.connections) {
       return Padding(
@@ -305,6 +315,8 @@ class _PlayerViewState extends State<PlayerView> {
             child: Column(
               children: [
                 teamLine,
+                if (questionFirst)
+                  Text(question, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyLarge),
                 ?questionText,
                 ?_countdown(top: 6),
                 const SizedBox(height: 6),

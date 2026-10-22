@@ -146,6 +146,12 @@ void main() {
     expect(saved['width'], 1.0);
   });
 
+  testWidgets('a wide map can be moved with the slider straight away, without touching the stage first', (tester) async {
+    await pumpEditor(tester, layout: {'width': 2.0});
+    await tester.pump();
+    expect(tester.widget<Slider>(find.byType(Slider)).onChanged, isNotNull);
+  });
+
   testWidgets('a tapped bubble can be made larger or smaller, and keeps its size when tidied', (tester) async {
     await pumpEditor(tester);
     await tester.tap(bubble('c1'));

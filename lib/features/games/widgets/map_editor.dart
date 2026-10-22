@@ -255,12 +255,23 @@ class _MapEditorState extends State<MapEditor> {
                         // below moves the window, the stage itself only drags
                         // what is on it.
                         final canvas = Size(box.maxWidth * layoutMap(_draft).widthFactor, box.maxHeight);
-                        return SingleChildScrollView(
-                          key: _stageKey,
-                          controller: _scroll,
-                          scrollDirection: Axis.horizontal,
-                          physics: const NeverScrollableScrollPhysics(),
-                          child: SizedBox.fromSize(size: canvas, child: _stage(canvas, box.maxWidth, scheme)),
+                        // The slider can only work out how far there is to go
+                        // once the stage is laid out; it is told when that
+                        // changes, also on the very first frame.
+                        return NotificationListener<ScrollMetricsNotification>(
+                          onNotification: (_) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) setState(() {});
+                            });
+                            return false;
+                          },
+                          child: SingleChildScrollView(
+                            key: _stageKey,
+                            controller: _scroll,
+                            scrollDirection: Axis.horizontal,
+                            physics: const NeverScrollableScrollPhysics(),
+                            child: SizedBox.fromSize(size: canvas, child: _stage(canvas, box.maxWidth, scheme)),
+                          ),
                         );
                       },
                     ),
