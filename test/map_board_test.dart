@@ -24,8 +24,8 @@ void main() {
   });
 
   group('in the game', () {
-    Future<void> pumpBoard(WidgetTester tester, SessionState state) async {
-      tester.view.physicalSize = const Size(1000, 600);
+    Future<void> pumpBoard(WidgetTester tester, SessionState state, {Size size = const Size(1600, 900)}) async {
+      tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(MaterialApp(
@@ -41,27 +41,35 @@ void main() {
     testWidgets('the board starts at the beginning of the canvas', (tester) async {
       await pumpBoard(tester, const SessionState());
       expect(offset(tester), 0);
-      expect(tester.getSize(find.byType(MapCanvas)).width, 2000);
+      expect(tester.getSize(find.byType(MapCanvas)).width, 3200);
+    });
+
+    testWidgets('a narrower window shows less of the map, at the same size', (tester) async {
+      await pumpBoard(tester, const SessionState());
+      final wideText = tester.getSize(find.text('Category 0')).height;
+      await pumpBoard(tester, const SessionState(), size: const Size(1100, 900));
+      expect(tester.getSize(find.byType(MapCanvas)).width, 3200);
+      expect(tester.getSize(find.text('Category 0')).height, wideText);
     });
 
     testWidgets('opening a question glides its category to the middle', (tester) async {
       await pumpBoard(tester, const SessionState());
       await pumpBoard(tester, open('c4'));
-      // c4 sits at 4.5/8 of a 2000 wide canvas = 1125; centred in a 1000 window.
+      // c4 sits at 4.5/8 of a 3200 wide canvas = 1800; centred in a 1600 window.
       await tester.pump(const Duration(milliseconds: 450));
       final halfway = offset(tester);
-      expect(halfway, inExclusiveRange(0, 625));
+      expect(halfway, inExclusiveRange(0, 1000));
       await tester.pumpAndSettle();
-      expect(offset(tester), 625);
+      expect(offset(tester), 1000);
       // Ease in and out: by half time it is about half way, not all the way.
-      expect(halfway, closeTo(312.5, 80));
+      expect(halfway, closeTo(500, 120));
     });
 
     testWidgets('categories at either end stop at the edge of the canvas', (tester) async {
       await pumpBoard(tester, const SessionState());
       await pumpBoard(tester, open('c7'));
       await tester.pumpAndSettle();
-      expect(offset(tester), 1000);
+      expect(offset(tester), 1600);
       await pumpBoard(tester, open('c0'));
       await tester.pumpAndSettle();
       expect(offset(tester), 0);
@@ -81,7 +89,7 @@ void main() {
     testWidgets('a show resumed mid-question starts on that category, without a glide', (tester) async {
       await pumpBoard(tester, open('c4'));
       await tester.pump();
-      expect(offset(tester), 625);
+      expect(offset(tester), 1000);
     });
   });
 }

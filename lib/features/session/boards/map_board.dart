@@ -70,7 +70,11 @@ class _MapBoardScrollState extends State<MapBoard> {
     final map = layoutMap(widget.group);
     return LayoutBuilder(
       builder: (context, box) {
-        final canvasWidth = box.maxWidth * map.widthFactor;
+        // Sized against a 16:9 screen as high as this one, so text and
+        // bubbles follow the height only: a narrower window shows less of
+        // the map and scrolls further, a wider one shows more.
+        final screen = box.maxHeight * 16 / 9;
+        final canvasWidth = max(screen * map.widthFactor, box.maxWidth);
         WidgetsBinding.instance.addPostFrameCallback((_) => _follow(map, canvasWidth, box.maxWidth));
         return SingleChildScrollView(
           controller: _scroll,
@@ -78,7 +82,7 @@ class _MapBoardScrollState extends State<MapBoard> {
           child: SizedBox(
             width: canvasWidth,
             height: box.maxHeight,
-            child: MapCanvas(group: widget.group, state: widget.state, imageFile: widget.imageFile, viewportWidth: box.maxWidth),
+            child: MapCanvas(group: widget.group, state: widget.state, imageFile: widget.imageFile, viewportWidth: screen),
           ),
         );
       },
