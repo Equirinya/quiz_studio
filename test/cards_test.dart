@@ -200,18 +200,18 @@ void main() {
       return saved;
     }
 
-    testWidgets('cards are moved by their handle', (tester) async {
+    testWidgets('cards are moved by their handle along the row', (tester) async {
       final saved = await pumpDialog(tester, const [
         CueCard(title: 'One'),
         CueCard(title: 'Two'),
         CueCard(title: 'Three'),
       ]);
       final handle = find.byIcon(Icons.drag_indicator).first;
+      final right = tester.getCenter(find.byIcon(Icons.drag_indicator).last).dx - tester.getCenter(handle).dx;
       final gesture = await tester.startGesture(tester.getCenter(handle));
       await tester.pump(const Duration(milliseconds: 100));
-      final below = tester.getCenter(find.byIcon(Icons.drag_indicator).last).dy - tester.getCenter(handle).dy;
       for (var i = 0; i < 10; i++) {
-        await gesture.moveBy(Offset(0, (below + 40) / 10));
+        await gesture.moveBy(Offset((right + 200) / 10, 0));
         await tester.pump(const Duration(milliseconds: 16));
       }
       await gesture.up();
@@ -221,18 +221,32 @@ void main() {
 
     testWidgets('a built-in picture is switched off, not removed; an own card can be removed', (tester) async {
       final saved = await pumpDialog(tester, const [CueCard(title: 'Answer'), CueCard(image: 'builtin:correct')]);
-      // Only the own card has a remove button.
-      expect(find.byTooltip('Remove card'), findsOneWidget);
-      await tester.tap(find.byType(Switch).last);
+      // Only the own card can be edited, and removed from its editor.
+      expect(find.byTooltip('Edit'), findsOneWidget);
+      await tester.tap(find.byTooltip('Keep it out of the show').last);
       await tester.pumpAndSettle();
       expect(saved.last.last, containsPair('hidden', true));
       expect(saved.last.last['image'], 'builtin:correct');
-      await tester.tap(find.byType(Switch).last);
+      await tester.tap(find.byTooltip('Offer it in the show'));
       await tester.pumpAndSettle();
       expect(saved.last.last.containsKey('hidden'), isFalse);
-      await tester.tap(find.byTooltip('Remove card'));
+      await tester.tap(find.byTooltip('Edit'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove card'));
       await tester.pumpAndSettle();
       expect([for (final card in saved.last) card['image']], ['builtin:correct']);
+    });
+
+    testWidgets('a new card is made in its own editor and lands at the end of the row', (tester) async {
+      final saved = await pumpDialog(tester, const [CueCard(title: 'Rules')]);
+      await tester.tap(find.text('New card'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Title'), 'Break');
+      await tester.tap(find.text('Poster'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+      await tester.pumpAndSettle();
+      expect([for (final card in saved.last) card['title']], ['Rules', 'Break']);
+      expect(saved.last.last['style'], 'poster');
     });
   });
 }

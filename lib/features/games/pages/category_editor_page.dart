@@ -86,6 +86,21 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
     );
   }
 
+  /// The order just dragged into place, until the saved one shows it too.
+  List<String>? _order;
+
+  List<Question> _ordered(List<Question> questions) {
+    final order = _order;
+    if (order == null) return questions;
+    final ids = [for (final q in questions) q.id];
+    if (ids.length != order.length || !ids.every(order.contains)) return questions;
+    if (Iterable<int>.generate(ids.length).every((i) => ids[i] == order[i])) {
+      _order = null;
+      return questions;
+    }
+    return [for (final id in order) questions.firstWhere((q) => q.id == id)];
+  }
+
   Future<void> _addQuestion(Category category) async {
     // Continue the category's point ladder instead of starting at zero.
     final last = category.questions.lastOrNull;
@@ -188,14 +203,32 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
                   padding: EdgeInsets.all(32),
                   child: Center(child: Text("No questions yet.")),
                 ),
-              for (final question in category.questions)
-                QuestionCard(
-                  key: ValueKey(question.id),
-                  gameId: widget.gameId,
-                  categoryId: category.id,
-                  question: question,
-                  initiallyExpanded: question.id == _fresh,
-                ),
+              Builder(builder: (context) {
+                final questions = _ordered(category.questions);
+                return ReorderableListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  buildDefaultDragHandles: false,
+                  itemCount: questions.length,
+                  // onReorderItem replaces this from Flutter 3.41 on; kept for older SDKs in CI.
+                  // ignore: deprecated_member_use
+                  onReorder: (from, to) {
+                    if (to > from) to--;
+                    final ids = [for (final q in questions) q.id];
+                    ids.insert(to, ids.removeAt(from));
+                    setState(() => _order = ids);
+                    guarded(context, () => _repo.reorderQuestions(widget.gameId, category.id, ids));
+                  },
+                  itemBuilder: (context, i) => QuestionCard(
+                    key: ValueKey(questions[i].id),
+                    gameId: widget.gameId,
+                    categoryId: category.id,
+                    question: questions[i],
+                    initiallyExpanded: questions[i].id == _fresh,
+                    reorderIndex: questions.length > 1 ? i : null,
+                  ),
+                );
+              }),
             ],
           ),
         );
@@ -207,12 +240,22 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
 /// Edits one question. Text is written a moment after typing stops, so the
 /// stream echoing a change back never moves the cursor.
 class QuestionCard extends StatefulWidget {
-  const QuestionCard({super.key, required this.gameId, required this.categoryId, required this.question, this.initiallyExpanded = false});
+  const QuestionCard({
+    super.key,
+    required this.gameId,
+    required this.categoryId,
+    required this.question,
+    this.initiallyExpanded = false,
+    this.reorderIndex,
+  });
 
   final String gameId;
   final String categoryId;
   final Question question;
   final bool initiallyExpanded;
+
+  /// Its place in a reorderable list; null without a drag handle.
+  final int? reorderIndex;
 
   @override
   State<QuestionCard> createState() => _QuestionCardState();
@@ -282,9 +325,22 @@ class _QuestionCardState extends State<QuestionCard> {
       child: ExpansionTile(
         initiallyExpanded: widget.initiallyExpanded,
         shape: const Border(),
-        leading: CircleAvatar(
-          backgroundColor: theme.colorScheme.primaryContainer,
-          child: Text(_q.pointsPlus.toString(), style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onPrimaryContainer)),
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.reorderIndex != null)
+              ReorderableDragStartListener(
+                index: widget.reorderIndex!,
+                child: const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: Icon(Icons.drag_indicator, semanticLabel: "Move question"),
+                ),
+              ),
+            CircleAvatar(
+              backgroundColor: theme.colorScheme.primaryContainer,
+              child: Text(_q.pointsPlus.toString(), style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onPrimaryContainer)),
+            ),
+          ],
         ),
         title: Text(_q.text.isEmpty ? "New question" : _q.text, maxLines: 2, overflow: TextOverflow.ellipsis),
         subtitle: Text(_q.type.uiString),

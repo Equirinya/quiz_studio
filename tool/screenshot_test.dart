@@ -1545,6 +1545,22 @@ void main() {
     await shot('cards_editor');
   });
 
+  testWidgets('cards: editing one card', (tester) async {
+    tester.view.physicalSize = const Size(900, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await loadBuiltins(tester);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: const Scaffold(
+        body: CardEditorDialog(gameId: 'g', card: CueCard(title: 'Break', text: 'Back in ten minutes', style: CardStyle.poster)),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('cards_editing');
+  });
+
   testWidgets('presenter window', (tester) async {
     tester.view.physicalSize = const Size(1280, 720);
     tester.view.devicePixelRatio = 1;

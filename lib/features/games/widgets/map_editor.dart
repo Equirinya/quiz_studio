@@ -494,7 +494,7 @@ class _MapEditorState extends State<MapEditor> {
             x: map.nodes[category.id]!.x,
             y: map.nodes[category.id]!.y,
             width: bubbleWidth * map.scaleOf(category.id),
-            height: bubbleWidth * map.scaleOf(category.id) * 0.62,
+            height: bubbleWidth * 0.62,
             outlined: _from == category.id || _bubble == category.id,
             onTap: () => _tapBubble(category.id),
             onMove: (dx, dy) {

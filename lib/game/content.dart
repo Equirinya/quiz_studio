@@ -94,6 +94,27 @@ const Map<String, String> builtinMusic = {
   musicExciting: 'sounds/music/thrilling.mp3',
 };
 
+/// The same tracks, to choose for any slot (`builtin:music/<id>`).
+const List<BuiltinSound> builtinMusicTracks = [
+  BuiltinSound('music/quiz_theme', "Quiz theme", 'sounds/music/quiz_theme.mp3'),
+  BuiltinSound('music/chill', "Chill", 'sounds/music/chill.mp3'),
+  BuiltinSound('music/thrilling', "Thrilling", 'sounds/music/thrilling.mp3'),
+];
+
+BuiltinSound? builtinMusicTrack(String? key) => builtinMusicTracks.where((track) => track.key == key || track.id == key).firstOrNull;
+
+/// What a music slot plays when nothing chose otherwise.
+BuiltinSound? defaultMusicTrack(String slot) => builtinMusicTracks.where((track) => track.asset == builtinMusic[slot]).firstOrNull;
+
+/// The asset a slot set to [stored] plays: a built-in track, nothing for
+/// "off", and for an own file null (the caller resolves it).
+({bool silent, String? asset}) musicAssetFor(String slot, String? stored) {
+  if (stored == silentSound) return (silent: true, asset: null);
+  if (stored == null) return (silent: false, asset: builtinMusic[slot]);
+  if (stored.startsWith(builtinSoundPrefix)) return (silent: false, asset: builtinMusicTrack(stored)?.asset);
+  return (silent: false, asset: null);
+}
+
 BuiltinSound? builtinBuzzer(String? key) => builtinBuzzers.where((sound) => sound.key == key).firstOrNull;
 
 /// The ones the gamemaster plays by hand from the Effects sheet.

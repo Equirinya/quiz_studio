@@ -82,9 +82,14 @@ class AudioDirector {
   void sync() {
     final state = host.state;
     // The game's own music for the slot, or the one that comes with the app.
-    final own = state.music == null ? null : _path(_sounds.slots[state.music]);
-    final builtin = state.music == null || _sounds.slots.containsKey(state.music) ? null : builtinMusic[state.music];
-    final music = own ?? (builtin == null ? null : 'asset:$builtin');
+    final stored = state.music == null ? null : _sounds.slots[state.music];
+    final slot = state.music == null ? null : musicAssetFor(state.music!, stored);
+    // A built-in track, the app's own for an unset slot, or the game's file.
+    final music = slot == null || slot.silent
+        ? null
+        : slot.asset != null
+            ? 'asset:${slot.asset}'
+            : _path(stored);
     if (music != _music) {
       _music = music;
       backend.setMusic(music);

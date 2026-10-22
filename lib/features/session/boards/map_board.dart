@@ -205,9 +205,10 @@ class _MapBoardState extends State<MapCanvas> {
                   key: _keys.putIfAbsent(category.id, GlobalKey.new),
                   category: category,
                   state: state,
-                  // A resized bubble grows as a whole, text and all.
+                  // A resized bubble gets more room, not bigger text: more
+                  // questions fit in a row and longer names on one line.
                   width: bubbleWidth * map.scaleOf(category.id),
-                  unit: unit * map.scaleOf(category.id),
+                  unit: unit,
                   labels: labels,
                 ),
               ),

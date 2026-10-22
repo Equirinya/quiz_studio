@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
+import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/game/game.dart';
 
@@ -105,45 +106,67 @@ class _SoundsDialogState extends State<SoundsDialog> {
         ],
       });
 
-  Widget _row(String label, String? file, ValueChanged<String?> onChanged) => Row(
-        children: [
-          Expanded(child: Text(label)),
-          MediaButton(gameId: widget.gameId, kind: MediaKind.audio, name: file, onChanged: onChanged),
-        ],
-      );
-
   // Made on the first listen: a player per dialog is only needed then.
   AudioPlayer? _preview;
 
+  /// The row whose sound is playing, so its button can stop it again.
+  String? _playing;
+
   static const String _ownFile = '\u0000own';
 
-  /// One moment: a menu of what can play, and for an own file the button to
-  /// pick it. A built-in sound can be listened to right here.
-  Widget _effectRow(String key) {
-    final value = _builtIn[key];
-    final builtins = builtinSoundsFor(key);
-    final isOwn = value != null && value != silentSound && !value.startsWith(builtinSoundPrefix);
-    final picked = value != null && value.startsWith(builtinSoundPrefix) ? builtinSound(value) : null;
-    final fallback = widget.isGame
-        ? (defaultEffectSounds[key] == null ? "Nothing" : "App default: ${builtinSound(defaultEffectSounds[key]!)?.label}")
-        : "As set above";
-    void set(String? next) {
-      setState(() => next == null ? _builtIn.remove(key) : _builtIn[key] = next);
-      _saveEffects();
+  Future<void> _listen(String row, String? asset, String? ownFile) async {
+    final player = _preview ??= AudioPlayer();
+    await player.stop();
+    if (_playing == row) {
+      setState(() => _playing = null);
+      return;
     }
+    setState(() => _playing = row);
+    player.onPlayerComplete.first.then((_) {
+      if (mounted && _playing == row) setState(() => _playing = null);
+    });
+    try {
+      if (asset != null) {
+        await player.play(AssetSource(asset));
+      } else if (ownFile != null) {
+        await MediaService.instance.ensureCached(widget.gameId, ownFile);
+        await player.play(DeviceFileSource(MediaService.instance.localFile(widget.gameId, ownFile).path));
+      }
+    } catch (_) {
+      if (mounted) setState(() => _playing = null);
+    }
+  }
 
+  /// One slot or moment, the same for music and sounds: a menu of what can
+  /// play (the default, the sounds that come with the app, silence, an own
+  /// file), a button to listen to it, and for an own file the button to pick
+  /// it.
+  Widget _choice({
+    required String row,
+    required String label,
+    required String? value,
+    required List<BuiltinSound> builtins,
+    required BuiltinSound? fallback,
+    required ValueChanged<String?> set,
+  }) {
+    final isOwn = value != null && value != silentSound && !value.startsWith(builtinSoundPrefix);
+    final picked = value == null ? null : builtins.where((sound) => sound.key == value).firstOrNull;
+    final fallbackLabel = widget.isGame ? (fallback == null ? "Nothing" : "App default: ${fallback.label}") : "As set above";
+    // What the listen button plays: the choice, or what the default is here.
+    final asset = picked?.asset ?? (value == null && widget.isGame ? fallback?.asset : null);
+    final canListen = asset != null || isOwn;
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Row(
         children: [
           Expanded(
             child: DropdownButtonFormField<String>(
-              key: ValueKey('$key/$value'),
+              key: ValueKey('$row/$value'),
               initialValue: isOwn ? _ownFile : value ?? '',
               isExpanded: true,
-              decoration: InputDecoration(labelText: _effectLabels[key], isDense: true),
+              decoration: InputDecoration(labelText: label, isDense: true),
               items: [
-                DropdownMenuItem(value: '', child: Text(fallback)),
+                DropdownMenuItem(value: '', child: Text(fallbackLabel)),
                 for (final sound in builtins) DropdownMenuItem(value: sound.key, child: Text(sound.label)),
                 const DropdownMenuItem(value: silentSound, child: Text("Silent")),
                 DropdownMenuItem(value: _ownFile, child: Text(isOwn ? "Own file" : "Own file…")),
@@ -151,27 +174,26 @@ class _SoundsDialogState extends State<SoundsDialog> {
               onChanged: (next) {
                 if (next == null || next == _ownFile) {
                   // Picking the file happens with the button next to it.
-                  if (!isOwn) setState(() => _choosingOwn.add(key));
+                  if (!isOwn) setState(() => _choosingOwn.add(row));
                   return;
                 }
-                _choosingOwn.remove(key);
+                _choosingOwn.remove(row);
                 set(next.isEmpty ? null : next);
               },
             ),
           ),
-          if (picked != null)
-            IconButton(
-              icon: const Icon(Icons.play_arrow),
-              tooltip: "Listen",
-              onPressed: () => (_preview ??= AudioPlayer()).play(AssetSource(picked.asset)),
-            ),
-          if (isOwn || _choosingOwn.contains(key))
+          IconButton(
+            icon: Icon(_playing == row ? Icons.stop : Icons.play_arrow),
+            tooltip: _playing == row ? "Stop" : "Listen",
+            onPressed: canListen ? () => _listen(row, asset, isOwn ? value : null) : null,
+          ),
+          if (isOwn || _choosingOwn.contains(row))
             MediaButton(
               gameId: widget.gameId,
               kind: MediaKind.audio,
               name: isOwn ? value : null,
               onChanged: (name) {
-                _choosingOwn.remove(key);
+                _choosingOwn.remove(row);
                 set(name);
               },
             ),
@@ -179,6 +201,30 @@ class _SoundsDialogState extends State<SoundsDialog> {
       ),
     );
   }
+
+  Widget _effectRow(String key) => _choice(
+        row: key,
+        label: _effectLabels[key]!,
+        value: _builtIn[key],
+        builtins: builtinSoundsFor(key),
+        fallback: defaultEffectSounds[key] == null ? null : builtinSound(defaultEffectSounds[key]!),
+        set: (next) {
+          setState(() => next == null ? _builtIn.remove(key) : _builtIn[key] = next);
+          _saveEffects();
+        },
+      );
+
+  Widget _musicRow(String slot) => _choice(
+        row: slot,
+        label: _slotLabels[slot]!,
+        value: _slots[slot],
+        builtins: builtinMusicTracks,
+        fallback: defaultMusicTrack(slot),
+        set: (next) {
+          setState(() => next == null ? _slots.remove(slot) : _slots[slot] = next);
+          widget.save({slot: next});
+        },
+      );
 
   /// Moments where "Own file…" was chosen but no file picked yet.
   final Set<String> _choosingOwn = {};
@@ -206,11 +252,7 @@ class _SoundsDialogState extends State<SoundsDialog> {
                 style: theme.textTheme.bodySmall,
               ),
               header("Music"),
-              for (final slot in musicSlots)
-                _row(_slotLabels[slot]!, _slots[slot], (name) {
-                  setState(() => name == null ? _slots.remove(slot) : _slots[slot] = name);
-                  widget.save({slot: name});
-                }),
+              for (final slot in musicSlots) _musicRow(slot),
               header("Sounds at moments of the show"),
               for (final key in builtInEffects) _effectRow(key),
               header("Your own effects"),
@@ -225,6 +267,11 @@ class _SoundsDialogState extends State<SoundsDialog> {
                           decoration: const InputDecoration(labelText: "Name"),
                           onChanged: (_) => _saveEffects(),
                         ),
+                      ),
+                      IconButton(
+                        icon: Icon(_playing == 'own/${effect.hashCode}' ? Icons.stop : Icons.play_arrow),
+                        tooltip: "Listen",
+                        onPressed: effect.file == null ? null : () => _listen('own/${effect.hashCode}', null, effect.file),
                       ),
                       MediaButton(
                         gameId: widget.gameId,

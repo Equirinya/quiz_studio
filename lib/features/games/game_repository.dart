@@ -381,6 +381,16 @@ class GameRepository {
   Future<void> updateQuestion(String gameId, String categoryId, String questionId, Map<String, dynamic> data) =>
       _questions(gameId, categoryId).doc(questionId).update(data);
 
+  /// Puts the questions of a category in the order of [questionIds]: from
+  /// then on the category goes by these positions instead of by points.
+  Future<void> reorderQuestions(String gameId, String categoryId, List<String> questionIds) {
+    final batch = _db.batch();
+    for (final (i, id) in questionIds.indexed) {
+      batch.update(_questions(gameId, categoryId).doc(id), {'questionIndex': i});
+    }
+    return batch.commit();
+  }
+
   Future<void> deleteQuestion(String gameId, String categoryId, String questionId) =>
       _questions(gameId, categoryId).doc(questionId).delete();
 }

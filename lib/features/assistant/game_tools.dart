@@ -972,7 +972,8 @@ class GameTools {
         String? value(Object? v, String key) {
           if (v is! String) throw ToolError('"$key" must be a string.');
           if (v.isEmpty) return null;
-          if (v.startsWith(builtinSoundPrefix) && builtinSound(v) == null) throw ToolError('No built-in sound "$v".');
+          final known = musicSlots.contains(key) ? builtinMusicTrack(v) != null : builtinSound(v) != null;
+          if (v.startsWith(builtinSoundPrefix) && !known) throw ToolError('No built-in sound "$v" for "$key".');
           return v;
         }
 
@@ -1009,6 +1010,7 @@ class GameTools {
       case 'list_builtin_media':
         return {
           'pictures': {for (final image in builtinImages) image.name: image.label},
+          'music': {for (final track in builtinMusicTracks) track.key: track.label},
           'sounds': {
             for (final moment in builtInEffects)
               moment: {for (final sound in builtinSoundsFor(moment)) sound.key: sound.label},
