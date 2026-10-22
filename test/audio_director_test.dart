@@ -20,6 +20,9 @@ class FakeBackend implements AudioBackend {
   @override
   void setAmbience(String? asset) => ambience.add('$asset');
   @override
+  void setAmbienceVolume(double volume) => ambienceVolume = volume;
+  double? ambienceVolume;
+  @override
   void setMedia(String? path, MediaPlayback playback) => log.add('media $path ${playback.name}');
   @override
   void playFile(String path) => log.add('file $path');

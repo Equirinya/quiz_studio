@@ -137,6 +137,8 @@ class SessionState {
     this.music,
     this.ambience = ambienceSoftNoise,
     this.musicVolume = 100,
+    this.ambienceVolume = 20,
+    this.boardFocus,
     this.answerRound,
     this.overlay,
   });
@@ -195,6 +197,14 @@ class SessionState {
 
   /// 0 to 100: how loud the music plays.
   final int musicVolume;
+
+  /// 0 to 100: how loud the noise that keeps the speakers awake plays.
+  final int ambienceVolume;
+
+  /// The category the board was last turned to: the one of the last question
+  /// opened, or one the gamemaster picked. A map wider than the screen keeps
+  /// it in the middle.
+  final String? boardFocus;
   final AnswerRound? answerRound;
 
   /// The card currently shown on top of the screen, if any.
@@ -227,6 +237,8 @@ class SessionState {
     Object? music = _unset,
     Object? ambience = _unset,
     int? musicVolume,
+    int? ambienceVolume,
+    Object? boardFocus = _unset,
     Object? answerRound = _unset,
     Object? overlay = _unset,
   }) =>
@@ -250,6 +262,8 @@ class SessionState {
         music: music is String? ? music : this.music,
         ambience: identical(ambience, _unset) ? this.ambience : ambience as String?,
         musicVolume: musicVolume ?? this.musicVolume,
+        ambienceVolume: ambienceVolume ?? this.ambienceVolume,
+        boardFocus: identical(boardFocus, _unset) ? this.boardFocus : boardFocus as String?,
         answerRound: identical(answerRound, _unset) ? this.answerRound : answerRound as AnswerRound?,
         overlay: identical(overlay, _unset) ? this.overlay : overlay as OverlayCard?,
       );
@@ -274,6 +288,8 @@ class SessionState {
         'music': music,
         'ambience': ambience,
         'musicVolume': musicVolume,
+        'ambienceVolume': ambienceVolume,
+        'boardFocus': boardFocus,
         'answerRound': answerRound?.toJson(),
         'overlay': overlay?.toJson(),
       };
@@ -302,6 +318,8 @@ class SessionState {
         // Sessions from before the switch get it on, like new ones.
         ambience: json.containsKey('ambience') ? json['ambience'] as String? : ambienceSoftNoise,
         musicVolume: (json['musicVolume'] as num?)?.toInt().clamp(0, 100) ?? 100,
+        ambienceVolume: (json['ambienceVolume'] as num?)?.toInt().clamp(0, 100) ?? 20,
+        boardFocus: json['boardFocus'] as String?,
         answerRound:
             json['answerRound'] == null ? null : AnswerRound.fromJson(Map<String, dynamic>.from(json['answerRound'] as Map)),
         overlay: json['overlay'] == null ? null : OverlayCard.fromJson(Map<String, dynamic>.from(json['overlay'] as Map)),

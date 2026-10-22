@@ -104,6 +104,7 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
         phase: Phase.question,
         current: ref,
         groupId: game.groupOfCategory(ref.categoryId)?.id ?? s.groupId,
+        boardFocus: ref.categoryId,
         played: {...s.played, ?s.current?.key},
         // A question with a companion screen puts it on the teams' devices
         // the moment it opens.
@@ -328,6 +329,17 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       final clamped = volume.clamp(0, 100);
       if (clamped == s.musicVolume) return _no(s);
       return _ok(s.copyWith(musicVolume: clamped));
+
+    case SetAmbienceVolume(:final volume):
+      final clamped = volume.clamp(0, 100);
+      if (clamped == s.ambienceVolume) return _no(s);
+      return _ok(s.copyWith(ambienceVolume: clamped));
+
+    case FocusCategory(:final categoryId):
+      final group = game?.groupOfCategory(categoryId);
+      // A question in play keeps its own category in view.
+      if (group == null || s.current != null || categoryId == s.boardFocus) return _no(s);
+      return _ok(s.copyWith(boardFocus: categoryId, groupId: group.id));
 
     case PlayEffect(:final key):
       return Reduction(s, effects: [SoundEffect(key)]);

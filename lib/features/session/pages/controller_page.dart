@@ -1038,16 +1038,35 @@ class _BoardSheetState extends State<_BoardSheet> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Text(
-                                  category.name,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                  style: theme.textTheme.labelMedium,
-                                ),
-                              ),
+                              // On a map wider than the screen a tap brings the
+                              // category to the middle; a question in play
+                              // keeps its own there.
+                              Builder(builder: (context) {
+                                final turnable = group.type == BoardType.map && state.current == null;
+                                final focused = group.type == BoardType.map && state.boardFocus == category.id;
+                                final label = Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                                  child: Text(
+                                    category.name,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.labelMedium?.copyWith(
+                                      color: focused ? scheme.primary : null,
+                                      fontWeight: focused ? FontWeight.w700 : null,
+                                    ),
+                                  ),
+                                );
+                                if (!turnable) return label;
+                                return Tooltip(
+                                  message: "Show this category in the middle",
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () => widget.send(FocusCategory(category.id)),
+                                    child: label,
+                                  ),
+                                );
+                              }),
                               for (final q in category.questions)
                                 Builder(builder: (context) {
                                   final ref = QuestionRef(category.id, q.id);
@@ -1181,6 +1200,9 @@ class _EffectsSheetState extends State<_EffectsSheet> {
 
   /// The noise picked last, for switching back on.
   String? _lastAmbience;
+
+  /// The noise's volume while its slider is being dragged.
+  int? _ambienceVolume;
 
   @override
   void dispose() {
@@ -1396,6 +1418,26 @@ class _EffectsSheetState extends State<_EffectsSheet> {
                             setState(() => _lastAmbience = selected.first);
                             send(SetAmbience(selected.first));
                           },
+                        ),
+                        Row(
+                          children: [
+                            Icon(Icons.volume_down, color: theme.colorScheme.onSurfaceVariant),
+                            Expanded(
+                              child: Slider(
+                                value: (_ambienceVolume ?? state.ambienceVolume).toDouble(),
+                                max: 100,
+                                divisions: 20,
+                                label: "Noise ${(_ambienceVolume ?? state.ambienceVolume).round()} %",
+                                // Follows the finger here; the big screen gets the value when let go.
+                                onChanged: (value) => setState(() => _ambienceVolume = value.round()),
+                                onChangeEnd: (value) {
+                                  send(SetAmbienceVolume(value.round()));
+                                  setState(() => _ambienceVolume = null);
+                                },
+                              ),
+                            ),
+                            Icon(Icons.volume_up, color: theme.colorScheme.onSurfaceVariant),
+                          ],
                         ),
                       ],
                     ),

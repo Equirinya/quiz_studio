@@ -86,6 +86,20 @@ void main() {
       expect(offset(tester), at);
     });
 
+    testWidgets('back on the board after a question, it opens on that category', (tester) async {
+      // The question took the whole screen; the board comes back afresh.
+      await pumpBoard(tester, const SessionState(played: {'c4/q'}, boardFocus: 'c4'));
+      await tester.pump();
+      expect(offset(tester), 1000);
+    });
+
+    testWidgets('the gamemaster can turn the board to a category', (tester) async {
+      await pumpBoard(tester, const SessionState());
+      await pumpBoard(tester, const SessionState(boardFocus: 'c7'));
+      await tester.pumpAndSettle();
+      expect(offset(tester), 1600);
+    });
+
     testWidgets('a show resumed mid-question starts on that category, without a glide', (tester) async {
       await pumpBoard(tester, open('c4'));
       await tester.pump();

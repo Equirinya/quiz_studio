@@ -16,6 +16,9 @@ abstract class AudioBackend {
   /// Loops the bundled [asset] quietly while nothing else plays; null stops it.
   void setAmbience(String? asset);
 
+  /// 0 to 1, for that noise only.
+  void setAmbienceVolume(double volume);
+
   /// The open question's own sound. A new [path] starts from the beginning;
   /// the same path follows [playback] (pause keeps the position).
   void setMedia(String? path, MediaPlayback playback);
@@ -66,6 +69,7 @@ class AudioDirector {
   String? _music;
   String? _media;
   String? _ambience;
+  double? _ambienceVolume;
   double _volume = 1;
   MediaPlayback _playback = MediaPlayback.stopped;
 
@@ -108,6 +112,12 @@ class AudioDirector {
     if (volume != _volume) {
       _volume = volume;
       backend.setMusicVolume(volume);
+    }
+
+    final ambienceVolume = state.ambienceVolume / 100;
+    if (ambienceVolume != _ambienceVolume) {
+      _ambienceVolume = ambienceVolume;
+      backend.setAmbienceVolume(ambienceVolume);
     }
 
     // The noise only fills silence: music or the question's sound take over.

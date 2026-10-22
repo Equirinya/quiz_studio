@@ -84,6 +84,8 @@ sealed class Command {
       'setMusic' => SetMusic(j['slot'] as String?),
       'setAmbience' => SetAmbience(j['slot'] as String?),
       'setMusicVolume' => SetMusicVolume((j['volume'] as num).toInt()),
+      'setAmbienceVolume' => SetAmbienceVolume((j['volume'] as num).toInt()),
+      'focusCategory' => FocusCategory(j['categoryId'] as String),
       'playEffect' => PlayEffect(j['key'] as String),
       'adjustPoints' => AdjustPoints(j['teamId'] as String, (j['delta'] as num).toInt()),
       'setPoints' => SetPoints(j['teamId'] as String, (j['points'] as num).toInt()),
@@ -317,6 +319,27 @@ class SetMusicVolume extends Command {
   String get type => 'setMusicVolume';
   @override
   Map<String, dynamic> get _args => {'volume': volume};
+}
+
+/// How loud the noise that keeps the speakers awake plays, 0 to 100.
+class SetAmbienceVolume extends Command {
+  const SetAmbienceVolume(this.volume);
+  final int volume;
+  @override
+  String get type => 'setAmbienceVolume';
+  @override
+  Map<String, dynamic> get _args => {'volume': volume};
+}
+
+/// Turns the board to a category: a map wider than the screen brings it to
+/// the middle.
+class FocusCategory extends Command {
+  const FocusCategory(this.categoryId);
+  final String categoryId;
+  @override
+  String get type => 'focusCategory';
+  @override
+  Map<String, dynamic> get _args => {'categoryId': categoryId};
 }
 
 class SetMusic extends Command {

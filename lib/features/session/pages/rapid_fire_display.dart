@@ -32,23 +32,26 @@ class RapidFireDisplay extends StatelessWidget {
     final round = state.answerRound;
     final flux = rapid.progress == ProgressStyle.flux;
 
+    final Key itemKey = item == null ? const ValueKey('done') : ValueKey('item-$done');
     final card = Container(
       width: double.infinity,
       padding: EdgeInsets.all(unit * 3),
       decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 3)),
-      // Each item slides in over the one before.
+      // Each item comes in from the right while the one before leaves to
+      // the left. The leaving one runs its animation backwards, so it
+      // starts from the left.
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 350),
         transitionBuilder: (child, animation) => FadeTransition(
           opacity: animation,
           child: SlideTransition(
-            position: Tween(begin: const Offset(0.15, 0), end: Offset.zero).animate(animation),
+            position: Tween(begin: Offset(child.key == itemKey ? 0.15 : -0.15, 0), end: Offset.zero).animate(animation),
             child: child,
           ),
         ),
         child: item == null
             ? Column(
-                key: const ValueKey('done'),
+                key: itemKey,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.emoji_events, size: unit * 14, color: scheme.primary),
@@ -57,7 +60,7 @@ class RapidFireDisplay extends StatelessWidget {
                 ],
               )
             : Row(
-                key: ValueKey('item-$done'),
+                key: itemKey,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (image != null)

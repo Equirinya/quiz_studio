@@ -34,8 +34,8 @@ class AudioplayersBackend implements AudioBackend {
   /// fades out while the new one fades in.
   static const Duration crossfade = Duration(milliseconds: 1500);
 
-  /// The noise is only there to keep the speakers awake, so it stays low.
-  static const double ambienceVolume = 0.2;
+  /// The noise is only there to keep the speakers awake, so it starts low.
+  double _ambienceVolume = 0.2;
 
   @override
   void setMusic(String? path) {
@@ -121,8 +121,15 @@ class AudioplayersBackend implements AudioBackend {
       await player.setReleaseMode(ReleaseMode.loop);
       await player.setVolume(0);
       await player.play(AssetSource(asset));
-      await _fadeTo(player, () => ambienceVolume, crossfade);
+      await _fadeTo(player, () => _ambienceVolume, crossfade);
     });
+  }
+
+  @override
+  void setAmbienceVolume(double volume) {
+    _ambienceVolume = volume;
+    final player = _ambience;
+    if (player != null) _guard(() => player.setVolume(volume));
   }
 
   @override

@@ -47,8 +47,8 @@ From "Interface Sounds" (https://opengameart.org/content/interface-sounds):
 ## Big Sound Bank (https://bigsoundbank.com), CC0
 
 - `effects/right_answer/counter_bell.mp3`: "Counter Bell #5" (#2533)
-- `effects/applause/crowd_40.mp3`: "Applause from 40 People #7" (#3523)
+- `effects/applause/crowd_40.mp3`: "Applause from 40 People #7" (#3523), the last two seconds cut
 - `effects/applause/bar_short.mp3`: "Applause Concert Bar #4" (#2482)
 - `effects/drumroll/snare.mp3`: "Drum roll 1 S" (#2400)
 - `effects/joke/rimshot.mp3`: "Battery joke #3" (#2410)
-- `effects/countdown/alarm_clock_ticking.mp3`: "Tic Tac Mechanical Alarm Clock #3" (#2656)
+- `effects/countdown/alarm_clock_ticking.mp3`: "Tic Tac Mechanical Alarm Clock #3" (#2656), cut to its first three seconds

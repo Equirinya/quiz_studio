@@ -433,8 +433,8 @@ class ScreenEffectLayer extends StatefulWidget {
 class ScreenEffectLayerState extends State<ScreenEffectLayer> with TickerProviderStateMixin {
   late final AnimationController _confetti = AnimationController(vsync: this, duration: const Duration(milliseconds: 3800));
   late final AnimationController _flash = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
-  late final AnimationController _fireworks = AnimationController(vsync: this, duration: const Duration(milliseconds: 5000));
-  late final AnimationController _balloons = AnimationController(vsync: this, duration: const Duration(milliseconds: 6500));
+  late final AnimationController _fireworks = AnimationController(vsync: this, duration: const Duration(milliseconds: 6000));
+  late final AnimationController _balloons = AnimationController(vsync: this, duration: const Duration(milliseconds: 8500));
   late final AnimationController _stars = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200));
   late final AnimationController _spotlight = AnimationController(vsync: this, duration: const Duration(milliseconds: 4500));
   StreamSubscription<Effect>? _sub;
@@ -487,6 +487,8 @@ class ScreenEffectLayerState extends State<ScreenEffectLayer> with TickerProvide
     final scheme = Theme.of(context).colorScheme;
     final colors = [scheme.primary, scheme.tertiary, scheme.secondary, Colors.amber, Colors.white];
     final bright = [Colors.redAccent, Colors.amber, Colors.lightBlueAccent, Colors.greenAccent, Colors.purpleAccent, Colors.pinkAccent];
+    // The basic colours, every one of them in each show.
+    final rockets = [Colors.redAccent, Colors.yellowAccent, Colors.lightBlueAccent, Colors.greenAccent, Colors.purpleAccent, Colors.pinkAccent];
     Widget layer(AnimationController controller, CustomPainter Function() painter) => AnimatedBuilder(
           animation: controller,
           builder: (context, _) => controller.isAnimating ? CustomPaint(painter: painter()) : const SizedBox(),
@@ -498,7 +500,7 @@ class ScreenEffectLayerState extends State<ScreenEffectLayer> with TickerProvide
           // The spotlight darkens the room, so it goes under everything else.
           layer(_spotlight, () => SpotlightPainter(progress: _spotlight.value)),
           layer(_balloons, () => BalloonsPainter(progress: _balloons.value, seed: _seed, colors: bright)),
-          layer(_fireworks, () => FireworksPainter(progress: _fireworks.value, seed: _seed, colors: bright)),
+          layer(_fireworks, () => FireworksPainter(progress: _fireworks.value, seed: _seed, colors: rockets)),
           layer(_stars, () => StarsPainter(progress: _stars.value, seed: _seed, colors: [...colors, Colors.yellowAccent])),
           AnimatedBuilder(
             animation: _confetti,
@@ -572,8 +574,10 @@ class ConfettiPainter extends CustomPainter {
 }
 
 /// Rockets that rise from the bottom edge and burst into sparks that fall.
+/// The colours take turns, so each one is in the show; which rocket gets
+/// which still changes from show to show.
 class FireworksPainter extends CustomPainter {
-  FireworksPainter({required this.progress, required this.seed, required this.colors, this.rockets = 7});
+  FireworksPainter({required this.progress, required this.seed, required this.colors, this.rockets = 11});
 
   final double progress;
   final int seed;
@@ -587,9 +591,9 @@ class FireworksPainter extends CustomPainter {
       final start = random.nextDouble() * 0.45;
       final x = size.width * (0.12 + random.nextDouble() * 0.76);
       final apex = size.height * (0.15 + random.nextDouble() * 0.3);
-      final color = colors[random.nextInt(colors.length)];
-      final sparks = 50 + random.nextInt(30);
-      final reach = size.height * (0.14 + random.nextDouble() * 0.12);
+      final color = colors[(r + seed) % colors.length];
+      final sparks = 60 + random.nextInt(30);
+      final reach = size.height * (0.18 + random.nextDouble() * 0.14);
       // Each rocket: a quarter of the time rising, the rest bursting.
       final t = (progress - start) / 0.55;
       final angles = [for (var i = 0; i < sparks; i++) random.nextDouble() * 2 * pi];
@@ -616,7 +620,8 @@ class FireworksPainter extends CustomPainter {
       final b = (t - 0.3) / 0.7;
       final spread = Curves.easeOutCubic.transform(b);
       final fall = b * b * size.height * 0.08;
-      final fade = (1 - b).clamp(0.0, 1.0);
+      // The sparks stay bright for most of the burst and only fade at its end.
+      final fade = (1 - b * b * b).clamp(0.0, 1.0);
       if (b < 0.15) {
         canvas.drawCircle(
           Offset(x, apex),
@@ -629,7 +634,9 @@ class FireworksPainter extends CustomPainter {
       for (var i = 0; i < sparks; i++) {
         final distance = reach * speeds[i] * spread;
         final at = Offset(x + cos(angles[i]) * distance, apex + sin(angles[i]) * distance + fall);
-        final tail = Offset(x + cos(angles[i]) * distance * 0.85, apex + sin(angles[i]) * distance * 0.85 + fall * 0.8);
+        // A long trail back towards the burst, shrinking as the spark slows.
+        final trail = 0.55 + 0.3 * b;
+        final tail = Offset(x + cos(angles[i]) * distance * trail, apex + sin(angles[i]) * distance * trail + fall * 0.7);
         canvas.drawLine(
           tail,
           at,
@@ -660,6 +667,9 @@ class BalloonsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final random = Random(seed);
+    // The show runs longer than the rise so the last, slowest balloon is off
+    // the top before it ends; [progress] 1 is that much later on their way.
+    final time = progress * 8.5 / 6.5;
     for (var i = 0; i < count; i++) {
       final x0 = random.nextDouble();
       final delay = random.nextDouble() * 0.35;
@@ -667,7 +677,7 @@ class BalloonsPainter extends CustomPainter {
       final radius = size.height * (0.04 + random.nextDouble() * 0.03);
       final swayRate = 2 + random.nextDouble() * 3;
       final color = colors[random.nextInt(colors.length)];
-      final t = progress - delay;
+      final t = time - delay;
       if (t <= 0) continue;
       final x = (x0 + 0.03 * sin(t * swayRate * pi)) * size.width;
       final y = size.height + radius * 3 - t * speed * (size.height + radius * 6) * 1.4;
@@ -751,8 +761,9 @@ class StarsPainter extends CustomPainter {
   bool shouldRepaint(StarsPainter old) => old.progress != progress || old.seed != seed;
 }
 
-/// The room goes dark except for a spotlight that sweeps across and settles
-/// in the middle, then the lights come back.
+/// The room goes dark except for a spotlight that sweeps across, turns in a
+/// wide loop at the right and settles in the middle, then the lights come
+/// back.
 class SpotlightPainter extends CustomPainter {
   SpotlightPainter({required this.progress});
 
@@ -762,9 +773,19 @@ class SpotlightPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final dark = progress < 0.1 ? progress / 0.1 : (progress > 0.85 ? (1 - progress) / 0.15 : 1.0);
     final sweep = Curves.easeInOutSine.transform((progress / 0.7).clamp(0.0, 1.0));
-    // From the left edge across to the right, then back to the middle.
-    final x = sweep < 0.6 ? size.width * (0.1 + sweep / 0.6 * 0.8) : size.width * (0.9 - (sweep - 0.6) / 0.4 * 0.4);
-    final y = size.height * (0.5 + 0.08 * sin(sweep * pi * 3));
+    final w = size.width;
+    final h = size.height;
+    // Low across from the left, round in a loop at the right without
+    // stopping, and back to the middle.
+    final path = Path()
+      ..moveTo(w * 0.1, h * 0.55)
+      ..cubicTo(w * 0.35, h * 0.68, w * 0.62, h * 0.68, w * 0.8, h * 0.62)
+      ..cubicTo(w * 0.92, h * 0.58, w * 0.94, h * 0.32, w * 0.8, h * 0.3)
+      ..cubicTo(w * 0.68, h * 0.28, w * 0.56, h * 0.4, w * 0.5, h * 0.47);
+    final metric = path.computeMetrics().first;
+    final at = metric.getTangentForOffset(metric.length * sweep)!.position;
+    final x = at.dx;
+    final y = at.dy;
     final radius = size.height * 0.24;
     canvas.saveLayer(Offset.zero & size, Paint());
     canvas.drawRect(Offset.zero & size, Paint()..color = Colors.black.withValues(alpha: 0.82 * dark));

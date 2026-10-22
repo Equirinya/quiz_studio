@@ -20,7 +20,8 @@ double mapScrollOffset(double x, double canvasWidth, double viewportWidth) {
 /// The canvas may be wider than the screen. The board then shows a window
 /// onto it and glides to wherever the game is: when a question opens, its
 /// category's bubble is brought to the middle, as far as the ends of the
-/// canvas allow.
+/// canvas allow, and stays there once it closes. The gamemaster can turn it
+/// to any category in between.
 class MapBoard extends StatefulWidget {
   const MapBoard({super.key, required this.group, required this.state, required this.imageFile});
 
@@ -49,12 +50,13 @@ class _MapBoardScrollState extends State<MapBoard> {
 
   void _follow(MapLayout map, double canvasWidth, double viewportWidth) {
     if (!mounted || !_scroll.hasClients) return;
-    final current = widget.state.current?.categoryId;
-    final focus = current != null && map.nodes.containsKey(current) ? current : null;
+    // The question in play, else the category last opened or picked: the
+    // window stays there after the question closes.
+    final wanted = widget.state.current?.categoryId ?? widget.state.boardFocus;
+    final focus = wanted != null && map.nodes.containsKey(wanted) ? wanted : null;
     if (_placed && focus == _focus) return;
     final first = !_placed;
     _placed = true;
-    // With no question open the window stays where the last one left it.
     if (focus == null) return;
     _focus = focus;
     final target = mapScrollOffset(map.nodes[focus]!.x, canvasWidth, viewportWidth);

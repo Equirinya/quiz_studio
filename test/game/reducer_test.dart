@@ -39,6 +39,26 @@ void main() {
       expect(again.played, isEmpty);
     });
 
+    test('the board stays turned to the last question, or to a category picked', () {
+      final closed = run(fixtureState(), [const OpenQuestion(feud), const CloseQuestion()]);
+      expect(closed.boardFocus, feud.categoryId);
+      final turned = apply(closed, FocusCategory(free.categoryId));
+      expect(turned.state.boardFocus, free.categoryId);
+      expect(turned.state.groupId, run(fixtureState(), [const OpenQuestion(free)]).groupId);
+      expect(apply(closed, const FocusCategory('nope')).accepted, isFalse);
+      final open = run(fixtureState(), [const OpenQuestion(free)]);
+      expect(apply(open, FocusCategory(feud.categoryId)).accepted, isFalse);
+      expect(SessionState.fromJson(turned.state.toJson()).boardFocus, free.categoryId);
+    });
+
+    test('the noise has its own volume', () {
+      final s = run(fixtureState(), [const SetAmbienceVolume(140)]);
+      expect(s.ambienceVolume, 100);
+      expect(const SessionState().ambienceVolume, 20);
+      expect(SessionState.fromJson(s.toJson()).ambienceVolume, 100);
+      expect(Command.fromJson(const SetAmbienceVolume(30).toJson()), isA<SetAmbienceVolume>().having((c) => c.volume, 'volume', 30));
+    });
+
     test('rejects unknown questions, group changes mid-question and unknown groups', () {
       expect(apply(fixtureState(), const OpenQuestion(QuestionRef('c1', 'nope'))).accepted, isFalse);
       expect(apply(fixtureState(), const SelectGroup('nope')).accepted, isFalse);
