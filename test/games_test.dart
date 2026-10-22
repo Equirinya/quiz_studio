@@ -59,6 +59,8 @@ void main() {
     test('content types cover what the storage rules accept', () {
       expect(contentTypeForPath('a.JPG'), 'image/jpeg');
       expect(contentTypeForPath('b.m4a'), 'audio/mp4');
+      // Windows cannot play Ogg.
+      expect(contentTypeForPath('c.ogg'), isNull);
       expect(contentTypeForPath('clip.MP4'), 'video/mp4');
       expect(contentTypeForPath('clip.mov'), 'video/quicktime');
       expect(contentTypeForPath('c.exe'), isNull);

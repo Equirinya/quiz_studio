@@ -8,7 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 
-const XTypeGroup _audioByExtension = XTypeGroup(label: 'Audio', extensions: <String>['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac']);
+const XTypeGroup _audioByExtension = XTypeGroup(label: 'Audio', extensions: <String>['mp3', 'wav', 'm4a', 'aac', 'flac']);
 const XTypeGroup _audioByUniformType = XTypeGroup(label: 'Audio', uniformTypeIdentifiers: <String>['public.audio']);
 
 const XTypeGroup _videoByExtension = XTypeGroup(label: 'Video', extensions: <String>['mp4', 'm4v', 'mov', 'webm', 'mkv']);

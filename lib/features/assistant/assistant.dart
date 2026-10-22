@@ -72,6 +72,9 @@ class RepositoryToolsBackend implements GameToolsBackend {
   @override
   Future<String> uploadMedia(String gameId, String path) async {
     if (!await File(path).exists()) throw ToolError('There is no file at "$path".');
+    if (RegExp(r'\.(ogg|oga|opus)$', caseSensitive: false).hasMatch(path)) {
+      throw const ToolError('Ogg sounds do not play on Windows; convert the file to MP3, WAV or M4A first.');
+    }
     if (contentTypeForPath(path) == null) throw const ToolError('Only pictures, sounds and videos can be uploaded.');
     return MediaService.instance.upload(gameId, path);
   }

@@ -91,12 +91,12 @@ void main() {
 
   test('sounds that come with the app play by name, and fill in for a reveal the game has no sound for', () {
     host.dispatch(const PlayEffect('builtin:drumroll/snare'));
-    expect(backend.log, ['asset sounds/effects/drumroll/snare.ogg']);
+    expect(backend.log, ['asset sounds/effects/drumroll/snare.mp3']);
     host
       ..dispatch(const OpenQuestion(feud))
       ..dispatch(const Buzz('red'))
       ..dispatch(const FeudToggle(0));
-    expect(backend.log.last, 'asset sounds/effects/reveal/pluck.ogg');
+    expect(backend.log.last, 'asset sounds/effects/reveal/pluck.mp3');
   });
 
   test('a team can have one of the buzzers that come with the app', () {
@@ -119,7 +119,7 @@ void main() {
       ..dispatch(const OpenQuestion(free))
       ..dispatch(const Buzz('red'))
       ..dispatch(const Judge(correct: true));
-    expect(backend.log, ['asset sounds/buzzers/buzzer.wav', 'asset sounds/effects/right_answer/voice_correct_male.ogg']);
+    expect(backend.log, ['asset sounds/buzzers/buzzer.wav', 'asset sounds/effects/right_answer/voice_correct_male.mp3']);
   });
 
   test('the music volume follows the session', () {

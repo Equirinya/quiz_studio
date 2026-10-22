@@ -19,7 +19,6 @@ const Map<String, String> _contentTypes = {
   'wav': 'audio/wav',
   'm4a': 'audio/mp4',
   'aac': 'audio/aac',
-  'ogg': 'audio/ogg',
   'flac': 'audio/flac',
   'mp4': 'video/mp4',
   'm4v': 'video/mp4',
@@ -74,6 +73,10 @@ class MediaService {
   Future<String> upload(String gameId, String sourcePath) async {
     await init();
     final contentType = contentTypeForPath(sourcePath);
+    // Windows, where the show runs, cannot play Ogg or Opus.
+    if (RegExp(r'\.(ogg|oga|opus)$', caseSensitive: false).hasMatch(sourcePath)) {
+      throw UnsupportedError('Ogg sounds do not play on Windows. Please use MP3, WAV or M4A.');
+    }
     if (contentType == null) throw UnsupportedError('This file type is not supported.');
     final name = newMediaName(sourcePath);
     await _remote(gameId, name).putFile(File(sourcePath), SettableMetadata(contentType: contentType));
