@@ -989,18 +989,24 @@ class _Tiles extends StatelessWidget {
                       builder: (context) {
                         final tile = tiles.elementAtOrNull(r * perRow + c);
                         if (tile == null) return const SizedBox();
+                        // Once the solution is shown the tile itself turns green or red.
+                        final right = tile.mark == true;
+                        final wrong = tile.mark == false;
+                        final background = right ? Colors.green.shade700 : (wrong ? scheme.errorContainer : scheme.surfaceContainerLow);
+                        final foreground = right ? Colors.white : (wrong ? scheme.onErrorContainer : null);
                         return AnimatedOpacity(
                           duration: const Duration(milliseconds: 250),
                           opacity: tile.shown ? 1 : 0.25,
-                          child: Container(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 400),
                             margin: EdgeInsets.all(unit * 0.6),
                             padding: EdgeInsets.symmetric(horizontal: unit * 2),
-                            decoration: BoxDecoration(color: scheme.surfaceContainerLow, borderRadius: BorderRadius.circular(unit * 1.5)),
+                            decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(unit * 1.5)),
                             child: Row(
                               children: [
                                 Text(
                                   tile.label,
-                                  style: TextStyle(fontSize: unit * 3, fontWeight: FontWeight.bold, color: scheme.tertiary),
+                                  style: TextStyle(fontSize: unit * 3, fontWeight: FontWeight.bold, color: foreground ?? scheme.tertiary),
                                 ),
                                 SizedBox(width: unit * 2),
                                 Expanded(
@@ -1009,15 +1015,9 @@ class _Tiles extends StatelessWidget {
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(fontSize: unit * 3),
+                                    style: TextStyle(fontSize: unit * 3, color: foreground),
                                   ),
                                 ),
-                                if (tile.mark != null)
-                                  Icon(
-                                    tile.mark! ? Icons.check : Icons.close,
-                                    size: unit * 4,
-                                    color: tile.mark! ? Colors.green : scheme.error,
-                                  ),
                               ],
                             ),
                           ),

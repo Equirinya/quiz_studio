@@ -200,6 +200,12 @@ void main() {
     await shot('presenter_abcd');
   });
 
+  testWidgets('presenter: abcd solution', (tester) async {
+    await screen(tester, const [OpenQuestion(abcd), Reveal(1), Reveal(1), Reveal(1), Reveal(1), Reveal(1)]);
+    await tester.pump(const Duration(milliseconds: 500));
+    await shot('presenter_abcd_solution');
+  });
+
   /// The Fragenhagel fixture with another progress style.
   GameContent rapidWith(ProgressStyle style, {String mode = 'buzzer'}) {
     final base = rapidGame();
