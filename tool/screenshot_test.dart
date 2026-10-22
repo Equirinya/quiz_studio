@@ -24,6 +24,7 @@ import 'package:quiz_show/features/games/widgets/sounds_dialog.dart';
 import 'package:quiz_show/features/games/widgets/map_editor.dart';
 import 'package:quiz_show/features/player/pages/player_page.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
+import 'package:quiz_show/features/session/pages/session_setup_page.dart';
 import 'package:quiz_show/features/session/pages/sessions_page.dart';
 import 'package:quiz_show/features/session/session_client.dart';
 import 'package:quiz_show/features/settings/account_page.dart';
@@ -188,6 +189,42 @@ void main() {
     await phone(tester, const []);
     await tapText(tester, find.widgetWithText(TextButton, 'Setup'));
     await shot('controller_setup_sheet');
+  });
+
+  const colours = [SetTeamColor('red', 0xFFD32F2F), SetTeamColor('blue', 0xFF1976D2)];
+
+  testWidgets('presenter: team colours', (tester) async {
+    await screen(tester, const [...colours, AdjustPoints('red', 300), OpenQuestion(free), Buzz('blue')]);
+    await shot('presenter_team_colours');
+  });
+
+  testWidgets('presenter: fragenhagel in team colours', (tester) async {
+    await screen(tester, const [...colours, OpenQuestion(buzzerRound), Reveal(1), Buzz('blue')], game: rapidGame());
+    await shot('presenter_fragenhagel_team_colour');
+  });
+
+  testWidgets('session setup', (tester) async {
+    tester.view.physicalSize = const Size(412, 892);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        appBar: AppBar(title: const Text("Set up Quiz night")),
+        floatingActionButton: FloatingActionButton.extended(onPressed: () {}, icon: const Icon(Icons.group_add), label: const Text("Add team")),
+        body: SessionSetupView(
+          teams: const [Team(id: 'red', name: 'Red', color: 0xFFD32F2F), Team(id: 'blue', name: 'Blue', color: 0xFF1976D2), Team(id: 'owls', name: 'Night owls')],
+          presentedBefore: false,
+          onRename: (_) {},
+          onColor: (_, _) {},
+          onRemove: (_) {},
+          onBuzzers: () {},
+        ),
+      ),
+    ));
+    await tester.pump();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/session_setup.png'));
   });
 
   testWidgets('presenter: board', (tester) async {

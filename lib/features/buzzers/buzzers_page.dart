@@ -81,6 +81,17 @@ class _BuzzersPageState extends State<BuzzersPage> {
             padding: const EdgeInsets.all(16),
             children: [
               if (Buzzers.supported)
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text("Use a USB buzzer box"),
+                  subtitle: const Text("Off: teams buzz with their phones only, and the big screen does not look for a box."),
+                  value: _buzzers.wanted.value,
+                  onChanged: (on) async {
+                    await _buzzers.setWanted(on);
+                    if (mounted) setState(() {});
+                  },
+                ),
+              if (Buzzers.supported && _buzzers.wanted.value)
                 BuzzersView(
                   link: _buzzers.link,
                   teams: teams,

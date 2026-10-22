@@ -79,6 +79,10 @@ class _CompanionEditorState extends State<CompanionEditor> {
     super.dispose();
   }
 
+  /// Whether teams buzz when nothing is on their devices: a free question
+  /// can have its buzzer switched off.
+  bool get _buzzes => widget.question.type != QuestionType.free || widget.question.data['noBuzzer'] != true;
+
   bool get _hasItems => _kind == CompanionKind.order || _kind == CompanionKind.match;
 
   bool get _hasRange => _kind == CompanionKind.number || _kind == CompanionKind.slider;
@@ -86,7 +90,8 @@ class _CompanionEditorState extends State<CompanionEditor> {
   void _write() {
     final kind = _kind;
     if (kind == null) {
-      widget.save({'companion': null});
+      // Back to no screen: a free question is buzzed again.
+      widget.save({'companion': null, if (widget.question.type == QuestionType.free) 'noBuzzer': false});
       return;
     }
     if (kind == CompanionKind.connections) {
@@ -162,7 +167,8 @@ class _CompanionEditorState extends State<CompanionEditor> {
                 label: const Text("Screen"),
                 initialSelection: kind,
                 dropdownMenuEntries: [
-                  const DropdownMenuEntry(value: null, label: "Nothing"),
+                  // Without a screen the question is played with buzzers, if it has them.
+                  DropdownMenuEntry(value: null, label: _buzzes ? "Nothing: teams buzz" : "Nothing: no buzzers either"),
                   for (final option in companionKindsFor(widget.question.type, current: kind))
                     DropdownMenuEntry(
                       value: option,

@@ -27,7 +27,7 @@ enum Phase {
 enum MediaPlayback { stopped, playing, paused }
 
 class Team {
-  const Team({required this.id, required this.name, this.points = 0, this.sound});
+  const Team({required this.id, required this.name, this.points = 0, this.sound, this.color});
 
   final String id;
   final String name;
@@ -37,20 +37,45 @@ class Team {
   /// for the default sound.
   final String? sound;
 
+  /// The team's colour as ARGB, for its score box, its buzzer and when it
+  /// is answering; null for the app's own colours.
+  final int? color;
+
   Team copyWith({String? name, int? points}) =>
-      Team(id: id, name: name ?? this.name, points: points ?? this.points, sound: sound);
+      Team(id: id, name: name ?? this.name, points: points ?? this.points, sound: sound, color: color);
 
-  Team withSound(String? sound) => Team(id: id, name: name, points: points, sound: sound);
+  Team withSound(String? sound) => Team(id: id, name: name, points: points, sound: sound, color: color);
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'points': points, if (sound != null) 'sound': sound};
+  Team withColor(int? color) => Team(id: id, name: name, points: points, sound: sound, color: color);
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'points': points,
+        if (sound != null) 'sound': sound,
+        if (color != null) 'color': color,
+      };
 
   factory Team.fromJson(Map<String, dynamic> json) => Team(
         id: json['id'] as String,
         name: json['name'] as String,
         points: (json['points'] as num?)?.toInt() ?? 0,
         sound: json['sound'] as String?,
+        color: (json['color'] as num?)?.toInt(),
       );
 }
+
+/// Colours a team can pick, as ARGB: strong enough to read white text on.
+const List<int> teamColors = [
+  0xFFD32F2F, // red
+  0xFF1976D2, // blue
+  0xFF388E3C, // green
+  0xFFF9A825, // yellow
+  0xFF7B1FA2, // purple
+  0xFFF57C00, // orange
+  0xFF00838F, // teal
+  0xFFC2185B, // pink
+];
 
 /// Something the gamemaster puts on top of the screen: a text card, an
 /// image, a video, or text with a picture. A card stays until it is hidden;

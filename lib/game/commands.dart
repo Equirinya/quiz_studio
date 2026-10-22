@@ -89,6 +89,7 @@ sealed class Command {
       'setPoints' => SetPoints(j['teamId'] as String, (j['points'] as num).toInt()),
       'addTeam' => AddTeam(j['teamId'] as String, j['name'] as String),
       'renameTeam' => RenameTeam(j['teamId'] as String, j['name'] as String),
+      'setTeamColor' => SetTeamColor(j['teamId'] as String, (j['color'] as num?)?.toInt()),
       'removeTeam' => RemoveTeam(j['teamId'] as String),
       'setQueueBuzzers' => SetQueueBuzzers(j['on'] as bool),
       'setCardAnimation' => SetCardAnimation(CardAnimation.fromName(j['animation'])),
@@ -379,6 +380,17 @@ class RenameTeam extends Command {
   String get type => 'renameTeam';
   @override
   Map<String, dynamic> get _args => {'teamId': teamId, 'name': name};
+}
+
+/// Gives a team a colour (ARGB), or the app's own again with null.
+class SetTeamColor extends Command {
+  const SetTeamColor(this.teamId, this.color);
+  final String teamId;
+  final int? color;
+  @override
+  String get type => 'setTeamColor';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId, 'color': color};
 }
 
 /// Gives a team its own buzzer sound, a file among the session's files, or

@@ -12,6 +12,7 @@ import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/features/player/widgets/buzzer_button.dart';
 import 'package:quiz_show/features/session/session_client.dart';
 import 'package:quiz_show/features/session/session_links.dart';
+import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// A player's phone during the show: a buzzer, and a place to answer when the
@@ -347,6 +348,7 @@ class _PlayerViewState extends State<PlayerView> {
                   builder: (context, box) => BuzzerButton(
                     size: box.biggest.shortestSide * 0.8,
                     onPressed: canBuzz ? _buzz : null,
+                    color: teamColor(team),
                   ),
                 ),
               ),

@@ -372,6 +372,10 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
         foundBy: {for (final entry in s.foundBy.entries) if (entry.value != teamId) entry.key: entry.value},
       ));
 
+    case SetTeamColor(:final teamId, :final color):
+      if (s.team(teamId) == null || s.team(teamId)!.color == color) return _no(s);
+      return _ok(s.copyWith(teams: [for (final team in s.teams) team.id == teamId ? team.withColor(color) : team]));
+
     case SetTeamSound(:final teamId, :final sound):
       final name = sound == null || sound.isEmpty ? null : sound;
       if (s.team(teamId) == null || s.team(teamId)!.sound == name) return _no(s);

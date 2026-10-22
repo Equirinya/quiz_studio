@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -89,18 +89,39 @@ class Buzzers {
   SharedPreferences? _prefs;
   bool _started = false;
 
+  /// Whether this device is meant to have a buzzer box. Without one nothing
+  /// is connected and the big screen does not warn about a missing box.
+  /// Remembered on the device; on for anyone who had already chosen a port.
+  final ValueNotifier<bool> wanted = ValueNotifier(false);
+
+  Future<void> setWanted(bool on) async {
+    final prefs = _prefs ??= await SharedPreferences.getInstance();
+    await prefs.setBool('buzzers_wanted', on);
+    wanted.value = on;
+    if (on) {
+      _connect(prefs);
+    } else {
+      link.use(null);
+    }
+  }
+
   /// Loads the settings and connects to the remembered port. If none was
   /// chosen and exactly one port exists, that one is used.
   Future<void> start() async {
     if (!supported || _started) return;
     _started = true;
     final prefs = _prefs ??= await SharedPreferences.getInstance();
+    wanted.value = prefs.getBool('buzzers_wanted') ?? prefs.containsKey('serial_port');
     for (final key in prefs.getKeys()) {
       if (!key.startsWith('buzzer_threshold.')) continue;
       final id = int.tryParse(key.substring('buzzer_threshold.'.length));
       final value = prefs.getInt(key);
       if (id != null && value != null) link.detector.thresholds[id] = value;
     }
+    if (wanted.value) _connect(prefs);
+  }
+
+  void _connect(SharedPreferences prefs) {
     var port = prefs.getString('serial_port');
     if (port == null) {
       final ports = link.availablePorts;

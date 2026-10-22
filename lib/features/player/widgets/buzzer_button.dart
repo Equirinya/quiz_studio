@@ -14,7 +14,11 @@ class BuzzerButton extends StatefulWidget {
     required this.onPressed,
     this.size = 200.0,
     this.label,
+    this.color,
   });
+
+  /// The cap's colour, the team's own when it has one; red otherwise.
+  final Color? color;
 
   /// Called as soon as the user touches the button.
   /// Set to [null] to disable the button.
@@ -145,6 +149,7 @@ class _BuzzerButtonState extends State<BuzzerButton>
             painter: _BuzzerPainter(
               isEnabled: enabled,
               isPressed: _isPressed,
+              color: widget.color ?? _BuzzerPainter._defaultCap,
             )
           ),
         ),
@@ -154,75 +159,95 @@ class _BuzzerButtonState extends State<BuzzerButton>
 }
 
 // ---------------------------------------------------------------------------
-// Custom painter — draws the layered 3-D buzzer look
+// Custom painter — a game-show buzzer: a dark base with a lit cap on top
 // ---------------------------------------------------------------------------
 
 class _BuzzerPainter extends CustomPainter {
-  _BuzzerPainter({required this.isEnabled, required this.isPressed});
+  _BuzzerPainter({required this.isEnabled, required this.isPressed, required this.color});
 
   final bool isEnabled;
   final bool isPressed;
 
-  // Active red palette
-  static const Color _outerRim = Color(0xFF5A0000);   // very dark rim
-  static const Color _darkRed = Color(0xFF7A0000);
-  static const Color _midRed = Color(0xFFCC1010);
-  static const Color _brightHighlight = Color(0xFFFF5555);
+  /// The cap's colour; red unless the team has its own.
+  final Color color;
 
-  // Disabled gray palette
-  static const Color _outerRimGray = Color(0xFF1A1A1A);
-  static const Color _darkGray = Color(0xFF2E2E2E);
-  static const Color _midGray = Color(0xFF5A5A5A);
-  static const Color _brightGray = Color(0xFF9A9A9A);
+  static const Color _defaultCap = Color(0xFFCC1010);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
+    final w = size.width;
+    final h = size.height;
+    final hsl = HSLColor.fromColor(isEnabled ? color : const Color(0xFF6A6A6A));
+    final mid = hsl.toColor();
+    final dark = hsl.withLightness((hsl.lightness * 0.55).clamp(0.0, 1.0)).toColor();
+    final rim = hsl.withLightness((hsl.lightness * 0.35).clamp(0.0, 1.0)).toColor();
+    final highlight = hsl.withLightness((hsl.lightness + 0.25).clamp(0.0, 0.92)).toColor();
 
-    // -- Palette selection --
-    final Color outerRim = isEnabled ? _outerRim : _outerRimGray;
-    final Color darkC = isEnabled ? _darkRed : _darkGray;
-    final Color midC = isEnabled ? _midRed : _midGray;
-    final Color highlightC = isEnabled ? _brightHighlight : _brightGray;
-
-    // 1. Drop shadow beneath the whole button
-    final shadowPaint = Paint()
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18)
-      ..color = Colors.black.withValues(alpha: isPressed ? 0.9 : 0.1);
-    canvas.drawCircle(
-      center + Offset(0, isPressed ? 4 : 10),
-      radius * 0.95,
-      shadowPaint,
+    // The base: a dark housing with a lighter top ring the cap sits in.
+    final bezelY = h * 0.60;
+    final base = RRect.fromLTRBR(w * 0.06, bezelY, w * 0.94, h * 0.94, Radius.circular(w * 0.10));
+    canvas.drawRRect(
+      base.shift(Offset(0, h * 0.03)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.35)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.04),
     );
+    canvas.drawRRect(
+      base,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF3A3A3A), Color(0xFF151515)],
+        ).createShader(base.outerRect),
+    );
+    final ring = Rect.fromCenter(center: Offset(w / 2, bezelY), width: w * 0.88, height: h * 0.20);
+    canvas.drawOval(
+      ring,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF8A8A8A), Color(0xFF2A2A2A)],
+        ).createShader(ring),
+    );
+    canvas.drawOval(ring.deflate(w * 0.03), Paint()..color = const Color(0xFF101010));
 
-    // 3. Main button face — slightly smaller
-    final faceRadius = radius * 0.90;
-    final facePaint = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(-0.3, -0.35),
-        radius: 1.1,
-        colors: [highlightC, midC, darkC, outerRim],
-        stops: const [0.0, 0.25, 0.65, 1.0],
-      ).createShader(Rect.fromCircle(center: center, radius: faceRadius));
-    canvas.drawCircle(center, faceRadius, facePaint);
-
-    // 5. Inner subtle rim highlight (bottom-right subtle bounce)
-    final innerRimPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..shader = RadialGradient(
-        center: const Alignment(0.5, 0.5),
-        radius: 1.0,
-        colors: [
-          highlightC.withValues(alpha: 0.25),
-          Colors.transparent,
-        ],
-      ).createShader(Rect.fromCircle(center: center, radius: faceRadius));
-    canvas.drawCircle(center, faceRadius - 1, innerRimPaint);
+    // The cap: a dome that sinks into the ring while pressed.
+    final sink = isPressed ? h * 0.06 : 0.0;
+    final capWidth = w * 0.72;
+    final capBottom = bezelY + sink * 0.4;
+    final capTop = h * 0.10 + sink;
+    final capRect = Rect.fromLTRB((w - capWidth) / 2, capTop, (w + capWidth) / 2, capBottom + (capBottom - capTop) * 0.25);
+    final cap = Path()
+      ..moveTo(capRect.left, capBottom)
+      ..cubicTo(capRect.left, capTop - h * 0.02, capRect.right, capTop - h * 0.02, capRect.right, capBottom)
+      ..arcToPoint(Offset(capRect.left, capBottom), radius: Radius.elliptical(capWidth / 2, h * 0.07), clockwise: true)
+      ..close();
+    if (isEnabled && !isPressed) {
+      canvas.drawPath(
+        cap,
+        Paint()
+          ..color = mid.withValues(alpha: 0.45)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.06),
+      );
+    }
+    canvas.drawPath(
+      cap,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.35, -0.55),
+          radius: 1.0,
+          colors: [highlight, mid, dark, rim],
+          stops: const [0.0, 0.35, 0.75, 1.0],
+        ).createShader(capRect),
+    );
+    // A soft shine across the top of the cap.
+    final peak = capBottom - 0.75 * (capBottom - (capTop - h * 0.02));
+    final shine = Rect.fromLTWH(capRect.left + capWidth * 0.18, peak + h * 0.035, capWidth * 0.34, h * 0.08);
+    canvas.drawOval(shine, Paint()..color = Colors.white.withValues(alpha: isEnabled ? 0.28 : 0.12));
   }
 
   @override
-  bool shouldRepaint(_BuzzerPainter old) =>
-      old.isEnabled != isEnabled || old.isPressed != isPressed;
+  bool shouldRepaint(_BuzzerPainter old) => old.isEnabled != isEnabled || old.isPressed != isPressed || old.color != color;
 }

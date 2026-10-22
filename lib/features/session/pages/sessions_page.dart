@@ -23,6 +23,7 @@ import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/features/session/pages/connect_devices_page.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
+import 'package:quiz_show/features/session/pages/session_setup_page.dart';
 import 'package:quiz_show/features/session/presenter_window.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
@@ -91,6 +92,12 @@ class _SessionsPageState extends State<SessionsPage> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => PresentPage(sessionId: session.id)));
   }
 
+  void _setUp(SessionSummary session) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => SessionSetupPage(session: session, title: sessionTitle(session, _gameNames))),
+    );
+  }
+
   void _control(SessionSummary session) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -145,6 +152,7 @@ class _SessionsPageState extends State<SessionsPage> {
             onPresent: _present,
             onChangeGame: _changeGame,
             onDelete: _delete,
+            onSetUp: _setUp,
           );
         },
       ),
@@ -162,6 +170,7 @@ class SessionsList extends StatelessWidget {
     required this.onPresent,
     required this.onChangeGame,
     required this.onDelete,
+    this.onSetUp,
   });
 
   final List<SessionSummary> sessions;
@@ -170,6 +179,9 @@ class SessionsList extends StatelessWidget {
   final ValueChanged<SessionSummary> onPresent;
   final ValueChanged<SessionSummary> onChangeGame;
   final ValueChanged<SessionSummary> onDelete;
+
+  /// Opens the teams and buzzers before the show; hidden when null.
+  final ValueChanged<SessionSummary>? onSetUp;
 
   @override
   Widget build(BuildContext context) {
@@ -231,6 +243,7 @@ class SessionsList extends StatelessWidget {
                       PopupMenuButton<VoidCallback>(
                         onSelected: (action) => action(),
                         itemBuilder: (context) => [
+                          if (onSetUp != null) PopupMenuItem(value: () => onSetUp!(session), child: const Text("Set up teams and buzzers")),
                           PopupMenuItem(value: () => onChangeGame(session), child: const Text("Change game")),
                           PopupMenuItem(value: () => onDelete(session), child: const Text("Delete")),
                         ],
@@ -728,7 +741,7 @@ class _PresentPageState extends State<PresentPage> {
             top: 8,
             child: ValueListenableBuilder<BuzzerStatus>(
               valueListenable: Buzzers.instance.link.status,
-              builder: (context, status, _) => status == BuzzerStatus.disconnected || status == BuzzerStatus.silent
+              builder: (context, status, _) => Buzzers.instance.wanted.value && (status == BuzzerStatus.disconnected || status == BuzzerStatus.silent)
                   ? Chip(
                       avatar: Icon(Icons.usb_off, size: 18, color: Theme.of(context).colorScheme.error),
                       label: const Text("Buzzer box not connected · retrying"),

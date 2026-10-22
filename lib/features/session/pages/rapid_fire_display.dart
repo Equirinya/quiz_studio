@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mini_music_visualizer/mini_music_visualizer.dart';
 
 import 'package:quiz_show/features/session/pages/rapid_progress.dart';
+import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// A Fragenhagel on the big screen: the item being asked, big, with its
@@ -97,6 +98,8 @@ class RapidFireDisplay extends StatelessWidget {
     // Buzzer mode moves fast: who is answering must be clear from across the room.
     final answering = state.phase == Phase.buzzered && state.buzzQueue.isNotEmpty ? state.team(state.buzzQueue.first) : null;
     final queued = [for (final id in state.buzzQueue.skip(1)) state.team(id)?.name ?? '?'];
+    final bannerColor = teamColor(answering) ?? scheme.primary;
+    final onBanner = teamColor(answering) == null ? scheme.onPrimary : onTeamColor(bannerColor);
     final banner = answering == null
         ? null
         : Container(
@@ -104,28 +107,28 @@ class RapidFireDisplay extends StatelessWidget {
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: unit * 4, vertical: unit * 2),
             decoration: BoxDecoration(
-              color: scheme.primary,
+              color: bannerColor,
               borderRadius: BorderRadius.circular(unit * 3),
-              boxShadow: [BoxShadow(color: scheme.primary.withValues(alpha: 0.6), blurRadius: unit * 4, spreadRadius: unit * 0.5)],
+              boxShadow: [BoxShadow(color: bannerColor.withValues(alpha: 0.6), blurRadius: unit * 4, spreadRadius: unit * 0.5)],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.notifications_active, size: unit * 9, color: scheme.onPrimary),
+                Icon(Icons.notifications_active, size: unit * 9, color: onBanner),
                 SizedBox(width: unit * 3),
                 Flexible(
                   child: Text(
                     answering.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: unit * 9, fontWeight: FontWeight.w800, color: scheme.onPrimary),
+                    style: TextStyle(fontSize: unit * 9, fontWeight: FontWeight.w800, color: onBanner),
                   ),
                 ),
                 if (queued.isNotEmpty) ...[
                   SizedBox(width: unit * 4),
                   Text(
                     "then ${queued.join(", ")}",
-                    style: TextStyle(fontSize: unit * 3.2, color: scheme.onPrimary.withValues(alpha: 0.85)),
+                    style: TextStyle(fontSize: unit * 3.2, color: onBanner.withValues(alpha: 0.85)),
                   ),
                 ],
               ],

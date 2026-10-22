@@ -203,8 +203,10 @@ class SessionConnection {
 
   /// A session that lives on this device alone: no account, no network.
   /// The game is whatever [game] holds; a `SetGame` command does not load one.
-  factory SessionConnection.local(SessionHost host, {GameContent? game}) {
-    final connection = SessionConnection._('local', LocalCommandSink(host), host: host);
+  /// [sessionId] names a saved session this one sets up, for its team sounds
+  /// and buzzer assignments.
+  factory SessionConnection.local(SessionHost host, {GameContent? game, String sessionId = 'local'}) {
+    final connection = SessionConnection._(sessionId, LocalCommandSink(host), host: host);
     host.setGame(game);
     connection.game.value = game;
     connection.state.value = host.state;

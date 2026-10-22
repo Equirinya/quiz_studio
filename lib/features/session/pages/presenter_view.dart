@@ -13,6 +13,7 @@ import 'package:quiz_show/features/session/boards/wheel_board.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/pages/video_card.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
+import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/game/game.dart';
 import 'package:quiz_show/features/session/pages/rapid_fire_display.dart';
 
@@ -149,14 +150,23 @@ class _Scores extends StatelessWidget {
             builder: (context) {
               final position = showQueue ? state.buzzQueue.indexOf(team.id) : -1;
               // The answering team stands out; queued teams fade towards the back.
-              final color = position < 0
-                  ? scheme.surfaceContainerHigh
-                  : Color.lerp(scheme.primaryContainer, scheme.surfaceContainerHigh, position / state.buzzQueue.length)!;
+              // A team with its own colour always shows it, brightest while it answers.
+              final own = teamColor(team);
+              final color = own != null
+                  ? (position < 0 || position == 0 ? own : Color.lerp(own, scheme.surfaceContainerHigh, 0.4)!)
+                  : position < 0
+                      ? scheme.surfaceContainerHigh
+                      : Color.lerp(scheme.primaryContainer, scheme.surfaceContainerHigh, position / state.buzzQueue.length)!;
+              final text = own == null ? null : onTeamColor(color);
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: unit * 22,
                 height: unit * 12,
-                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(unit * 2)),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(unit * 2),
+                  border: own != null && position == 0 ? Border.all(color: scheme.onSurface, width: unit * 0.5) : null,
+                ),
                 alignment: Alignment.center,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -165,11 +175,11 @@ class _Scores extends StatelessWidget {
                       team.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: unit * 2.2),
+                      style: TextStyle(fontSize: unit * 2.2, color: text),
                     ),
                     Text(
                       team.points.toString(),
-                      style: TextStyle(fontSize: unit * 4.5, fontWeight: FontWeight.w600),
+                      style: TextStyle(fontSize: unit * 4.5, fontWeight: FontWeight.w600, color: text),
                     ),
                   ],
                 ),

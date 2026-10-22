@@ -7,6 +7,7 @@ import 'package:quiz_show/features/games/pages/game_editor_page.dart' show Board
 import 'package:quiz_show/features/games/widgets/cards_dialog.dart' show CardThumbnail;
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
+import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// The gamemaster's remote.
@@ -131,7 +132,9 @@ class _ControllerViewState extends State<ControllerView> {
             Text(team.points.toString(), style: theme.textTheme.displaySmall),
             const SizedBox(height: 12),
             Row(children: [step(-100), step(-10), step(10), step(100)]),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            TeamColorPicker(selected: team.color, onChanged: (color) => _send(SetTeamColor(team.id, color))),
+            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -296,6 +299,10 @@ class _TeamStrip extends StatelessWidget {
                     child: Container(
                       constraints: const BoxConstraints(minWidth: 84),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
+                      // The team's own colour as a stripe along the bottom.
+                      decoration: teamColor(team) == null
+                          ? null
+                          : BoxDecoration(border: Border(bottom: BorderSide(color: teamColor(team)!, width: 5))),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,

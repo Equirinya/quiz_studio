@@ -290,6 +290,11 @@ class FirestoreHostLink {
     return state is Map ? SessionState.fromJson(Map<String, dynamic>.from(state)) : const SessionState();
   }
 
+  /// Stores [state] while no device runs the session, as when it is set up
+  /// before the show.
+  static Future<void> saveState(String sessionId, SessionState state) =>
+      SessionRepository.instance.session(sessionId).update({'state': state.toJson(), 'updatedAt': FieldValue.serverTimestamp()});
+
   Future<void> start() async {
     await _ref.update({'hostDevice': deviceId});
     _publish();
