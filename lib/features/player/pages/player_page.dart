@@ -337,6 +337,65 @@ class _PlayerViewState extends State<PlayerView> {
       );
     }
 
+    if (kind == null) {
+      // The buzzer keeps its place while the lines above change, as they do
+      // with every Fragenhagel item: the status and the question each get
+      // room for as many lines as they may take.
+      final scaler = MediaQuery.textScalerOf(context);
+      double lines(TextStyle? style, int count) => scaler.scale(style?.fontSize ?? 16) * (style?.height ?? 1.2) * count;
+      final statusStyle = theme.textTheme.titleMedium;
+      final questionStyle = theme.textTheme.bodyLarge;
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            teamLine,
+            const SizedBox(height: 12),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: double.infinity,
+              height: lines(statusStyle, 2) + 24,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: highlighted ? scheme.primary : scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                headline,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: statusStyle?.copyWith(color: highlighted ? scheme.onPrimary : null),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: lines(questionStyle, 3),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Text(question, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: questionStyle),
+              ),
+            ),
+            if (!view.phoneBuzzer)
+              const Spacer()
+            else
+              Expanded(
+                child: Center(
+                  child: LayoutBuilder(
+                    builder: (context, box) => BuzzerButton(
+                      size: box.biggest.shortestSide * 0.8,
+                      onPressed: canBuzz ? _buzz : null,
+                      color: teamColor(team),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -345,29 +404,13 @@ class _PlayerViewState extends State<PlayerView> {
           const SizedBox(height: 12),
           statusBox,
           if (questionText != null) Padding(padding: const EdgeInsets.only(top: 12), child: questionText),
-          if (kind == null && !view.phoneBuzzer)
-            const Spacer()
-          else if (kind == null)
-            Expanded(
-              child: Center(
-                child: LayoutBuilder(
-                  builder: (context, box) => BuzzerButton(
-                    size: box.biggest.shortestSide * 0.8,
-                    onPressed: canBuzz ? _buzz : null,
-                    color: teamColor(team),
-                  ),
-                ),
-              ),
-            )
-          else ...[
-            ?_countdown(top: 12),
-            Expanded(
-              child: Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Center(child: _input(team))),
-            ),
-            _lockButton(team),
-            const SizedBox(height: 4),
-            _note(team),
-          ],
+          ?_countdown(top: 12),
+          Expanded(
+            child: Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Center(child: _input(team))),
+          ),
+          _lockButton(team),
+          const SizedBox(height: 4),
+          _note(team),
         ],
       ),
     );

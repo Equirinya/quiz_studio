@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -36,47 +37,34 @@ class BuzzerButton extends StatefulWidget {
   State<BuzzerButton> createState() => _BuzzerButtonState();
 }
 
-class _BuzzerButtonState extends State<BuzzerButton>
-    with SingleTickerProviderStateMixin {
+class _BuzzerButtonState extends State<BuzzerButton> {
   bool _isPressed = false;
   Timer? _vibrationTimer;
   int _vibrationCount = 0;
 
-  // ---------- press depth animation ----------
-  late final AnimationController _pressController;
-  late final Animation<double> _pressAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _pressController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 80),
-    );
-    _pressAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(parent: _pressController, curve: Curves.easeOut),
-    );
-  }
-
   @override
   void dispose() {
     _stopVibration();
-    _pressController.dispose();
     super.dispose();
   }
 
   // ------------------------------------------------------------------
-  // Haptics: initial strong impact, then fading buzzing while held
+  // Haptics: a strong buzz on touch, then fading pulses while held
   // ------------------------------------------------------------------
 
-  Future<void> _startVibration() async {
+  void _startVibration() {
     _vibrationCount = 0;
 
-    // Immediate heavy impact on touch-down
-    await HapticFeedback.heavyImpact();
+    // Felt on every press, however short. Android's "heavy impact" is a
+    // faint tick on many phones, so it gets the long-press buzz instead.
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      HapticFeedback.vibrate();
+    } else {
+      HapticFeedback.heavyImpact();
+    }
 
     // Buzz pattern: fast at first, then slows and fades
-    _vibrationTimer = Timer.periodic(const Duration(milliseconds: 120), (_) async {
+    _vibrationTimer = Timer.periodic(const Duration(milliseconds: 120), (_) {
       if (!_isPressed) {
         _stopVibration();
         return;
@@ -87,9 +75,9 @@ class _BuzzerButtonState extends State<BuzzerButton>
       // Next 3: light (dying resonance)
       // After that: stop automatically
       if (_vibrationCount <= 3) {
-        await HapticFeedback.mediumImpact();
+        HapticFeedback.mediumImpact();
       } else if (_vibrationCount <= 6) {
-        await HapticFeedback.lightImpact();
+        HapticFeedback.lightImpact();
       } else {
         _stopVibration();
       }
@@ -108,22 +96,13 @@ class _BuzzerButtonState extends State<BuzzerButton>
   void _handlePointerDown(PointerDownEvent _) {
     if (!widget._isEnabled) return;
     setState(() => _isPressed = true);
-    _pressController.forward();
-    widget.onPressed?.call();
     _startVibration();
+    widget.onPressed?.call();
   }
 
-  void _handlePointerUp(PointerUpEvent _) {
+  void _release() {
     if (!_isPressed) return;
     setState(() => _isPressed = false);
-    _pressController.reverse();
-    _stopVibration();
-  }
-
-  void _handlePointerCancel(PointerCancelEvent _) {
-    if (!_isPressed) return;
-    setState(() => _isPressed = false);
-    _pressController.reverse();
     _stopVibration();
   }
 
@@ -133,24 +112,21 @@ class _BuzzerButtonState extends State<BuzzerButton>
 
   @override
   Widget build(BuildContext context) {
-    final bool enabled = widget._isEnabled;
     final double size = widget.size;
-
     return Listener(
       onPointerDown: _handlePointerDown,
-      onPointerUp: _handlePointerUp,
-      onPointerCancel: _handlePointerCancel,
-      child: ScaleTransition(
-        scale: _pressAnimation,
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: CustomPaint(
-            painter: _BuzzerPainter(
-              isEnabled: enabled,
-              isPressed: _isPressed,
-              color: widget.color ?? _BuzzerPainter._defaultCap,
-            )
+      onPointerUp: (_) => _release(),
+      onPointerCancel: (_) => _release(),
+      // The box stays put; only the cap goes down.
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          painter: _BuzzerPainter(
+            // Stays lit while held, even once the buzz has switched it off.
+            isEnabled: widget._isEnabled || _isPressed,
+            isPressed: _isPressed,
+            color: widget.color ?? _BuzzerPainter._defaultCap,
           ),
         ),
       ),
@@ -220,7 +196,7 @@ class _BuzzerPainter extends CustomPainter {
     Rect circle(double r, [double dy = 0]) => Rect.fromCenter(center: center + Offset(0, dy), width: r * 2, height: r * 2 * _tilt);
 
     // The collar the cap sits in: brushed metal around a dark well.
-    final collar = circle(w * 0.38);
+    final collar = circle(w * 0.43);
     canvas.drawOval(
       collar,
       Paint()
@@ -230,13 +206,13 @@ class _BuzzerPainter extends CustomPainter {
           colors: [Color(0xFFB0B0B0), Color(0xFF5A5A5A), Color(0xFF8C8C8C)],
         ).createShader(collar),
     );
-    canvas.drawOval(circle(w * 0.335), Paint()..color = const Color(0xFF0C0C0C));
+    canvas.drawOval(circle(w * 0.385), Paint()..color = const Color(0xFF0C0C0C));
 
     // The cap: its side shows below the top while up, and disappears into
     // the collar while pressed.
-    final r = w * 0.31;
-    final depth = isPressed ? h * 0.012 : h * 0.05;
-    final lift = isPressed ? 0.0 : -h * 0.02;
+    final r = w * 0.36;
+    final depth = isPressed ? h * 0.015 : h * 0.065;
+    final lift = isPressed ? h * 0.01 : -h * 0.03;
     final capSide = circle(r, lift + depth);
     final capTop = circle(r, lift);
     if (isEnabled && !isPressed) {
@@ -256,10 +232,11 @@ class _BuzzerPainter extends CustomPainter {
       capTop,
       Paint()
         ..shader = RadialGradient(
-          center: const Alignment(-0.3, -0.35),
-          radius: 0.95,
-          colors: [highlight, mid, dark],
-          stops: const [0.0, 0.5, 1.0],
+          // Shaded like a ball: light on the upper left, dark all round the edge.
+          center: const Alignment(-0.25, -0.3),
+          radius: 0.9,
+          colors: [highlight, mid, dark, side],
+          stops: const [0.0, 0.4, 0.82, 1.0],
         ).createShader(capTop),
     );
     // A glossy reflection on the upper left, and a faint rim of light.
