@@ -340,7 +340,8 @@ class _PlayerViewState extends State<PlayerView> {
     if (kind == null) {
       // The buzzer keeps its place while the lines above change, as they do
       // with every Fragenhagel item: the status and the question each get
-      // room for as many lines as they may take.
+      // room for as many lines as they may take, the question rather too
+      // much than too little.
       final scaler = MediaQuery.textScalerOf(context);
       double lines(TextStyle? style, int count) => scaler.scale(style?.fontSize ?? 16) * (style?.height ?? 1.2) * count;
       final statusStyle = theme.textTheme.titleMedium;
@@ -371,10 +372,10 @@ class _PlayerViewState extends State<PlayerView> {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: lines(questionStyle, 3),
+              height: lines(questionStyle, 6),
               child: Align(
                 alignment: Alignment.topCenter,
-                child: Text(question, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: questionStyle),
+                child: Text(question, textAlign: TextAlign.center, maxLines: 6, overflow: TextOverflow.ellipsis, style: questionStyle),
               ),
             ),
             if (!view.phoneBuzzer)
