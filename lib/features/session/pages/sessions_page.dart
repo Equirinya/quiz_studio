@@ -426,8 +426,20 @@ class _ControlPageState extends State<ControlPage> {
   );
   late final Stream<SessionSummary?> _session = SessionRepository.instance.watchSession(widget.sessionId);
 
+  /// Looks again now and then: a presenter that went quiet is gone.
+  Timer? _recheck;
+
+  @override
+  void initState() {
+    super.initState();
+    _recheck = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
   @override
   void dispose() {
+    _recheck?.cancel();
     _connection.dispose();
     super.dispose();
   }
@@ -445,14 +457,21 @@ class _ControlPageState extends State<ControlPage> {
         children: [
           // Commands only take effect on the presenting device.
           StreamBuilder<SessionSummary?>(
-            stream: widget.joinLink == null ? _session : null,
-            builder: (context, snapshot) => snapshot.hasData && snapshot.data!.hostDevice == null
-                ? MaterialBanner(
-                    content: const Text("No device is presenting this session yet. Nothing happens until one does."),
-                    leading: const Icon(Icons.tv_off),
-                    actions: const [SizedBox()],
-                  )
-                : const SizedBox(),
+            stream: _session,
+            builder: (context, snapshot) {
+              final session = snapshot.data;
+              if (session == null || session.presentingAt(DateTime.now().millisecondsSinceEpoch)) return const SizedBox();
+              final scheme = Theme.of(context).colorScheme;
+              return MaterialBanner(
+                backgroundColor: scheme.errorContainer,
+                leading: Icon(Icons.warning_amber_rounded, color: scheme.onErrorContainer),
+                content: Text(
+                  "No device is presenting this session. Nothing you do here happens until one presents it.",
+                  style: TextStyle(color: scheme.onErrorContainer),
+                ),
+                actions: const [SizedBox()],
+              );
+            },
           ),
           Expanded(
             child: ControllerView(

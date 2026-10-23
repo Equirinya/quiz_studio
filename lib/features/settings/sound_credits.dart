@@ -4,11 +4,13 @@ import 'package:url_launcher/url_launcher.dart';
 /// Where the sounds that come with the app are from, and under what terms.
 /// Keep in step with assets/sounds/CREDITS.md.
 class SoundSource {
-  const SoundSource({required this.name, required this.licence, required this.url, required this.sounds});
+  const SoundSource({required this.name, required this.licence, this.url, required this.sounds});
 
   final String name;
   final String licence;
-  final String url;
+
+  /// Where the source is published; none for sounds made for the app.
+  final String? url;
   final List<SoundCredit> sounds;
 }
 
@@ -29,7 +31,6 @@ const List<SoundSource> soundSources = [
   SoundSource(
     name: "Made for Quiz Studio",
     licence: "Part of the app",
-    url: "https://github.com/Equirinya/quiz_studio",
     sounds: [
       SoundCredit("Soft noise, White noise"),
       SoundCredit("Ding ding, Bwomp, Pop, Fanfare, Brass stab"),
@@ -40,7 +41,6 @@ const List<SoundSource> soundSources = [
   SoundSource(
     name: "Made by Nikita Zaloga",
     licence: "Part of the app",
-    url: "https://github.com/Equirinya/quiz_studio",
     sounds: [
       SoundCredit("Music: Quiz theme, Chill, Thrilling"),
       SoundCredit("Right answer, Fanfare"),
@@ -78,7 +78,7 @@ const List<SoundSource> soundSources = [
       SoundCredit("Applause, short", original: "Applause Concert Bar #4", url: "https://bigsoundbank.com/applause-concert-bar-4-s2482.html"),
       SoundCredit("Drumroll", original: "Drum roll 1 S", url: "https://bigsoundbank.com/drum-roll-1-s-s2400.html"),
       SoundCredit("Ba-dum-tss", original: "Battery joke #3", url: "https://bigsoundbank.com/battery-joke-3-s2410.html"),
-      SoundCredit("Ticking clock", original: "Tic Tac Mechanical Alarm Clock #3", url: "https://bigsoundbank.com/tic-tac-mechanical-alarm-clock-3-s2656.html"),
+      SoundCredit("Ticking clock; Ticking clock, 10 seconds", original: "Tic Tac Mechanical Alarm Clock #3", url: "https://bigsoundbank.com/tic-tac-mechanical-alarm-clock-3-s2656.html"),
     ],
   ),
 ];
@@ -104,7 +104,7 @@ class SoundCreditsPage extends StatelessWidget {
         children: [
           Text(
             "The sounds that come with Quiz Studio were made for it or are free to use in any project (CC0). "
-            "Tap a source to see it.",
+            "Tap a source to see where it is from.",
             style: theme.textTheme.bodyMedium,
           ),
           for (final source in soundSources) ...[
@@ -113,8 +113,8 @@ class SoundCreditsPage extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               title: Text(source.name, style: theme.textTheme.titleMedium),
               subtitle: Text(source.licence),
-              trailing: const Icon(Icons.open_in_new),
-              onTap: () => _open(source.url),
+              trailing: source.url == null ? null : const Icon(Icons.open_in_new),
+              onTap: source.url == null ? null : () => _open(source.url!),
             ),
             for (final sound in source.sounds)
               ListTile(

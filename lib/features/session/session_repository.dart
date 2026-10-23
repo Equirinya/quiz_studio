@@ -11,7 +11,7 @@ import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/game/game.dart';
 
 class SessionSummary {
-  const SessionSummary({required this.id, required this.name, this.gameId, this.hostDevice, this.createdAtMillis});
+  const SessionSummary({required this.id, required this.name, this.gameId, this.hostDevice, this.createdAtMillis, this.updatedAtMillis});
 
   final String id;
   final String name;
@@ -20,6 +20,16 @@ class SessionSummary {
   /// The device presenting this session at the moment, if any.
   final String? hostDevice;
   final int? createdAtMillis;
+
+  /// Written by the presenting device whenever the show changes, and
+  /// regularly while it is quiet.
+  final int? updatedAtMillis;
+
+  /// Whether a device is presenting right now: one claimed the session and
+  /// has been heard from lately. [now] is this device's clock, which may be
+  /// off a little.
+  bool presentingAt(int now) =>
+      hostDevice != null && updatedAtMillis != null && now - updatedAtMillis! < FirestoreHostLink.heartbeat.inMilliseconds * 3;
 }
 
 /// A device's own membership of someone else's session.
@@ -238,6 +248,7 @@ SessionSummary _summary(String id, Map<String, dynamic> data) => SessionSummary(
       gameId: data['gameId'] as String?,
       hostDevice: data['hostDevice'] as String?,
       createdAtMillis: data['createdAt'] is Timestamp ? (data['createdAt'] as Timestamp).millisecondsSinceEpoch : null,
+      updatedAtMillis: data['updatedAt'] is Timestamp ? (data['updatedAt'] as Timestamp).millisecondsSinceEpoch : null,
     );
 
 /// Sends commands over Firestore; for every device that is not presenting.
@@ -281,6 +292,10 @@ class FirestoreHostLink {
   bool _writing = false;
   bool _dirty = false;
   bool _stopped = false;
+  Timer? _alive;
+
+  /// How often a quiet presenter says it is still there.
+  static const Duration heartbeat = Duration(seconds: 45);
 
   DocumentReference<Map<String, dynamic>> get _ref => SessionRepository.instance.session(sessionId);
 
@@ -296,7 +311,11 @@ class FirestoreHostLink {
       SessionRepository.instance.session(sessionId).update({'state': state.toJson(), 'updatedAt': FieldValue.serverTimestamp()});
 
   Future<void> start() async {
-    await _ref.update({'hostDevice': deviceId});
+    await _ref.update({'hostDevice': deviceId, 'updatedAt': FieldValue.serverTimestamp()});
+    // Controllers tell from this whether anyone is presenting.
+    _alive = Timer.periodic(heartbeat, (_) {
+      if (!_stopped && !displaced.value) _ref.update({'updatedAt': FieldValue.serverTimestamp()}).catchError((Object _) {});
+    });
     _publish();
     _states = host.states.listen((_) => _publish());
 
@@ -374,6 +393,9 @@ class FirestoreHostLink {
 
   Future<void> stop() async {
     _stopped = true;
+    _alive?.cancel();
+    // Nobody presents any more, unless another device took over.
+    if (!displaced.value) _ref.update({'hostDevice': null}).catchError((Object _) {});
     await _commands?.cancel();
     await _session?.cancel();
     await _states?.cancel();
