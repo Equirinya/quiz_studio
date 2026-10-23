@@ -243,7 +243,6 @@ class SessionsList extends StatelessWidget {
                       PopupMenuButton<VoidCallback>(
                         onSelected: (action) => action(),
                         itemBuilder: (context) => [
-                          if (onSetUp != null) PopupMenuItem(value: () => onSetUp!(session), child: const Text("Set up teams and buzzers")),
                           PopupMenuItem(value: () => onChangeGame(session), child: const Text("Change game")),
                           PopupMenuItem(value: () => onDelete(session), child: const Text("Delete")),
                         ],
@@ -273,6 +272,14 @@ class SessionsList extends StatelessWidget {
                           label: const Text("Control"),
                         ),
                       ),
+                      if (onSetUp != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton.outlined(
+                          onPressed: () => onSetUp!(session),
+                          icon: const Icon(Icons.settings_outlined),
+                          tooltip: "Set up teams and buzzers",
+                        ),
+                      ],
                       const SizedBox(width: 8),
                     ],
                   ),

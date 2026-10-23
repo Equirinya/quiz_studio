@@ -5,6 +5,7 @@ import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/companion/answer_view.dart';
 import 'package:quiz_show/features/games/pages/game_editor_page.dart' show BoardTypeIcon;
 import 'package:quiz_show/features/games/widgets/cards_dialog.dart' show CardThumbnail;
+import 'package:quiz_show/features/session/pages/session_setup_page.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
@@ -201,58 +202,28 @@ class _ControllerViewState extends State<ControllerView> {
 
   void _openAnswers() => _sheet((context, state, game) => _AnswersSheet(state: state, game: game, send: _send));
 
+  // The same setup as before the show, from the session list.
   void _openSetup() => _sheet((context, state, game) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text("Queue buzzers"),
-                subtitle: const Text("Later buzzes line up behind the first"),
-                value: state.queueBuzzers,
-                onChanged: (value) => _send(SetQueueBuzzers(value)),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text("Buzzer test"),
-                subtitle: const Text("Buzzers light up their team; only from the board"),
-                value: state.phase == Phase.buzzerTest,
-                onChanged: state.phase == Phase.overview || state.phase == Phase.buzzerTest
-                    ? (value) => _send(SetBuzzerTest(value))
-                    : null,
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.group_add_outlined),
-                title: const Text("Add team"),
-                onTap: _addTeam,
-              ),
-              if (widget.onConnectDevices != null)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.qr_code_2),
-                  title: const Text("Connect devices"),
-                  subtitle: const Text("Phones as buzzers, or another controller"),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    widget.onConnectDevices!();
-                  },
-                ),
-              if (widget.onBuzzerSetup != null)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.usb),
-                  title: const Text("Buzzers"),
-                  subtitle: const Text("USB buzzer box, and a sound per team"),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    widget.onBuzzerSetup!();
-                  },
-                ),
-            ],
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: SessionSetupView(
+              state: state,
+              send: _send,
+              onConnectDevices: widget.onConnectDevices == null
+                  ? null
+                  : () {
+                      Navigator.of(context).pop();
+                      widget.onConnectDevices!();
+                    },
+              onBuzzerSetup: widget.onBuzzerSetup == null
+                  ? null
+                  : () {
+                      Navigator.of(context).pop();
+                      widget.onBuzzerSetup!();
+                    },
+            ),
           ),
         );
       });

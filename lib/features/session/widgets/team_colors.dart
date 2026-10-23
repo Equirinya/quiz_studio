@@ -18,7 +18,7 @@ class TeamColorPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    Widget dot(int? color) {
+    Widget dot(int? color, double size) {
       final on = color == selected;
       return Tooltip(
         message: color == null ? "No colour" : "Use this colour",
@@ -26,8 +26,8 @@ class TeamColorPicker extends StatelessWidget {
           customBorder: const CircleBorder(),
           onTap: () => onChanged(color),
           child: Container(
-            width: 36,
-            height: 36,
+            width: size,
+            height: size,
             margin: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
@@ -40,6 +40,12 @@ class TeamColorPicker extends StatelessWidget {
       );
     }
 
-    return Wrap(alignment: WrapAlignment.center, children: [dot(null), for (final color in teamColors) dot(color)]);
+    // One row on a phone too: the dots shrink a little rather than wrap.
+    return LayoutBuilder(
+      builder: (context, box) {
+        final size = box.maxWidth.isFinite ? (box.maxWidth / (teamColors.length + 1) - 8).clamp(24.0, 36.0) : 36.0;
+        return Wrap(alignment: WrapAlignment.center, children: [dot(null, size), for (final color in teamColors) dot(color, size)]);
+      },
+    );
   }
 }

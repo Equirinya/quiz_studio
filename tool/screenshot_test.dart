@@ -212,14 +212,16 @@ void main() {
       theme: theme(Brightness.light),
       home: Scaffold(
         appBar: AppBar(title: const Text("Set up Quiz night")),
-        floatingActionButton: FloatingActionButton.extended(onPressed: () {}, icon: const Icon(Icons.group_add), label: const Text("Add team")),
-        body: SessionSetupView(
-          teams: const [Team(id: 'red', name: 'Red', color: 0xFFD32F2F), Team(id: 'blue', name: 'Blue', color: 0xFF1976D2), Team(id: 'owls', name: 'Night owls')],
-          presentedBefore: false,
-          onRename: (_) {},
-          onColor: (_, _) {},
-          onRemove: (_) {},
-          onBuzzers: () {},
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SessionSetupView(
+            state: const SessionState(
+              teams: [Team(id: 'red', name: 'Red', color: 0xFFD32F2F), Team(id: 'blue', name: 'Blue', color: 0xFF1976D2), Team(id: 'owls', name: 'Night owls')],
+            ),
+            send: (_) {},
+            onConnectDevices: () {},
+            onBuzzerSetup: () {},
+          ),
         ),
       ),
     ));
@@ -445,6 +447,7 @@ void main() {
         onPresent: (_) {},
         onChangeGame: (_) {},
         onDelete: (_) {},
+        onSetUp: (_) {},
       ),
     );
     await shot('sessions_list');
