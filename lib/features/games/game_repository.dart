@@ -146,7 +146,8 @@ class GameRepository {
     void emit() {
       if (results.length < GameRole.values.length) return;
       final all = results.values.expand((list) => list).toList()
-        ..sort((a, b) => (a.createdAtMillis ?? 0).compareTo(b.createdAtMillis ?? 0));
+        // Newest first; one just created has no server time yet and is the newest.
+        ..sort((a, b) => (b.createdAtMillis ?? 1 << 53).compareTo(a.createdAtMillis ?? 1 << 53));
       controller.add(all);
     }
 
