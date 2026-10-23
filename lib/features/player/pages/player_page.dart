@@ -180,14 +180,18 @@ class _PlayerViewState extends State<PlayerView> {
       Phase.buzzerTest => "Buzzer test: press to check",
       Phase.overview => "Waiting for the next question",
       Phase.answerRevealed => "Answer revealed",
-      Phase.question => view.canBuzz(team.id) ? "Buzz when you know it!" : "No buzzers for this question",
+      Phase.question => !view.phoneBuzzer
+          ? "Buzz on the buzzer box"
+          : view.canBuzz(team.id)
+          ? "Buzz when you know it!"
+          : "No buzzers for this question",
       Phase.buzzered => position == 0
           ? "Your turn!"
           : position > 0
               ? "You are number ${position + 1} in line"
               : "${answeringTeam?.name ?? "Another team"} is answering",
     };
-    final canBuzz = view.canBuzz(team.id) && _justBuzzed == null;
+    final canBuzz = view.canBuzz(team.id) && view.phoneBuzzer && _justBuzzed == null;
     final kind = view.answerKind;
     if (view.companion != null && kind == null) {
       // A screen from a newer app than this one.
@@ -341,7 +345,9 @@ class _PlayerViewState extends State<PlayerView> {
           const SizedBox(height: 12),
           statusBox,
           if (questionText != null) Padding(padding: const EdgeInsets.only(top: 12), child: questionText),
-          if (kind == null)
+          if (kind == null && !view.phoneBuzzer)
+            const Spacer()
+          else if (kind == null)
             Expanded(
               child: Center(
                 child: LayoutBuilder(

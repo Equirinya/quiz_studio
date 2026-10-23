@@ -33,6 +33,8 @@ Map<String, dynamic> publicView(SessionState state, GameContent? game, {String? 
     'teams': [for (final team in state.teams) team.toJson()],
     'buzzQueue': state.buzzQueue,
     'buzzersOpen': buzzersOpen(state, game),
+    // A question can leave the buzzing to the buzzer box.
+    if (question != null && question.noPhoneBuzzer && state.phase != Phase.buzzerTest) 'phoneBuzzer': false,
     'question': question == null ? null : _visibleQuestion(state, question),
     'answerRound': round == null
         ? null
@@ -284,6 +286,10 @@ class PublicView {
       mistakes: (entry['mistakes'] as num?)?.toInt() ?? 0,
     );
   }
+
+  /// Whether this device shows its buzzer; false while a question is buzzed
+  /// on the buzzer box only.
+  bool get phoneBuzzer => json['phoneBuzzer'] != false;
 
   /// Whether a buzz by [teamId] would count right now.
   bool canBuzz(String teamId) {

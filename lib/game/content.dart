@@ -59,7 +59,8 @@ const List<BuiltinSound> builtinSounds = [
   BuiltinSound('reveal/rise_high', "Rise", 'sounds/effects/reveal/rise_high.mp3'),
   BuiltinSound('reveal/pop_up', "Pop up", 'sounds/effects/reveal/pop_up.wav'),
   BuiltinSound('reveal/rise_soft', "Soft rise", 'sounds/effects/reveal/rise_soft.mp3'),
-  BuiltinSound('countdown/alarm_clock_ticking', "Ticking clock", 'sounds/effects/countdown/alarm_clock_ticking.mp3'),
+  BuiltinSound('countdown/alarm_clock_ticking', "Ticking clock, 10 seconds", 'sounds/effects/countdown/alarm_clock_ticking.mp3'),
+  BuiltinSound('countdown/ticking_short', "Ticking clock", 'sounds/effects/countdown/ticking_short.mp3'),
   BuiltinSound('times_up/game_show_buzzer', "Game-show buzzer", 'sounds/effects/times_up/game_show_buzzer.wav'),
   BuiltinSound('lock_in/pop', "Pop", 'sounds/effects/lock_in/pop.wav'),
   BuiltinSound('lock_in/select', "Select", 'sounds/effects/lock_in/select.mp3'),
@@ -119,6 +120,13 @@ BuiltinSound? builtinBuzzer(String? key) => builtinBuzzers.where((sound) => soun
 
 /// The ones the gamemaster plays by hand from the Effects sheet.
 const List<String> handSoundMoments = ['applause', 'drumroll', 'joke', 'fanfare', 'countdown', 'times_up', 'announcer'];
+
+/// Made for the last ten seconds of a timer, too long to play by hand.
+const Set<String> timerOnlySounds = {'countdown/alarm_clock_ticking'};
+
+/// The sounds on the Effects sheet.
+Iterable<BuiltinSound> get handSounds =>
+    builtinSounds.where((s) => handSoundMoments.contains(s.id.split('/').first) && !timerOnlySounds.contains(s.id));
 
 BuiltinSound? builtinSound(String key) =>
     builtinSounds.where((sound) => sound.key == key || sound.id == key).firstOrNull;
@@ -296,6 +304,7 @@ class Question {
     this.pointsMinus = 0,
     this.position,
     this.noBuzzer = false,
+    this.noPhoneBuzzer = false,
     this.answers = const [],
     this.answersCorrect = const [],
     this.information = const [],
@@ -332,6 +341,10 @@ class Question {
 
   /// Free questions only: no buzzing, e.g. for estimation questions.
   final bool noBuzzer;
+
+  /// The teams' devices show nothing, not even a buzzer: only a buzzer box
+  /// can buzz.
+  final bool noPhoneBuzzer;
 
   // abcd
   final List<String> answers;
@@ -387,6 +400,7 @@ class Question {
       pointsMinus: _int(data['pointsMinus']),
       position: data['questionIndex'] is num ? (data['questionIndex'] as num).toInt() : null,
       noBuzzer: data['noBuzzer'] == true,
+      noPhoneBuzzer: data['noPhoneBuzzer'] == true,
       answers: _strings(data['answers']),
       answersCorrect: correct is List ? [for (final e in correct) e == true] : const [],
       information: _strings(data['information']),

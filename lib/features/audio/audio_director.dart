@@ -114,7 +114,8 @@ class AudioDirector {
       backend.setMusicVolume(volume);
     }
 
-    final ambienceVolume = state.ambienceVolume / 100;
+    // At most half as loud as the device plays: it only keeps speakers awake.
+    final ambienceVolume = state.ambienceVolume / 200;
     if (ambienceVolume != _ambienceVolume) {
       _ambienceVolume = ambienceVolume;
       backend.setAmbienceVolume(ambienceVolume);

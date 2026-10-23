@@ -1451,7 +1451,7 @@ class _EffectsSheetState extends State<_EffectsSheet> {
             runSpacing: 8,
             children: [
               // Come with the app, in every game.
-              for (final sound in builtinSounds.where((s) => handSoundMoments.contains(s.id.split('/').first)))
+              for (final sound in handSounds)
                 ActionChip(
                   avatar: const Icon(Icons.graphic_eq, size: 18),
                   label: Text(sound.label),

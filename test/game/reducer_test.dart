@@ -54,7 +54,7 @@ void main() {
     test('the noise has its own volume', () {
       final s = run(fixtureState(), [const SetAmbienceVolume(140)]);
       expect(s.ambienceVolume, 100);
-      expect(const SessionState().ambienceVolume, 20);
+      expect(const SessionState().ambienceVolume, 30);
       expect(SessionState.fromJson(s.toJson()).ambienceVolume, 100);
       expect(Command.fromJson(const SetAmbienceVolume(30).toJson()), isA<SetAmbienceVolume>().having((c) => c.volume, 'volume', 30));
     });

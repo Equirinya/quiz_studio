@@ -80,6 +80,8 @@ String questionAsText(Question q) {
       }
     }
     if (companion.solution != null) out.writeln('  Solution: ${formatNumber(companion.solution!, unit: companion.unit)}');
+  } else if (q.noPhoneBuzzer && q.buzzerable) {
+    out.writeln('  Buzzed on the buzzer box only');
   }
   if ((q.answerHint ?? '').isNotEmpty) out.writeln('  Answer: ${q.answerHint}');
   return out.toString();

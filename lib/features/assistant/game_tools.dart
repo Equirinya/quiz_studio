@@ -88,6 +88,10 @@ final Map<String, dynamic> _questionFields = {
   },
   'pointsMinus': {'type': 'integer', 'minimum': 0, 'description': 'Points taken for a wrong answer; usually 0 or half.'},
   'noBuzzer': {'type': 'boolean', 'description': 'free only: no buzzing, e.g. for estimation questions.'},
+  'noPhoneBuzzer': {
+    'type': 'boolean',
+    'description': 'Without a companion: the teams\' devices show nothing, not even a buzzer, so only a USB buzzer box can buzz.',
+  },
   'answers': {
     'type': 'array',
     'items': _string,
@@ -457,6 +461,8 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
   }
   final noBuzzer = take<bool>('noBuzzer');
   if (noBuzzer != null) data['noBuzzer'] = noBuzzer;
+  final noPhoneBuzzer = take<bool>('noPhoneBuzzer');
+  if (noPhoneBuzzer != null) data['noPhoneBuzzer'] = noPhoneBuzzer;
 
   List<S>? list<S>(String key) {
     final value = take<List<dynamic>>(key);
@@ -660,6 +666,7 @@ Map<String, dynamic> _describeQuestion(Question q) => {
       'pointsMinus': q.pointsMinus,
       if (q.position != null) 'position': q.position,
       if (q.noBuzzer) 'noBuzzer': true,
+      if (q.noPhoneBuzzer) 'noPhoneBuzzer': true,
       if (q.type == QuestionType.abcd) ...{'answers': q.answers, 'correct': q.answersCorrect},
       if (q.type == QuestionType.progressingReveal || q.type == QuestionType.feud) 'information': q.information,
       if (q.type == QuestionType.progressingReveal && q.hasInformationImages) 'informationImages': q.informationImages,

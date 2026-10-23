@@ -137,7 +137,7 @@ class SessionState {
     this.music,
     this.ambience = ambienceSoftNoise,
     this.musicVolume = 100,
-    this.ambienceVolume = 20,
+    this.ambienceVolume = 30,
     this.boardFocus,
     this.answerRound,
     this.overlay,
@@ -198,7 +198,8 @@ class SessionState {
   /// 0 to 100: how loud the music plays.
   final int musicVolume;
 
-  /// 0 to 100: how loud the noise that keeps the speakers awake plays.
+  /// 0 to 100: how loud the noise that keeps the speakers awake plays. 100
+  /// is half the device's volume: the noise is never meant to be heard.
   final int ambienceVolume;
 
   /// The category the board was last turned to: the one of the last question
@@ -318,7 +319,7 @@ class SessionState {
         // Sessions from before the switch get it on, like new ones.
         ambience: json.containsKey('ambience') ? json['ambience'] as String? : ambienceSoftNoise,
         musicVolume: (json['musicVolume'] as num?)?.toInt().clamp(0, 100) ?? 100,
-        ambienceVolume: (json['ambienceVolume'] as num?)?.toInt().clamp(0, 100) ?? 20,
+        ambienceVolume: (json['ambienceVolume'] as num?)?.toInt().clamp(0, 100) ?? 30,
         boardFocus: json['boardFocus'] as String?,
         answerRound:
             json['answerRound'] == null ? null : AnswerRound.fromJson(Map<String, dynamic>.from(json['answerRound'] as Map)),

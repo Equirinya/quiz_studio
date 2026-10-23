@@ -27,6 +27,9 @@ const Map<String, String> _backgroundNames = {
 
 class _CompanionEditorState extends State<CompanionEditor> {
   late CompanionKind? _kind;
+
+  /// With no screen: whether the devices show a buzzer, or nothing at all.
+  late bool _phoneBuzzer;
   late int? _timer;
   late bool _lockable;
   late int _mistakes;
@@ -50,6 +53,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
     final connections = widget.question.type == QuestionType.connections;
     final played = connections ? widget.question.companion : spec;
     _kind = connections ? CompanionKind.connections : spec?.kind;
+    _phoneBuzzer = _canBuzz && widget.question.data['noBuzzer'] != true && widget.question.data['noPhoneBuzzer'] != true;
     _timer = played?.timerSeconds;
     _lockable = played?.lockable ?? true;
     _mistakes = played?.mistakes ?? 3;
@@ -79,9 +83,12 @@ class _CompanionEditorState extends State<CompanionEditor> {
     super.dispose();
   }
 
-  /// Whether teams buzz when nothing is on their devices: a free question
-  /// can have its buzzer switched off.
-  bool get _buzzes => widget.question.type != QuestionType.free || widget.question.data['noBuzzer'] != true;
+  /// Whether this kind of question can be buzzed at all; a free one can
+  /// have its buzzer switched back on.
+  bool get _canBuzz => widget.question.type == QuestionType.free || widget.question.buzzerable;
+
+  static const String _buzzer = 'buzzer';
+  static const String _nothing = 'nothing';
 
   bool get _hasItems => _kind == CompanionKind.order || _kind == CompanionKind.match;
 
@@ -90,8 +97,13 @@ class _CompanionEditorState extends State<CompanionEditor> {
   void _write() {
     final kind = _kind;
     if (kind == null) {
-      // Back to no screen: a free question is buzzed again.
-      widget.save({'companion': null, if (widget.question.type == QuestionType.free) 'noBuzzer': false});
+      // A buzzer on the devices, or nothing there: then only a buzzer box
+      // buzzes, if the question is buzzed at all.
+      widget.save({
+        'companion': null,
+        'noPhoneBuzzer': !_phoneBuzzer,
+        if (widget.question.type == QuestionType.free && _phoneBuzzer) 'noBuzzer': false,
+      });
       return;
     }
     if (kind == CompanionKind.connections) {
@@ -163,19 +175,22 @@ class _CompanionEditorState extends State<CompanionEditor> {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             if (!connections)
-              DropdownMenu<CompanionKind?>(
+              DropdownMenu<String>(
                 label: const Text("Screen"),
-                initialSelection: kind,
+                initialSelection: kind?.name ?? (_phoneBuzzer ? _buzzer : _nothing),
                 dropdownMenuEntries: [
-                  // Without a screen the question is played with buzzers, if it has them.
-                  DropdownMenuEntry(value: null, label: _buzzes ? "Nothing: teams buzz" : "Nothing: no buzzers either"),
+                  if (_canBuzz) const DropdownMenuEntry(value: _buzzer, label: "Buzzer"),
+                  const DropdownMenuEntry(value: _nothing, label: "Nothing"),
                   for (final option in companionKindsFor(widget.question.type, current: kind))
                     DropdownMenuEntry(
-                      value: option,
+                      value: option.name,
                       label: option == recommendedCompanionKind(widget.question.type) ? "${option.uiString} (recommended)" : option.uiString,
                     ),
                 ],
-                onSelected: (value) => _change(() => _kind = value),
+                onSelected: (value) => _change(() {
+                  _kind = CompanionKind.values.where((k) => k.name == value).firstOrNull;
+                  if (_kind == null) _phoneBuzzer = value == _buzzer;
+                }),
               ),
             if (kind != null)
               DropdownMenu<int?>(

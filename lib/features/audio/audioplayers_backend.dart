@@ -35,7 +35,7 @@ class AudioplayersBackend implements AudioBackend {
   static const Duration crossfade = Duration(milliseconds: 1500);
 
   /// The noise is only there to keep the speakers awake, so it starts low.
-  double _ambienceVolume = 0.2;
+  double _ambienceVolume = 0.15;
 
   @override
   void setMusic(String? path) {

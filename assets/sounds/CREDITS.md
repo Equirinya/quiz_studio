@@ -51,4 +51,4 @@ From "Interface Sounds" (https://opengameart.org/content/interface-sounds):
 - `effects/applause/bar_short.mp3`: "Applause Concert Bar #4" (#2482)
 - `effects/drumroll/snare.mp3`: "Drum roll 1 S" (#2400)
 - `effects/joke/rimshot.mp3`: "Battery joke #3" (#2410)
-- `effects/countdown/alarm_clock_ticking.mp3`: "Tic Tac Mechanical Alarm Clock #3" (#2656), cut to its first three seconds
+- `effects/countdown/alarm_clock_ticking.mp3`: "Tic Tac Mechanical Alarm Clock #3" (#2656), cut to its first ten seconds; `ticking_short.mp3` is its first three

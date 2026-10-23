@@ -7,6 +7,26 @@ void main() {
   final game = fixtureGame();
   Reduction apply(SessionState s, Command c, {int? now}) => reduce(s, c, game, now: now);
 
+  test('a question can leave buzzing to the buzzer box: the devices show nothing', () {
+    final boxOnly = GameContent.assemble(
+      id: 'game',
+      game: {'name': 'Box'},
+      groups: {'g': {'name': 'G', 'categoryGroupType': 'category_display', 'categoryGroupIndex': 0}},
+      categories: {'c': {'name': 'C', 'categoryGroup': 'g', 'categoryIndex': 0, 'active': true}},
+      questions: {
+        'c': {
+          'box': {'type': 'free', 'question': 'Q', 'pointsPlus': 100, 'noPhoneBuzzer': true},
+          'phone': {'type': 'free', 'question': 'Q', 'pointsPlus': 100},
+        },
+      },
+    );
+    final open = reduce(fixtureState(), const OpenQuestion(QuestionRef('c', 'box')), boxOnly).state;
+    expect(buzzersOpen(open, boxOnly), isTrue, reason: 'the buzzer box still buzzes');
+    expect(PublicView(publicView(open, boxOnly)).phoneBuzzer, isFalse);
+    final phone = reduce(fixtureState(), const OpenQuestion(QuestionRef('c', 'phone')), boxOnly).state;
+    expect(PublicView(publicView(phone, boxOnly)).phoneBuzzer, isTrue);
+  });
+
   group('the whiteboard question', () {
     test('opening it starts the round on the screen and timer it was set up with', () {
       final s = apply(fixtureState(), const OpenQuestion(sum), now: 1000).state;
