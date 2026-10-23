@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/core/widgets/dialogs.dart';
@@ -86,7 +87,7 @@ class _SessionSetupPageState extends State<SessionSetupPage> {
                         ),
                       ),
                     SessionSetupView(
-                      state: state ?? const SessionState(),
+                      state: connection.state,
                       send: connection.send,
                       onConnectDevices: () => openConnectDevices(context, connection),
                       onBuzzerSetup: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BuzzersPage(connection: connection))),
@@ -100,12 +101,13 @@ class _SessionSetupPageState extends State<SessionSetupPage> {
 }
 
 /// The setup of a session, the same before the show and from the
-/// controller during it: the teams with their names and colours, how
-/// buzzers behave, and where devices and buzzers are connected.
+/// controller during it: the teams, how buzzers behave, and where devices
+/// and buzzers are connected.
 class SessionSetupView extends StatelessWidget {
   const SessionSetupView({super.key, required this.state, required this.send, this.onConnectDevices, this.onBuzzerSetup});
 
-  final SessionState state;
+  /// The live session, so pages opened from here follow it too.
+  final ValueListenable<SessionState?> state;
   final void Function(Command command) send;
 
   /// Opens the screen with the join codes; hidden when null.
@@ -113,6 +115,98 @@ class SessionSetupView extends StatelessWidget {
 
   /// Opens the USB buzzer box and team sounds; hidden when null.
   final VoidCallback? onBuzzerSetup;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    const padding = EdgeInsets.symmetric(horizontal: 4);
+    return ValueListenableBuilder<SessionState?>(
+      valueListenable: state,
+      builder: (context, current, _) {
+        final s = current ?? const SessionState();
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              contentPadding: padding,
+              leading: const Icon(Icons.groups_outlined),
+              title: const Text("Teams"),
+              subtitle: s.teams.isEmpty
+                  ? const Text("No teams yet")
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 4,
+                        children: [
+                          for (final team in s.teams)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: teamColor(team) ?? theme.colorScheme.outlineVariant,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(team.name),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TeamsPage(state: state, send: send))),
+            ),
+            SwitchListTile(
+              contentPadding: padding,
+              title: const Text("Queue buzzers"),
+              subtitle: const Text("Later buzzes line up behind the first"),
+              value: s.queueBuzzers,
+              onChanged: (value) => send(SetQueueBuzzers(value)),
+            ),
+            SwitchListTile(
+              contentPadding: padding,
+              title: const Text("Buzzer test"),
+              subtitle: const Text("Buzzers light up their team; only from the board"),
+              value: s.phase == Phase.buzzerTest,
+              onChanged: s.phase == Phase.overview || s.phase == Phase.buzzerTest ? (value) => send(SetBuzzerTest(value)) : null,
+            ),
+            if (onBuzzerSetup != null)
+              ListTile(
+                contentPadding: padding,
+                leading: const Icon(Icons.usb),
+                title: const Text("Buzzer box and team sounds"),
+                subtitle: const Text("The USB buzzer box, and the sound each team buzzes with"),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: onBuzzerSetup,
+              ),
+            if (onConnectDevices != null)
+              ListTile(
+                contentPadding: padding,
+                leading: const Icon(Icons.qr_code_2),
+                title: const Text("Connect devices"),
+                subtitle: const Text("Phones as buzzers, or another controller"),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: onConnectDevices,
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The teams of a session: their names and colours, adding and removing.
+class TeamsPage extends StatelessWidget {
+  const TeamsPage({super.key, required this.state, required this.send});
+
+  final ValueListenable<SessionState?> state;
+  final void Function(Command command) send;
 
   Future<void> _add(BuildContext context) async {
     final name = await promptText(context, title: "New team", label: "Name");
@@ -137,84 +231,55 @@ class SessionSetupView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    Widget header(String text) => Padding(
-      padding: const EdgeInsets.fromLTRB(4, 16, 4, 4),
-      child: Text(text, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
-    );
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        header("Teams"),
-        if (state.teams.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(12),
-            child: Text("No teams yet. Add them here, or let them join with a code."),
-          ),
-        for (final team in state.teams)
-          Card(
-            margin: const EdgeInsets.only(bottom: 8),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 4, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(color: teamColor(team) ?? theme.colorScheme.outlineVariant, shape: BoxShape.circle),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(team.name, style: theme.textTheme.titleMedium, overflow: TextOverflow.ellipsis)),
-                      IconButton(tooltip: "Rename", icon: const Icon(Icons.edit_outlined), onPressed: () => _rename(context, team)),
-                      IconButton(tooltip: "Remove", icon: const Icon(Icons.delete_outline), onPressed: () => _remove(context, team)),
-                    ],
+    return Scaffold(
+      appBar: AppBar(title: const Text("Teams")),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _add(context),
+        icon: const Icon(Icons.group_add),
+        label: const Text("Add team"),
+      ),
+      body: ValueListenableBuilder<SessionState?>(
+        valueListenable: state,
+        builder: (context, current, _) {
+          final teams = current?.teams ?? const <Team>[];
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+            children: [
+              if (teams.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text("No teams yet. Add them here, or let them join with a code."),
+                ),
+              for (final team in teams)
+                Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 4, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(color: teamColor(team) ?? theme.colorScheme.outlineVariant, shape: BoxShape.circle),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text(team.name, style: theme.textTheme.titleMedium, overflow: TextOverflow.ellipsis)),
+                            IconButton(tooltip: "Rename", icon: const Icon(Icons.edit_outlined), onPressed: () => _rename(context, team)),
+                            IconButton(tooltip: "Remove", icon: const Icon(Icons.delete_outline), onPressed: () => _remove(context, team)),
+                          ],
+                        ),
+                        TeamColorPicker(selected: team.color, onChanged: (color) => send(SetTeamColor(team.id, color))),
+                      ],
+                    ),
                   ),
-                  TeamColorPicker(selected: team.color, onChanged: (color) => send(SetTeamColor(team.id, color))),
-                ],
-              ),
-            ),
-          ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(onPressed: () => _add(context), icon: const Icon(Icons.group_add_outlined), label: const Text("Add team")),
-        ),
-        header("Buzzers"),
-        SwitchListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-          title: const Text("Queue buzzers"),
-          subtitle: const Text("Later buzzes line up behind the first"),
-          value: state.queueBuzzers,
-          onChanged: (value) => send(SetQueueBuzzers(value)),
-        ),
-        SwitchListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-          title: const Text("Buzzer test"),
-          subtitle: const Text("Buzzers light up their team; only from the board"),
-          value: state.phase == Phase.buzzerTest,
-          onChanged: state.phase == Phase.overview || state.phase == Phase.buzzerTest ? (value) => send(SetBuzzerTest(value)) : null,
-        ),
-        if (onBuzzerSetup != null)
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            leading: const Icon(Icons.usb),
-            title: const Text("Buzzer box and team sounds"),
-            subtitle: const Text("The USB buzzer box, and the sound each team buzzes with"),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: onBuzzerSetup,
-          ),
-        if (onConnectDevices != null)
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            leading: const Icon(Icons.qr_code_2),
-            title: const Text("Connect devices"),
-            subtitle: const Text("Phones as buzzers, or another controller"),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: onConnectDevices,
-          ),
-      ],
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

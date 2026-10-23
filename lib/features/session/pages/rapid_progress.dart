@@ -262,8 +262,8 @@ class _ThermometerPainter extends CustomPainter {
 }
 
 /// The flux capacitor: three arms of lights meeting in a Y. The lights come
-/// on and pulse faster as the round goes on; when the last item is done it
-/// lets go in a beam of energy.
+/// on and pulse faster as the round goes on; when the last item is done
+/// rays of energy stream out of its core.
 class FluxCapacitor extends StatefulWidget {
   const FluxCapacitor({super.key, required this.value, required this.unleashed, required this.size});
 
@@ -396,45 +396,55 @@ class FluxPainter extends CustomPainter {
     if (beam > 0) _paintBeam(canvas, size, centre, housing);
   }
 
+  /// Charged: after a flash, rays of light keep streaming out of the core
+  /// all round, turning slowly.
   void _paintBeam(Canvas canvas, Size size, Offset centre, RRect housing) {
     final s = size.width;
-    // A flash first, then the beam settles into a steady humming column.
     final flash = beam < 0.25 ? beam / 0.25 : max(0.0, 1 - (beam - 0.25) / 0.35);
     final grow = Curves.easeOutExpo.transform((beam / 0.35).clamp(0.0, 1.0));
+    canvas.save();
+    canvas.clipRRect(RRect.fromRectAndRadius(Rect.fromLTWH(s * 0.12, s * 0.12, s * 0.76, s * 0.76), Radius.circular(s * 0.03)));
+    // A halo round the core, breathing.
     final hum = 0.85 + 0.15 * sin(pulse * 2 * pi * 4);
-    final width = s * (0.06 + 0.1 * flash) * hum;
-    final top = centre.dy - centre.dy * 1.6 * grow;
-    final column = Rect.fromLTRB(centre.dx - width / 2, top, centre.dx + width / 2, centre.dy);
-    canvas.drawRect(
-      column.inflate(width * 1.2),
+    canvas.drawCircle(
+      centre,
+      s * (0.12 + 0.06 * flash) * hum * grow,
       Paint()
-        ..color = _glow.withValues(alpha: 0.55)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.06),
+        ..color = _glow.withValues(alpha: 0.6)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.05),
     );
-    canvas.drawRect(
-      column,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: [Colors.white, _hot, _glow],
-        ).createShader(column),
-    );
-    // Sparks around the core.
-    final sparks = Paint()
-      ..color = Colors.white.withValues(alpha: 0.8 * max(flash, 0.3))
-      ..strokeWidth = s * 0.008
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 10; i++) {
-      final angle = i / 10 * 2 * pi + pulse * 2 * pi;
-      final inner = s * 0.07;
-      final outer = s * (0.12 + 0.08 * ((i * 37 + (pulse * 10).floor()) % 5) / 5);
-      canvas.drawLine(
-        centre + Offset(cos(angle), sin(angle)) * inner,
-        centre + Offset(cos(angle), sin(angle)) * outer,
-        sparks,
-      );
+    const rays = 16;
+    for (var i = 0; i < rays; i++) {
+      final angle = i / rays * 2 * pi + pulse * pi;
+      final direction = Offset(cos(angle), sin(angle));
+      // Each ray is a dash of light running outwards, then the next one.
+      for (var wave = 0; wave < 2; wave++) {
+        final t = (pulse * 3 + i * 0.37 + wave * 0.5) % 1;
+        final inner = s * (0.07 + 0.3 * t) * grow;
+        final outer = inner + s * 0.1 * grow;
+        final alpha = (1 - t) * (0.6 + 0.4 * max(flash, 0.5));
+        final from = centre + direction * inner;
+        final to = centre + direction * outer;
+        canvas.drawLine(
+          from,
+          to,
+          Paint()
+            ..color = _glow.withValues(alpha: alpha * 0.7)
+            ..strokeWidth = s * 0.03
+            ..strokeCap = StrokeCap.round
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.012),
+        );
+        canvas.drawLine(
+          from,
+          to,
+          Paint()
+            ..color = Color.lerp(Colors.white, _hot, t)!.withValues(alpha: alpha)
+            ..strokeWidth = s * 0.012
+            ..strokeCap = StrokeCap.round,
+        );
+      }
     }
+    canvas.restore();
     // The whole thing lights up for a moment.
     if (flash > 0) {
       canvas.drawRRect(housing, Paint()..color = Colors.white.withValues(alpha: 0.35 * flash));

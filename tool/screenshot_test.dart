@@ -204,6 +204,9 @@ void main() {
   });
 
   testWidgets('session setup', (tester) async {
+    final teams = ValueNotifier<SessionState?>(const SessionState(
+      teams: [Team(id: 'red', name: 'Red', color: 0xFFD32F2F), Team(id: 'blue', name: 'Blue', color: 0xFF1976D2), Team(id: 'owls', name: 'Night owls')],
+    ));
     tester.view.physicalSize = const Size(412, 892);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -215,9 +218,7 @@ void main() {
         body: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: SessionSetupView(
-            state: const SessionState(
-              teams: [Team(id: 'red', name: 'Red', color: 0xFFD32F2F), Team(id: 'blue', name: 'Blue', color: 0xFF1976D2), Team(id: 'owls', name: 'Night owls')],
-            ),
+            state: teams,
             send: (_) {},
             onConnectDevices: () {},
             onBuzzerSetup: () {},
@@ -227,6 +228,9 @@ void main() {
     ));
     await tester.pump();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/session_setup.png'));
+    await tester.tap(find.text('Teams'));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/session_setup_teams.png'));
   });
 
   testWidgets('presenter: board', (tester) async {
@@ -279,7 +283,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 900));
     host.dispatch(const Reveal(1));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pump(const Duration(milliseconds: 1600));
     await shot('fragenhagel_presenter_beam');
   });
 

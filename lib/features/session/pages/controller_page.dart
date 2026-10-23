@@ -209,7 +209,7 @@ class _ControllerViewState extends State<ControllerView> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: SessionSetupView(
-              state: state,
+              state: _c.state,
               send: _send,
               onConnectDevices: widget.onConnectDevices == null
                   ? null

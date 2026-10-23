@@ -127,8 +127,8 @@ class _SessionsPageState extends State<SessionsPage> {
           FloatingActionButton.small(
             heroTag: 'joinSession',
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const JoinSessionPage())),
-            tooltip: "Join a session with a code",
-            child: const Icon(Icons.qr_code_scanner),
+            tooltip: JoinSessionPage.hasScanner ? "Join a session: scan its code" : "Join a session with its link",
+            child: Icon(JoinSessionPage.hasScanner ? Icons.qr_code_scanner : Icons.link),
           ),
           const SizedBox(height: 12),
           FloatingActionButton.extended(

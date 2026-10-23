@@ -17,6 +17,9 @@ import 'package:quiz_show/game/game.dart';
 class JoinSessionPage extends StatefulWidget {
   const JoinSessionPage({super.key, this.initialLink, this.asGuest = false});
 
+  /// Whether this device can scan a join code with its camera.
+  static final bool hasScanner = Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
+
   /// A code the system handed over, scanned with the camera app: joined
   /// right away.
   final String? initialLink;
@@ -30,10 +33,9 @@ class JoinSessionPage extends StatefulWidget {
 }
 
 class _JoinSessionPageState extends State<JoinSessionPage> {
-  static final bool _hasScanner = Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
+  static final bool _hasScanner = JoinSessionPage.hasScanner;
 
-  final MobileScannerController? _scanner =
-      _hasScanner ? MobileScannerController(detectionSpeed: DetectionSpeed.noDuplicates) : null;
+  final MobileScannerController? _scanner = _hasScanner ? MobileScannerController(detectionSpeed: DetectionSpeed.noDuplicates) : null;
   final TextEditingController _link = TextEditingController();
   bool _busy = false;
   String? _error;
@@ -86,11 +88,12 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
     }
     await RecentSessions.remember(link);
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(MaterialPageRoute(
-      builder: (_) => link.role == Role.player
-          ? PlayerPage(link: link)
-          : ControlPage(sessionId: link.sessionId, title: "Session", joinLink: link),
-    ));
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) =>
+            link.role == Role.player ? PlayerPage(link: link) : ControlPage(sessionId: link.sessionId, title: "Session", joinLink: link),
+      ),
+    );
   }
 
   static String _ago(int millis) {
@@ -122,7 +125,8 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
           TextField(
             controller: _link,
             enabled: !_busy,
-            decoration: InputDecoration(labelText: "Or paste the link", errorText: _error),
+            // Next to the camera it is the other way in; on its own, the only one.
+            decoration: InputDecoration(labelText: _scanner == null ? "Join link" : "Or paste the link", errorText: _error),
             onSubmitted: _join,
           ),
           const SizedBox(height: 12),
@@ -134,7 +138,8 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: TextButton(
-                onPressed: () => launchUrl(Uri.parse('https://equirinya.github.io/quiz_studio/privacy.html'), mode: LaunchMode.externalApplication),
+                onPressed: () =>
+                    launchUrl(Uri.parse('https://equirinya.github.io/quiz_studio/privacy.html'), mode: LaunchMode.externalApplication),
                 child: const Text(
                   "By joining you agree to the terms and privacy policy. No account or name needed.",
                   textAlign: TextAlign.center,
@@ -147,20 +152,33 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
     );
     return Scaffold(
       appBar: AppBar(title: const Text("Join a session")),
-      body: Column(
-        children: [
-          Expanded(
-            child: _scanner == null
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Text(
-                        "Open \"Connect devices\" on the presenting device, copy the link there and paste it below.",
-                        textAlign: TextAlign.center,
+      // Without a camera there is nothing to scan: the link is the way in.
+      body: _scanner == null
+          ? Center(
+              child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.link, size: 48, color: Theme.of(context).colorScheme.primary),
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(32, 16, 32, 0),
+                        child: Text(
+                          "Open \"Connect devices\" on the presenting device, copy the join link there and paste it here.",
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                    ),
-                  )
-                : Stack(
+                      paste,
+                    ],
+                  ),
+                ),
+              ),
+            )
+          : Column(
+              children: [
+                Expanded(
+                  child: Stack(
                     fit: StackFit.expand,
                     children: [
                       MobileScanner(
@@ -173,10 +191,10 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
                       const ScannerOverlay(),
                     ],
                   ),
-          ),
-          paste,
-        ],
-      ),
+                ),
+                paste,
+              ],
+            ),
     );
   }
 }
