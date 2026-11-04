@@ -35,3 +35,9 @@ When bumping one of these packages, copy the new version from the pub cache
 `OnCompletion` lambda with `OnPlatformThread(result)`, and send every
 `EventSink::Success` through the dispatcher. Drop the override entirely once
 upstream answers on the platform thread everywhere.
+
+Keep `firebase_core` in `pubspec.yaml` pinned to the release that uses the same
+iOS Firebase SDK as these copies (`firebaseSdkVersion` in each
+`ios/<package>/Package.swift`, compared with `ios/firebase_sdk_version.rb` in
+`firebase_core`). If they differ, the iOS build fails while resolving Swift
+packages.

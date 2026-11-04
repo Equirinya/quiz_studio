@@ -20,7 +20,10 @@ dependencies:
   url_launcher: ^6.2.1
   mesh_gradient: ^1.3.8
 
-  firebase_core: ^4.2.1
+  # Exactly the release whose iOS Firebase SDK (12.19.0) the patched copies in
+  # third_party/ ask for; with a newer one Xcode's package resolution fails.
+  # Move it together with those copies (see third_party/README.md).
+  firebase_core: 4.15.0
   firebase_auth: ^6.1.2
   cloud_firestore: ^6.1.0
   firebase_storage: ^13.0.4
