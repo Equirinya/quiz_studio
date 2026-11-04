@@ -31,7 +31,9 @@ jobs:
       - uses: flutter-actions/setup-flutter@v4
         with:
           channel: stable
-          version: ${{ vars.FLUTTER_VERSION || 'latest' }}
+          # Newest stable, so the check doesn't depend on the FLUTTER_VERSION
+          # variable the release workflows use.
+          version: latest
 
       - name: Versions
         run: |
