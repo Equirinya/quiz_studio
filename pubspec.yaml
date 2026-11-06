@@ -20,10 +20,12 @@ dependencies:
   url_launcher: ^6.2.1
   mesh_gradient: ^1.3.8
 
-  # Exactly the release whose iOS Firebase SDK (12.19.0) the patched copies in
-  # third_party/ ask for; with a newer one Xcode's package resolution fails.
+  # Exactly the release whose iOS Firebase SDK (12.19.3) the patched copies in
+  # third_party/ ask for; with another one Xcode's package resolution fails.
   # Move it together with those copies (see third_party/README.md).
-  firebase_core: 4.15.0
+  # 4.15.2 is also the Firestore security fix (revoked eMudhra CA roots) for
+  # iOS (Firebase iOS SDK 12.19.3) and Windows (Firebase C++ SDK 13.13.1).
+  firebase_core: 4.15.2
   firebase_auth: ^6.1.2
   cloud_firestore: ^6.1.0
   firebase_storage: ^13.0.4

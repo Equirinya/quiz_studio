@@ -1,6 +1,6 @@
 # Patched FlutterFire plugins
 
-`cloud_firestore` 6.10.0, `firebase_auth` 6.7.0 and `firebase_storage` 13.6.0,
+`cloud_firestore` 6.10.2, `firebase_auth` 6.7.1 and `firebase_storage` 13.6.1,
 copied from pub.dev (without `example/` and `test/`) and used through
 `dependency_overrides` in `pubspec.yaml`. Only their `windows/` code is changed.
 Every change is marked `Quiz Studio patch`.
