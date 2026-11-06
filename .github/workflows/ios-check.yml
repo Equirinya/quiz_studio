@@ -4,15 +4,10 @@
 
 name: iOS build check
 
+# Only on demand (Actions → iOS build check → Run workflow), since macOS
+# runners are slow.
 on:
   workflow_dispatch:
-  push:
-    branches: [v2]
-    paths:
-      - 'ios/**'
-      - 'pubspec.yaml'
-      - 'third_party/**'
-      - '.github/workflows/ios-check.yml'
 
 concurrency:
   group: ios-check-${{ github.ref }}
