@@ -9,6 +9,32 @@
 #create Provisioning Profile: Distribution/App Store Connect then [Convert]::ToBase64String([IO.File]::ReadAllBytes("AppName.mobileprovision")) | Out-File "AppName_base64.txt"
 #create App in App Store Connect
 
+### the same on linux (no mac or windows needed):
+#1. key and certificate signing request (keep distribution.key private, never commit it):
+#   openssl genrsa -out distribution.key 2048
+#   openssl req -new -key distribution.key -out distribution.csr -subj "/emailAddress=YOUR_APPLE_ID_EMAIL/CN=YOUR_NAME/C=DE"
+#2. https://developer.apple.com/account/resources/certificates/add -> Apple Distribution -> upload distribution.csr -> download distribution.cer
+#3. turn it into a .p12 with a password (the 3DES/SHA1 options keep it importable by the macOS keychain on the runner;
+#   OpenSSL 3's default AES encryption can fail there with "MAC verification failed"):
+#   openssl x509 -inform DER -in distribution.cer -out distribution.pem
+#   openssl pkcs12 -export -inkey distribution.key -in distribution.pem -out distribution.p12 -name "Apple Distribution" \
+#     -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-3DES -macalg sha1 -passout pass:YOUR_P12_PASSWORD
+#   check it: openssl pkcs12 -in distribution.p12 -nokeys -passin pass:YOUR_P12_PASSWORD | openssl x509 -noout -subject -enddate
+#4. base64 without line breaks (what BUILD_CERTIFICATE_BASE64 and BUILD_PROVISION_PROFILE_BASE64 expect):
+#   base64 -w0 distribution.p12 > distribution_base64.txt
+#   base64 -w0 QuizStudio26.mobileprovision > QuizStudio26_base64.txt
+#5. optionally set the secrets and variables straight from the shell with the github cli (gh auth login first):
+#   gh secret set BUILD_CERTIFICATE_BASE64 < distribution_base64.txt
+#   gh secret set BUILD_PROVISION_PROFILE_BASE64 < QuizStudio26_base64.txt
+#   gh secret set P12_PASSWORD --body "YOUR_P12_PASSWORD"
+#   gh secret set KEYCHAIN_PASSWORD --body "$(openssl rand -base64 24)"
+#   gh secret set APPSTORE_API_PRIVATE_KEY < AuthKey_XXXXXXXXXX.p8
+#   gh secret set APPSTORE_API_KEY_ID --body "XXXXXXXXXX"; gh secret set APPSTORE_ISSUER_ID --body "..."; gh secret set TEAM_ID --body "H2Q3WBMS3N"
+#   gh variable set BUNDLE_ID --body "de.equirinya.quizStudio"; gh variable set PROVISIONING_PROFILE_NAME --body "QuizStudio26"
+#   gh variable set FLUTTER_VERSION --body "3.47.9"
+#6. start the build: gh workflow run ios.yml --ref master   (follow it with: gh run watch)
+#   delete the local .key/.p12/base64 files afterwards or keep them somewhere safe; the .cer expires after a year
+
 
 ### necessary github action repository secrets:
 #TEAM_ID: https://appstoreconnect.apple.com/access/users
@@ -27,7 +53,7 @@
 
 ###necessary github action repository variables:
 #BUNDLE_ID   de.equirinya.quizStudio
-#PROVISIONING_PROFILE_NAME   QuizStudio (as in the project file)
+#PROVISIONING_PROFILE_NAME   QuizStudio26 (as in the project file)
 #DEPLOYMENT_TARGET
 #FLUTTER_VERSION
 
