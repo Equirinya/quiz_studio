@@ -13,6 +13,17 @@ name: Android Build and Deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      track:
+        description: 'Google Play track (production = the public release)'
+        type: choice
+        options: [internal, alpha, beta, production]
+        default: internal
+      status:
+        description: 'Release status (draft until the app is published once in the Play Console; completed rolls it out)'
+        type: choice
+        options: [draft, completed]
+        default: draft
 
 jobs:
   android_deployment:
@@ -121,7 +132,15 @@ jobs:
               --generate-notes
           }
 
-      # Step 11: Upload AAB to Google Play (Internal Testing)
+      # Step 11: Upload AAB to Google Play, to the track chosen in Run workflow.
+      # Before the first upload through the API: upload one AAB by hand in the
+      # Play Console (Testing -> Internal testing -> Create new release), and
+      # invite the service account under Users and permissions with access to
+      # this app ("Release apps to testing tracks", plus "Release to
+      # production" for production). Otherwise the API answers "The caller
+      # does not have permission".
+      # Play only accepts draft releases while the app itself is still a
+      # draft; choose completed once the app is published.
       - name: Upload to Google Play
         env:
           ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
@@ -130,8 +149,8 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ vars.ANDROID_BUNDLE_ID }}
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          track: internal
-          status: completed
+          tracks: ${{ inputs.track }}
+          status: ${{ inputs.status }}
 
       # Step 12: Cleanup
       - name: Cleanup
