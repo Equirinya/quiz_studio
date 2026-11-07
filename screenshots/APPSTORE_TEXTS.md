@@ -1,45 +1,19 @@
-# App Store texts (plain)
+# App Store texts
 
 ## English
 
 **Promotional Text** [170]
-Run a quiz night: the quiz on a big screen, you host from your phone, teams buzz in and answer on their own phones. Works on the local Wi-Fi too.
+Your own quiz show at home: the quiz on the TV, you host from your phone, and every guest's phone is a buzzer.
 
 **Description** [4000]
 ```
-Quiz Studio is an app for hosting a quiz night with a big screen.
+Host your own quiz show.
 
-How it works
-• A Windows computer on the TV or projector shows the quiz.
-• You host from your phone: open questions, mark answers right or wrong, play sounds. Points are counted automatically.
-• Teams join by scanning a QR code, no account needed. Their phones become buzzers and answer pads.
+The quiz runs on the big screen, you host from your phone, and the teams play on theirs: buzz in, write and draw answers, solve puzzles. Points count themselves, music and effects are one tap away.
 
-Question types
-• Free questions, buzzed in
-• Multiple choice (ABCD)
-• Written and drawn answers on the teams' devices, revealed one by one
-• Numbers and estimates, sliders, putting things in order, matching pairs
-• Survey rounds: guess the most popular answers
-• Pictures and clues that are revealed step by step
-• Word groups: find four groups of four
-• Quick-fire rounds
+Write your quiz in minutes, alone or with friends, and turn any evening into a game show.
 
-Boards
-Pick questions from a wheel, a grid or a map of categories.
-
-Sound and effects
-Background music, sound effects, team buzzer sounds, confetti and fireworks.
-
-Writing quizzes
-Write questions on your phone or computer. Invite co-authors with a link; shared categories stay hidden from the others.
-
-Network
-Devices on the same Wi-Fi connect directly to the big screen, so a running quiz keeps going if the internet drops.
-
-USB buzzers
-Serial USB buzzer boxes can be connected to the Windows computer.
-
-No ads, no in-app purchases. Players don't need an account.
+No ads. Players don't need an account.
 ```
 
 **Keywords** [100]
@@ -53,43 +27,17 @@ No ads, no in-app purchases. Players don't need an account.
 ## Deutsch
 
 **Werbetext** [170]
-Für deinen Quizabend: das Quiz auf dem großen Bildschirm, du moderierst vom Handy, Teams buzzern und antworten am eigenen Handy. Klappt auch im lokalen WLAN.
+Deine eigene Quizshow zu Hause: das Quiz auf dem Fernseher, du moderierst vom Handy, und jedes Handy deiner Gäste ist ein Buzzer.
 
 **Beschreibung** [4000]
 ```
-Quiz Studio ist eine App, um einen Quizabend mit großem Bildschirm zu moderieren.
+Moderiere deine eigene Quizshow.
 
-So funktioniert es
-• Ein Windows-PC am Fernseher oder Beamer zeigt das Quiz.
-• Du moderierst vom Handy: Fragen öffnen, Antworten als richtig oder falsch werten, Sounds abspielen. Die Punkte werden automatisch gezählt.
-• Teams treten per QR-Code bei, ohne Konto. Ihre Handys werden zu Buzzern und Antwortfeldern.
+Das Quiz läuft auf dem großen Bildschirm, du moderierst vom Handy, und die Teams spielen an ihren eigenen: buzzern, Antworten schreiben und malen, Rätsel lösen. Die Punkte zählen sich selbst, Musik und Effekte sind einen Tipp entfernt.
 
-Fragetypen
-• Freie Fragen mit Buzzer
-• Multiple Choice (ABCD)
-• Geschriebene und gezeichnete Antworten auf den Geräten der Teams, nacheinander aufgedeckt
-• Zahlen und Schätzfragen, Schieberegler, Reihenfolgen, Zuordnen
-• Umfragerunden: die häufigsten Antworten erraten
-• Bilder und Hinweise, die Schritt für Schritt aufgedeckt werden
-• Wortgruppen: vier Gruppen zu je vier finden
-• Fragenhagel (Schnellrunden)
+Schreib dein Quiz in wenigen Minuten, allein oder mit Freunden, und mach aus jedem Abend eine Spielshow.
 
-Spielbretter
-Fragen werden über ein Rad, ein Raster oder eine Karte der Kategorien gewählt.
-
-Sound und Effekte
-Hintergrundmusik, Soundeffekte, eigene Buzzer-Sounds pro Team, Konfetti und Feuerwerk.
-
-Quiz erstellen
-Fragen am Handy oder PC schreiben. Mitautoren per Link einladen; geteilte Kategorien bleiben für die anderen verborgen.
-
-Netzwerk
-Geräte im selben WLAN verbinden sich direkt mit dem großen Bildschirm, so läuft ein Quiz weiter, auch wenn das Internet ausfällt.
-
-USB-Buzzer
-Serielle USB-Buzzerboxen lassen sich am Windows-PC anschließen.
-
-Keine Werbung, keine In-App-Käufe. Spieler brauchen kein Konto.
+Keine Werbung. Spieler brauchen kein Konto.
 ```
 
 **Keywords** [100]
