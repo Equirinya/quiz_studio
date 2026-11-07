@@ -9,8 +9,8 @@ VBR quality 2), because Windows cannot play Ogg.
 
 ## Made for Quiz Studio
 
-Synthesised by `tool/make_effects.js`, `tool/make_effects2.js` and
-`tool/make_noise.js`:
+Synthesised by `tool/sounds/make_effects.js`, `tool/sounds/make_effects2.js` and
+`tool/sounds/make_noise.js`:
 
 - `ambience/soft_noise.wav`, `ambience/white_noise.wav`
 - `effects/right_answer/ding_ding.wav`, `effects/wrong_answer/bwomp.wav`

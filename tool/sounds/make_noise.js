@@ -4,7 +4,7 @@
 // Both are quiet (they only keep speakers awake) and loop without a seam:
 // the last half second is cross-faded into the first.
 //
-//   node tool/make_noise.js
+//   node tool/sounds/make_noise.js
 const fs = require("fs");
 const path = require("path");
 
@@ -69,7 +69,7 @@ function writeWav(file, samples, volume) {
   fs.writeFileSync(file, Buffer.concat([header, data]));
 }
 
-const dir = path.join(__dirname, "..", "assets", "sounds", "ambience");
+const dir = path.join(__dirname, "..", "..", "assets", "sounds", "ambience");
 fs.mkdirSync(dir, { recursive: true });
 writeWav(path.join(dir, "white_noise.wav"), seamless(white(n + fade)), 0.25);
 writeWav(path.join(dir, "soft_noise.wav"), seamless(brown(n + fade)), 0.5);

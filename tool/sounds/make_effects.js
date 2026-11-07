@@ -2,7 +2,7 @@
 // and noise, into assets/sounds/effects/. All come out at the same loudness
 // (RMS of the loud part matched, peaks kept below -1 dBFS).
 //
-//   node tool/make_effects.js
+//   node tool/sounds/make_effects.js
 const fs = require("fs");
 const path = require("path");
 
@@ -108,7 +108,7 @@ function write(name, samples) {
   console.log(name, (samples.length / rate).toFixed(2) + " s");
 }
 
-let dir = path.join(__dirname, "..", "assets", "sounds", "effects");
+let dir = path.join(__dirname, "..", "..", "assets", "sounds", "effects");
 fs.mkdirSync(dir, { recursive: true });
 
 // Reveal: a soft airy whoosh into a bright ding.
@@ -201,7 +201,7 @@ fs.mkdirSync(dir, { recursive: true });
   write("drumroll", out);
 }
 
-// ── More versions to choose from: node tool/make_effects.js --candidates <dir>
+// ── More versions to choose from: node tool/sounds/make_effects.js --candidates <dir>
 // writes every version as <name>_<letter>.wav, the ones above being "a".
 const variants = {
   reveal: [

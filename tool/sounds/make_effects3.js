@@ -1,7 +1,7 @@
 // Third round: more reveals, the two countdown ideas with new sounds, more
 // time's-up endings and new boings.
 //
-//   node tool/make_effects3.js <folder>
+//   node tool/sounds/make_effects3.js <folder>
 const { TAU, rnd, buf, note, pluck, fmBell, sweepNoise, sine, reverb, write, setDir, rate } = require("./synth");
 
 setDir(process.argv[2]);

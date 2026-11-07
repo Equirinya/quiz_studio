@@ -302,3 +302,6 @@ GoogleService-Info.plist
 /linux
 /macos
 /web
+
+# Golden-test diffs written when a screenshot test fails
+/tool/failures/

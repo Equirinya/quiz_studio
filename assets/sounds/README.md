@@ -35,5 +35,5 @@ moment (any name), get a line in `CREDITS.md`, and an entry in
 | `music/` | Board, Calm and Thrilling music when the game has none of its own | |
 | `ambience/` | keeps the speakers awake when nothing plays | Soft noise |
 
-Generated sounds come from `tool/make_noise.js`, `tool/make_effects*.js` and
-`tool/synth.js`.
+Generated sounds come from `tool/sounds/make_noise.js`, `tool/sounds/make_effects*.js` and
+`tool/sounds/synth.js`.

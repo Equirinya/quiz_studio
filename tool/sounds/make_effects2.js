@@ -2,7 +2,7 @@
 // and a small room reverb, which sound far less "beepy" than plain sines.
 // Writes <name>_<letter>.wav into the folder given, for picking.
 //
-//   node tool/make_effects2.js <folder>
+//   node tool/sounds/make_effects2.js <folder>
 const { TAU, rnd, buf, note, pluck, brass, fmBell, sweepNoise, sine, reverb, write, setDir, rate } = require("./synth");
 
 setDir(process.argv[2]);
