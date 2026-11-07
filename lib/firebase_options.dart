@@ -59,17 +59,17 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDEOONnBwVSGr6zWN2WrHDI-X3N_4T5boo',
-    appId: '1:640235060469:ios:4111228616e5d00a0019bc',
+    appId: '1:640235060469:ios:76734133b2787e490019bc',
     messagingSenderId: '640235060469',
     projectId: 'quiz-8541e',
     storageBucket: 'quiz-8541e.appspot.com',
-    iosClientId: '640235060469-huev8lhnrk75ijsqfguhdre1dm8ob920.apps.googleusercontent.com',
-    iosBundleId: 'de.equirinya.quizShow',
+    iosClientId: '640235060469-c5cqh10pu1uqh4mhc2k6arvul23q0p0u.apps.googleusercontent.com',
+    iosBundleId: 'de.equirinya.quizStudio',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyDEOONnBwVSGr6zWN2WrHDI-X3N_4T5boo',
-    appId: '1:640235060469:ios:4111228616e5d00a0019bc',
+    appId: '1:640235060469:ios:76734133b2787e490019bc',
     messagingSenderId: '640235060469',
     projectId: 'quiz-8541e',
     storageBucket: 'quiz-8541e.appspot.com',

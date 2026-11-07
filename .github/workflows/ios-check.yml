@@ -1,0 +1,46 @@
+# Builds the iOS app without signing, to show that the project, the pods and
+# the Dart code still build for iOS. Needs no secrets; ios.yml does the
+# signed release build and the upload.
+
+name: iOS build check
+
+# Only on demand (Actions → iOS build check → Run workflow), since macOS
+# runners are slow.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      # The firebase submodule is private and not needed to build the app.
+      - uses: actions/checkout@v6
+        with:
+          submodules: false
+
+      - uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
+          # Newest stable, so the check doesn't depend on the FLUTTER_VERSION
+          # variable the release workflows use.
+          version: latest
+
+      - name: Versions
+        run: |
+          flutter --version
+          xcodebuild -version
+          pod --version
+
+      - run: flutter pub get
+
+      - name: Build for iOS without signing
+        run: flutter build ios --release --no-codesign
+
+      - name: Show what pod install changed in the Xcode project
+        if: always()
+        run: git status --short ios && git diff --stat ios

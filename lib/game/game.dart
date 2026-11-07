@@ -1,0 +1,19 @@
+/// The game core: content models, session state, commands and the reducer.
+/// Nothing in here may import Flutter or Firebase.
+library;
+
+export 'cards.dart';
+export 'commands.dart';
+export 'companion.dart';
+export 'drawing.dart';
+export 'content.dart';
+export 'content_text.dart';
+export 'map_layout.dart';
+export 'matching.dart';
+export 'public_view.dart';
+export 'rapid_fire.dart';
+export 'rating.dart';
+export 'reducer.dart';
+export 'session_host.dart';
+export 'session_state.dart';
+export 'top_answers.dart';

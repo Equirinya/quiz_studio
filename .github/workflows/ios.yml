@@ -5,10 +5,8 @@
 ### setup in appstoreconnect:
 #if not exisiting yet, create a distribution certificate: https://mzansibytes.com/2021/08/28/create-apple-developer-certificates-on-windows/, then [Convert]::ToBase64String([IO.File]::ReadAllBytes("ExportedCertificate.pfx")) | Out-File "ExportedCertificate_base64.txt"
 
-#create Identifier:  (APP-IDs/APP/) add Push Notifications, Sign In with Apple
-#then change bundle id in Step 8 below
+#create Identifier:  (APP-IDs/APP/) de.equirinya.quizStudio; no capabilities needed
 #create Provisioning Profile: Distribution/App Store Connect then [Convert]::ToBase64String([IO.File]::ReadAllBytes("AppName.mobileprovision")) | Out-File "AppName_base64.txt"
-#copy Provisioning Profile name to Step 5 & 8 below
 #create App in App Store Connect
 
 
@@ -28,8 +26,8 @@
 #KEYCHAIN_PASSWORD #can be set freely
 
 ###necessary github action repository variables:
-#BUNDLE_ID
-#PROVISIONING_PROFILE_NAME
+#BUNDLE_ID   de.equirinya.quizStudio
+#PROVISIONING_PROFILE_NAME   QuizStudio (as in the project file)
 #DEPLOYMENT_TARGET
 #FLUTTER_VERSION
 
@@ -44,7 +42,7 @@
 #PRODUCT_BUNDLE_IDENTIFIER = ; #set
 #DEVELOPMENT_TEAM = "";
 #"DEVELOPMENT_TEAM[sdk=iphoneos*]" = ; #set
-#IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+#IPHONEOS_DEPLOYMENT_TARGET = 15.0;  #also the platform in ios/Podfile
 #PROVISIONING_PROFILE_SPECIFIER = "";
 #"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = ""; #set
 
@@ -58,18 +56,21 @@ on:
 
 jobs:
   ios_deployment:
-    runs-on: macos-latest
+    runs-on: macos-26
     permissions:
       contents: write
 
     steps:
-      # Step 1: Checkout Code
+      # Step 1: Checkout Code. The firebase submodule is private and not
+      # needed to build the app, so it is left out.
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          submodules: false
 
       # Step 2: Set up Flutter SDK
       - name: Set up Flutter SDK
-        uses: flutter-actions/setup-flutter@v3
+        uses: flutter-actions/setup-flutter@v4
         env:
           FLUTTER_VERSION: ${{ vars.FLUTTER_VERSION }}
         with:
@@ -99,7 +100,7 @@ jobs:
           PROVISIONING_PROFILE_NAME: ${{ vars.PROVISIONING_PROFILE_NAME }}
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/$PROVISIONING_PROFILE_NAME.mobileprovision
+          echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/"$PROVISIONING_PROFILE_NAME".mobileprovision
 
       # Step 6: Configure Distribution Certificate
       - name: Configure Distribution Certificate

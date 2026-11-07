@@ -1,0 +1,208 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:quiz_show/features/session/lan/lan_discovery.dart';
+import 'package:quiz_show/features/session/lan/lan_host_server.dart';
+import 'package:quiz_show/features/session/session_client.dart';
+import 'package:quiz_show/game/game.dart';
+
+import 'game/fixture.dart';
+
+/// The client between two transports: a real LAN server on loopback, and a
+/// stand-in for the cloud made of plain streams.
+void main() {
+  late SessionHost host;
+  late LanHostServer server;
+  late StreamController<SessionState?> cloudStates;
+  late StreamController<PublicView?> cloudViews;
+  late List<Command> cloudSent;
+  late int port;
+
+  const tokens = <String, LanGrant>{
+    'ctl': (role: Role.controller, teamId: null),
+    'red': (role: Role.player, teamId: 'red'),
+  };
+  const fast = Duration(milliseconds: 50);
+
+  Future<void> startServer({int onPort = 0}) async {
+    server = LanHostServer(host, authorize: (token) => tokens[token]);
+    port = await server.start(port: onPort, address: InternetAddress.loopbackIPv4);
+  }
+
+  /// The "cloud": every host state arrives there too, and commands sent
+  /// through it reach the host.
+  SessionClient client(Role role, {String? token, List<String>? endpoints, Stream<List<String>>? cloudEndpoints}) {
+    final c = SessionClient(
+      role: role,
+      teamId: role == Role.player ? 'red' : null,
+      token: token,
+      endpoints: endpoints ?? ['127.0.0.1:$port'],
+      cloudStates: role == Role.player ? null : cloudStates.stream,
+      cloudViews: role == Role.player ? cloudViews.stream : null,
+      cloudEndpoints: cloudEndpoints,
+      cloudSend: (command) async {
+        cloudSent.add(command);
+        host.dispatch(command, sender: Sender(role, teamId: role == Role.player ? 'red' : null));
+      },
+      retryDelay: fast,
+    );
+    addTearDown(c.dispose);
+    return c..start();
+  }
+
+  Future<void> until(bool Function() condition) async {
+    for (var i = 0; i < 100 && !condition(); i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    expect(condition(), isTrue, reason: 'timed out');
+  }
+
+  setUp(() async {
+    host = SessionHost(initial: fixtureState(), game: fixtureGame());
+    cloudStates = StreamController<SessionState?>.broadcast();
+    cloudViews = StreamController<PublicView?>.broadcast();
+    cloudSent = [];
+    host.states.listen((s) {
+      cloudStates.add(s);
+      cloudViews.add(PublicView(host.publicState));
+    });
+    await startServer();
+  });
+
+  tearDown(() async {
+    await server.stop();
+    await host.dispose();
+  });
+
+  test('uses the local network when the presenter is reachable there', () async {
+    final c = client(Role.controller, token: 'ctl');
+    await until(() => c.link.value == LinkStatus.lan && c.state.value != null);
+    expect(c.lanGame.value!.id, 'game');
+
+    c.send(const OpenQuestion(free));
+    await until(() => c.state.value!.current == free);
+    expect(cloudSent, isEmpty);
+  });
+
+  test('without a reachable presenter everything goes through the cloud', () async {
+    final c = client(Role.controller, token: 'ctl', endpoints: ['127.0.0.1:1']);
+    c.send(const AdjustPoints('red', 10));
+    await until(() => c.state.value?.team('red')?.points == 10);
+    expect(c.link.value, LinkStatus.cloud);
+    expect(cloudSent, hasLength(1));
+    expect(c.lanGame.value, isNull);
+  });
+
+  test('falls back to the cloud when the presenter drops off the network, and comes back', () async {
+    final c = client(Role.player, token: 'red');
+    await until(() => c.link.value == LinkStatus.lan && c.view.value != null);
+    host.dispatch(const OpenQuestion(free));
+    await until(() => c.view.value!.phase == Phase.question);
+
+    await server.stop();
+    await until(() => c.link.value == LinkStatus.cloud);
+    c.send(const Buzz('red'));
+    await until(() => c.view.value!.buzzQueue.contains('red'));
+    expect(cloudSent, hasLength(1));
+
+    await startServer(onPort: port);
+    await until(() => c.link.value == LinkStatus.lan);
+    host.dispatch(const Judge(correct: true));
+    await until(() => c.view.value!.phase == Phase.overview);
+  });
+
+  test('an older state arriving late over the other transport is ignored', () async {
+    final c = client(Role.controller, token: 'ctl');
+    await until(() => c.link.value == LinkStatus.lan);
+    final stale = host.state;
+    host.dispatch(const AdjustPoints('red', 10));
+    await until(() => c.state.value?.team('red')?.points == 10);
+    cloudStates.add(stale);
+    await Future<void>.delayed(fast);
+    expect(c.state.value!.team('red')!.points, 10);
+  });
+
+  test("connects once the presenter's address or the token becomes known", () async {
+    final endpoints = StreamController<List<String>>();
+    addTearDown(endpoints.close);
+    final c = client(Role.controller, endpoints: const [], cloudEndpoints: endpoints.stream);
+    await Future<void>.delayed(fast * 2);
+    expect(c.link.value, LinkStatus.cloud);
+
+    endpoints.add(['127.0.0.1:$port']);
+    await Future<void>.delayed(fast * 2);
+    expect(c.link.value, LinkStatus.cloud, reason: 'still no token');
+
+    c.token = 'ctl';
+    await until(() => c.link.value == LinkStatus.lan);
+  });
+
+  test('the whiteboard picture arrives over either transport, once', () async {
+    final cloud = StreamController<(String, Uint8List)?>.broadcast();
+    addTearDown(cloud.close);
+    final c = SessionClient(
+      role: Role.player,
+      teamId: 'red',
+      token: 'red',
+      endpoints: ['127.0.0.1:$port'],
+      cloudViews: cloudViews.stream,
+      cloudBackground: cloud.stream,
+      retryDelay: fast,
+    );
+    addTearDown(c.dispose);
+    c.start();
+    await until(() => c.link.value == LinkStatus.lan);
+    var changes = 0;
+    c.background.addListener(() => changes++);
+
+    server.setBackground('map.png', [1, 2, 3]);
+    await until(() => c.background.value != null);
+    expect(c.background.value!.$1, 'map.png');
+    // The same picture then also comes in through the cloud: nothing new.
+    cloud.add(('map.png', Uint8List.fromList([1, 2, 3])));
+    await Future<void>.delayed(fast);
+    expect(changes, 1);
+    // Another round, another picture.
+    cloud.add(('form.png', Uint8List.fromList([9])));
+    await until(() => c.background.value!.$1 == 'form.png');
+  });
+
+  test('a wrong token never gets onto the local network', () async {
+    final c = client(Role.controller, token: 'nope');
+    await Future<void>.delayed(fast * 4);
+    expect(c.link.value, LinkStatus.cloud);
+    expect(server.clientCount, 0);
+  });
+
+  test('finds the presenter by asking the network when no address is known', () async {
+    final beacon = LanBeacon(sessionId: 'S1', serverPort: port);
+    await beacon.start(port: 0, address: InternetAddress.loopbackIPv4);
+    addTearDown(beacon.stop);
+    // The beacon's own port is only known to this test; in the app it is fixed.
+    final beaconPort = await _portOf(beacon);
+
+    expect(await discoverPresenter('S1', port: beaconPort, target: InternetAddress.loopbackIPv4), '127.0.0.1:$port');
+    // Asking for another session gets no answer.
+    expect(
+      await discoverPresenter('other', port: beaconPort, target: InternetAddress.loopbackIPv4, timeout: fast * 4),
+      isNull,
+    );
+
+    final c = SessionClient(
+      role: Role.controller,
+      token: 'ctl',
+      endpoints: const ['127.0.0.1:1'],
+      cloudStates: cloudStates.stream,
+      discover: () => discoverPresenter('S1', port: beaconPort, target: InternetAddress.loopbackIPv4),
+      retryDelay: fast,
+    );
+    addTearDown(c.dispose);
+    c.start();
+    await until(() => c.link.value == LinkStatus.lan);
+  });
+}
+
+/// A beacon bound to port 0 has to be asked which port it got.
+Future<int> _portOf(LanBeacon beacon) async => beacon.boundPort;

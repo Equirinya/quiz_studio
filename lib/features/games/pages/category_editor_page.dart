@@ -1,0 +1,428 @@
+import 'dart:async';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import 'package:quiz_show/core/widgets/dialogs.dart';
+import 'package:quiz_show/features/games/game_repository.dart';
+import 'package:quiz_show/features/games/widgets/cards_dialog.dart';
+import 'package:quiz_show/features/games/widgets/companion_editor.dart';
+import 'package:quiz_show/features/games/widgets/media_button.dart';
+import 'package:quiz_show/features/games/widgets/settings_strip.dart';
+import 'package:quiz_show/features/games/widgets/question_preview.dart';
+import 'package:quiz_show/features/games/widgets/question_type_editors.dart';
+import 'package:quiz_show/features/games/widgets/sounds_dialog.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:quiz_show/features/auth/widgets/user_name.dart';
+import 'package:quiz_show/game/game.dart';
+
+/// One category and its questions.
+class CategoryEditorPage extends StatefulWidget {
+  const CategoryEditorPage({super.key, required this.gameId, required this.categoryId});
+
+  final String gameId;
+  final String categoryId;
+
+  @override
+  State<CategoryEditorPage> createState() => _CategoryEditorPageState();
+}
+
+class _CategoryEditorPageState extends State<CategoryEditorPage> {
+  late final Stream<GameSnapshot> _game = GameRepository.instance.watchGame(widget.gameId);
+
+  /// The question to open expanded: the one just added.
+  String? _fresh;
+
+  GameRepository get _repo => GameRepository.instance;
+
+  Future<void> _rename(Category category) async {
+    final name = await promptText(context, title: "Rename category", initial: category.name, label: "Name");
+    if (name == null || !mounted) return;
+    await guarded(context, () => _repo.updateCategory(widget.gameId, category.id, {'name': name}));
+  }
+
+  /// Full members and the category's creator decide who else sees it.
+  bool _canShare(GameSnapshot game, Category category) {
+    final limited = game.data[GameRole.limited.name];
+    if (limited is! List || limited.isEmpty) return false;
+    return game.role.seesEverything || category.data['createdBy'] == FirebaseAuth.instance.currentUser?.uid;
+  }
+
+  Future<void> _share(GameSnapshot game, Category category) {
+    final limited = List<String>.from(game.data[GameRole.limited.name] as List);
+    final shared = {...(category.data['access'] as List? ?? const []).whereType<String>()};
+    final creator = category.data['createdBy'];
+    return showDialog<void>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text("Share category"),
+          content: SizedBox(
+            width: 360,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                const Text("Members with limited access only see the categories switched on here."),
+                for (final uid in limited)
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: UserName(uid),
+                    subtitle: uid == creator ? const Text("Created this category") : null,
+                    value: uid == creator || shared.contains(uid),
+                    onChanged: uid == creator
+                        ? null
+                        : (value) {
+                            setState(() => value ? shared.add(uid) : shared.remove(uid));
+                            guarded(context, () => _repo.shareCategory(widget.gameId, category.id, uid, value));
+                          },
+                  ),
+              ],
+            ),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Done"))],
+        ),
+      ),
+    );
+  }
+
+  /// The order just dragged into place, until the saved one shows it too.
+  List<String>? _order;
+
+  List<Question> _ordered(List<Question> questions) {
+    final order = _order;
+    if (order == null) return questions;
+    final ids = [for (final q in questions) q.id];
+    if (ids.length != order.length || !ids.every(order.contains)) return questions;
+    if (Iterable<int>.generate(ids.length).every((i) => ids[i] == order[i])) {
+      _order = null;
+      return questions;
+    }
+    return [for (final id in order) questions.firstWhere((q) => q.id == id)];
+  }
+
+  Future<void> _addQuestion(Category category) async {
+    // Continue the category's point ladder instead of starting at zero.
+    final last = category.questions.lastOrNull;
+    final previous = category.questions.length > 1 ? category.questions[category.questions.length - 2] : null;
+    final step = last == null ? 100 : (previous == null ? last.pointsPlus : last.pointsPlus - previous.pointsPlus);
+    await guarded(context, () async {
+      final id = await _repo.addQuestion(
+        widget.gameId,
+        category.id,
+        pointsPlus: (last?.pointsPlus ?? 0) + (step > 0 ? step : 100),
+        pointsMinus: last?.pointsMinus ?? 0,
+        // A category in its own order keeps it: the new question goes last.
+        data: {if (last?.position != null) 'questionIndex': last!.position! + 1},
+      );
+      if (mounted) setState(() => _fresh = id);
+    });
+  }
+
+  /// Who of the limited members sees this category besides its creator.
+  static String _sharedSummary(Category category) {
+    final count = category.data['access'] is List ? (category.data['access'] as List).length : 0;
+    return count == 0 ? "Not shared" : (count == 1 ? "With 1 person" : "With $count people");
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<GameSnapshot>(
+      stream: _game,
+      builder: (context, snapshot) {
+        final category = snapshot.data?.content.category(widget.categoryId);
+        if (snapshot.hasError || (snapshot.hasData && category == null)) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: const Center(child: Text("This category is not available.")),
+          );
+        }
+        if (category == null) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: const Center(child: CupertinoActivityIndicator()),
+          );
+        }
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(category.name.isEmpty ? "Unnamed" : category.name),
+            actions: [IconButton(icon: const Icon(Icons.edit_outlined), tooltip: "Rename", onPressed: () => _rename(category))],
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _addQuestion(category),
+            icon: const Icon(Icons.add),
+            label: const Text("Add question"),
+          ),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 96),
+            children: [
+              // What this category brings beyond its questions.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+                child: SettingsStrip(
+                  tiles: [
+                    SettingTile(
+                      icon: Icons.queue_music,
+                      title: "Music & sounds",
+                      summary: soundsSummary(category.sounds, inherited: "Uses the board's"),
+                      isSet: category.sounds.slots.isNotEmpty || category.sounds.effects.isNotEmpty,
+                      onTap: () => showSoundsDialog(
+                        context,
+                        gameId: widget.gameId,
+                        title: "Sounds for this category",
+                        data: category.data,
+                        save: (update) => guarded(context, () => _repo.updateCategory(widget.gameId, category.id, update)),
+                      ),
+                    ),
+                    SettingTile(
+                      icon: Icons.style_outlined,
+                      title: "Cards",
+                      summary: cardsSummary(category.cards, none: "Only the board's and game's"),
+                      isSet: category.cards.isNotEmpty,
+                      onTap: () => showCardsDialog(
+                        context,
+                        gameId: widget.gameId,
+                        title: "Cards for this category",
+                        cards: category.cards,
+                        save: (cards) => guarded(context, () => _repo.updateCategory(widget.gameId, category.id, {'cards': cards})),
+                      ),
+                    ),
+                    if (_canShare(snapshot.data!, category))
+                      SettingTile(
+                        icon: Icons.person_add_alt,
+                        title: "Share",
+                        summary: _sharedSummary(category),
+                        isSet: _sharedSummary(category) != "Not shared",
+                        onTap: () => _share(snapshot.data!, category),
+                      ),
+                  ],
+                ),
+              ),
+              if (category.questions.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: Text("No questions yet.")),
+                ),
+              Builder(builder: (context) {
+                final questions = _ordered(category.questions);
+                return ReorderableListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  buildDefaultDragHandles: false,
+                  itemCount: questions.length,
+                  // onReorderItem replaces this from Flutter 3.41 on; kept for older SDKs in CI.
+                  // ignore: deprecated_member_use
+                  onReorder: (from, to) {
+                    if (to > from) to--;
+                    final ids = [for (final q in questions) q.id];
+                    ids.insert(to, ids.removeAt(from));
+                    setState(() => _order = ids);
+                    guarded(context, () => _repo.reorderQuestions(widget.gameId, category.id, ids));
+                  },
+                  itemBuilder: (context, i) => QuestionCard(
+                    key: ValueKey(questions[i].id),
+                    gameId: widget.gameId,
+                    categoryId: category.id,
+                    question: questions[i],
+                    initiallyExpanded: questions[i].id == _fresh,
+                    reorderIndex: questions.length > 1 ? i : null,
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Edits one question. Text is written a moment after typing stops, so the
+/// stream echoing a change back never moves the cursor.
+class QuestionCard extends StatefulWidget {
+  const QuestionCard({
+    super.key,
+    required this.gameId,
+    required this.categoryId,
+    required this.question,
+    this.initiallyExpanded = false,
+    this.reorderIndex,
+  });
+
+  final String gameId;
+  final String categoryId;
+  final Question question;
+  final bool initiallyExpanded;
+
+  /// Its place in a reorderable list; null without a drag handle.
+  final int? reorderIndex;
+
+  @override
+  State<QuestionCard> createState() => _QuestionCardState();
+}
+
+class _QuestionCardState extends State<QuestionCard> {
+  late final TextEditingController _text = TextEditingController(text: widget.question.text);
+  late final TextEditingController _description = TextEditingController(text: widget.question.description ?? '');
+  late final TextEditingController _hint = TextEditingController(text: widget.question.answerHint ?? '');
+  late final TextEditingController _plus = TextEditingController(text: widget.question.pointsPlus.toString());
+  late final TextEditingController _minus = TextEditingController(text: widget.question.pointsMinus.toString());
+
+  final Map<String, dynamic> _pending = {};
+  Timer? _timer;
+
+  Question get _q => widget.question;
+
+  /// Queues a write; fields changed in quick succession go out together.
+  void _save(Map<String, dynamic> data) {
+    _pending.addAll(data);
+    _timer?.cancel();
+    _timer = Timer(const Duration(milliseconds: 500), _flush);
+  }
+
+  void _flush() {
+    _timer?.cancel();
+    if (_pending.isEmpty) return;
+    final data = Map<String, dynamic>.of(_pending);
+    _pending.clear();
+    GameRepository.instance.updateQuestion(widget.gameId, widget.categoryId, _q.id, data).catchError((Object _) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text("Could not save.")));
+    });
+  }
+
+  @override
+  void dispose() {
+    _flush();
+    for (final controller in [_text, _description, _hint, _plus, _minus]) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _delete() async {
+    final sure = await confirm(context, title: "Delete question", message: "This question will be deleted.", action: "Delete");
+    if (!sure) return;
+    _pending.clear();
+    await GameRepository.instance.deleteQuestion(widget.gameId, widget.categoryId, _q.id);
+  }
+
+  Widget _points(TextEditingController controller, String label, String field) => SizedBox(
+    width: 110,
+    child: TextField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label),
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      onChanged: (value) => _save({field: int.tryParse(value) ?? 0}),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: ExpansionTile(
+        initiallyExpanded: widget.initiallyExpanded,
+        shape: const Border(),
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.reorderIndex != null)
+              ReorderableDragStartListener(
+                index: widget.reorderIndex!,
+                child: const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: Icon(Icons.drag_indicator, semanticLabel: "Move question"),
+                ),
+              ),
+            CircleAvatar(
+              backgroundColor: theme.colorScheme.primaryContainer,
+              child: Text(_q.pointsPlus.toString(), style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onPrimaryContainer)),
+            ),
+          ],
+        ),
+        title: Text(_q.text.isEmpty ? "New question" : _q.text, maxLines: 2, overflow: TextOverflow.ellipsis),
+        subtitle: Text(_q.type.uiString),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+        expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              DropdownMenu<QuestionType>(
+                label: const Text("Type"),
+                initialSelection: _q.type,
+                dropdownMenuEntries: [
+                  for (final type in QuestionType.values)
+                    if (type != QuestionType.unsupported || _q.type == type) DropdownMenuEntry(value: type, label: type.uiString),
+                ],
+                onSelected: (type) {
+                  if (type != null && type != QuestionType.unsupported) _save({'type': type.name});
+                },
+              ),
+              _points(_plus, "If right +", 'pointsPlus'),
+              _points(_minus, "If wrong −", 'pointsMinus'),
+              MediaButton(gameId: widget.gameId, kind: MediaKind.image, name: _q.image, onChanged: (name) => _save({'image': name})),
+              MediaButton(gameId: widget.gameId, kind: MediaKind.audio, name: _q.music, onChanged: (name) => _save({'music': name})),
+              IconButton(
+                icon: const Icon(Icons.queue_music),
+                tooltip: "Music and effects",
+                onPressed: () =>
+                    showSoundsDialog(context, gameId: widget.gameId, title: "Sounds for this question", data: _q.data, save: _save),
+              ),
+              IconButton(
+                icon: const Icon(Icons.visibility_outlined),
+                tooltip: "Preview",
+                onPressed: () {
+                  _flush();
+                  showQuestionPreview(context, gameId: widget.gameId, categoryId: widget.categoryId, question: _q);
+                },
+              ),
+              IconButton(icon: const Icon(Icons.delete_outline), tooltip: "Delete question", onPressed: _delete),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _text,
+            decoration: const InputDecoration(labelText: "Question"),
+            minLines: 1,
+            maxLines: 4,
+            onChanged: (value) => _save({'question': value}),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _description,
+            decoration: const InputDecoration(labelText: "Label", helperText: "Small badge shown on the question card"),
+            onChanged: (value) => _save({'description': value}),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _hint,
+            decoration: const InputDecoration(labelText: "Answer hint", helperText: "Only the gamemaster sees this"),
+            minLines: 1,
+            maxLines: 4,
+            onChanged: (value) => _save({'answerHint': value}),
+          ),
+          const SizedBox(height: 12),
+          Text(questionTypeExplanation(_q.type), style: theme.textTheme.bodySmall),
+          QuestionTypeEditor(
+            key: ValueKey(_q.type),
+            gameId: widget.gameId,
+            question: _q,
+            save: _save,
+            onImported: (text, answerHint) {
+              _text.text = text;
+              _hint.text = answerHint;
+            },
+          ),
+          // A Fragenhagel brings its own screen for the teams' devices.
+          if (_q.type != QuestionType.rapidFire && _q.type != QuestionType.matching && _q.type != QuestionType.topAnswers)
+            CompanionEditor(key: ValueKey('companion-${_q.type}'), gameId: widget.gameId, question: _q, save: _save),
+        ],
+      ),
+    );
+  }
+}
