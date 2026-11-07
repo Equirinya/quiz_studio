@@ -459,6 +459,57 @@ void main() {
     _done();
   });
 
+  // App Store product page header and search results assets (App Store
+  // Connect → Asset Library). One look for both, as Apple recommends: a
+  // single idea (your own TV quiz show), the real screens so the purpose is
+  // obvious in search, a short phrase, no prices, URLs or awards, and
+  // nothing important outside the middle. The universal 16:9 asset keeps its
+  // content inside the part both crops share (21:9 for the header, 3:2 for
+  // search results: 84 % of the width, 76 % of the height).
+  final promos = <String, (Size, EdgeInsets)>{
+    'appstore_header': (const Size(3840, 1646), const EdgeInsets.symmetric(horizontal: 0.08, vertical: 0.1)),
+    'appstore_search_results': (const Size(3840, 2560), const EdgeInsets.symmetric(horizontal: 0.07, vertical: 0.12)),
+    'appstore_universal': (const Size(5244, 2950), const EdgeInsets.symmetric(horizontal: 0.12, vertical: 0.17)),
+  };
+  const promoTexts = {
+    'en': ("Your own TV\nquiz show", "On the big screen, hosted from your phone."),
+    'de': ("Deine Quizshow\nwie im TV", "Auf dem großen Bildschirm, moderiert vom Handy."),
+  };
+  for (final MapEntry(key: name, value: (px, safe)) in promos.entries) {
+    for (final MapEntry(key: lang, value: (headline, subtitle)) in promoTexts.entries) {
+      testWidgets('$name ($lang)', (tester) async {
+        await _window(tester, px);
+        const logical = 1600.0;
+        final height = logical * px.height / px.width;
+        final controller = _host(const [OpenQuestion(QuestionRef('music', 'q2')), Buzz('quizzards')]);
+        final (canvas, devices) = _pair(true, _presenter(_host(const [])), _phone, _controller(controller), width: 400);
+        final graphic = _text(Stack(fit: StackFit.expand, children: [
+          const _Backdrop(1),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: logical * safe.left, vertical: height * safe.top),
+            child: Row(children: [
+              Expanded(
+                flex: 4,
+                child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  _logo(34),
+                  const SizedBox(height: 34),
+                  Text(headline, style: const TextStyle(fontSize: 64, height: 1.05, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 18),
+                  Text(subtitle, style: TextStyle(fontSize: 28, height: 1.3, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.92))),
+                ]),
+              ),
+              const SizedBox(width: 48),
+              Expanded(flex: 6, child: FittedBox(child: SizedBox.fromSize(size: canvas, child: devices))),
+            ]),
+          ),
+        ]));
+        await _pumpWithIcon(tester, _scaled(logical, px, graphic));
+        await expectLater(find.byType(RepaintBoundary).first, matchesGoldenFile('../screenshots/${name}_$lang.png'));
+        _done();
+      });
+    }
+  }
+
   // Plain screens for the README and the website.
   final plain = <String, (Size, double, bool, Widget Function())>{
     'big_screen_board': (_tv, 1.2, true, () => _presenter(_host(const []))),
