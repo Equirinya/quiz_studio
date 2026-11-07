@@ -44,7 +44,8 @@ Future<void> _load() async {
 const _specs = {
   'playstore_phone': Size(1080, 1920), // 9:16
   'playstore_tablet': Size(1800, 2560), // 10" tablet
-  'appstore_iphone_6_5': Size(1284, 2778), // iPhone 6.5"
+  'appstore_iphone_6_3': Size(1206, 2622), // iPhone with Dynamic Island, 6.1"/6.3"
+  'appstore_iphone_duo': Size(2007, 2853), // iPhone Duo
   'appstore_ipad_13': Size(2064, 2752), // iPad 13"
   'microsoft_store': Size(1920, 1080), // Windows, 16:9
 };
