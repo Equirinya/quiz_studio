@@ -14,11 +14,19 @@ brackets.
 | `appstore_iphone_6_5/` | 1284 × 2778 | App Store, iPhone 6.5" display |
 | `appstore_ipad_13/` | 2064 × 2752 | App Store, iPad 13" display |
 | `microsoft_store/` | 1920 × 1080 | Microsoft Store, desktop screenshots |
+| `appstore_header_<en/de>.png` | 3840 × 1646 | App Store, product page header (Asset Library) |
+| `appstore_search_results_<en/de>.png` | 3840 × 2560 | App Store, search results (Asset Library) |
+| `appstore_universal_<en/de>.png` | 5244 × 2950 | App Store, one 16:9 image for both header and search results |
 
 Order: board, controller, whiteboards, connections, feud, editor. Made with
 `flutter test tool/store_screenshots_test.dart --update-goldens`. If App Store
 Connect asks for 6.9" iPhone images (1320 × 2868), add that size to `_specs`
 in that file.
+
+For the header and search results, upload either the two sized images, or the
+universal one for both ("Use header asset in search results"). Its content
+sits in the middle part that survives both crops. Check them in App Store
+Connect's preview, in Dark Mode too.
 
 ## English
 
