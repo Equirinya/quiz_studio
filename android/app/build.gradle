@@ -23,7 +23,7 @@ if (keystorePropertiesFile.exists()) {
 
 
 android {
-    namespace "de.equirinya.quiz_show"
+    namespace "de.equirinya.quizStudio"
     compileSdk flutter.compileSdkVersion
     ndkVersion "28.2.13676358"
 
@@ -41,7 +41,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "de.equirinya.quiz_show"
+        applicationId "de.equirinya.quizStudio"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
         // From Flutter and pubspec.yaml, so a fresh checkout (as on CI) builds

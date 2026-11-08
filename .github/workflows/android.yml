@@ -1,5 +1,5 @@
 ###necessary github action repository variables:
-#ANDROID_BUNDLE_ID   de.equirinya.quiz_show
+#ANDROID_BUNDLE_ID   de.equirinya.quizStudio
 #KEY_ALIAS
 #FLUTTER_VERSION
 

@@ -8,7 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Fallback store link, used when `config/app` doesn't provide one.
-const String _kAndroidPackage = 'de.equirinya.quiz_show';
+const String _kAndroidPackage = 'de.equirinya.quizStudio';
 
 /// Compares two dot-separated version strings numerically.
 ///
