@@ -41,3 +41,8 @@ iOS Firebase SDK as these copies (`firebaseSdkVersion` in each
 `ios/<package>/Package.swift`, compared with `ios/firebase_sdk_version.rb` in
 `firebase_core`). If they differ, the iOS build fails while resolving Swift
 packages.
+
+## firebase_linux
+
+Not a copy: Dart-only Linux implementations of all four Firebase plugins,
+which have none upstream. See `firebase_linux/README.md`.
