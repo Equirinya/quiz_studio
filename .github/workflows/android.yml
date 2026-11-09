@@ -46,6 +46,16 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      # Keeps Gradle's downloads (Gradle itself, the Kotlin compiler, the
+      # libraries) between runs, so a run only has to fetch what is new.
+      # Saved on every branch (not only master) and also after a failed
+      # build, so whatever one run got through is not downloaded again.
+      - name: Cache Gradle downloads
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          cache-read-only: false
+
       # Step 3: Set up Flutter SDK
       - name: Set up Flutter SDK
         uses: flutter-actions/setup-flutter@v4
@@ -95,16 +105,36 @@ jobs:
       # Step 8: Build APK
       - name: Build APK
         run: |
-          flutter build apk --release `
-            --build-number=$env:BUILD_NUMBER `
-            --build-name=$env:VERSION
+          # Downloads from GitHub's release servers time out now and then
+          # (504); try again a few times, waiting a bit longer each time.
+          for ($try = 1; $try -le 4; $try++) {
+            flutter build apk --release `
+              --build-number=$env:BUILD_NUMBER `
+              --build-name=$env:VERSION
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            if ($try -lt 4) {
+              Write-Output "Build failed (try $try of 4), trying again in $($try * 60) s"
+              Start-Sleep -Seconds ($try * 60)
+            }
+          }
+          exit 1
 
       # Step 9: Build App Bundle
       - name: Build App Bundle
         run: |
-          flutter build appbundle --release `
-            --build-number=$env:BUILD_NUMBER `
-            --build-name=$env:VERSION
+          # Downloads from GitHub's release servers time out now and then
+          # (504); try again a few times, waiting a bit longer each time.
+          for ($try = 1; $try -le 4; $try++) {
+            flutter build appbundle --release `
+              --build-number=$env:BUILD_NUMBER `
+              --build-name=$env:VERSION
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            if ($try -lt 4) {
+              Write-Output "Build failed (try $try of 4), trying again in $($try * 60) s"
+              Start-Sleep -Seconds ($try * 60)
+            }
+          }
+          exit 1
 
       # Step 10: Create Release and Upload Assets
       - name: Create Release and Upload Assets
