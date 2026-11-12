@@ -42,7 +42,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get navSessions => 'Sessions';
 
   @override
-  String get couldNotOpenStore => 'Der Store ließ sich nicht öffnen';
+  String get couldNotOpenStore => 'Store lässt sich nicht öffnen';
 
   @override
   String get downloadPage => 'Download-Seite';
@@ -52,11 +52,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get updateRequiredText =>
-      'Diese Version der App wird nicht mehr unterstützt. Bitte aktualisiere sie, um weiterzumachen.';
+      'Diese Version wird nicht mehr unterstützt. Bitte aktualisiere die App.';
 
   @override
   String installedAndRequired(String installed, String required) {
-    return 'Installiert $installed · nötig $required';
+    return 'Installiert: $installed · nötig: $required';
   }
 
   @override
@@ -80,60 +80,57 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get upgradeSubtitle =>
-      'Deine Spiele bleiben bei diesem Konto. Danach kannst du dich auf deinen anderen Geräten damit anmelden.';
+      'Deine Spiele bleiben erhalten. Danach kannst du dich auch auf deinen anderen Geräten anmelden.';
 
   @override
-  String get upgradeDone =>
-      'Fertig. Dieses Konto hat jetzt eine E-Mail-Adresse.';
+  String get upgradeDone => 'Fertig. Dein Konto hat jetzt eine E-Mail-Adresse.';
 
   @override
   String get signOut => 'Abmelden';
 
   @override
   String get signOutGuestWarning =>
-      'Du bist als Gast angemeldet. Beim Abmelden gehen dieses Konto und die Spiele verloren, auf die nur es Zugriff hat. Füge zuerst eine E-Mail-Adresse hinzu, um sie zu behalten.';
+      'Du bist als Gast angemeldet. Wenn du dich abmeldest, sind dieses Konto und alle Spiele weg, die nur darin liegen. Füg vorher eine E-Mail-Adresse hinzu, um sie zu behalten.';
 
   @override
   String get signOutInfo =>
-      'Du kannst dich mit deiner E-Mail-Adresse und deinem Passwort wieder anmelden.';
+      'Du kannst dich jederzeit mit E-Mail und Passwort wieder anmelden.';
 
   @override
-  String get deletingAccount => 'Dein Konto wird gelöscht …';
+  String get deletingAccount => 'Konto wird gelöscht …';
 
   @override
-  String get accountDeleted => 'Dein Konto und seine Daten sind gelöscht.';
+  String get accountDeleted => 'Dein Konto und deine Daten sind gelöscht.';
 
   @override
   String get accountNotDeletedConnection =>
-      'Das Konto ließ sich nicht löschen. Prüfe die Verbindung und versuch es noch mal.';
+      'Konto konnte nicht gelöscht werden. Prüf deine Verbindung und versuch es noch mal.';
 
   @override
-  String get nameSubtitle =>
-      'Der Name, den andere Spieler und Mitautoren sehen';
+  String get nameSubtitle => 'So sehen dich Mitspieler und Mitautoren';
 
   @override
   String get guestAccount => 'Gastkonto';
 
   @override
   String get guestAccountText =>
-      'Deine Spiele gibt es nur im Konto dieses Geräts. Füge E-Mail-Adresse und Passwort hinzu, damit sie sicher sind und du dich auf deinen anderen Geräten anmelden kannst, zum Beispiel am PC, der präsentiert, und am Handy, das steuert.';
+      'Deine Spiele liegen nur im Konto auf diesem Gerät. Füg E-Mail und Passwort hinzu, damit sie sicher sind und du dich auch auf anderen Geräten anmelden kannst, z. B. am PC für die Show und am Handy zum Steuern.';
 
   @override
   String get emailSubtitle =>
-      'Melde dich mit dieser Adresse auf deinen anderen Geräten an';
+      'Damit meldest du dich auf deinen anderen Geräten an';
 
   @override
   String get deleteAccount => 'Konto löschen';
 
   @override
-  String get deleteAccountSubtitle =>
-      'Dein Profil, deine eigenen Spiele und deine Sessions';
+  String get deleteAccountSubtitle => 'Profil, eigene Spiele und Sessions';
 
   @override
   String get contact => 'Kontakt';
 
   @override
-  String get contactSubtitle => 'Feedback, Fehlerberichte und Wünsche';
+  String get contactSubtitle => 'Feedback, Bugs und Wünsche';
 
   @override
   String get terms => 'Nutzungsbedingungen';
@@ -142,42 +139,42 @@ class AppLocalizationsDe extends AppLocalizations {
   String get privacy => 'Datenschutz';
 
   @override
-  String get aboutAndLicences => 'Über die App und Lizenzen';
+  String get aboutAndLicences => 'Über & Lizenzen';
 
   @override
   String get soundCredits => 'Sound-Quellen';
 
   @override
-  String get soundCreditsSubtitle => 'Woher die eingebauten Sounds stammen';
+  String get soundCreditsSubtitle => 'Woher die Sounds kommen';
 
   @override
   String get deleteAccountQuestion => 'Konto löschen?';
 
   @override
   String get deleteAccountText =>
-      'Das löscht dein Profil, die Spiele, in denen nur du bist, mit ihren Bildern und Sounds, und die Sessions, die du leitest. Geteilte Spiele bleiben bei den anderen; bist du dort der einzige Admin, wird ein Mitautor Admin. Das lässt sich nicht rückgängig machen.';
+      'Gelöscht werden dein Profil, die Spiele, in denen nur du bist (mit Bildern und Sounds), und die Sessions, die du leitest. Geteilte Spiele bleiben für die anderen erhalten; bist du dort der einzige Admin, wird ein Mitautor Admin. Das kann nicht rückgängig gemacht werden.';
 
   @override
   String get password => 'Passwort';
 
   @override
-  String get wrongPassword => 'Das Passwort stimmt nicht.';
+  String get wrongPassword => 'Falsches Passwort.';
 
   @override
   String get tooManyTries =>
-      'Zu viele Versuche. Warte kurz und versuch es noch mal.';
+      'Zu viele Versuche. Warte kurz und versuch es dann noch mal.';
 
   @override
   String get requiresRecentLogin =>
-      'Melde dich ab, wieder an und lösche dann das Konto.';
+      'Bitte melde dich einmal ab und wieder an, dann klappt das Löschen.';
 
   @override
   String get noConnectionTryOnline =>
-      'Keine Verbindung. Versuch es noch mal, wenn du online bist.';
+      'Keine Verbindung. Versuch es noch mal, sobald du online bist.';
 
   @override
   String get accountNotDeleted =>
-      'Das Konto ließ sich nicht löschen. Versuch es noch mal.';
+      'Konto konnte nicht gelöscht werden. Versuch es noch mal.';
 
   @override
   String get language => 'Sprache';
@@ -196,31 +193,29 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get emailInUse =>
-      'Mit dieser E-Mail-Adresse gibt es schon ein Konto. Melde dich stattdessen dort an.';
+      'Diese E-Mail-Adresse hat schon ein Konto. Melde dich lieber damit an.';
 
   @override
-  String get invalidEmail => 'Das ist keine gültige E-Mail-Adresse.';
+  String get invalidEmail => 'Ungültige E-Mail-Adresse.';
 
   @override
-  String get weakPassword => 'Bitte wähle ein stärkeres Passwort.';
+  String get weakPassword => 'Bitte nimm ein sichereres Passwort.';
 
   @override
   String get alreadyHasEmail => 'Dieses Konto hat schon eine E-Mail-Adresse.';
 
   @override
-  String get restartAndRetry =>
-      'Starte die App zur Sicherheit neu und versuch es noch mal.';
+  String get restartAndRetry => 'Starte die App neu und versuch es noch mal.';
 
   @override
-  String get notConnected => 'Du bist nicht mit dem Internet verbunden.';
+  String get notConnected => 'Du bist offline.';
 
   @override
   String get emailSignInOff =>
-      'Die Anmeldung per E-Mail ist für diese App ausgeschaltet.';
+      'Anmeldung per E-Mail ist für diese App deaktiviert.';
 
   @override
-  String get didNotWorkTryAgain =>
-      'Das hat nicht geklappt. Bitte versuch es noch mal.';
+  String get didNotWorkTryAgain => 'Hat nicht geklappt. Versuch es noch mal.';
 
   @override
   String get unknownUser => 'Unbekannt';
@@ -250,35 +245,35 @@ class AppLocalizationsDe extends AppLocalizations {
   String get confirmPassword => 'Passwort wiederholen';
 
   @override
-  String get passwordsDontMatch => 'Die Passwörter stimmen nicht überein.';
+  String get passwordsDontMatch => 'Die Passwörter sind nicht gleich.';
 
   @override
-  String get featureBuildTitle => 'Gemeinsam Quizze bauen';
+  String get featureBuildTitle => 'Quizze zusammen bauen';
 
   @override
   String get featureBuildText =>
-      'Schreib Kategorien und Fragen mit Freunden, ohne euch etwas zu verraten.';
+      'Schreib Kategorien und Fragen mit Freunden, ohne euch die Antworten zu spoilern.';
 
   @override
-  String get featurePresentTitle => 'Auf dem großen Bildschirm zeigen';
+  String get featurePresentTitle => 'Ab auf den großen Bildschirm';
 
   @override
   String get featurePresentText =>
-      'Zeig die Show auf dem Fernseher oder Beamer und steuere sie vom Handy aus.';
+      'Zeig die Show auf dem Fernseher oder Beamer und steuer sie vom Handy.';
 
   @override
   String get featureBuzzersTitle => 'Handys als Buzzer';
 
   @override
   String get featureBuzzersText =>
-      'Mitspieler scannen einen Code und sind dabei. Arduino-Buzzer gehen auch.';
+      'Code scannen und mitspielen. Arduino-Buzzer gehen auch.';
 
   @override
   String get featureMusicTitle => 'Musik und Soundeffekte';
 
   @override
   String get featureMusicText =>
-      'Hintergrundmusik, Sounds beim Aufdecken und ein Buzzer-Sound pro Team.';
+      'Hintergrundmusik, Sounds beim Aufdecken und ein eigener Buzzer-Sound pro Team.';
 
   @override
   String get enterValidEmail => 'Bitte gib eine gültige E-Mail-Adresse ein.';
@@ -288,7 +283,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noAccountForEmail =>
-      'Zu dieser E-Mail-Adresse gibt es kein Konto.';
+      'Für diese E-Mail-Adresse gibt es kein Konto.';
 
   @override
   String get wrongEmailOrPassword => 'E-Mail-Adresse oder Passwort falsch.';
@@ -297,52 +292,51 @@ class AppLocalizationsDe extends AppLocalizations {
   String get invalidEmailShort => 'Ungültige E-Mail-Adresse.';
 
   @override
-  String get accountDisabled => 'Dieses Konto wurde gesperrt.';
+  String get accountDisabled => 'Dieses Konto ist gesperrt.';
 
   @override
   String get tooManyAttempts =>
-      'Zu viele Versuche. Bitte versuch es später noch mal.';
+      'Zu viele Versuche. Versuch es später noch mal.';
 
   @override
   String get signInFailed =>
-      'Anmeldung fehlgeschlagen. Bitte versuch es noch mal.';
+      'Anmeldung hat nicht geklappt. Versuch es noch mal.';
 
   @override
   String get anonymousSignInDisabled =>
-      'Die anonyme Anmeldung ist ausgeschaltet. Bitte versuch es später noch mal.';
+      'Anmeldung ohne Konto ist gerade deaktiviert. Versuch es später noch mal.';
 
   @override
-  String get couldNotStart =>
-      'Der Start hat nicht geklappt. Bitte versuch es noch mal.';
+  String get couldNotStart => 'Hat nicht geklappt. Versuch es noch mal.';
 
   @override
-  String get unknownError => 'Ein unbekannter Fehler ist aufgetreten.';
+  String get unknownError => 'Unbekannter Fehler.';
 
   @override
   String get couldNotSaveName =>
-      'Dein Name ließ sich nicht speichern. Bitte versuch es noch mal.';
+      'Name konnte nicht gespeichert werden. Versuch es noch mal.';
 
   @override
   String get login => 'Anmelden';
 
   @override
   String get chooseYourName =>
-      'Wähle den Namen, den andere Spieler und Mitautoren sehen:';
+      'Wähl den Namen, den Mitspieler und Mitautoren sehen:';
 
   @override
   String get theNameOthersWillSee => 'Der Name, den andere sehen';
 
   @override
-  String get justJoinAShow => 'Nur bei einer Show mitspielen';
+  String get justJoinAShow => 'Nur mitspielen';
 
   @override
-  String get useDifferentAccount => 'Anderes Konto verwenden';
+  String get useDifferentAccount => 'Anderes Konto';
 
   @override
-  String get haveAnAccount => 'Ich habe schon ein Konto';
+  String get haveAnAccount => 'Ich hab schon ein Konto';
 
   @override
-  String get termsBefore => 'Mit dem Fortfahren stimmst du den ';
+  String get termsBefore => 'Wenn du weitermachst, stimmst du den ';
 
   @override
   String get termsLink => 'Nutzungsbedingungen';
@@ -366,14 +360,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get joinAShow => 'Bei einer Show mitspielen';
 
   @override
-  String get createOwnQuizzes => 'Eigene Quizze erstellen';
+  String get createOwnQuizzes => 'Eigene Quizze bauen';
 
   @override
-  String get creditsMadeForApp => 'Für Quiz Studio gemacht';
+  String get creditsMadeForApp => 'Extra für Quiz Studio gemacht';
 
   @override
   String creditsMadeBy(String name) {
-    return 'Gemacht von $name';
+    return 'Von $name';
   }
 
   @override
@@ -384,7 +378,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get creditsIntro =>
-      'Die Sounds von Quiz Studio wurden dafür gemacht oder sind für jedes Projekt frei nutzbar (CC0). Tippe auf eine Quelle, um zu sehen, woher sie stammt.';
+      'Die Sounds in Quiz Studio wurden extra dafür gemacht oder sind frei nutzbar (CC0). Tippe auf eine Quelle, um zu sehen, woher ein Sound kommt.';
 
   @override
   String questionTypeName(String type) {
@@ -429,8 +423,8 @@ class AppLocalizationsDe extends AppLocalizations {
       'whiteboard': 'Whiteboard',
       'text': 'Text',
       'number': 'Zahl',
-      'slider': 'Schieberegler',
-      'choice': 'Eins auswählen',
+      'slider': 'Slider',
+      'choice': 'Auswahl',
       'order': 'Reihenfolge',
       'match': 'Paare zuordnen',
       'connections': 'Wortgruppen',
@@ -452,7 +446,7 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String turnOrderName(String order) {
     String _temp0 = intl.Intl.selectLogic(order, {
-      'teams': 'In der Reihenfolge der Teams',
+      'teams': 'Wie die Teams sortiert sind',
       'mostPoints': 'Meiste Punkte zuerst',
       'other': 'Wenigste Punkte zuerst',
     });
@@ -473,7 +467,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String rapidModeName(String mode) {
     String _temp0 = intl.Intl.selectLogic(mode, {
       'buzzer': 'Teams buzzern',
-      'other': 'Richtig oder falsch auf den Geräten der Teams',
+      'other': 'Richtig/falsch auf den Geräten',
     });
     return '$_temp0';
   }
@@ -484,7 +478,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'off': 'Keine Fortschrittsanzeige',
       'bar': 'Balken',
       'dots': 'Punkte',
-      'battery': 'Batterie',
+      'battery': 'Akku',
       'thermometer': 'Thermometer',
       'other': 'Fluxkompensator',
     });
@@ -495,8 +489,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String topAnswersModeName(String mode) {
     String _temp0 = intl.Intl.selectLogic(mode, {
       'buzzer': 'Teams buzzern',
-      'typed': 'Auf den Geräten der Teams getippt',
-      'other': 'Auf ein Whiteboard geschrieben',
+      'typed': 'Auf den Geräten tippen',
+      'other': 'Aufs Whiteboard schreiben',
     });
     return '$_temp0';
   }
@@ -506,11 +500,11 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(animation, {
       'off': 'Aus',
       'fade': 'Einblenden',
-      'slideUp': 'Von unten hereinschieben',
-      'slideDown': 'Von oben hereinschieben',
-      'bounce': 'Hereinhüpfen',
-      'zoom': 'Zoomen',
-      'spin': 'Hereindrehen',
+      'slideUp': 'Von unten',
+      'slideDown': 'Von oben',
+      'bounce': 'Reinhüpfen',
+      'zoom': 'Zoom',
+      'spin': 'Reindrehen',
       'other': 'Umklappen',
     });
     return '$_temp0';
@@ -540,8 +534,8 @@ class AppLocalizationsDe extends AppLocalizations {
       'applause': 'Applaus!',
       'quiet': 'Ruhe bitte',
       'break': 'Pause',
-      'final_round': 'Finalrunde',
-      'winner': 'Und der Sieg geht an …',
+      'final_round': 'Finale',
+      'winner': 'Und gewonnen hat …',
       'other': 'Bild',
     });
     return '$_temp0';
@@ -560,32 +554,32 @@ class AppLocalizationsDe extends AppLocalizations {
   String get name => 'Name';
 
   @override
-  String get couldNotCreateGame => 'Das Spiel ließ sich nicht erstellen.';
+  String get couldNotCreateGame => 'Spiel konnte nicht erstellt werden.';
 
   @override
-  String get joinWithInviteLink => 'Mit einem Einladungslink beitreten';
+  String get joinWithInviteLink => 'Per Einladungslink beitreten';
 
   @override
-  String get couldNotLoadGames => 'Deine Spiele ließen sich nicht laden.';
+  String get couldNotLoadGames => 'Deine Spiele konnten nicht geladen werden.';
 
   @override
   String get noGamesYet => 'Noch keine Spiele';
 
   @override
   String get noGamesYetText =>
-      'Erstell dein erstes Quiz oder lass dich von Freunden zu ihrem einladen.';
+      'Bau dein erstes Quiz oder lass dich von Freunden zu ihrem einladen.';
 
   @override
   String get unnamed => 'Ohne Namen';
 
   @override
-  String get couldNotUploadPicture => 'Das Bild ließ sich nicht hochladen.';
+  String get couldNotUploadPicture => 'Bild konnte nicht hochgeladen werden.';
 
   @override
   String get map => 'Spielplan';
 
   @override
-  String get groupNotAvailable => 'Diese Gruppe ist nicht verfügbar.';
+  String get groupNotAvailable => 'Diese Gruppe gibt es nicht mehr.';
 
   @override
   String newBoard(String type) {
@@ -611,7 +605,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get newCategory => 'Neue Kategorie';
 
   @override
-  String get hideOne => 'Eins verbergen';
+  String get hideOne => 'Eins zudecken';
 
   @override
   String revealedOf(int revealed, int steps) {
@@ -622,7 +616,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get revealNext => 'Nächstes aufdecken';
 
   @override
-  String get boardColours => 'Farben des Spielbretts';
+  String get boardColours => 'Board-Farben';
 
   @override
   String get primaryColour => 'Hauptfarbe';
@@ -640,15 +634,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get timer => 'Timer';
 
   @override
-  String get teamsCanLockIn => 'Teams können früher einloggen';
+  String get teamsCanLockIn => 'Teams dürfen früher einloggen';
 
   @override
   String get lockInOnText =>
-      'Einloggen beendet die Zeit eines Teams, und wie lange es gebraucht hat, wird festgehalten';
+      'Einloggen stoppt die Zeit des Teams; die gebrauchte Zeit wird gemerkt';
 
   @override
   String get lockInOffText =>
-      'Jede Antwort zählt so, wie sie steht, wenn die Zeit um ist oder du die Runde beendest';
+      'Jede Antwort zählt so, wie sie ist, wenn die Zeit um ist oder du die Runde beendest';
 
   @override
   String musicCount(int count) {
@@ -692,7 +686,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get gameNotAvailable => 'Dieses Spiel ist nicht verfügbar.';
+  String get gameNotAvailable => 'Dieses Spiel gibt es nicht mehr.';
 
   @override
   String get copiedGame => 'Spiel mit Antworten kopiert.';
@@ -705,7 +699,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String deleteGameText(String name) {
-    return '„$name“ und alle seine Fragen werden für alle gelöscht.';
+    return '„$name“ und alle Fragen darin werden für alle gelöscht.';
   }
 
   @override
@@ -713,7 +707,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String leaveGameText(String name) {
-    return 'Du verlierst den Zugriff auf „$name“, bis dich jemand wieder einlädt.';
+    return 'Du hast keinen Zugriff mehr auf „$name“, bis dich jemand wieder einlädt.';
   }
 
   @override
@@ -726,13 +720,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noneYet => 'Noch keine';
 
   @override
-  String get soundsForGame => 'Sounds für das ganze Spiel';
+  String get soundsForGame => 'Sounds fürs ganze Spiel';
 
   @override
   String get cards => 'Karten';
 
   @override
-  String get cardsForGame => 'Karten für das ganze Spiel';
+  String get cardsForGame => 'Karten fürs ganze Spiel';
 
   @override
   String get people => 'Personen';
@@ -748,7 +742,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get nothingSharedYet =>
-      'Hier ist noch nichts. Bitte einen Admin, eine Kategorie mit dir zu teilen.';
+      'Hier ist noch nichts. Frag einen Admin, ob er eine Kategorie mit dir teilt.';
 
   @override
   String get onlyYou => 'Nur du';
@@ -765,7 +759,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get displayText => 'Anzeigetext';
 
   @override
-  String get shownOnBoard => 'Wird auf dem Spielbrett gezeigt';
+  String get shownOnBoard => 'Steht auf dem Board';
 
   @override
   String categoryCount(int count) {
@@ -782,35 +776,35 @@ class AppLocalizationsDe extends AppLocalizations {
   String get ownSounds => 'eigene Sounds';
 
   @override
-  String get usesGames => 'Die des Spiels';
+  String get usesGames => 'Vom Spiel';
 
   @override
-  String get soundsForBoard => 'Sounds für dieses Spielbrett';
+  String get soundsForBoard => 'Sounds für dieses Board';
 
   @override
-  String get onlyGames => 'Nur die des Spiels';
+  String get onlyGames => 'Nur vom Spiel';
 
   @override
-  String get cardsForBoard => 'Karten für dieses Spielbrett';
+  String get cardsForBoard => 'Karten für dieses Board';
 
   @override
   String get colours => 'Farben';
 
   @override
-  String get appsColours => 'Die Farben der App';
+  String get appsColours => 'App-Farben';
 
   @override
   String get ownColours => 'Eigene Farben';
 
   @override
-  String get textOnBoard => 'Text auf dem Spielbrett';
+  String get textOnBoard => 'Text auf dem Board';
 
   @override
   String get splitPointFields => 'Punktefelder teilen';
 
   @override
   String get splitPointFieldsText =>
-      'Wenn ein Wert in einem Ring mehrmals vorkommt';
+      'Wenn ein Wert in einem Ring öfter vorkommt';
 
   @override
   String get arrangeMap => 'Spielplan anordnen';
@@ -820,7 +814,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get arrangeMapLong =>
-      'Blasen platzieren, verbinden, Titel, Bilder und Linien hinzufügen';
+      'Blasen setzen und verbinden, Titel, Bilder und Linien hinzufügen';
 
   @override
   String get labelsInsteadOfPoints => 'Beschriftungen statt Punkte';
@@ -830,25 +824,25 @@ class AppLocalizationsDe extends AppLocalizations {
       'Fragen ohne Beschriftung zeigen weiter ihre Punkte';
 
   @override
-  String get deleteBoard => 'Spielbrett löschen';
+  String get deleteBoard => 'Board löschen';
 
   @override
-  String get deleteBoardFirst => 'Verschieb oder lösch zuerst seine Kategorien';
+  String get deleteBoardFirst => 'Verschieb oder lösch zuerst die Kategorien';
 
   @override
   String get ungroupedCategories => 'Kategorien ohne Gruppe';
 
   @override
-  String get boardSettings => 'Spielbrett-Einstellungen';
+  String get boardSettings => 'Board-Einstellungen';
 
   @override
-  String get moveBoard => 'Spielbrett verschieben';
+  String get moveBoard => 'Board verschieben';
 
   @override
   String get addCategory => 'Kategorie hinzufügen';
 
   @override
-  String get moveToAnotherBoard => 'Auf ein anderes Spielbrett verschieben';
+  String get moveToAnotherBoard => 'Auf anderes Board verschieben';
 
   @override
   String comesAfterTitle(String name) {
@@ -856,10 +850,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get categoryBeforeIt => 'Der Kategorie davor (Standard)';
+  String get categoryBeforeIt => 'Die Kategorie davor (Standard)';
 
   @override
-  String get startsNewChain => 'Nichts: Sie beginnt eine neue Kette';
+  String get startsNewChain => 'Keine: Sie startet eine neue Kette';
 
   @override
   String get deleteCategory => 'Kategorie löschen';
@@ -870,10 +864,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get inPlayTip => 'Im Spiel: Tippen nimmt sie aus dem Spiel';
+  String get inPlayTip => 'Im Spiel: Tippen nimmt sie raus';
 
   @override
-  String get notInPlayTip => 'Nicht im Spiel: Tippen nimmt sie wieder auf';
+  String get notInPlayTip => 'Nicht im Spiel: Tippen holt sie zurück';
 
   @override
   String get moveCategory => 'Kategorie verschieben';
@@ -899,7 +893,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get moveDown => 'Nach unten';
 
   @override
-  String get moveToAnotherBoardMenu => 'Auf anderes Spielbrett …';
+  String get moveToAnotherBoardMenu => 'Auf anderes Board …';
 
   @override
   String get comesAfterMenu => 'Kommt nach …';
@@ -912,7 +906,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get shareCategoryText =>
-      'Mitglieder mit eingeschränktem Zugriff sehen nur die Kategorien, die hier eingeschaltet sind.';
+      'Mitglieder mit eingeschränktem Zugriff sehen nur die Kategorien, die hier an sind.';
 
   @override
   String get createdThisCategory => 'Hat diese Kategorie erstellt';
@@ -932,19 +926,19 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get categoryNotAvailable => 'Diese Kategorie ist nicht verfügbar.';
+  String get categoryNotAvailable => 'Diese Kategorie gibt es nicht mehr.';
 
   @override
   String get addQuestion => 'Frage hinzufügen';
 
   @override
-  String get usesBoards => 'Die des Spielbretts';
+  String get usesBoards => 'Vom Board';
 
   @override
   String get soundsForCategory => 'Sounds für diese Kategorie';
 
   @override
-  String get onlyBoardsAndGames => 'Nur die des Spielbretts und Spiels';
+  String get onlyBoardsAndGames => 'Nur von Board und Spiel';
 
   @override
   String get cardsForCategory => 'Karten für diese Kategorie';
@@ -956,7 +950,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noQuestionsYet => 'Noch keine Fragen.';
 
   @override
-  String get couldNotSave => 'Speichern fehlgeschlagen.';
+  String get couldNotSave => 'Speichern hat nicht geklappt.';
 
   @override
   String get deleteQuestion => 'Frage löschen';
@@ -986,11 +980,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String pointsBetSummary(int limit) {
-    return 'Teams setzen ihre Punkte · mindestens $limit zum Setzen';
+    return 'Teams setzen ihre Punkte · bis $limit immer möglich';
   }
 
   @override
-  String get betOnHowMany => 'Wette auf die Anzahl';
+  String get betOnHowMany => 'Wetten, wie viele';
 
   @override
   String plusEach(int plus) {
@@ -1041,23 +1035,23 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get scoringRankedText =>
-      'Das erste Team bekommt die meisten Punkte, jedes danach etwas weniger. Die Reihenfolge ist die, in der die Teams eine richtige Antwort auf ihren Geräten eingeloggt haben, oder die, in der du sie antippst, z. B. wenn sie auf der Bühne fertig werden. Falsche Antworten kosten die Minuspunkte.';
+      'Das erste Team bekommt die meisten Punkte, jedes weitere etwas weniger. Die Reihenfolge ergibt sich daraus, wann die Teams eine richtige Antwort eingeloggt haben, oder wie du sie antippst, z. B. wenn sie auf der Bühne fertig werden. Falsche Antworten kosten die Minuspunkte.';
 
   @override
   String scoringPointsText(int limit) {
-    return 'Vor der Frage setzt jedes Team einen Teil seiner Punkte: Eine richtige Antwort gewinnt den Einsatz, eine falsche verliert ihn. Teams dürfen bis zu ihrem Punktestand setzen, oder bis zu $limit, wenn sie weniger haben.';
+    return 'Vor der Frage setzt jedes Team einen Teil seiner Punkte: Richtig gewinnt den Einsatz, falsch verliert ihn. Gesetzt werden darf bis zum eigenen Punktestand oder bis $limit, wenn das Team weniger hat.';
   }
 
   @override
   String get scoringAmountText =>
-      'Zuerst wird nur die Wettfrage gezeigt und jedes Team sagt, wie viele es schafft. Dann läuft die Frage; du entscheidest pro Team, ob es seine Zahl erreicht hat. Erreicht: die Punkte für jedes. Verfehlt: die Minuspunkte für jedes.';
+      'Zuerst kommt nur die Wettfrage, und jedes Team sagt, wie viele es schafft. Dann läuft die Frage, und du entscheidest pro Team, ob es seine Zahl geschafft hat. Geschafft: die Punkte für jedes. Verfehlt: die Minuspunkte für jedes.';
 
   @override
   String get betQuestion => 'Wettfrage';
 
   @override
   String get betQuestionHint =>
-      'Wie viele Science-Fiction-Filme kannst du nennen?';
+      'Wie viele Science-Fiction-Filme könnt ihr nennen?';
 
   @override
   String get points => 'Punkte';
@@ -1082,7 +1076,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String onTheBoard(int points) {
-    return '$points auf dem Spielbrett';
+    return '$points auf dem Board';
   }
 
   @override
@@ -1092,7 +1086,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get ifWrongMinus => 'Falsch −';
 
   @override
-  String get lessPerPlace => 'Weniger pro Platz';
+  String get lessPerPlace => 'Minus pro Platz';
 
   @override
   String get highestBet => 'Höchster Einsatz';
@@ -1101,7 +1095,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get musicAndEffects => 'Musik & Effekte';
 
   @override
-  String get theCategorys => 'Die der Kategorie';
+  String get theCategorys => 'Von der Kategorie';
 
   @override
   String get soundsForQuestion => 'Sounds für diese Frage';
@@ -1113,7 +1107,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get question => 'Frage';
 
   @override
-  String get answerHint => 'Antworthinweis';
+  String get answerHint => 'Hinweis zur Antwort';
 
   @override
   String get onlyGamemasterSees => 'Nur die Spielleitung sieht das';
@@ -1122,10 +1116,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get label => 'Beschriftung';
 
   @override
-  String get labelHelper => 'Kleines Abzeichen auf der Fragenkarte';
+  String get labelHelper => 'Kleines Badge auf der Fragenkarte';
 
   @override
-  String get labelTooltip => 'Ein kleines Abzeichen auf der Fragenkarte';
+  String get labelTooltip => 'Ein kleines Badge auf der Fragenkarte';
 
   @override
   String get howTeamsAnswer => 'Wie Teams antworten';
@@ -1147,11 +1141,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get explainFree =>
-      'Die einfachste Frage: keine Antwortmöglichkeiten und nichts aufzudecken. Unter „Wie Teams antworten“ lassen sich die Buzzer ausschalten, z. B. für Schätzfragen.';
+      'Die einfachste Frage: keine Antwortoptionen, nichts zum Aufdecken. Unter „Wie Teams antworten“ kannst du die Buzzer ausschalten, z. B. für Schätzfragen.';
 
   @override
   String get explainAbcd =>
-      'Zeigt richtige und falsche Antwortvorschläge, die die Spielleitung nacheinander aufdeckt.';
+      'Zeigt richtige und falsche Antworten, die die Spielleitung nach und nach aufdeckt.';
 
   @override
   String get explainProgressingReveal =>
@@ -1159,19 +1153,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get explainFeud =>
-      'Ein Duell um eine Umfrage: Das Team, das gebuzzert hat, deckt Antworten auf, bis es dreimal daneben liegt; dann darf das andere Team alle Punkte klauen.';
+      'Duell um eine Umfrage: Das Team, das gebuzzert hat, deckt Antworten auf, bis es drei Fehler hat. Dann darf das andere Team alle Punkte klauen.';
 
   @override
   String get explainTopAnswers =>
-      'Nenne die beliebtesten Antworten: Teams finden Antworten einer Liste, per Buzzer oder auf ihren Geräten, und bekommen die Punkte jeder einzelnen.';
+      'Die beliebtesten Antworten finden: Teams nennen Antworten von einer Liste, per Buzzer oder auf ihren Geräten, und kassieren die Punkte jeder Antwort.';
 
   @override
   String get explainConnections =>
-      'Sechzehn Wörter in vier Vierergruppen. Jedes Team löst sie auf seinem Gerät; jede gefundene Gruppe bringt ein Viertel der Punkte.';
+      'Sechzehn Wörter, vier Vierergruppen. Jedes Team rätselt auf seinem Gerät; jede gefundene Gruppe bringt ein Viertel der Punkte.';
 
   @override
   String get explainRapidFire =>
-      'Fragenhagel: viele kurze Fragen direkt hintereinander. Teams buzzern oder bewerten Aussagen auf ihren Geräten als richtig oder falsch; jede Frage kann ein Bild und einen Sound haben.';
+      'Fragenhagel: viele kurze Fragen Schlag auf Schlag. Teams buzzern oder tippen auf ihren Geräten richtig oder falsch; jede Frage kann ein Bild und einen Sound haben.';
 
   @override
   String get explainMatching =>
@@ -1179,11 +1173,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get explainLastStanding =>
-      'Wer bleibt übrig: Je ein Spieler pro Team ist abwechselnd dran, nennt z. B. Filme oder sagt, ob es über einen Star ein Biopic gibt. Eine falsche Antwort wirft das Team raus; das letzte Team bekommt die Punkte.';
+      'Wer bleibt übrig: Pro Team ist abwechselnd ein Spieler dran, nennt z. B. Filme oder sagt, ob es zu einem Star ein Biopic gibt. Wer falsch liegt, fliegt raus; das letzte Team kassiert die Punkte.';
 
   @override
   String get explainUnsupported =>
-      'Diese Version der App unterstützt diesen Fragetyp nicht.';
+      'Diesen Fragetyp kennt diese App-Version noch nicht.';
 
   @override
   String groupsNeedNameAndWords(int count) {
@@ -1211,7 +1205,7 @@ class AppLocalizationsDe extends AppLocalizations {
       one: 'Grün',
       zero: 'Gelb',
     );
-    return '$_temp0: was sie gemeinsam haben';
+    return '$_temp0: Gemeinsamkeit';
   }
 
   @override
@@ -1221,7 +1215,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get connectionsReady =>
-      'Fertig. Gelb soll die leichteste Gruppe sein und Lila die schwerste.';
+      'Fertig. Gelb sollte die leichteste Gruppe sein, Lila die schwerste.';
 
   @override
   String answerLetter(String letter) {
@@ -1261,7 +1255,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get pictureStripText =>
-      'Kleine Bilder unter der Frage, „?“ für die noch verborgenen';
+      'Kleine Bilder unter der Frage, „?“ für noch verdeckte';
 
   @override
   String get teamsBuzz => 'Teams buzzern';
@@ -1274,11 +1268,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get rapidDevicesText =>
-      'Jede Frage ist eine Aussage. Jedes Team wählt auf seinem Gerät richtig oder falsch; wenn du weitergehst, bekommt eine richtige Wahl die Punkte.';
+      'Jede Frage ist eine Aussage. Jedes Team tippt auf seinem Gerät richtig oder falsch; sobald du weitermachst, gibt\'s für richtige Tipps die Punkte.';
 
   @override
   String get rapidBuzzText =>
-      'Teams buzzern bei jeder Frage. Eine richtige Antwort bekommt die Punkte und es geht direkt zur nächsten.';
+      'Teams buzzern bei jeder Frage. Bei einer richtigen Antwort gibt\'s die Punkte und es geht direkt weiter.';
 
   @override
   String statementN(int n) {
@@ -1304,11 +1298,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get lastStandingText =>
-      'Je ein Spieler pro Team ist abwechselnd dran. Du bewertest jeden Zug: richtig, falsch (das Team ist raus) oder falsch, bleibt aber drin. Das letzte Team bekommt die Punkte.';
+      'Pro Team ist abwechselnd ein Spieler dran. Du bewertest jeden Zug: richtig, falsch (Team fliegt raus) oder falsch, bleibt aber drin. Das letzte Team kassiert die Punkte.';
 
   @override
   String get noPrompts =>
-      'Keine Vorgaben: Jeder Zug beantwortet die Frage selbst.';
+      'Keine Vorgaben: Jeder Zug beantwortet einfach die Frage.';
 
   @override
   String get onePromptPerTurn => 'Eine Vorgabe pro Zug, in dieser Reihenfolge.';
@@ -1323,11 +1317,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onlyWithDevices =>
-      'Nur mit den eigenen Geräten der Teams spielbar: Jedes Team braucht ein verbundenes Handy oder Tablet (Einrichten, dann Geräte verbinden). Ohne sie gibt es nichts zum Antworten.';
+      'Geht nur mit eigenen Geräten: Jedes Team braucht ein verbundenes Handy oder Tablet (Einrichten → Geräte verbinden). Ohne Geräte kann niemand antworten.';
 
   @override
   String get matchingEditorText =>
-      'Schreib jedes Paar so, wie es zusammengehört; die Teams bekommen die rechte Seite durcheinander. Eine Seite kann Text, Bild oder beides sein. Bilder erscheinen auf dem großen Bildschirm mit einem Buchstaben oder einer Zahl, die die Geräte zeigen.';
+      'Schreib jedes Paar so, wie es zusammengehört; die Teams bekommen die rechte Seite gemischt. Eine Seite kann Text, Bild oder beides sein. Bilder erscheinen auf dem großen Bildschirm mit einem Buchstaben oder einer Zahl, die auch auf den Geräten steht.';
 
   @override
   String get matchLeft => 'Links';
@@ -1352,19 +1346,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get topAnswersBuzzText =>
-      'Ein Team buzzert und nennt eine Antwort. Tippe die genannte an: Sie wird aufgedeckt und das Team bekommt ihre Punkte. Dann dürfen alle wieder buzzern.';
+      'Ein Team buzzert und nennt eine Antwort. Tipp sie an: Sie wird aufgedeckt und das Team bekommt die Punkte. Dann dürfen alle wieder buzzern.';
 
   @override
   String get topAnswersTypedText =>
-      'Jedes Team tippt seine Antworten in eine Liste auf seinem Gerät. Du hakst die gefundenen ab, mit Vorschlägen zu dem, was es getippt hat.';
+      'Jedes Team tippt seine Antworten in eine Liste auf seinem Gerät. Du hakst ab, was es gefunden hat, mit Vorschlägen passend zum Getippten.';
 
   @override
   String get topAnswersWhiteboardText =>
-      'Jedes Team schreibt seine Antworten auf ein nummeriertes Whiteboard. Du hakst die gefundenen ab.';
+      'Jedes Team schreibt seine Antworten auf ein nummeriertes Whiteboard. Du hakst ab, was es gefunden hat.';
 
   @override
   String get topAnswersListText =>
-      'Die beliebteste zuerst. Ohne eigene Punkte ist eine Antwort die Punkte der Frage wert. Weitere erlaubte Schreibweisen kommen nach einem /.';
+      'Beliebteste zuerst. Ohne eigene Punkte zählt eine Antwort so viel wie die Frage. Andere erlaubte Schreibweisen nach einem /.';
 
   @override
   String paperName(String paper) {
@@ -1380,15 +1374,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get connectionsDevicesText =>
-      'Jedes Team löst das Rätsel auf seinem Gerät. Du siehst live, welche Gruppen jedes Team gefunden hat.';
+      'Jedes Team löst das Rätsel auf seinem Gerät. Du siehst live, welche Gruppen jedes Team schon hat.';
 
   @override
   String get chooseDeviceScreenText =>
-      'Wähle, was sich mit der Frage auf jedem Gerät der Teams öffnet. Du siehst die Antworten, während sie geschrieben werden, und entscheidest, wann sie gezeigt werden.';
+      'Wähl, was sich mit der Frage auf den Geräten der Teams öffnet. Du siehst die Antworten live und entscheidest, wann sie gezeigt werden.';
 
   @override
   String get deviceScreenText =>
-      'Öffnet sich mit der Frage auf jedem Gerät der Teams. Du siehst die Antworten, während sie geschrieben werden, und entscheidest, wann sie gezeigt werden.';
+      'Öffnet sich mit der Frage auf den Geräten der Teams. Du siehst die Antworten live und entscheidest, wann sie gezeigt werden.';
 
   @override
   String get buzzer => 'Buzzer';
@@ -1409,7 +1403,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get rows => 'Zeilen';
 
   @override
-  String get choosePictureToDrawOn => 'Wähle das Bild, auf das gemalt wird';
+  String get choosePictureToDrawOn => 'Bild zum Draufmalen wählen';
 
   @override
   String get pictureSet => 'Bild gewählt';
@@ -1430,17 +1424,17 @@ class AppLocalizationsDe extends AppLocalizations {
   String get rightValue => 'Richtiger Wert';
 
   @override
-  String get rightWithin => 'Richtig innerhalb ±';
+  String get rightWithin => 'Richtig bei ±';
 
   @override
-  String get noBuzzingAtAll => 'Gar kein Buzzern';
+  String get noBuzzingAtAll => 'Ganz ohne Buzzer';
 
   @override
   String get noBuzzingAtAllText =>
-      'Auch Buzzer-Boxen bleiben aus, z. B. für Schätzfragen';
+      'Auch Buzzer-Boxen bleiben aus, z. B. bei Schätzfragen';
 
   @override
-  String get teamsCanStopEarly => 'Teams können früher aufhören';
+  String get teamsCanStopEarly => 'Teams dürfen früher aufhören';
 
   @override
   String get orderEditorText =>
@@ -1475,14 +1469,14 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get outLoudNoBuzzer => 'Laut sagen, kein Buzzer';
+  String get outLoudNoBuzzer => 'Laut sagen, ohne Buzzer';
 
   @override
   String get buzzerBoxesOnly => 'Nur Buzzer-Boxen';
 
   @override
   String sliderSummary(String from, String to) {
-    return 'Schieberegler $from–$to';
+    return 'Slider $from–$to';
   }
 
   @override
@@ -1492,7 +1486,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String orderSummary(int count) {
-    return '$count in Reihenfolge bringen';
+    return '$count sortieren';
   }
 
   @override
@@ -1524,20 +1518,20 @@ class AppLocalizationsDe extends AppLocalizations {
   String get offerInShow => 'In der Show anbieten';
 
   @override
-  String get keepOutOfShow => 'Aus der Show heraushalten';
+  String get keepOutOfShow => 'Nicht in der Show zeigen';
 
   @override
   String get edit => 'Bearbeiten';
 
   @override
   String get cardsDialogText =>
-      'Was du während der Show über den Bildschirm legen kannst, in dieser Reihenfolge angeboten. Tippe eine Karte an, um sie zu ändern, zieh sie am Griff, um sie zu verschieben, oder schalte sie aus, um sie aus der Show herauszuhalten.';
+      'Was du während der Show über den Bildschirm legen kannst, in dieser Reihenfolge. Tipp eine Karte an, um sie zu bearbeiten, zieh sie am Griff, um sie zu verschieben, oder schalte sie aus, um sie wegzulassen.';
 
   @override
   String get newCard => 'Neue Karte';
 
   @override
-  String get uploading => 'Wird hochgeladen …';
+  String get uploading => 'Lädt hoch …';
 
   @override
   String get addPicture => 'Bild hinzufügen';
@@ -1553,7 +1547,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get videoClipText =>
-      'Ein Clip läuft im Vollbild auf dem großen Bildschirm, und die Karte verschwindet, wenn er endet.';
+      'Der Clip läuft im Vollbild auf dem großen Bildschirm; danach verschwindet die Karte.';
 
   @override
   String get look => 'Aussehen';
@@ -1565,7 +1559,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get add => 'Hinzufügen';
 
   @override
-  String get boardMusic => 'Musik am Spielbrett';
+  String get boardMusic => 'Board-Musik';
 
   @override
   String get calmMusic => 'Ruhige Musik';
@@ -1586,7 +1580,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get effectReveal => 'Aufdecken';
 
   @override
-  String get effectQuestionOpens => 'Frage öffnet sich';
+  String get effectQuestionOpens => 'Frage startet';
 
   @override
   String get effectTeamLocksIn => 'Team loggt ein';
@@ -1604,15 +1598,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get effectSteal => 'Klauen';
 
   @override
-  String get effectFullySolved => 'Ganz gelöst';
+  String get effectFullySolved => 'Komplett gelöst';
 
   @override
   String appDefault(String sound) {
-    return 'Standard der App: $sound';
+    return 'Standard: $sound';
   }
 
   @override
-  String get asSetAbove => 'Wie oben eingestellt';
+  String get asSetAbove => 'Wie oben';
 
   @override
   String get silent => 'Stumm';
@@ -1631,34 +1625,34 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get soundsGameText =>
-      'Was in diesem Spiel läuft. Alles, was nicht eingestellt ist, nutzt die Sounds der App.';
+      'Was in diesem Spiel läuft. Was du nicht einstellst, kommt aus den Sounds der App.';
 
   @override
   String get soundsLevelText =>
-      'Alles auf „Wie oben eingestellt“ kommt vom Spielbrett oder vom Spiel.';
+      'Alles auf „Wie oben“ kommt vom Board oder vom Spiel.';
 
   @override
-  String get soundsAtMoments => 'Sounds an Momenten der Show';
+  String get soundsAtMoments => 'Sounds für bestimmte Momente';
 
   @override
-  String get ownEffects => 'Deine eigenen Effekte';
+  String get ownEffects => 'Eigene Effekte';
 
   @override
   String get addEffect => 'Effekt hinzufügen';
 
   @override
   String get oggNotSupported =>
-      'Ogg-Sounds laufen unter Windows nicht. Bitte nimm MP3, WAV oder M4A.';
+      'Ogg läuft unter Windows nicht. Nimm lieber MP3, WAV oder M4A.';
 
   @override
-  String get fileTypeNotSupported => 'Dieser Dateityp wird nicht unterstützt.';
+  String get fileTypeNotSupported => 'Dieser Dateityp geht leider nicht.';
 
   @override
   String couldNotUploadMedia(String kind) {
     String _temp0 = intl.Intl.selectLogic(kind, {
-      'image': 'Das Bild ließ sich nicht hochladen.',
-      'audio': 'Der Sound ließ sich nicht hochladen.',
-      'other': 'Das Video ließ sich nicht hochladen.',
+      'image': 'Bild konnte nicht hochgeladen werden.',
+      'audio': 'Sound konnte nicht hochgeladen werden.',
+      'other': 'Video konnte nicht hochgeladen werden.',
     });
     return '$_temp0';
   }
@@ -1700,24 +1694,24 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String rankerError(String kind, Object status) {
     String _temp0 = intl.Intl.selectLogic(kind, {
-      'page': 'Die Seite ließ sich nicht laden ($status).',
-      'noList': 'Auf dieser Seite wurde keine Liste gefunden.',
-      'list': 'Die Liste ließ sich nicht laden ($status).',
-      'items': 'Die Einträge der Liste ließen sich nicht laden ($status).',
-      'other': 'Die Liste hat zu wenige Einträge.',
+      'page': 'Seite konnte nicht geladen werden ($status).',
+      'noList': 'Auf der Seite ist keine Liste.',
+      'list': 'Liste konnte nicht geladen werden ($status).',
+      'items': 'Einträge konnten nicht geladen werden ($status).',
+      'other': 'Die Liste hat zu wenig Einträge.',
     });
     return '$_temp0';
   }
 
   @override
-  String get importFailed => 'Der Import ist fehlgeschlagen.';
+  String get importFailed => 'Import hat nicht geklappt.';
 
   @override
   String get rankerImportText =>
-      'Die ersten zehn Einträge der Liste ersetzen die Antworten dieser Frage.';
+      'Die Top 10 der Liste ersetzen die Antworten dieser Frage.';
 
   @override
-  String get rankerListUrl => 'URL der Ranker-Liste';
+  String get rankerListUrl => 'Ranker-URL';
 
   @override
   String get import => 'Importieren';
@@ -1726,7 +1720,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addTitle => 'Titel hinzufügen';
 
   @override
-  String get arrowCircle => 'Dieser Pfeil würde im Kreis führen.';
+  String get arrowCircle => 'Dieser Pfeil würde im Kreis laufen.';
 
   @override
   String screensWide(String count) {
@@ -1734,23 +1728,23 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get mapTapFirst => 'Tippe die Blase an, die zuerst kommt.';
+  String get mapTapFirst => 'Tipp die Blase an, die zuerst kommt.';
 
   @override
   String get mapTapNext =>
-      'Tippe jetzt die Blase an, zu der es geht: Das fügt einen Pfeil hinzu oder entfernt den vorhandenen. Tippe dieselbe Blase noch mal an, um alle Pfeile zu ihr zu entfernen.';
+      'Jetzt die Blase antippen, zu der es weitergeht: Das setzt einen Pfeil oder entfernt den vorhandenen. Tippst du dieselbe Blase noch mal, verschwinden alle Pfeile zu ihr.';
 
   @override
   String get mapDragBubble =>
-      'Ziehen zum Verschieben. Mit − und + unten änderst du die Größe der Blase.';
+      'Ziehen zum Verschieben. Mit − und + unten änderst du die Größe.';
 
   @override
   String get mapDragSelected =>
-      'Ziehen zum Verschieben. Mit den Knöpfen unten änderst oder entfernst du es.';
+      'Ziehen zum Verschieben. Mit den Buttons unten bearbeiten oder entfernen.';
 
   @override
   String get mapDragAnything =>
-      'Zieh Dinge, um sie zu platzieren. Tippe eine Blase, einen Titel, ein Bild oder eine Linie an, um sie auszuwählen.';
+      'Zieh Sachen dahin, wo sie hinsollen. Tipp eine Blase, einen Titel, ein Bild oder eine Linie an, um sie auszuwählen.';
 
   @override
   String get connect => 'Verbinden';
@@ -1778,7 +1772,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get couldNotCreateInvite =>
-      'Der Einladungslink ließ sich nicht erstellen.';
+      'Einladungslink konnte nicht erstellt werden.';
 
   @override
   String get inviteLinkCopied => 'Einladungslink kopiert';
@@ -1788,7 +1782,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get removeFromGameText =>
-      'Der Zugriff endet sofort. Widerrufe Einladungslinks, die die Person noch hat, sonst kann sie wieder beitreten.';
+      'Der Zugriff endet sofort. Widerruf noch offene Einladungslinks, sonst kann die Person wieder beitreten.';
 
   @override
   String get access => 'Zugriff';
@@ -1801,7 +1795,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get accessExplanation =>
-      'Voller Zugriff bearbeitet alles. Eingeschränkter Zugriff sieht nur selbst erstellte oder geteilte Kategorien, so kann man Fragen schreiben und trotzdem mitspielen.';
+      'Mit vollem Zugriff kann man alles bearbeiten. Mit eingeschränktem Zugriff sieht man nur eigene oder geteilte Kategorien: So kann man Fragen schreiben und trotzdem mitspielen.';
 
   @override
   String get inviteLinks => 'Einladungslinks';
@@ -1830,15 +1824,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String newRoleLink(String role) {
     String _temp0 = intl.Intl.selectLogic(role, {
       'admin': 'Neuer Admin-Link',
-      'full': 'Neuer Link mit vollem Zugriff',
-      'other': 'Neuer Link mit eingeschränktem Zugriff',
+      'full': 'Neuer Link: voller Zugriff',
+      'other': 'Neuer Link: eingeschränkt',
     });
     return '$_temp0';
   }
 
   @override
   String get inviteLinksText =>
-      'Wer einen Link hat, kann beitreten, bis er abläuft oder du ihn widerrufst.';
+      'Wer den Link hat, kann beitreten, bis er abläuft oder du ihn widerrufst.';
 
   @override
   String hourCount(int count) {
@@ -1874,14 +1868,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get couldNotCheckInvite =>
-      'Der Einladungslink ließ sich nicht prüfen.';
+      'Einladungslink konnte nicht geprüft werden.';
 
   @override
   String get couldNotJoinGame =>
-      'Beitreten hat nicht geklappt. Vielleicht bist du schon Mitglied oder der Link wurde widerrufen.';
+      'Beitreten hat nicht geklappt. Vielleicht bist du schon drin oder der Link wurde widerrufen.';
 
   @override
-  String get joinAGame => 'Einem Spiel beitreten';
+  String get joinAGame => 'Spiel beitreten';
 
   @override
   String get inviteLink => 'Einladungslink';
@@ -1893,8 +1887,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String youWillJoinWith(String role) {
     String _temp0 = intl.Intl.selectLogic(role, {
       'admin': 'Du trittst als Admin bei.',
-      'full': 'Du trittst mit vollem Zugriff bei.',
-      'other': 'Du trittst mit eingeschränktem Zugriff bei.',
+      'full': 'Du bekommst vollen Zugriff.',
+      'other': 'Du bekommst eingeschränkten Zugriff.',
     });
     return '$_temp0';
   }
@@ -1906,38 +1900,39 @@ class AppLocalizationsDe extends AppLocalizations {
   String get join => 'Beitreten';
 
   @override
-  String get couldNotCreateSession => 'Die Session ließ sich nicht erstellen.';
+  String get couldNotCreateSession => 'Session konnte nicht erstellt werden.';
 
   @override
   String get presentHere => 'Hier präsentieren';
 
   @override
   String get presentHereText =>
-      'Ein anderes deiner Geräte hat diese Session zuletzt präsentiert. Es hört auf, falls es noch läuft.';
+      'Diese Session lief zuletzt auf einem anderen deiner Geräte. Dort wird sie beendet, falls sie noch läuft.';
 
   @override
   String get deleteSession => 'Session löschen';
 
   @override
   String deleteSessionText(String game) {
-    return 'Die Session von „$game“ wird mit ihren Teams und Punkten gelöscht.';
+    return 'Die Session von „$game“ wird samt Teams und Punkten gelöscht.';
   }
 
   @override
-  String get joinSessionScan => 'Einer Session beitreten: Code scannen';
+  String get joinSessionScan => 'Session beitreten: Code scannen';
 
   @override
-  String get joinSessionLink => 'Einer Session mit ihrem Link beitreten';
+  String get joinSessionLink => 'Session per Link beitreten';
 
   @override
   String get newSession => 'Neue Session';
 
   @override
-  String get couldNotLoadSessions => 'Deine Sessions ließen sich nicht laden.';
+  String get couldNotLoadSessions =>
+      'Deine Sessions konnten nicht geladen werden.';
 
   @override
   String get noSessionsText =>
-      'Eine Session ist die Show eines Abends: ihre Teams, Punkte und ihr Fortschritt. Erstell eine, zeig sie auf dem großen Bildschirm und steuere sie vom Handy aus.';
+      'Eine Session ist die Show eines Abends mit Teams, Punkten und Spielstand. Erstell eine, zeig sie auf dem großen Bildschirm und steuer sie vom Handy.';
 
   @override
   String get changeGame => 'Spiel ändern';
@@ -1957,14 +1952,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get setUpTeamsAndBuzzers => 'Teams und Buzzer einrichten';
 
   @override
-  String get chooseAGame => 'Wähle ein Spiel';
+  String get chooseAGame => 'Spiel wählen';
 
   @override
-  String get gameYouCannotOpen => 'Ein Spiel, das du nicht öffnen kannst';
+  String get gameYouCannotOpen => 'Ein Spiel ohne Zugriff';
 
   @override
   String get noGamesForSession =>
-      'Du hast noch keine Spiele. Erstell zuerst eins im Tab „Spiele“.';
+      'Du hast noch keine Spiele. Erstell zuerst eins unter „Spiele“.';
 
   @override
   String get game => 'Spiel';
@@ -1977,26 +1972,26 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get didNotReachPresenter =>
-      'Das kam beim präsentierenden Gerät nicht an.';
+      'Das ist beim Präsentations-Gerät nicht angekommen.';
 
   @override
   String get noDevicePresenting =>
-      'Kein Gerät präsentiert diese Session. Nichts, was du hier tust, passiert, bis eines sie präsentiert.';
+      'Kein Gerät zeigt diese Session gerade. Was du hier machst, passiert erst, wenn eins sie zeigt.';
 
   @override
-  String get presentingElsewhere => 'Wird woanders präsentiert';
+  String get presentingElsewhere => 'Läuft woanders';
 
   @override
   String get presentingElsewhereText =>
-      'Ein anderes deiner Geräte hat diese Session übernommen.';
+      'Ein anderes deiner Geräte hat die Session übernommen.';
 
   @override
   String get couldNotOpenWindow =>
-      'Ein zweites Fenster ließ sich nicht öffnen.';
+      'Zweites Fenster konnte nicht geöffnet werden.';
 
   @override
   String get couldNotStartPresenting =>
-      'Diese Session ließ sich nicht präsentieren.';
+      'Session konnte nicht gestartet werden.';
 
   @override
   String get controlling => 'Steuerung';
@@ -2009,7 +2004,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get openInNewWindow =>
-      'In neuem Fenster öffnen, um es auf einen anderen Bildschirm zu ziehen';
+      'In neuem Fenster öffnen, z. B. für einen zweiten Bildschirm';
 
   @override
   String get fullscreen => 'Vollbild';
@@ -2019,21 +2014,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get buzzerBoxRetrying =>
-      'Buzzer-Box nicht verbunden · neuer Versuch läuft';
+      'Buzzer-Box nicht verbunden · neuer Versuch …';
 
   @override
   String mediaNotDownloaded(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count Mediendateien ließen sich nicht laden',
-      one: '1 Mediendatei ließ sich nicht laden',
+      other: '$count Mediendateien fehlen',
+      one: '1 Mediendatei fehlt',
     );
     return '$_temp0';
   }
 
   @override
-  String get couldNotSaveChange => 'Die Änderung ließ sich nicht speichern.';
+  String get couldNotSaveChange => 'Änderung konnte nicht gespeichert werden.';
 
   @override
   String setUpTitle(String title) {
@@ -2041,11 +2036,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get couldNotLoadSession => 'Die Session ließ sich nicht laden.';
+  String get couldNotLoadSession => 'Session konnte nicht geladen werden.';
 
   @override
   String get setUpFromControl =>
-      'Wenn diese Session gerade auf einem Bildschirm läuft, richte sie lieber über „Steuern“ ein: Das präsentierende Gerät behält seine eigenen Teams.';
+      'Läuft diese Session gerade auf einem Bildschirm, richte sie lieber über „Steuern“ ein: Das präsentierende Gerät behält seine eigenen Teams.';
 
   @override
   String get teams => 'Teams';
@@ -2057,29 +2052,28 @@ class AppLocalizationsDe extends AppLocalizations {
   String get queueBuzzers => 'Buzzer-Warteschlange';
 
   @override
-  String get queueBuzzersText =>
-      'Spätere Buzzer reihen sich hinter dem ersten ein';
+  String get queueBuzzersText => 'Spätere Buzzer stellen sich hinten an';
 
   @override
   String get buzzerTest => 'Buzzer-Test';
 
   @override
   String get buzzerTestText =>
-      'Buzzer lassen ihr Team aufleuchten; nur auf dem Spielbrett';
+      'Buzzer lassen ihr Team aufleuchten; nur am Board';
 
   @override
   String get buzzerBoxAndSounds => 'Buzzer-Box und Team-Sounds';
 
   @override
   String get buzzerBoxAndSoundsText =>
-      'Die USB-Buzzer-Box und der Sound, mit dem jedes Team buzzert';
+      'Die USB-Buzzer-Box und der Buzzer-Sound jedes Teams';
 
   @override
   String get connectDevices => 'Geräte verbinden';
 
   @override
   String get connectDevicesText =>
-      'Handys als Buzzer oder eine weitere Steuerung';
+      'Handys als Buzzer oder eine zweite Steuerung';
 
   @override
   String get newTeam => 'Neues Team';
@@ -2092,7 +2086,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String removeTeamText(String team) {
-    return '„$team“ und seine Punkte werden entfernt.';
+    return '„$team“ wird samt Punkten entfernt.';
   }
 
   @override
@@ -2100,29 +2094,29 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noTeamsYetText =>
-      'Noch keine Teams. Füg sie hier hinzu oder lass sie mit einem Code beitreten.';
+      'Noch keine Teams. Füg sie hier hinzu oder lass sie per Code beitreten.';
 
   @override
-  String get couldNotCreateCodes => 'Die Codes ließen sich nicht erstellen.';
+  String get couldNotCreateCodes => 'Codes konnten nicht erstellt werden.';
 
   @override
   String get controller => 'Steuerung';
 
   @override
   String get scanToControl =>
-      'In Quiz Studio scannen, um diese Session von einem anderen Gerät aus zu steuern. Das Gerät muss mit einem Konto angemeldet sein, das das Spiel öffnen kann.';
+      'In Quiz Studio scannen, um diese Session von einem anderen Gerät zu steuern. Dort muss ein Konto angemeldet sein, das das Spiel öffnen darf.';
 
   @override
   String scanToBuzz(String team) {
-    return 'In Quiz Studio scannen, um ein Handy als Buzzer von $team zu nutzen.';
+    return 'In Quiz Studio scannen, um ein Handy als Buzzer für $team zu nutzen.';
   }
 
   @override
-  String get devicesViaInternet => 'Geräte verbinden sich über das Internet.';
+  String get devicesViaInternet => 'Geräte verbinden sich übers Internet.';
 
   @override
   String get devicesViaLan =>
-      'Geräte in diesem Netzwerk verbinden sich direkt, andere über das Internet.';
+      'Geräte im selben WLAN verbinden sich direkt, alle anderen übers Internet.';
 
   @override
   String get linkCopied => 'Link kopiert';
@@ -2132,7 +2126,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get addTeamsFirst =>
-      'Füg zuerst Teams hinzu, um für jedes einen Buzzer-Code zu bekommen.';
+      'Füg zuerst Teams hinzu, dann gibt\'s für jedes einen Buzzer-Code.';
 
   @override
   String get teamRemoved => 'Dieses Team wurde entfernt.';
@@ -2147,30 +2141,28 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sessionHasNoGame => 'Diese Session hat noch kein Spiel.';
 
   @override
-  String get statusBoard => 'Spielbrett';
+  String get statusBoard => 'Board';
 
   @override
   String get statusBetsShown =>
-      'Die Einsätze sind auf dem großen Bildschirm · starte die Frage, wenn ihr bereit seid';
+      'Einsätze sind auf dem großen Bildschirm · starte die Frage, wenn alle bereit sind';
 
   @override
   String statusBetting(int placed, int total) {
-    return 'Teams setzen · $placed von $total Einsätzen da';
+    return 'Teams setzen · $placed von $total da';
   }
 
   @override
-  String get statusRapidDevices =>
-      'Teams wählen auf ihren Geräten richtig oder falsch';
+  String get statusRapidDevices => 'Teams tippen richtig oder falsch';
 
   @override
-  String get statusAmountBet =>
-      'Teams versuchen, ihre gewettete Zahl zu schaffen';
+  String get statusAmountBet => 'Teams spielen auf ihre gewettete Zahl';
 
   @override
-  String get statusOpenNoBuzzers => 'Frage offen · keine Buzzer';
+  String get statusOpenNoBuzzers => 'Frage offen · ohne Buzzer';
 
   @override
-  String get statusOpenWaiting => 'Frage offen · warte auf einen Buzzer';
+  String get statusOpenWaiting => 'Frage offen · wartet auf Buzzer';
 
   @override
   String statusAnswering(String team) {
@@ -2187,14 +2179,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noGamePicked =>
-      'Noch kein Spiel gewählt. Wähle eins für diese Session in der Liste der Sessions.';
+      'Noch kein Spiel gewählt. Wähl eins in der Session-Liste.';
 
   @override
   String get groupHasNoQuestions => 'Diese Gruppe hat keine Fragen.';
 
   @override
   String questionsPlayed(int played, int total) {
-    return '$played von $total Fragen gespielt';
+    return '$played/$total Fragen gespielt';
   }
 
   @override
@@ -2219,11 +2211,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get buzzBeforeUncover =>
-      'Ein Team muss buzzern, bevor Antworten aufgedeckt werden können.';
+      'Erst muss ein Team buzzern, dann kannst du Antworten aufdecken.';
 
   @override
   String betFor(String team) {
-    return 'Einsatz von $team';
+    return 'Einsatz: $team';
   }
 
   @override
@@ -2233,7 +2225,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get betsTapTeam =>
-      'Einsätze · tippe ein Team an, um seinen Einsatz einzutragen';
+      'Einsätze · tipp ein Team an, um den Einsatz einzutragen';
 
   @override
   String get bets => 'Einsätze';
@@ -2254,22 +2246,22 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String givePointsToTeams(int count) {
-    return 'Punkte an $count Teams vergeben';
+    return 'Punkte an $count Teams';
   }
 
   @override
   String get given => 'Vergeben';
 
   @override
-  String get notGivenYet => 'Noch nicht vergeben';
+  String get notGivenYet => 'Noch offen';
 
   @override
   String givenSoFar(String points) {
-    return 'Bisher $points vergeben';
+    return 'Bisher $points';
   }
 
   @override
-  String get takeOutOfOrder => 'Aus der Reihenfolge nehmen';
+  String get takeOutOfOrder => 'Aus Reihenfolge nehmen';
 
   @override
   String get putNextInOrder => 'Als Nächstes einreihen';
@@ -2280,18 +2272,18 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get pointsForQuestion => 'Punkte für diese Frage';
+  String get pointsForQuestion => 'Punkte für die Frage';
 
   @override
   String get didTeamsReach => 'Hat jedes Team seine Zahl geschafft?';
 
   @override
   String tapInOrder(String points, int step) {
-    return 'Tippe die Teams in der Reihenfolge an, in der sie fertig werden · $points, dann je $step weniger';
+    return 'Tipp die Teams an, wie sie fertig werden · $points, dann je $step weniger';
   }
 
   @override
-  String get rateEachTeam => 'Bewerte jedes Team';
+  String get rateEachTeam => 'Jedes Team bewerten';
 
   @override
   String goal(int goal) {
@@ -2311,7 +2303,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get missed => 'Verfehlt';
 
   @override
-  String get pointsForAnswer => 'Punkte für diese Antwort';
+  String get pointsForAnswer => 'Punkte für die Antwort';
 
   @override
   String teamWins(String team, int points) {
@@ -2324,7 +2316,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get nobodyLeft => 'Niemand mehr übrig';
+  String get nobodyLeft => 'Keiner mehr übrig';
 
   @override
   String get noPromptsLeft => 'Keine Vorgaben mehr';
@@ -2342,7 +2334,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String allDone(int count) {
-    return 'Alle $count geschafft';
+    return 'Alle $count durch';
   }
 
   @override
@@ -2352,27 +2344,27 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get topAnswersEmpty =>
-      'Diese Frage hat noch keine Antworten auf ihrer Liste.';
+      'Diese Frage hat noch keine Antworten auf der Liste.';
 
   @override
   String get topTapToUncover =>
-      'Tippe eine Antwort an, um sie auf dem großen Bildschirm aufzudecken.';
+      'Tipp eine Antwort an, um sie auf dem großen Bildschirm aufzudecken.';
 
   @override
   String topTapNamed(String team) {
-    return 'Tippe die Antwort an, die $team genannt hat. Falsch, wenn sie nicht auf der Liste steht.';
+    return 'Tipp die Antwort an, die $team genannt hat. Steht sie nicht drauf: falsch.';
   }
 
   @override
   String get topWhenBuzz =>
-      'Wenn ein Team buzzert, tippe die Antwort an, die es nennt.';
+      'Wenn ein Team buzzert, tipp die genannte Antwort an.';
 
   @override
   String get revealGroupNow => 'Jetzt eine Gruppe aufdecken?';
 
   @override
   String get revealGroupNowText =>
-      'Die Teams spielen noch und sehen diese Gruppe dann auch auf ihren Geräten. Ihre Zeit läuft weiter.';
+      'Die Teams spielen noch und sehen die Gruppe dann auch auf ihren Geräten. Ihre Zeit läuft weiter.';
 
   @override
   String get reveal => 'Aufdecken';
@@ -2381,16 +2373,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get stealWorked => 'Klauen geklappt';
 
   @override
-  String get stealFailed => 'Klauen gescheitert';
+  String get stealFailed => 'Klauen fehlgeschlagen';
 
   @override
   String get strike => 'Fehler';
 
   @override
-  String get hide => 'Verbergen';
+  String get hide => 'Ausblenden';
 
   @override
-  String get betsAreIn => 'Einsätze stehen';
+  String get betsAreIn => 'Einsätze sind da';
 
   @override
   String get startQuestion => 'Frage starten';
@@ -2423,7 +2415,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get reopen => 'Wieder öffnen';
 
   @override
-  String get tabBoard => 'Spielbrett';
+  String get tabBoard => 'Board';
 
   @override
   String get tabEffects => 'Effekte';
@@ -2441,10 +2433,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get groupHasNoCategories => 'Diese Gruppe hat keine Kategorien.';
 
   @override
-  String get showCategoryInMiddle => 'Diese Kategorie in der Mitte zeigen';
+  String get showCategoryInMiddle => 'Kategorie in der Mitte zeigen';
 
   @override
-  String get tapFieldToRead => 'Tippe ein Feld an, um seine Frage zu lesen.';
+  String get tapFieldToRead => 'Tipp ein Feld an, um die Frage zu lesen.';
 
   @override
   String get onScreen => 'auf dem Bildschirm';
@@ -2453,16 +2445,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get played => 'gespielt';
 
   @override
-  String get takeOffKeepPlayable => 'Vom Bildschirm nehmen, spielbar lassen';
+  String get takeOffKeepPlayable => 'Ausblenden, bleibt spielbar';
 
   @override
-  String get markNotPlayed => 'Als nicht gespielt markieren';
+  String get markNotPlayed => 'Als ungespielt markieren';
 
   @override
   String get openQuestion => 'Frage öffnen';
 
   @override
-  String get slotBoard => 'Spielbrett';
+  String get slotBoard => 'Board';
 
   @override
   String get slotCalm => 'Ruhig';
@@ -2489,19 +2481,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get animation => 'Animation';
 
   @override
-  String get noCardsPrepare => 'Keine Karten. Bereite welche im Editor vor.';
+  String get noCardsPrepare => 'Keine Karten. Leg im Editor welche an.';
 
   @override
-  String get textToShow => 'Text zum Zeigen';
+  String get textToShow => 'Anzeigetext';
 
   @override
   String get show => 'Zeigen';
 
   @override
-  String get noCardOnScreen => 'Keine Karte auf dem Bildschirm';
+  String get noCardOnScreen => 'Keine Karte sichtbar';
 
   @override
-  String get takeCardOff => 'Karte vom Bildschirm nehmen';
+  String get takeCardOff => 'Karte ausblenden';
 
   @override
   String get keepSpeakersAwake => 'Lautsprecher wach halten';
@@ -2514,7 +2506,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get keepSpeakersAwakeText =>
-      'Viele Lautsprecher schalten sich nach ein paar Minuten Stille aus und verpassen dann den Anfang des nächsten Sounds. Das spielt ein ganz leises Rauschen, wenn sonst nichts läuft; Musik und Fragen-Sounds übernehmen, sobald sie starten.';
+      'Viele Lautsprecher gehen nach ein paar Minuten Stille aus und verschlucken dann den Anfang des nächsten Sounds. Hiermit läuft ein ganz leises Rauschen, wenn sonst nichts spielt; Musik und Sounds übernehmen, sobald sie starten.';
 
   @override
   String get softNoise => 'Sanftes Rauschen';
@@ -2531,21 +2523,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get soundEffects => 'Soundeffekte';
 
   @override
-  String get questionSound => 'Sound der Frage';
+  String get questionSound => 'Fragen-Sound';
 
   @override
-  String get answersOnDevices => 'Antworten auf den Geräten der Teams';
+  String get answersOnDevices => 'Antworten auf den Geräten';
 
   @override
   String get openAQuestionFirst => 'Öffne zuerst eine Frage.';
 
   @override
   String get answersOnDevicesText =>
-      'Jedes Team antwortet auf seinem eigenen Gerät. Du siehst die Antworten, sobald sie kommen; das Publikum erst, wenn du sie zeigst.';
+      'Jedes Team antwortet auf seinem Gerät. Du siehst die Antworten sofort, das Publikum erst, wenn du sie zeigst.';
 
   @override
   String get preparedScreensText =>
-      'Schieberegler, Sortieren, Zuordnen und vorbereitete Whiteboards werden pro Frage im Editor eingerichtet und starten von selbst.';
+      'Slider, Sortieren, Zuordnen und vorbereitete Whiteboards stellst du pro Frage im Editor ein; sie starten von selbst.';
 
   @override
   String get roundOpen => 'offen';
@@ -2562,7 +2554,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get lockAll => 'Alle sperren';
 
   @override
-  String get letThemEditAgain => 'Wieder bearbeiten lassen';
+  String get letThemEditAgain => 'Wieder freigeben';
 
   @override
   String get showAll => 'Alle zeigen';
@@ -2571,7 +2563,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get rateAutomatically => 'Automatisch bewerten';
 
   @override
-  String get givePointsForGroups => 'Punkte für Gruppen vergeben';
+  String get givePointsForGroups => 'Punkte für Gruppen';
 
   @override
   String get discard => 'Verwerfen';
@@ -2593,10 +2585,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get looksWrong => 'Sieht falsch aus';
 
   @override
-  String get takeOffScreen => 'Vom Bildschirm nehmen';
+  String get takeOffScreen => 'Ausblenden';
 
   @override
-  String get showOnScreen => 'Auf dem Bildschirm zeigen';
+  String get showOnScreen => 'Einblenden';
 
   @override
   String halfPoints(int points) {
@@ -2609,7 +2601,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get waitingForGame => 'Warte auf ein Spiel …';
+  String get waitingForGame => 'Warten auf ein Spiel …';
 
   @override
   String betValue(int bet) {
@@ -2631,16 +2623,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get placeYourBets => 'Macht eure Einsätze';
 
   @override
-  String get betRule => 'Richtig gewinnt euren Einsatz, falsch verliert ihn';
+  String get betRule => 'Richtig: Einsatz gewonnen · falsch: Einsatz weg';
 
   @override
   String amountRuleWithMinus(int plus, int minus) {
-    return 'Schafft eure Zahl: $plus Punkte für jedes · verfehlt: −$minus für jedes';
+    return 'Zahl geschafft: $plus Punkte für jedes · verfehlt: −$minus für jedes';
   }
 
   @override
   String amountRule(int plus) {
-    return 'Schafft eure Zahl: $plus Punkte für jedes';
+    return 'Zahl geschafft: $plus Punkte für jedes';
   }
 
   @override
@@ -2667,7 +2659,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get presenterWindowTitle => 'Quiz Studio · Präsentation';
 
   @override
-  String get reconnectingMainWindow => 'Verbinde erneut mit dem Hauptfenster …';
+  String get reconnectingMainWindow => 'Verbinde neu mit dem Hauptfenster …';
 
   @override
   String get connectingMainWindow => 'Verbinde mit dem Hauptfenster …';
@@ -2680,7 +2672,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get dragToProjector =>
-      'Zieh dieses Fenster auf den Beamer, dann doppelklicke darauf oder drück F11 für Vollbild.';
+      'Zieh das Fenster auf den Beamer und doppelklick darauf oder drück F11 für Vollbild.';
 
   @override
   String pictureLabel(String label) {
@@ -2691,7 +2683,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get yourAnswer => 'Eure Antwort';
 
   @override
-  String get slideToAnswer => 'Schieb zum Antworten';
+  String get slideToAnswer => 'Schieben zum Antworten';
 
   @override
   String get dragIntoOrder => 'In die richtige Reihenfolge ziehen';
@@ -2720,17 +2712,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String tapWhereItGoes(String item) {
-    return 'Tippe jetzt, wohin „$item“ gehört';
+    return 'Tippt jetzt, wohin „$item“ gehört';
   }
 
   @override
   String get allPlacedSwap => 'Alles zugeordnet · ziehen zum Tauschen';
 
   @override
-  String get dragOntoPartner => 'Zieh jede Antwort auf ihren Partner';
+  String get dragOntoPartner => 'Zieht jede Antwort auf ihren Partner';
 
   @override
-  String get dropToTakeBack => 'Hier ablegen, um es zurückzunehmen';
+  String get dropToTakeBack => 'Hier ablegen zum Zurücknehmen';
 
   @override
   String get allPlaced => 'Alles zugeordnet';
@@ -2742,7 +2734,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get praiseGreat => 'Super!';
 
   @override
-  String get praiseNice => 'Schön!';
+  String get praiseNice => 'Gut!';
 
   @override
   String get praiseSolid => 'Solide!';
@@ -2760,7 +2752,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get notAGroup => 'Keine Gruppe';
 
   @override
-  String get alreadyGuessed => 'Schon versucht';
+  String get alreadyGuessed => 'Hattet ihr schon';
 
   @override
   String get allFourGroupsFound => 'Alle vier Gruppen gefunden';
@@ -2774,16 +2766,16 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get timeIsUp => 'Die Zeit ist um';
+  String get timeIsUp => 'Zeit ist um';
 
   @override
-  String get mistakesRemaining => 'Verbleibende Fehler:';
+  String get mistakesRemaining => 'Fehler übrig:';
 
   @override
   String get shuffle => 'Mischen';
 
   @override
-  String get deselectAll => 'Auswahl aufheben';
+  String get deselectAll => 'Alles abwählen';
 
   @override
   String get submit => 'Abschicken';
@@ -2795,11 +2787,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get clear => 'Löschen';
 
   @override
-  String get notASessionCode => 'Das ist kein Session-Code von Quiz Studio.';
+  String get notASessionCode => 'Das ist kein Quiz-Studio-Code.';
 
   @override
   String get couldNotJoinSession =>
-      'Beitreten hat nicht geklappt. Der Code ist vielleicht nicht mehr gültig.';
+      'Beitreten hat nicht geklappt. Vielleicht ist der Code abgelaufen.';
 
   @override
   String get session => 'Session';
@@ -2835,7 +2827,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get rejoinAsTeam => 'Wieder als Gerät eines Teams beitreten';
+  String get rejoinAsTeam => 'Wieder als Team beitreten';
 
   @override
   String get rejoinAsController => 'Wieder als Steuerung beitreten';
@@ -2849,14 +2841,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get joinLink => 'Beitrittslink';
 
   @override
-  String get orPasteLink => 'Oder füg den Link ein';
+  String get orPasteLink => 'Oder Link einfügen';
 
   @override
   String get joinTerms =>
-      'Mit dem Beitreten stimmst du den Nutzungsbedingungen und der Datenschutzerklärung zu. Kein Konto und kein Name nötig.';
+      'Mit dem Beitreten stimmst du den Nutzungsbedingungen und der Datenschutzerklärung zu. Kein Konto, kein Name nötig.';
 
   @override
-  String get joinASession => 'Einer Session beitreten';
+  String get joinASession => 'Session beitreten';
 
   @override
   String get pasteJoinLinkHelp =>
@@ -2866,17 +2858,17 @@ class AppLocalizationsDe extends AppLocalizations {
   String get didNotGetThrough => 'Das kam nicht an.';
 
   @override
-  String get couldNotReachSession => 'Diese Session ist nicht erreichbar.';
+  String get couldNotReachSession => 'Session nicht erreichbar.';
 
   @override
-  String get waitingForShow => 'Warte, bis die Show beginnt …';
+  String get waitingForShow => 'Gleich geht\'s los …';
 
   @override
   String get teamRemovedFromSession =>
       'Euer Team wurde aus der Session entfernt.';
 
   @override
-  String get youAreLastTeam => 'Ihr seid als letztes Team übrig!';
+  String get youAreLastTeam => 'Ihr seid als Letzte übrig!';
 
   @override
   String teamWinsShort(String team) {
@@ -2890,10 +2882,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get yourTurn => 'Ihr seid dran!';
 
   @override
-  String get buzzerTestPress => 'Buzzer-Test: zum Prüfen drücken';
+  String get buzzerTestPress => 'Buzzer-Test: drückt mal';
 
   @override
-  String get waitingForNextQuestion => 'Warte auf die nächste Frage';
+  String get waitingForNextQuestion => 'Gleich kommt die nächste Frage';
 
   @override
   String yourGoal(int goal) {
@@ -2913,7 +2905,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get buzzWhenYouKnow => 'Buzzert, wenn ihr es wisst!';
 
   @override
-  String get noBuzzersForQuestion => 'Keine Buzzer bei dieser Frage';
+  String get noBuzzersForQuestion => 'Diesmal ohne Buzzer';
 
   @override
   String numberInLine(int n) {
@@ -2925,7 +2917,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get needsNewerVersion =>
-      'Diese Frage braucht eine neuere Version von Quiz Studio. Bitte aktualisiere die App.';
+      'Für diese Frage braucht ihr eine neuere Version von Quiz Studio. Bitte aktualisiert die App.';
 
   @override
   String get answerHere => 'Hier antworten';
@@ -2934,10 +2926,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get answerBeingShown => 'Eure Antwort wird gezeigt';
 
   @override
-  String get lockedInWaiting => 'Eingeloggt, warte auf die anderen';
+  String get lockedInWaiting => 'Eingeloggt, warten auf die anderen';
 
   @override
-  String get answersAreIn => 'Die Antworten sind da';
+  String get answersAreIn => 'Alle Antworten sind da';
 
   @override
   String pointsCount(int count) {
@@ -2963,11 +2955,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get answerCountsWhenEnded =>
-      'Eure Antwort zählt so, wie sie steht, wenn die Spielleitung die Runde beendet.';
+      'Eure Antwort zählt so, wie sie ist, wenn die Spielleitung die Runde beendet.';
 
   @override
   String get answerCountsWhenTimeUp =>
-      'Eure Antwort zählt so, wie sie steht, wenn die Zeit um ist.';
+      'Eure Antwort zählt so, wie sie ist, wenn die Zeit um ist.';
 
   @override
   String get lockedIn => 'Eingeloggt';
@@ -2978,7 +2970,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get lockInAnswer => 'Antwort einloggen';
+  String get lockInAnswer => 'Einloggen';
 
   @override
   String get answerFirst => 'Erst antworten';
@@ -2987,13 +2979,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get answerOnBigScreen => 'Eure Antwort ist auf dem großen Bildschirm.';
 
   @override
-  String get gettingPicture => 'Bild wird geladen …';
+  String get gettingPicture => 'Bild lädt …';
 
   @override
-  String get connectedLan => 'Über das lokale Netzwerk verbunden';
+  String get connectedLan => 'Übers WLAN verbunden';
 
   @override
-  String get connectedInternet => 'Über das Internet verbunden';
+  String get connectedInternet => 'Übers Internet verbunden';
 
   @override
   String yourBetOn(String category) {
@@ -3028,7 +3020,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get betHalf => 'Halb';
 
   @override
-  String get allIn => 'Alles';
+  String get allIn => 'All in';
 
   @override
   String get questionStartsSoon => 'Die Frage startet gleich';
@@ -3048,36 +3040,35 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get buzzerSoundTooBig =>
-      'Diese Datei ist zu groß; ein Buzzer-Sound darf bis zu 5 MB haben.';
+      'Die Datei ist zu groß; ein Buzzer-Sound darf höchstens 5 MB haben.';
 
   @override
-  String get notASoundFile =>
-      'Das ist keine Sounddatei, die die App abspielen kann.';
+  String get notASoundFile => 'Diese Datei kann die App nicht abspielen.';
 
   @override
   String get couldNotUploadBuzzerSound =>
-      'Der Sound ließ sich nicht hochladen. Das Team behält seinen bisherigen.';
+      'Sound konnte nicht hochgeladen werden. Das Team behält seinen alten.';
 
   @override
   String get buzzers => 'Buzzer';
 
   @override
-  String get useUsbBox => 'USB-Buzzer-Box verwenden';
+  String get useUsbBox => 'USB-Buzzer-Box nutzen';
 
   @override
   String get useUsbBoxText =>
-      'Aus: Teams buzzern nur mit ihren Handys, und der große Bildschirm sucht nach keiner Box.';
+      'Aus: Teams buzzern nur per Handy, und der große Bildschirm sucht keine Box.';
 
   @override
   String get usbBoxPlatforms =>
-      'Eine USB-Buzzer-Box funktioniert unter Windows, macOS und Linux. Handys und Tablets können trotzdem Buzzer sein: siehe „Geräte verbinden“.';
+      'Eine USB-Buzzer-Box geht unter Windows, macOS und Linux. Handys und Tablets gehen trotzdem als Buzzer: siehe „Geräte verbinden“.';
 
   @override
   String get buzzerSounds => 'Buzzer-Sounds';
 
   @override
   String get buzzerSoundsText =>
-      'Wird mit der Session gespeichert und vom präsentierenden Gerät abgespielt. Bis das Gerät einen Sound geladen hat, und für Teams ohne eigenen, ertönt der eingebaute Buzzer.';
+      'Wird mit der Session gespeichert und vom präsentierenden Gerät abgespielt. Solange es einen Sound noch nicht geladen hat, und bei Teams ohne eigenen, kommt der Standard-Buzzer.';
 
   @override
   String get ownSound => 'Eigener Sound';
@@ -3092,7 +3083,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get choose => 'Wählen';
 
   @override
-  String get backToBuiltinBuzzer => 'Zurück zum eingebauten Buzzer';
+  String get backToBuiltinBuzzer => 'Zurück zum Standard-Buzzer';
 
   @override
   String get addTeamsFirstShort => 'Füg zuerst Teams hinzu.';
@@ -3108,11 +3099,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get buzzersAppearHere =>
-      'Die Buzzer erscheinen hier, sobald die Box Werte sendet.';
+      'Die Buzzer erscheinen hier, sobald die Box Werte schickt.';
 
   @override
   String get pressTheBuzzers =>
-      'Drück die Buzzer. Jeder leuchtet, solange er gedrückt ist, und die Zahlen zeigen, wer zuerst war. Tippe einen an, um sein Team oder seine Empfindlichkeit zu ändern.';
+      'Drück die Buzzer. Jeder leuchtet, solange er gedrückt ist, und die Zahlen zeigen, wer zuerst war. Tipp einen an, um Team oder Empfindlichkeit zu ändern.';
 
   @override
   String get assignAllByPressing => 'Alle per Drücken zuordnen';
@@ -3129,7 +3120,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get defaultAssignment =>
-      'Ohne Zuordnung ist Buzzer 1 das erste Team, Buzzer 2 das zweite und so weiter.';
+      'Ohne Zuordnung gehört Buzzer 1 zum ersten Team, Buzzer 2 zum zweiten und so weiter.';
 
   @override
   String get noBuzzer => 'Kein Buzzer';
@@ -3149,7 +3140,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get rawData => 'Rohdaten';
 
   @override
-  String get rawDataText => 'Genau das, was die Box sendet, zur Fehlersuche';
+  String get rawDataText => 'Genau das, was die Box schickt, zur Fehlersuche';
 
   @override
   String get nothingReceivedYet => 'Noch nichts empfangen.';
@@ -3168,7 +3159,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String readingThreshold(int value, int threshold) {
-    return 'Wert $value · zählt als gedrückt über $threshold';
+    return 'Wert $value · gedrückt ab $threshold';
   }
 
   @override
@@ -3184,7 +3175,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String readingsPerSecond(int rate, String uptime) {
-    return '$rate Werte pro Sekunde · seit $uptime';
+    return '$rate Werte/s · seit $uptime';
   }
 
   @override
@@ -3193,27 +3184,27 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get boxSilent => 'Offen, aber die Box sendet nichts';
+  String get boxSilent => 'Offen, aber die Box schickt nichts';
 
   @override
   String get boxSilentText =>
-      'Neuer Versuch alle paar Sekunden. Ist es der richtige Port und hat die Box Strom?';
+      'Neuer Versuch alle paar Sekunden. Richtiger Port? Hat die Box Strom?';
 
   @override
   String get notConnectedShort => 'Nicht verbunden';
 
   @override
   String get boxDisconnectedText =>
-      'Neuer Versuch alle paar Sekunden. Steck die Box ein; hier muss nichts gedrückt werden.';
+      'Neuer Versuch alle paar Sekunden. Steck die Box ein; hier musst du nichts drücken.';
 
   @override
-  String get choosePort => 'Wähle den Port der Buzzer-Box';
+  String get choosePort => 'Port der Buzzer-Box wählen';
 
   @override
-  String get rememberedOnDevice => 'Er wird auf diesem Gerät gespeichert.';
+  String get rememberedOnDevice => 'Wird auf diesem Gerät gemerkt.';
 
   @override
-  String get noSerialPorts => 'Keine seriellen Ports auf diesem Gerät';
+  String get noSerialPorts => 'Keine seriellen Ports gefunden';
 
   @override
   String get port => 'Port';
@@ -3274,7 +3265,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get rapidIntro =>
-      'Erst die Frage selbst: vorlesen, dann zeigt Weiter Frage 1';
+      'Erst die Frage vorlesen, dann bringt Weiter Frage 1';
 
   @override
   String hintShown(String hint) {
@@ -3291,11 +3282,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get scoringClosenessText =>
-      'Das Team, dessen Zahl dem richtigen Wert am nächsten ist, bekommt die meisten Punkte, jeder Platz danach etwas weniger. Gleich nahe Teams teilen sich einen Platz. Die Plätze zählen, sobald die Antworten beendet sind, und der große Bildschirm zeigt sie mit den Antworten.';
+      'Das Team, dessen Zahl am nächsten am richtigen Wert liegt, bekommt die meisten Punkte, jeder weitere Platz etwas weniger. Gleich nahe Teams teilen sich einen Platz. Die Plätze zählen, sobald die Antworten gesperrt sind, und der große Bildschirm zeigt sie mit den Antworten.';
 
   @override
   String get scoringClosenessNoSolution =>
-      'Die Plätze richten sich danach, wie nah jede Zahl am richtigen Wert ist. Gib dafür unter Wie Teams antworten einen richtigen Wert an.';
+      'Die Plätze richten sich danach, wie nah jede Zahl an der Lösung ist. Gib dafür unter „Wie Teams antworten“ einen richtigen Wert an.';
 
   @override
   String placeN(String place) {
