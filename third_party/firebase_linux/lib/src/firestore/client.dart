@@ -60,7 +60,10 @@ class FirestoreConnection {
 
   Future<void> _metadata(Map<String, String> metadata, String uri) async {
     metadata['google-cloud-resource-prefix'] = databaseName;
-    metadata['x-goog-request-params'] = 'project_id=$projectId&database_id=$databaseId';
+    // As the official SDKs send it. The emulator ignores this header, but the
+    // real service rejects any other form ("Mismatch between database name in
+    // the request and http header").
+    metadata['x-goog-request-params'] = 'database=${Uri.encodeComponent(databaseName)}';
     metadata['x-goog-api-client'] = 'gl-dart/${Platform.version.split(' ').first} fire/linux grpc/dart';
     String? token;
     try {
