@@ -1877,7 +1877,6 @@
   "noMusic": "No music",
   "firstItem": "First item",
   "rapidIntro": "The question first: read it out, then Next brings up item 1",
-  "closeAnswering": "Close answering",
   "hintShown": "Hint: {hint}",
   "@hintShown": {"placeholders": {"hint": {"type": "String"}}},
   "byClosenessShort": "by closeness",

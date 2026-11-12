@@ -3248,9 +3248,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'The question first: read it out, then Next brings up item 1';
 
   @override
-  String get closeAnswering => 'Close answering';
-
-  @override
   String hintShown(String hint) {
     return 'Hint: $hint';
   }

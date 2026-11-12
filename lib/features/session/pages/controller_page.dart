@@ -1307,7 +1307,7 @@ class _ActionPad extends StatelessWidget {
                 betting
                     ? (state.placingBets ? context.l10n.betsAreIn : context.l10n.startQuestion)
                     : closeFirst
-                    ? context.l10n.closeAnswering
+                    ? context.l10n.lockAll
                     : answerSteps
                     ? context.l10n.showAnswer
                     : rapid

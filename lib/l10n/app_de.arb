@@ -872,7 +872,6 @@
   "noMusic": "Keine Musik",
   "firstItem": "Erste Frage",
   "rapidIntro": "Erst die Frage selbst: vorlesen, dann zeigt Weiter Frage 1",
-  "closeAnswering": "Abgabeschluss",
   "hintShown": "Hinweis: {hint}",
   "byClosenessShort": "nach Nähe",
   "byClosenessSummary": "Nach Nähe · {plus}, dann −{step} pro Platz",

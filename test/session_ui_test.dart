@@ -200,7 +200,7 @@ void main() {
 
     // The pad's reveal button first closes the answering on every device,
     // then walks through the teams' answers.
-    await tap(tester, pad('Close answering'));
+    await tap(tester, pad('Lock all'));
     expect(host.state.answerRound!.open, isFalse);
     expect(host.state.answerRound!.revealed, isEmpty);
     expect(inPresenter(find.byType(DrawingView)), findsNothing);
@@ -250,7 +250,7 @@ void main() {
     await tester.pump();
     expect(inController(find.text('42')), findsOneWidget);
     expect(inPresenter(find.text('42')), findsNothing);
-    await tap(tester, pad('Close answering'));
+    await tap(tester, pad('Lock all'));
     await tap(tester, pad('Show answer'));
     expect(inPresenter(find.text('42')), findsOneWidget);
   });

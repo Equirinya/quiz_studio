@@ -3277,9 +3277,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Erst die Frage selbst: vorlesen, dann zeigt Weiter Frage 1';
 
   @override
-  String get closeAnswering => 'Abgabeschluss';
-
-  @override
   String hintShown(String hint) {
     return 'Hinweis: $hint';
   }

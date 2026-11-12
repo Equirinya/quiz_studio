@@ -5330,12 +5330,6 @@ abstract class AppLocalizations {
   /// **'The question first: read it out, then Next brings up item 1'**
   String get rapidIntro;
 
-  /// No description provided for @closeAnswering.
-  ///
-  /// In en, this message translates to:
-  /// **'Close answering'**
-  String get closeAnswering;
-
   /// No description provided for @hintShown.
   ///
   /// In en, this message translates to:
