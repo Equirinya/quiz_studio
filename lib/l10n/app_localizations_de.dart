@@ -1317,7 +1317,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onlyWithDevices =>
-      'Geht nur mit eigenen Geräten: Jedes Team braucht ein verbundenes Handy oder Tablet (Einrichten → Geräte verbinden). Ohne Geräte kann niemand antworten.';
+      'Geht nur mit eigenen Geräten: Jedes Team braucht ein verbundenes Handy oder Tablet (Setup → Geräte verbinden). Ohne Geräte kann niemand antworten.';
 
   @override
   String get matchingEditorText =>
@@ -1943,7 +1943,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get present => 'Vorführen';
+  String get present => 'Präsentieren';
 
   @override
   String get control => 'Steuern';
@@ -2424,7 +2424,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get tabAnswers => 'Antworten';
 
   @override
-  String get tabSetup => 'Einrichten';
+  String get tabSetup => 'Setup';
 
   @override
   String get ungrouped => 'Ohne Gruppe';
