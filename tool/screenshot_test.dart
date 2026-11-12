@@ -721,12 +721,106 @@ void main() {
     await companion(tester, 'companion_order', const CompanionSpec(kind: CompanionKind.order, options: ['Mercury', 'Venus', 'Earth', 'Mars']));
   });
 
-  testWidgets('companion: match', (tester) async {
-    await companion(
-      tester,
-      'companion_match',
-      const CompanionSpec(kind: CompanionKind.match, options: ['France', 'Italy', 'Spain'], targets: ['Paris', 'Rome', 'Madrid']),
+  group('companion: match by drag and drop', () {
+    const films = ['Jaws', 'Star Wars', 'E.T.', 'Back to the Future', 'Jurassic Park', 'Titanic', 'The Matrix', 'Gladiator', 'Avatar', 'Inception', 'Frozen'];
+    const years = ['1975', '1977', '1982', '1985', '1993', '1997', '1999', '2000', '2009', '2010', '2013'];
+    final eleven = CompanionSpec(
+      kind: CompanionKind.match,
+      options: [for (final (i, film) in films.indexed) '${Matching.letter(i)} · $film'],
+      targets: [for (final (i, year) in years.indexed) '${(i * 7) % 11 + 1} · $year'],
     );
+    const three = CompanionSpec(kind: CompanionKind.match, options: ['France', 'Italy', 'Spain'], targets: ['Paris', 'Rome', 'Madrid']);
+
+    Widget app() => MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme(Brightness.light),
+          home: Scaffold(
+            body: SafeArea(child: PlayerView(view: PublicView(host.publicState), teamId: 'red', send: (command) => host.dispatch(command, sender: const Sender(Role.player, teamId: 'red')), onLeave: () {})),
+          ),
+        );
+
+    Future<void> open(WidgetTester tester, CompanionSpec spec, Size size) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      host = SessionHost(initial: fixtureState(), game: fixtureGame());
+      addTearDown(host.dispose);
+      host
+        ..dispatch(const OpenQuestion(estimate))
+        ..dispatch(OpenAnswers(spec));
+      await tester.pumpWidget(app());
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    /// Places the answer whose text ends in [right] by tapping it, then the slot of [left].
+    Future<void> place(WidgetTester tester, String right, String left) async {
+      await tester.tap(find.textContaining(RegExp('${RegExp.escape(right)}\$')).last);
+      await tester.pump();
+      final row = find.ancestor(of: find.text(left), matching: find.byType(Row)).first;
+      final slot = find.descendant(of: row, matching: find.byIcon(Icons.add_rounded));
+      await tester.ensureVisible(slot);
+      await tester.tap(slot);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('three pairs on a phone', (tester) async {
+      await open(tester, three, const Size(412, 892));
+      await shot('companion_match');
+      await place(tester, 'Rome', 'Italy');
+      await shot('companion_match_one_placed');
+    });
+
+    testWidgets('eleven pairs on a phone', (tester) async {
+      await open(tester, eleven, const Size(412, 892));
+      await shot('companion_match_11');
+      for (final (film, year) in [('A · Jaws', '1975'), ('B · Star Wars', '1977'), ('C · E.T.', '1982'), ('D · Back to the Future', '1985'), ('E · Jurassic Park', '1993')]) {
+        await place(tester, year, film);
+      }
+      await tester.tap(find.textContaining('2009').last);
+      await tester.pumpAndSettle();
+      await shot('companion_match_11_selected');
+      await tester.tap(find.textContaining('2009').last);
+      await tester.pump();
+      // Mid-drag: holding "1997" over the slot of Titanic.
+      final from = tester.getCenter(find.textContaining('1997').last);
+      final row = find.ancestor(of: find.text('F · Titanic'), matching: find.byType(Row)).first;
+      await tester.ensureVisible(row);
+      await tester.pump();
+      final to = tester.getCenter(find.descendant(of: row, matching: find.byIcon(Icons.add_rounded)));
+      final gesture = await tester.startGesture(tester.getCenter(find.textContaining('1997').last));
+      await gesture.moveBy(const Offset(0, -20));
+      await tester.pump();
+      await gesture.moveTo(to);
+      await tester.pump(const Duration(milliseconds: 200));
+      await shot('companion_match_11_dragging');
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(from, isNot(to));
+      expect(find.text('6 / 11'), findsOneWidget);
+      await shot('companion_match_11_dropped');
+    });
+
+    testWidgets('eleven pairs, all placed', (tester) async {
+      await open(tester, eleven, const Size(412, 892));
+      for (final (i, film) in films.indexed) {
+        await place(tester, years[i], '${Matching.letter(i)} · $film');
+      }
+      await shot('companion_match_11_all');
+    });
+
+    testWidgets('eleven pairs on a tablet', (tester) async {
+      await open(tester, eleven, const Size(820, 1180));
+      for (final (film, year) in [('A · Jaws', '1975'), ('C · E.T.', '1982'), ('G · The Matrix', '1999')]) {
+        await place(tester, year, film);
+      }
+      await shot('companion_match_11_tablet');
+    });
+
+    testWidgets('eleven pairs on a phone held sideways', (tester) async {
+      await open(tester, eleven, const Size(892, 412));
+      await place(tester, '1975', 'A · Jaws');
+      await shot('companion_match_11_sideways');
+    });
   });
 
   testWidgets('companion: list whiteboard', (tester) async {

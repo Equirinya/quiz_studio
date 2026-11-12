@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:quiz_show/features/companion/match_input.dart';
 import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/game/game.dart';
 
@@ -63,9 +64,8 @@ class _CompanionInputState extends State<CompanionInput> {
       _Item(((entry as Map)['i'] as num).toInt(), entry['t'] as String),
   ];
 
-  // match: for each left-hand item, the chosen right-hand item
+  // choice and match: the options (match: the left-hand items)
   late final List<String> _left = (widget.spec['options'] as List? ?? const []).cast<String>();
-  late final List<int> _pairs = List.filled(_left.length, -1);
 
   // list: one field per answer
   late final List<TextEditingController> _lines = [
@@ -245,44 +245,11 @@ class _CompanionInputState extends State<CompanionInput> {
         );
 
       case CompanionKind.match:
-        return ListView(
-          shrinkWrap: true,
-          children: [
-            for (final (i, left) in _left.indexed)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    Expanded(child: Text(left, style: theme.textTheme.titleMedium)),
-                    const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Icon(Icons.arrow_forward)),
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        // Rebuilt when another row takes this row's item away.
-                        key: ValueKey('$i/${_pairs[i]}'),
-                        initialValue: _pairs[i] < 0 ? null : _pairs[i],
-                        isExpanded: true,
-                        decoration: const InputDecoration(isDense: true),
-                        hint: const Text("Choose"),
-                        items: [for (final item in _items) DropdownMenuItem(value: item.index, child: Text(item.text, overflow: TextOverflow.ellipsis))],
-                        onChanged: !enabled
-                            ? null
-                            : (value) {
-                                if (value == null) return;
-                                setState(() {
-                                  // Each right-hand item goes to one place only.
-                                  for (var other = 0; other < _pairs.length; other++) {
-                                    if (_pairs[other] == value) _pairs[other] = -1;
-                                  }
-                                  _pairs[i] = value;
-                                });
-                                widget.onChanged(PlayerAnswer(pairs: List.of(_pairs)));
-                              },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
+        return MatchInput(
+          left: _left,
+          right: [for (final item in _items) (item.index, item.text)],
+          enabled: enabled,
+          onChanged: (pairs) => widget.onChanged(PlayerAnswer(pairs: pairs)),
         );
 
       case CompanionKind.connections:
