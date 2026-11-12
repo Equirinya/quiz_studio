@@ -749,8 +749,8 @@ void main() {
     const years = ['1975', '1977', '1982', '1985', '1993', '1997', '1999', '2000', '2009', '2010', '2013'];
     final eleven = CompanionSpec(
       kind: CompanionKind.match,
-      options: [for (final (i, film) in films.indexed) '${Matching.letter(i)} · $film'],
-      targets: [for (final (i, year) in years.indexed) '${(i * 7) % 11 + 1} · $year'],
+      options: films,
+      targets: years,
     );
     const three = CompanionSpec(kind: CompanionKind.match, options: ['France', 'Italy', 'Spain'], targets: ['Paris', 'Rome', 'Madrid']);
 
@@ -857,8 +857,8 @@ void main() {
       };
       const spec = CompanionSpec(
         kind: CompanionKind.match,
-        options: ['Picture A', 'B · Paris', 'Picture C'],
-        targets: ['2 · 1889', 'Picture 1', 'Picture 3'],
+        options: ['Picture A', 'Paris', 'Picture C'],
+        targets: ['1889', 'Picture 1', 'Picture 3'],
         optionImages: ['a.png', 'b.png', 'c.png'],
         targetImages: ['2.png', '1.png', null],
       );
@@ -882,8 +882,8 @@ void main() {
       // Pictures decode outside the fake clock.
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
       await tester.pump(const Duration(milliseconds: 300));
-      // Picture 1 onto the first slot, by tapping.
-      await tester.tap(find.text(fallbackL10n.deviceLabel('Picture 1')).last);
+      // 1889 onto the first slot, by tapping.
+      await tester.tap(find.text('1889').last);
       await tester.pump();
       await tester.tap(find.byIcon(Icons.add_rounded).first);
       await tester.pumpAndSettle();
@@ -1402,6 +1402,77 @@ void main() {
     });
     await tester.pump(const Duration(milliseconds: 300));
   }
+
+  /// Ten princesses and their princes, most with pictures of every shape,
+  /// some only with a name, as people build them.
+  GameContent princessGame() {
+    final root = Directory.systemTemp.createTempSync('quiz_princesses');
+    Directory('${root.path}/princesses').createSync();
+    const left = ['Schneewittchen', 'Cinderella', 'Aurora', 'Arielle', 'Belle', 'Jasmin', 'Pocahontas', 'Mulan', 'Tiana', 'Rapunzel'];
+    const right = ['Florian', 'Charming', 'Phillip', 'Erik', 'Biest', 'Aladdin', 'John Smith', 'Li Shang', 'Naveen', 'Flynn Rider'];
+    const noPicture = {0, 1, 6, 9};
+    String picture(String name, int i, int w, int h) {
+      final image = img.Image(width: w, height: h);
+      img.fill(image, color: img.ColorRgb8(60 + i * 18, 120 + (i * 37) % 120, 200 - i * 12));
+      img.fillCircle(image, x: w ~/ 2, y: h ~/ 2, radius: (w < h ? w : h) ~/ 3, color: img.ColorRgb8(255, 255, 255));
+      File('${root.path}/princesses/$name.png').writeAsBytesSync(img.encodePng(image));
+      return '$name.png';
+    }
+
+    MediaService.instance.debugRoot = root;
+    final pairs = [
+      for (var i = 0; i < 10; i++)
+        {
+          'left': {'text': left[i], if (!noPicture.contains(i)) 'image': picture('l$i', i, i.isEven ? 200 : 120, i.isEven ? 120 : 220)},
+          'right': {'text': right[i], if (!noPicture.contains((i + 3) % 10)) 'image': picture('r$i', i + 3, i.isOdd ? 260 : 140, 160)},
+        },
+    ];
+    return GameContent.assemble(
+      id: 'princesses',
+      game: {'name': 'Disney'},
+      groups: {
+        'g': {'name': 'Round', 'categoryGroupType': 'category_wheel', 'categoryGroupIndex': 0},
+      },
+      categories: {
+        'c': {'name': 'Disney', 'categoryGroup': 'g', 'categoryIndex': 0, 'active': true},
+      },
+      questions: {
+        'c': {
+          'q': {
+            'type': 'matching',
+            'question': 'Ordnet die Prinzessinnen ihren Prinzen zu.',
+            'pointsPlus': 500,
+            'matching': {'pairs': pairs},
+          },
+        },
+      },
+    );
+  }
+
+  Future<void> cachePictures(WidgetTester tester, GameContent game) async {
+    await tester.pumpWidget(const MaterialApp(home: Scaffold()));
+    await tester.runAsync(() async {
+      for (final name in game.mediaPaths) {
+        await precacheImage(FileImage(MediaService.instance.localFile(game.id, name)), tester.element(find.byType(Scaffold).first));
+      }
+    });
+  }
+
+  testWidgets('matching: ten pairs with pictures of every shape on the big screen', (tester) async {
+    final game = princessGame();
+    await cachePictures(tester, game);
+    await screen(tester, const [OpenQuestion(QuestionRef('c', 'q'))], game: game);
+    await shot('matching_presenter_ten');
+  });
+
+  testWidgets('matching: ten pairs answered, read on the controller', (tester) async {
+    final game = princessGame();
+    await phone(tester, const [
+      OpenQuestion(QuestionRef('c', 'q')),
+      SubmitAnswer('red', PlayerAnswer(pairs: [0, 1, 2, 3, 4, 5, 6, 7, 9, 8])),
+    ], game: game);
+    await shot('matching_controller_ten');
+  });
 
   testWidgets('presenter: picture strip and music bars', (tester) async {
     tester.view.physicalSize = const Size(1600, 900);

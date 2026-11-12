@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:quiz_show/game/game.dart';
 
@@ -282,9 +283,21 @@ class _FluxCapacitorState extends State<FluxCapacitor> with TickerProviderStateM
   late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
   late final AnimationController _beam = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200));
 
+  /// Where the travelling light is, 0 to 1. Moved on every frame by the
+  /// current speed rather than worked out from the time, so a change of
+  /// speed as the charge grows never makes it jump back.
+  double _travel = 0;
+  Duration _last = Duration.zero;
+  late final Ticker _ticker = createTicker((elapsed) {
+    final seconds = (elapsed - _last).inMicroseconds / 1e6;
+    _last = elapsed;
+    _travel = (_travel + seconds * (1 + widget.value * 3) / 1.4) % 1;
+  })..start();
+
   @override
   void initState() {
     super.initState();
+    _ticker; // starts it
     if (widget.unleashed) _beam.value = 1;
   }
 
@@ -297,6 +310,7 @@ class _FluxCapacitorState extends State<FluxCapacitor> with TickerProviderStateM
 
   @override
   void dispose() {
+    _ticker.dispose();
     _pulse.dispose();
     _beam.dispose();
     super.dispose();
@@ -310,7 +324,7 @@ class _FluxCapacitorState extends State<FluxCapacitor> with TickerProviderStateM
         child: AnimatedBuilder(
           animation: Listenable.merge([_pulse, _beam]),
           builder: (context, _) => CustomPaint(
-            painter: FluxPainter(charge: widget.value, pulse: _pulse.value, beam: widget.unleashed ? _beam.value : 0),
+            painter: FluxPainter(charge: widget.value, pulse: _pulse.value, travel: _travel, beam: widget.unleashed ? _beam.value : 0),
           ),
         ),
       ),
@@ -319,12 +333,15 @@ class _FluxCapacitorState extends State<FluxCapacitor> with TickerProviderStateM
 }
 
 class FluxPainter extends CustomPainter {
-  FluxPainter({required this.charge, required this.pulse, required this.beam});
+  FluxPainter({required this.charge, required this.pulse, this.travel = 0, required this.beam});
 
   final double charge;
 
-  /// 0 to 1, round and round: where the travelling light is.
+  /// 0 to 1, round and round: the beat of the beam once unleashed.
   final double pulse;
+
+  /// 0 to 1: where the travelling light is on the arms.
+  final double travel;
 
   /// 0 to 1 once unleashed: the beam's life, from first flash to a steady glow.
   final double beam;
@@ -361,8 +378,7 @@ class FluxPainter extends CustomPainter {
 
     // Faster and brighter the fuller it is.
     final lit = (charge * _lights).ceil().clamp(0, _lights);
-    final speed = 1 + charge * 3;
-    final travelling = (pulse * speed) % 1;
+    final travelling = travel;
     for (final end in ends) {
       for (var i = 0; i < _lights; i++) {
         final t = 0.08 + 0.78 * i / (_lights - 1);
@@ -452,5 +468,5 @@ class FluxPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(FluxPainter old) => old.charge != charge || old.pulse != pulse || old.beam != beam;
+  bool shouldRepaint(FluxPainter old) => old.charge != charge || old.pulse != pulse || old.travel != travel || old.beam != beam;
 }

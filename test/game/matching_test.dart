@@ -29,7 +29,7 @@ void main() {
     final s = reduce(fixtureState(), const OpenQuestion(matchingRound), game, now: 1000).state;
     final spec = s.answerRound!.spec;
     expect((spec.kind, spec.timerSeconds, spec.lockable), (CompanionKind.match, 90, true));
-    expect(spec.options[0], 'A · Back to the Future');
+    expect(spec.options[0], 'Back to the Future');
     expect(spec.options[2], 'Picture C');
     // The devices get the picture itself separately, shrunk; here only its name.
     expect(spec.pictures, contains('poster.png'));

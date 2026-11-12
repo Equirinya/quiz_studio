@@ -78,17 +78,22 @@ class Matching {
     return numbers;
   }
 
-  /// What a team's device shows for a left item.
+  /// What a team's device shows for a left item: its text, or for a
+  /// picture alone a name for it ("Picture A"), which the devices leave out
+  /// where they show the picture itself.
   String leftLabel(int index) {
     final text = pairs[index].left.text.trim();
-    return text.isEmpty ? "Picture ${letter(index)}" : "${letter(index)} · $text";
+    return text.isEmpty ? "Picture ${letter(index)}" : text;
   }
 
-  /// What a team's device shows for a right item.
+  /// What a team's device shows for a right item; see [leftLabel].
   String rightLabel(int index, List<int> numbers) {
     final text = pairs[index].right.text.trim();
-    return text.isEmpty ? "Picture ${numbers[index]}" : "${numbers[index]} · $text";
+    return text.isEmpty ? "Picture ${numbers[index]}" : text;
   }
+
+  /// Whether [label] is the stand-in name of a picture without text.
+  static bool isPictureName(String label) => RegExp(r'^Picture \w+$').hasMatch(label);
 
   Iterable<String> get mediaPaths => [
         for (final pair in pairs) ...[?pair.left.image, ?pair.right.image],

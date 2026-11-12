@@ -2273,7 +2273,14 @@ class _AnswersPanel extends StatelessWidget {
                               alignment: Alignment.centerLeft,
                               child: ConstrainedBox(
                                 constraints: const BoxConstraints(maxHeight: 132),
-                                child: AnswerView(spec: spec, answer: answer, fontSize: 16, backgroundImage: backgroundImage),
+                                // Long answers (ten pairs, a long list) scroll
+                                // inside the card; a drawing is fitted instead.
+                                child: spec.kind == CompanionKind.whiteboard
+                                    ? AnswerView(spec: spec, answer: answer, fontSize: 16, backgroundImage: backgroundImage)
+                                    : SingleChildScrollView(
+                                        primary: false,
+                                        child: AnswerView(spec: spec, answer: answer, fontSize: 16, backgroundImage: backgroundImage),
+                                      ),
                               ),
                             ),
                           ),

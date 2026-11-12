@@ -530,7 +530,8 @@ class QuestionDisplay extends StatelessWidget {
             ),
           ),
         Expanded(
-          flex: 3,
+          // Matching gives the room to its pieces.
+          flex: question.type == QuestionType.matching ? 2 : 3,
           child: Container(
             width: double.infinity,
             padding: EdgeInsets.all(unit * 2),
@@ -573,10 +574,10 @@ class QuestionDisplay extends StatelessWidget {
             ),
           ),
         ),
-        // Matching: the pieces with the letters and numbers the devices name.
+        // Matching: the pieces to put together.
         if (question.type == QuestionType.matching)
           Expanded(
-            flex: 5,
+            flex: 7,
             child: Padding(
               padding: EdgeInsets.only(top: unit * 1.5),
               child: _MatchingBoard(question: question, unit: unit, file: _file),
@@ -1059,8 +1060,9 @@ class _ConnectionsDisplay extends StatelessWidget {
 /// The pictures of a progressing reveal in a row: the ones revealed so far
 /// in small, a question mark for each still to come, and a frame around the
 /// one that is shown big.
-/// The two sides of a matching question: left items A, B, C… in their
-/// order, right items by their shuffled numbers.
+/// The two sides of a matching question: the left items in their order, the
+/// right ones shuffled. Every picture of a row gets the same square, and the
+/// texts one size, small enough for the longest word to fit.
 class _MatchingBoard extends StatelessWidget {
   const _MatchingBoard({required this.question, required this.unit, required this.file});
 
@@ -1074,62 +1076,101 @@ class _MatchingBoard extends StatelessWidget {
     final numbers = matching.rightNumbers(question.id);
     final right = [for (var i = 0; i < matching.pairs.length; i++) (numbers[i], matching.pairs[i].right)]
       ..sort((a, b) => a.$1.compareTo(b.$1));
-    return Column(
-      children: [
-        Expanded(
-          child: _row([
-            for (final (i, pair) in matching.pairs.indexed) (Matching.letter(i), pair.left),
-          ], context),
-        ),
-        SizedBox(height: unit * 1.5),
-        Expanded(child: _row([for (final (number, side) in right) ('$number', side)], context)),
-      ],
+    final top = [for (final pair in matching.pairs) pair.left];
+    final bottom = [for (final (_, side) in right) side];
+    return LayoutBuilder(
+      builder: (context, box) {
+        final inner = box.maxWidth / (top.isEmpty ? 1 : top.length) - 2 * (_margin + _padding);
+        // One text size for the whole board, small enough that no word is
+        // broken in the middle.
+        var fontSize = [...top, ...bottom].any((side) => side.image != null) ? unit * 2.8 : unit * 3.6;
+        final base = DefaultTextStyle.of(context).style;
+        double widest = 0;
+        for (final side in [...top, ...bottom]) {
+          for (final word in side.text.split(RegExp(r'\s+'))) {
+            final painter = TextPainter(
+              text: TextSpan(text: word, style: base.copyWith(fontSize: fontSize, height: 1.2)),
+              textDirection: TextDirection.ltr,
+              textScaler: MediaQuery.textScalerOf(context),
+            )..layout();
+            if (painter.width > widest) widest = painter.width;
+            painter.dispose();
+          }
+        }
+        // A little room to spare: the measure and the real line differ slightly.
+        if (widest > inner * 0.92 && widest > 0) fontSize *= inner * 0.92 / widest;
+        return Column(
+          children: [
+            Expanded(child: _row(top, fontSize, context)),
+            SizedBox(height: unit * 1.5),
+            Expanded(child: _row(bottom, fontSize, context)),
+          ],
+        );
+      },
     );
   }
 
-  Widget _row(List<(String, MatchSide)> items, BuildContext context) {
+  double get _margin => unit * 0.6;
+  double get _padding => unit;
+
+  Widget _row(List<MatchSide> sides, double fontSize, BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        for (final (label, side) in items)
-          Expanded(
-            child: Container(
-              margin: EdgeInsets.symmetric(horizontal: unit * 0.6),
-              padding: EdgeInsets.all(unit),
-              decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 2)),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: unit * 2.4,
-                    backgroundColor: scheme.primary,
-                    child: Text(label, style: TextStyle(fontSize: unit * 2.6, color: scheme.onPrimary, fontWeight: FontWeight.w700)),
+    final pictures = sides.any((side) => side.image != null);
+    final texts = sides.any((side) => side.text.isNotEmpty);
+    return LayoutBuilder(
+      builder: (context, box) {
+        final margin = _margin;
+        final padding = _padding;
+        final inner = box.maxWidth / sides.length - 2 * (margin + padding);
+        final textHeight = texts ? fontSize * 1.3 * 2 + unit * 0.6 : 0.0;
+        final square = pictures ? (box.maxHeight - 2 * padding - textHeight).clamp(0.0, inner).toDouble() : 0.0;
+        return Row(
+          children: [
+            for (final side in sides)
+              Expanded(
+                child: Container(
+                  margin: EdgeInsets.symmetric(horizontal: margin),
+                  padding: EdgeInsets.all(padding),
+                  decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 2)),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (pictures)
+                        SizedBox.square(
+                          dimension: square,
+                          child: file(side.image) != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(unit * 1.2),
+                                  child: Image.file(file(side.image)!, fit: BoxFit.cover),
+                                )
+                              : side.image != null
+                              ? Icon(Icons.image_outlined, size: square * 0.5, color: scheme.outline)
+                              : null,
+                        ),
+                      if (texts)
+                        SizedBox(
+                          height: textHeight,
+                          child: Align(
+                            alignment: pictures ? Alignment.topCenter : Alignment.center,
+                            child: Padding(
+                              padding: EdgeInsets.only(top: pictures ? unit * 0.6 : 0),
+                              child: Text(
+                                side.text,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: fontSize, height: 1.2),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  SizedBox(height: unit * 0.6),
-                  if (file(side.image) != null)
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(unit),
-                        child: Image.file(file(side.image)!, fit: BoxFit.contain),
-                      ),
-                    )
-                  else if (side.image != null)
-                    Expanded(child: Icon(Icons.image_outlined, size: unit * 6, color: scheme.outline)),
-                  if (side.text.isNotEmpty)
-                    Padding(
-                      padding: EdgeInsets.only(top: unit * 0.5),
-                      child: Text(
-                        side.text,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: unit * 2.6),
-                      ),
-                    ),
-                ],
+                ),
               ),
-            ),
-          ),
-      ],
+          ],
+        );
+      },
     );
   }
 }

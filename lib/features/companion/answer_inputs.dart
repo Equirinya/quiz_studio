@@ -252,14 +252,26 @@ class _CompanionInputState extends State<CompanionInput> {
       case CompanionKind.match:
         final leftImages = (widget.spec['optionImages'] as List? ?? const []);
         ImageProvider? picture(Object? name) => name is String && widget.pictures[name] != null ? MemoryImage(widget.pictures[name]!) : null;
+        final rawLeft = (widget.spec['options'] as List? ?? const []).cast<String>();
+        final rawRight = {
+          for (final entry in widget.spec['items'] as List? ?? const []) ((entry as Map)['i'] as num).toInt(): '${entry['t']}',
+        };
+        final rightPictures = {
+          for (final entry in widget.spec['items'] as List? ?? const [])
+            ((entry as Map)['i'] as num).toInt(): ?picture(entry['img']),
+        };
+        // A picture without text needs no name next to it.
         return MatchInput(
-          left: _left,
+          left: [
+            for (final (i, label) in _left.indexed)
+              picture(leftImages.elementAtOrNull(i)) != null && Matching.isPictureName(rawLeft.elementAtOrNull(i) ?? '') ? '' : label,
+          ],
           leftImages: [for (var i = 0; i < _left.length; i++) picture(leftImages.elementAtOrNull(i))],
-          rightImages: {
-            for (final entry in widget.spec['items'] as List? ?? const [])
-              ((entry as Map)['i'] as num).toInt(): ?picture(entry['img']),
-          },
-          right: [for (final item in _items) (item.index, item.text)],
+          rightImages: rightPictures,
+          right: [
+            for (final item in _items)
+              (item.index, rightPictures[item.index] != null && Matching.isPictureName(rawRight[item.index] ?? '') ? '' : item.text),
+          ],
           enabled: enabled,
           onChanged: (pairs) => widget.onChanged(PlayerAnswer(pairs: pairs)),
         );
