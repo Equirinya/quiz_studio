@@ -118,6 +118,17 @@ class _WelcomePageState extends State<WelcomePage> {
     });
   }
 
+  void _toLogin() => setState(() {
+        _error = null;
+        step = _Step.login;
+      });
+
+  Future<void> _useOtherAccount() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {}
+  }
+
   bool get _nameValid => _usernameCtrl.text.trim().length >= kUsernameMinLength;
 
   // ── account ────────────────────────────────────────────────────────────────
@@ -278,7 +289,7 @@ class _WelcomePageState extends State<WelcomePage> {
     switch (step) {
       case _Step.showcase:
         return _ShowcasePage(
-          onLogin: () => setState(() => step = _Step.login),
+          onLogin: _toLogin,
           onStart: () => setState(() => step = _Step.name),
           onJoin: _joining ? null : _joinAsGuest,
         );
@@ -350,6 +361,26 @@ class _WelcomePageState extends State<WelcomePage> {
                         onPressed: _joining ? null : _joinAsGuest,
                         icon: const Icon(Icons.qr_code_scanner, color: Colors.black87),
                         label: const Text("Just join a show", style: TextStyle(color: Colors.black87)),
+                      ),
+                    ),
+                  ),
+                // Signed in to an account that has no name yet: maybe the
+                // wrong one. Signing out leads back to the welcome screen.
+                if (widget.nameOnly)
+                  Center(
+                    child: TextButton(
+                      onPressed: _loading ? null : _useOtherAccount,
+                      child: const Text('Use a different account', style: TextStyle(color: Colors.black87)),
+                    ),
+                  )
+                // A guest who came to set up quizzes may have an account after all.
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Center(
+                      child: TextButton(
+                        onPressed: _loading ? null : _toLogin,
+                        child: const Text('I already have an account', style: TextStyle(color: Colors.black87)),
                       ),
                     ),
                   ),

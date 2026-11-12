@@ -42,8 +42,9 @@ void main() {
       },
     }));
     expect((map.scaleOf('c0'), map.scaleOf('c1'), map.scaleOf('c2')), (1.5, kMapMaxScale, 1.0));
-    // Only c1 has a position of its own.
-    expect(map.nodes['c0'], const MapPoint(1 / 6, 0.5));
+    // Only c1 has a position of its own; c0 moves over to make room for its size.
+    expect(map.nodes['c0']!.y, 0.5);
+    expect(map.nodes['c0']!.x, greaterThan(1 / 6));
     expect(map.nodes['c1'], const MapPoint(0.5, 0.2));
   });
 
@@ -83,6 +84,134 @@ void main() {
     }
     // Every edge is drawn once and the graph has a beginning.
     expect(map.edges.length, lessThan(3));
+  });
+
+  test('bubbles of different sizes get equal space between them, edge to edge', () {
+    final map = layoutMap(group(4, layout: {
+      'nodes': {
+        'c1': {'scale': 2},
+        'c2': {'scale': 0.6},
+      },
+    }));
+    final bubble = mapBubbleWidth(map.columns, map.rows, map.widthFactor);
+    double left(String id) => map.nodes[id]!.x - bubble * map.scaleOf(id) / 2;
+    double right(String id) => map.nodes[id]!.x + bubble * map.scaleOf(id) / 2;
+    final gaps = [left('c1') - right('c0'), left('c2') - right('c1'), left('c3') - right('c2')];
+    expect(gaps[0], greaterThan(0.02));
+    expect(gaps[1], closeTo(gaps[0], 1e-9));
+    expect(gaps[2], closeTo(gaps[0], 1e-9));
+    // Half a gap at either end of the canvas.
+    expect(left('c0'), closeTo(gaps[0] / 2, 1e-9));
+    expect(1 - right('c3'), closeTo(gaps[0] / 2, 1e-9));
+  });
+
+  test('in a branch the widest bubble of a step sets its room', () {
+    final map = layoutMap(group(4, layout: {
+      'after': {
+        'c2': ['c0'],
+      },
+      'nodes': {
+        'c2': {'scale': 1.8},
+      },
+    }));
+    // c0 -> c1 -> ..., c0 -> c2 (wide) ; c3 after c2
+    expect(map.nodes['c1']!.x, map.nodes['c2']!.x);
+    final bubble = mapBubbleWidth(map.columns, map.rows, map.widthFactor);
+    final before = map.nodes['c2']!.x - bubble * 1.8 / 2 - (map.nodes['c0']!.x + bubble / 2);
+    final after = map.nodes['c3']!.x - bubble / 2 - (map.nodes['c2']!.x + bubble * 1.8 / 2);
+    expect(after, closeTo(before, 1e-9));
+  });
+
+  test('branches can split and join again', () {
+    // c0 -> c1 and c0 -> c2, then c1 -> c3 and c2 -> c3, then c3 -> c4.
+    final map = layoutMap(group(5, layout: {
+      'after': {
+        'c2': ['c0'],
+        'c3': ['c1', 'c2'],
+      },
+    }));
+    expect(map.edges.toSet(), {('c0', 'c1'), ('c0', 'c2'), ('c1', 'c3'), ('c2', 'c3'), ('c3', 'c4')});
+    expect((map.columns, map.rows), (4, 2));
+    expect(map.nodes['c1']!.x, map.nodes['c2']!.x);
+    expect(map.nodes['c1']!.y, 0.25);
+    expect(map.nodes['c2']!.y, 0.75);
+    // The split and the join sit between their branches, and what follows the
+    // join stays level with it.
+    expect(map.nodes['c0']!.y, 0.5);
+    expect(map.nodes['c3']!.y, 0.5);
+    expect(map.nodes['c4']!.y, 0.5);
+    expect(map.nodes['c3']!.x, greaterThan(map.nodes['c1']!.x));
+  });
+
+  test('a join waits for its longest branch', () {
+    // c0 -> c1 -> c2 -> c3, and a short cut c0 -> c3.
+    final map = layoutMap(group(4, layout: {
+      'after': {
+        'c3': ['c2', 'c0'],
+      },
+    }));
+    expect(map.edges.toSet(), {('c0', 'c1'), ('c1', 'c2'), ('c2', 'c3'), ('c0', 'c3')});
+    expect(map.columns, 4);
+    expect(map.nodes['c3']!.x, greaterThan(map.nodes['c2']!.x));
+  });
+
+  test('a join is not moved on top of another bubble', () {
+    // Three branches out of c0: c1, c2, c3; c4 joins c1 and c3 while c2 has a
+    // bubble c5 in the same step.
+    final map = layoutMap(group(6, layout: {
+      'after': {
+        'c1': ['c0'],
+        'c2': ['c0'],
+        'c3': ['c0'],
+        'c4': ['c1', 'c3'],
+        'c5': ['c2'],
+      },
+    }));
+    final points = map.nodes.values.toList();
+    expect(points.toSet(), hasLength(points.length));
+  });
+
+  test('older games with one "follows" per category are read as before', () {
+    final old = layoutMap(group(4, layout: {
+      'follows': {'c2': 'c0', 'c3': ''},
+    }));
+    expect(old.edges.toSet(), {('c0', 'c1'), ('c0', 'c2')});
+    // "after" wins where both are there.
+    final both = layoutMap(group(4, layout: {
+      'follows': {'c2': 'c0', 'c3': ''},
+      'after': {
+        'c3': ['c1', 'c2'],
+      },
+    }));
+    expect(both.edges.toSet(), {('c0', 'c1'), ('c0', 'c2'), ('c1', 'c3'), ('c2', 'c3')});
+  });
+
+  test('a loop of arrows is cut, and an arrow from a deleted category falls back', () {
+    final map = layoutMap(group(3, layout: {
+      'after': {
+        'c0': ['c2'],
+        'c2': ['gone'],
+        'c1': ['c0', 'c1', 'c1'],
+      },
+    }));
+    // c2 falls back to coming after c1; c0 after c2 would close a loop.
+    expect(map.edges, [('c0', 'c1'), ('c1', 'c2')]);
+  });
+
+  test('setting the arrows into one category carries older data over', () {
+    final layout = mapLayoutWithAfter({
+      'follows': {'c2': 'c0', 'c3': ''},
+      'width': 2,
+    }, 'c3', ['c1', 'c2']);
+    expect(layout['follows'], isNull);
+    expect(layout['width'], 2);
+    expect(layout['after'], {
+      'c2': ['c0'],
+      'c3': ['c1', 'c2'],
+    });
+    expect(mapLayoutWithAfter(layout, 'c2', null)['after'], {
+      'c3': ['c1', 'c2'],
+    });
   });
 
   test('a bubble placed by hand stays where it was put', () {

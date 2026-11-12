@@ -204,34 +204,32 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
                   padding: EdgeInsets.all(32),
                   child: Center(child: Text("No questions yet.")),
                 ),
-              Builder(
-                builder: (context) {
-                  final questions = _ordered(category.questions);
-                  return ReorderableListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    buildDefaultDragHandles: false,
-                    itemCount: questions.length,
-                    // onReorderItem replaces this from Flutter 3.41 on; kept for older SDKs in CI.
-                    // ignore: deprecated_member_use
-                    onReorder: (from, to) {
-                      if (to > from) to--;
-                      final ids = [for (final q in questions) q.id];
-                      ids.insert(to, ids.removeAt(from));
-                      setState(() => _order = ids);
-                      guarded(context, () => _repo.reorderQuestions(widget.gameId, category.id, ids));
-                    },
-                    itemBuilder: (context, i) => QuestionCard(
-                      key: ValueKey(questions[i].id),
-                      gameId: widget.gameId,
-                      categoryId: category.id,
-                      question: questions[i],
-                      initiallyExpanded: questions[i].id == _fresh,
-                      reorderIndex: questions.length > 1 ? i : null,
-                    ),
-                  );
-                },
-              ),
+              Builder(builder: (context) {
+                final questions = _ordered(category.questions);
+                return ReorderableListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  buildDefaultDragHandles: false,
+                  itemCount: questions.length,
+                  // onReorderItem replaces this from Flutter 3.41 on; kept for older SDKs in CI.
+                  // ignore: deprecated_member_use
+                  onReorder: (from, to) {
+                    if (to > from) to--;
+                    final ids = [for (final q in questions) q.id];
+                    ids.insert(to, ids.removeAt(from));
+                    setState(() => _order = ids);
+                    guarded(context, () => _repo.reorderQuestions(widget.gameId, category.id, ids));
+                  },
+                  itemBuilder: (context, i) => QuestionCard(
+                    key: ValueKey(questions[i].id),
+                    gameId: widget.gameId,
+                    categoryId: category.id,
+                    question: questions[i],
+                    initiallyExpanded: questions[i].id == _fresh,
+                    reorderIndex: questions.length > 1 ? i : null,
+                  ),
+                );
+              }),
             ],
           ),
         );
@@ -341,9 +339,9 @@ class _QuestionCardState extends State<QuestionCard> {
     await GameRepository.instance.deleteQuestion(widget.gameId, widget.categoryId, _q.id);
   }
 
-  Widget _points(TextEditingController controller, String label, String field) => TextField(
+  Widget _points(TextEditingController controller, String label, String field, {String? helper}) => TextField(
     controller: controller,
-    decoration: InputDecoration(labelText: label, isDense: true),
+    decoration: InputDecoration(labelText: label, isDense: true, helperText: helper),
     keyboardType: TextInputType.number,
     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
     onChanged: (value) => _save({field: int.tryParse(value) ?? 0}),
@@ -363,7 +361,10 @@ class _QuestionCardState extends State<QuestionCard> {
   /// Survey duel and Word groups never take points away, nor does a lost bet
   /// of points cost more than the bet.
   bool get _hasMinus =>
-      _effectiveScoring != _Scoring.points && _q.type != QuestionType.feud && _q.type != QuestionType.connections;
+      _effectiveScoring != _Scoring.points &&
+      _q.type != QuestionType.feud &&
+      _q.type != QuestionType.connections &&
+      _q.type != QuestionType.lastStanding;
 
   /// "Free question · slider on the devices · by order"
   String get _subtitle {
@@ -386,16 +387,10 @@ class _QuestionCardState extends State<QuestionCard> {
     final plus = _q.pointsPlus;
     final minus = _hasMinus && _q.pointsMinus > 0 ? _q.pointsMinus : null;
     return switch (_effectiveScoring) {
-      _Scoring.fixed => [
-        if (_q.type.wagerable) "Fixed",
-        minus == null ? "+$plus" : "+$plus / −$minus",
-      ].join(" · "),
+      _Scoring.fixed => [if (_q.type.wagerable) "Fixed", minus == null ? "+$plus" : "+$plus / −$minus"].join(" · "),
       _Scoring.points => "Teams bet their points · at least ${plus > kMinBetLimit ? plus : kMinBetLimit} to bet",
       _Scoring.amount => "Bet on how many · ${minus == null ? "+$plus each" : "+$plus / −$minus each"}",
-      _Scoring.ranked => [
-        "By order · $plus, then −${_q.rankStep ?? 0} per place",
-        if (minus != null) "wrong −$minus",
-      ].join(" · "),
+      _Scoring.ranked => ["By order · $plus, then −${_q.rankStep ?? 0} per place", if (minus != null) "wrong −$minus"].join(" · "),
     };
   }
 
@@ -457,12 +452,21 @@ class _QuestionCardState extends State<QuestionCard> {
         FieldGrid(
           minWidth: 130,
           children: [
-            _points(_plus, switch (scoring) {
-              _Scoring.points => "Points",
-              _Scoring.amount => "Each +",
-              _Scoring.ranked => "1st place +",
-              _Scoring.fixed => "If right +",
-            }, 'pointsPlus'),
+            _points(
+              _plus,
+              switch (scoring) {
+                _Scoring.points => "Points",
+                _Scoring.amount => "Each +",
+                _Scoring.ranked => "1st place +",
+                _Scoring.fixed when _q.type == QuestionType.rapidFire => "Each item +",
+                _Scoring.fixed when _q.type == QuestionType.lastStanding => "Winner +",
+                _Scoring.fixed when _q.type == QuestionType.topAnswers => "Each answer +",
+                _Scoring.fixed => "If right +",
+              },
+              'pointsPlus',
+              // Given per item: the boards show everything there is to win.
+              helper: _q.boardPoints != _q.pointsPlus ? "${_q.boardPoints} on the board" : null,
+            ),
             if (_hasMinus) _points(_minus, scoring == _Scoring.amount ? "Each −" : "If wrong −", 'pointsMinus'),
             if (scoring == _Scoring.ranked)
               TextField(
@@ -646,7 +650,7 @@ class _QuestionCardState extends State<QuestionCard> {
             CircleAvatar(
               backgroundColor: theme.colorScheme.primaryContainer,
               child: Text(
-                _q.pointsPlus.toString(),
+                _q.boardPoints.toString(),
                 style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onPrimaryContainer),
               ),
             ),

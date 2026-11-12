@@ -135,36 +135,39 @@ class _RoundCountdownState extends State<RoundCountdown> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return AnimatedBuilder(
-      animation: _ticker,
-      builder: (context, _) {
-        final total = widget.openedAt == null ? null : widget.endsAt - widget.openedAt!;
-        final left = (widget.endsAt - (_now() - _offset)).clamp(0, total ?? 1 << 31);
-        final seconds = (left / 1000).ceil();
-        final urgent = seconds <= 5;
-        return Row(
-          children: [
-            Expanded(
-              child: LinearProgressIndicator(
-                value: total == null || total <= 0 ? null : left / total,
-                minHeight: widget.height,
-                borderRadius: BorderRadius.circular(widget.height),
-                color: urgent ? scheme.error : scheme.primary,
+    // Redrawn every frame; in a layer of its own, so nothing next to it is.
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _ticker,
+        builder: (context, _) {
+          final total = widget.openedAt == null ? null : widget.endsAt - widget.openedAt!;
+          final left = (widget.endsAt - (_now() - _offset)).clamp(0, total ?? 1 << 31);
+          final seconds = (left / 1000).ceil();
+          final urgent = seconds <= 5;
+          return Row(
+            children: [
+              Expanded(
+                child: LinearProgressIndicator(
+                  value: total == null || total <= 0 ? null : left / total,
+                  minHeight: widget.height,
+                  borderRadius: BorderRadius.circular(widget.height),
+                  color: urgent ? scheme.error : scheme.primary,
+                ),
               ),
-            ),
-            SizedBox(width: widget.height * 1.5),
-            Text(
-              "$seconds s",
-              style: TextStyle(
-                fontSize: widget.height * 2.2,
-                fontWeight: FontWeight.w700,
-                color: urgent ? scheme.error : scheme.onSurface,
-                fontFeatures: const [FontFeature.tabularFigures()],
+              SizedBox(width: widget.height * 1.5),
+              Text(
+                "$seconds s",
+                style: TextStyle(
+                  fontSize: widget.height * 2.2,
+                  fontWeight: FontWeight.w700,
+                  color: urgent ? scheme.error : scheme.onSurface,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
-            ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }

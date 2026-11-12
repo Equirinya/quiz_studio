@@ -5,6 +5,7 @@ library;
 import 'cards.dart';
 import 'companion.dart';
 import 'content.dart';
+import 'last_standing.dart';
 import 'session_state.dart';
 
 /// Who sent a command. Decides what they may ask for; see [mayIssue].
@@ -107,7 +108,8 @@ sealed class Command {
       'awardConnections' => const AwardConnections(),
       'setTeamSound' => SetTeamSound(j['teamId'] as String, j['sound'] as String?),
       'openAnswers' => OpenAnswers(CompanionSpec.fromMap(j['spec'])!),
-      'submitAnswer' => SubmitAnswer(j['teamId'] as String, PlayerAnswer.fromJson(Map<String, dynamic>.from(j['answer'] as Map))),
+      'submitAnswer' =>
+        SubmitAnswer(j['teamId'] as String, PlayerAnswer.fromJson(Map<String, dynamic>.from(j['answer'] as Map))),
       'lockAnswer' => LockAnswer(j['teamId'] as String),
       'lockAnswers' => const LockAnswers(),
       'unlockAnswers' => const UnlockAnswers(),
@@ -119,6 +121,8 @@ sealed class Command {
       'clearAnswers' => const ClearAnswers(),
       'placeTeam' => PlaceTeam(j['teamId'] as String),
       'givePoints' => const GivePoints(),
+      'takeTurn' => TakeTurn(StandingResult.fromName(j['result'])!),
+      'undoTurn' => const UndoTurn(),
       'showCard' => ShowCard(OverlayCard.fromJson(Map<String, dynamic>.from(j['card'] as Map))),
       'hideCard' => const HideCard(),
       'screenEffect' => ScreenEffect(j['name'] as String),
@@ -643,6 +647,25 @@ class GivePoints extends Command {
   const GivePoints();
   @override
   String get type => 'givePoints';
+}
+
+/// Last team standing: how the current team's turn went. The turn passes
+/// on; once only one team is left it wins the question's points.
+class TakeTurn extends Command {
+  const TakeTurn(this.result);
+  final StandingResult result;
+  @override
+  String get type => 'takeTurn';
+  @override
+  Map<String, dynamic> get _args => {'result': result.name};
+}
+
+/// Last team standing: takes the last turn back, and the points if it had
+/// decided the winner.
+class UndoTurn extends Command {
+  const UndoTurn();
+  @override
+  String get type => 'undoTurn';
 }
 
 class ClearAnswers extends Command {

@@ -64,7 +64,7 @@ const Map<String, dynamic> _string = {'type': 'string'};
 final Map<String, dynamic> _questionFields = {
   'type': {
     'type': 'string',
-    'enum': ['free', 'abcd', 'progressingReveal', 'feud', 'connections', 'rapidFire', 'matching', 'topAnswers'],
+    'enum': ['free', 'abcd', 'progressingReveal', 'feud', 'connections', 'rapidFire', 'matching', 'topAnswers', 'lastStanding'],
     'description':
         'free: plain question. abcd: 2 to 9 answer options (A, B, C, ...). progressingReveal: hints revealed one by one. '
         'feud ("Survey duel"): a survey; the team that buzzed uncovers answers until its third strike, then the other '
@@ -74,7 +74,9 @@ final Map<String, dynamic> _questionFields = {
         'connections: sixteen words in four groups of four, solved by every team on its own '
         'device; each group found is worth a quarter of pointsPlus. '
         'rapidFire ("Fragenhagel"): many short questions in a row inside this one, see "rapidFire"; pointsPlus is '
-        'per item. matching: pairs the teams put back together on their devices, see "pairs".',
+        'per item. matching: pairs the teams put back together on their devices, see "pairs". '
+        'lastStanding ("Last team standing"): one player per team takes turns; a wrong answer puts the team out and the '
+        'last team left gets pointsPlus, see "lastStanding".',
   },
   'question': {'type': 'string', 'description': 'The question as shown to the audience.'},
   'answerHint': {'type': 'string', 'description': 'The answer or notes; only the gamemaster sees this.'},
@@ -167,6 +169,30 @@ final Map<String, dynamic> _questionFields = {
     'description': 'progressingReveal with pictures: the row of small pictures under the question. Default true.',
   },
   'absoluteValues': {'type': 'boolean', 'description': 'feud only: "values" are counts (e.g. votes) rather than percentages.'},
+  'lastStanding': {
+    'type': 'object',
+    'description': 'lastStanding only: the turn order and optional prompts, one per turn (e.g. "Does this star have a '
+        'biopic?": one star each). Without items every turn answers the question itself (e.g. "Name a Disney film").',
+    'properties': {
+      'order': {
+        'type': 'string',
+        'enum': ['teams', 'mostPoints', 'fewestPoints'],
+        'description': 'Who starts and how the turns go round: as the teams are listed (default), most points first, fewest first.',
+      },
+      'items': {
+        'type': 'array',
+        'items': {
+          'type': 'object',
+          'properties': {
+            'question': {'type': 'string', 'description': 'The prompt of one turn.'},
+            'answer': {'type': 'string', 'description': 'Its answer, for the gamemaster.'},
+            'image': {'type': 'string', 'description': 'Optional picture, a name from upload_media.'},
+          },
+          'required': ['question'],
+        },
+      },
+    },
+  },
   'rapidFire': {
     'type': 'object',
     'description': 'rapidFire only: the items and how they are played.',
@@ -650,6 +676,21 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     throw const ToolError('A rapidFire question needs "rapidFire" with its items.');
   }
 
+  final standing = take<Map<dynamic, dynamic>>('lastStanding');
+  if (standing != null) {
+    if (effective != QuestionType.lastStanding) throw const ToolError('"lastStanding" is for lastStanding questions.');
+    final order = standing['order'] ?? TurnOrder.teams.name;
+    if (!TurnOrder.values.any((o) => o.name == order)) throw const ToolError('"order" must be teams, mostPoints or fewestPoints.');
+    final items = standing['items'] ?? const [];
+    if (items is! List || items.any((i) => i is! Map || i['question'] is! String || (i['question'] as String).trim().isEmpty)) {
+      throw const ToolError('"lastStanding.items" must be a list of objects, each with its "question".');
+    }
+    data['lastStanding'] = LastStanding(
+      order: TurnOrder.fromName(order),
+      items: [for (final item in items.cast<Map>()) RapidItem.fromMap({...item, if (item['image'] == '') 'image': null})],
+    ).toMap();
+  }
+
   final pairs = take<List<dynamic>>('pairs');
   if (pairs != null) {
     if (effective != QuestionType.matching) throw const ToolError('"pairs" is for matching questions.');
@@ -783,6 +824,7 @@ Map<String, dynamic> describeQuestion(Question q) => {
   if (q.type == QuestionType.feud && q.absoluteValues) 'absoluteValues': true,
   if (q.type == QuestionType.connections) 'groups': [for (final g in q.connectionGroups) g.toMap()],
   if (q.type == QuestionType.rapidFire && q.rapidFire != null) 'rapidFire': q.rapidFire!.toMap(),
+  if (q.type == QuestionType.lastStanding && q.lastStanding != null) 'lastStanding': q.lastStanding!.toMap(),
   if (q.type == QuestionType.matching && q.matching != null)
     'pairs': [
       for (final pair in q.matching!.pairs)

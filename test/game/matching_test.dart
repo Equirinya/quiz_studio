@@ -25,14 +25,16 @@ void main() {
     expect(question.matching!.rightNumbers(question.id), numbers);
   });
 
-  test('opening it starts a match round; a picture is named, not sent', () {
+  test('opening it starts a match round; a picture is named, and its name goes to the devices', () {
     final s = reduce(fixtureState(), const OpenQuestion(matchingRound), game, now: 1000).state;
     final spec = s.answerRound!.spec;
     expect((spec.kind, spec.timerSeconds, spec.lockable), (CompanionKind.match, 90, true));
     expect(spec.options[0], 'A · Back to the Future');
     expect(spec.options[2], 'Picture C');
+    // The devices get the picture itself separately, shrunk; here only its name.
+    expect(spec.pictures, contains('poster.png'));
     final public = publicView(s, game, teamId: 'red').toString();
-    expect(public, isNot(contains('poster.png')));
+    expect(public, contains('poster.png'));
   });
 
   test('a team that pairs everything right is judged right', () {

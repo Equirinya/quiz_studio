@@ -26,6 +26,8 @@ String questionTypeExplanation(QuestionType type) => switch (type) {
         "Fragenhagel: many short questions right after one another. Teams buzz, or judge statements right or wrong on their devices; each item can have a picture and a sound.",
       QuestionType.matching =>
         "Matching: pairs of texts or pictures, e.g. films and their years. Every team puts them back together on its device; the big screen shows the pictures.",
+      QuestionType.lastStanding =>
+        "Last team standing: one player per team takes turns, e.g. naming films or saying whether a star has a biopic. A wrong answer puts the team out; the last team left gets the points.",
       QuestionType.unsupported => "This question type is not supported by this version of the app.",
     };
 
@@ -66,6 +68,7 @@ class QuestionTypeEditor extends StatelessWidget {
       QuestionType.rapidFire => _RapidFireEditor(gameId: gameId, question: question, save: save, layout: place),
       QuestionType.matching => _MatchingEditor(gameId: gameId, question: question, save: save, layout: place),
       QuestionType.topAnswers => _TopAnswersEditor(question: question, save: save, layout: place),
+      QuestionType.lastStanding => _StandingEditor(gameId: gameId, question: question, save: save, layout: place),
       QuestionType.unsupported => place(null, const SizedBox.shrink()),
     };
   }
@@ -680,6 +683,139 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
             onPressed: () => _change(() => _rows.add(_RapidRow(const RapidItem()))),
             icon: const Icon(Icons.add),
             label: Text(devices ? "Add statement" : "Add question"),
+          ),
+        ),
+      ],
+    ));
+  }
+}
+
+/// Last team standing: the turn order, and the prompts, one per turn (none
+/// for a question every turn answers, e.g. "Name a Disney film").
+class _StandingEditor extends StatefulWidget {
+  const _StandingEditor({required this.gameId, required this.question, required this.save, required this.layout});
+
+  final String gameId;
+  final Question question;
+  final SaveQuestion save;
+  final TypeEditorLayout layout;
+
+  @override
+  State<_StandingEditor> createState() => _StandingEditorState();
+}
+
+class _StandingEditorState extends State<_StandingEditor> {
+  late final LastStanding _stored = widget.question.lastStanding ?? const LastStanding();
+  late TurnOrder _order = _stored.order;
+  late final List<_RapidRow> _rows = [for (final item in _stored.items) _RapidRow(item)];
+
+  @override
+  void dispose() {
+    for (final row in _rows) {
+      row.dispose();
+    }
+    super.dispose();
+  }
+
+  void _write() => widget.save({'lastStanding': LastStanding(order: _order, items: [for (final row in _rows) row.item]).toMap()});
+
+  void _change(VoidCallback change) {
+    setState(change);
+    _write();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FillDropdown<TurnOrder>(
+          label: "Turn order",
+          value: _order,
+          entries: [for (final order in TurnOrder.values) DropdownMenuEntry(value: order, label: order.uiString)],
+          onSelected: (order) {
+            if (order != null) _change(() => _order = order);
+          },
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "One player per team takes turns. You rate each turn: right, wrong (the team is out) or wrong but it stays in. "
+          "The last team left gets the points.",
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+    return widget.layout(settings, Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          _rows.isEmpty ? "No prompts: every turn answers the question itself." : "One prompt per turn, in this order.",
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          itemCount: _rows.length,
+          // onReorderItem replaces this from Flutter 3.41 on; kept for older SDKs in CI.
+          // ignore: deprecated_member_use
+          onReorder: (oldIndex, newIndex) => _change(() {
+            if (oldIndex < newIndex) newIndex -= 1;
+            _rows.insert(newIndex, _rows.removeAt(oldIndex));
+          }),
+          itemBuilder: (context, i) {
+            final row = _rows[i];
+            return Padding(
+              key: ObjectKey(row),
+              padding: const EdgeInsets.only(top: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ReorderableDragStartListener(
+                    index: i,
+                    child: const Padding(padding: EdgeInsets.fromLTRB(0, 14, 8, 0), child: Icon(Icons.drag_indicator)),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: row.question,
+                      decoration: InputDecoration(labelText: "Prompt ${i + 1}", isDense: true),
+                      onChanged: (_) => _write(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: row.answer,
+                      decoration: const InputDecoration(labelText: "Answer", isDense: true),
+                      onChanged: (_) => _write(),
+                    ),
+                  ),
+                  MediaButton(
+                    gameId: widget.gameId,
+                    kind: MediaKind.image,
+                    name: row.image,
+                    onChanged: (name) => _change(() => row.image = name),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: "Remove",
+                    onPressed: () => _change(() {
+                      final removed = _rows.removeAt(i);
+                      WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
+                    }),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => _change(() => _rows.add(_RapidRow(const RapidItem()))),
+            icon: const Icon(Icons.add),
+            label: const Text("Add prompt"),
           ),
         ),
       ],

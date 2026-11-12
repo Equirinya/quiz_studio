@@ -34,7 +34,7 @@ Map<String, dynamic> publicView(SessionState state, GameContent? game, {String? 
     'buzzQueue': state.buzzQueue,
     'buzzersOpen': buzzersOpen(state, game),
     // A question can leave the buzzing to the buzzer box.
-    if (question != null && question.noPhoneBuzzer && state.phase != Phase.buzzerTest) 'phoneBuzzer': false,
+    if (question != null && (question.noPhoneBuzzer || question.type == QuestionType.lastStanding) && state.phase != Phase.buzzerTest) 'phoneBuzzer': false,
     'question': question == null ? null : _visibleQuestion(state, question, game),
     // Bets: who has placed one, and only once they are closed how much.
     if (state.betting case final betting?)
@@ -81,7 +81,10 @@ Map<String, dynamic> publicView(SessionState state, GameContent? game, {String? 
               'progress': {
                 for (final entry in round.answers.entries)
                   if (entry.value.connections != null)
-                    entry.key: {'solved': entry.value.connections!.solved, 'mistakes': entry.value.connections!.mistakes},
+                    entry.key: {
+                      'solved': entry.value.connections!.solved,
+                      'mistakes': entry.value.connections!.mistakes,
+                    },
               },
             'verdicts': {
               for (final teamId in round.revealed)
@@ -212,6 +215,18 @@ Map<String, dynamic> _visibleQuestion(SessionState state, Question question, Gam
     case QuestionType.matching:
       // The pairs travel in the answer round, without their pairing.
       break;
+    case QuestionType.lastStanding:
+      // Whose turn, who is out, and the prompt of this turn without its answer.
+      final play = state.standing;
+      if (play != null) {
+        view['standing'] = {
+          'order': play.order,
+          'out': play.out,
+          'current': ?play.current,
+          'winner': ?play.winner,
+          'prompt': ?question.lastStanding?.itemAt(play.item)?.question,
+        };
+      }
     case QuestionType.free:
     case QuestionType.unsupported:
       break;
@@ -229,12 +244,14 @@ class PublicView {
 
   Phase get phase => Phase.values.firstWhere((p) => p.name == json['phase'], orElse: () => Phase.overview);
 
-  List<Team> get teams => [for (final team in json['teams'] as List? ?? const []) Team.fromJson(Map<String, dynamic>.from(team as Map))];
+  List<Team> get teams =>
+      [for (final team in json['teams'] as List? ?? const []) Team.fromJson(Map<String, dynamic>.from(team as Map))];
 
   List<String> get buzzQueue => (json['buzzQueue'] as List? ?? const []).cast<String>();
 
   /// The open question as far as it is revealed, or null on the board.
-  Map<String, dynamic>? get question => json['question'] == null ? null : Map<String, dynamic>.from(json['question'] as Map);
+  Map<String, dynamic>? get question =>
+      json['question'] == null ? null : Map<String, dynamic>.from(json['question'] as Map);
 
   Map<String, dynamic>? get _round => json['answerRound'] == null ? null : Map<String, dynamic>.from(json['answerRound'] as Map);
 
@@ -308,8 +325,8 @@ class PublicView {
 
   /// Connections: groups on the big screen.
   List<GroupView> get revealedGroups => [
-    for (final group in question?['revealedGroups'] as List? ?? const []) GroupView(Map<String, dynamic>.from(group as Map)),
-  ];
+        for (final group in question?['revealedGroups'] as List? ?? const []) GroupView(Map<String, dynamic>.from(group as Map)),
+      ];
 
   /// Connections: how far a team got, as (levels found, mistakes).
   ({List<int> solved, int mistakes})? progressOf(String teamId) {
@@ -370,6 +387,18 @@ class PublicView {
   /// on the buzzer box only.
   bool get phoneBuzzer => json['phoneBuzzer'] != false;
 
+  /// Last team standing: whose turn, who is out, who won; null otherwise.
+  ({List<String> out, String? current, String? winner, String? prompt})? get standing {
+    final standing = question?['standing'];
+    if (standing is! Map) return null;
+    return (
+      out: [for (final id in standing['out'] as List? ?? const []) '$id'],
+      current: standing['current'] as String?,
+      winner: standing['winner'] as String?,
+      prompt: standing['prompt'] as String?,
+    );
+  }
+
   /// Whether a buzz by [teamId] would count right now.
   bool canBuzz(String teamId) {
     if (json['buzzersOpen'] != true || !teams.any((team) => team.id == teamId)) return false;
@@ -403,8 +432,8 @@ class ConnectionsView {
 
   /// Wrong guesses, as places in the shown order.
   List<List<int>> get wrong => [
-    for (final guess in json['wrong'] as List? ?? const []) [for (final p in guess as List) (p as num).toInt()],
-  ];
+        for (final guess in json['wrong'] as List? ?? const []) [for (final p in guess as List) (p as num).toInt()],
+      ];
 
   List<bool> get oneAway => [for (final e in json['oneAway'] as List? ?? const []) e == true];
 

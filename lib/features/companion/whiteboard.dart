@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/game/game.dart';
@@ -25,7 +28,12 @@ class WhiteboardPainter extends CustomPainter {
     this.ink = const Color(0xFF1B1B1F),
     this.guide = const Color(0x33000000),
     this.fontFamily,
+    this.version = 0,
   });
+
+  /// Bumped by whoever changes [strokes] in place, so the board is painted
+  /// again; a new list of strokes does that by itself.
+  final int version;
 
   /// The app's font, which a painter does not pick up from the theme.
   final String? fontFamily;
@@ -37,8 +45,16 @@ class WhiteboardPainter extends CustomPainter {
   final Color ink;
   final Color guide;
 
+  /// Ink points painted so far, counted in debug builds only, for the
+  /// whiteboard load benchmark (tool/whiteboard_load_test.dart).
+  static int debugPaintedPoints = 0;
+
   @override
   void paint(Canvas canvas, Size size) {
+    assert(() {
+      debugPaintedPoints += strokes.fold(0, (sum, s) => sum + s.length);
+      return true;
+    }());
     // Over a picture the paper is left out, so the picture shows through.
     if (background != 'image') canvas.drawRect(Offset.zero & size, Paint()..color = paper);
     final guidePaint = Paint()
@@ -105,11 +121,24 @@ class WhiteboardPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(WhiteboardPainter old) => true;
+  bool shouldRepaint(WhiteboardPainter old) =>
+      !identical(old.strokes, strokes) ||
+      old.version != version ||
+      old.background != background ||
+      old.listRows != listRows ||
+      old.paper != paper ||
+      old.ink != ink ||
+      old.guide != guide ||
+      old.fontFamily != fontFamily;
 }
 
 /// A drawing, read-only.
-class DrawingView extends StatelessWidget {
+///
+/// Boards are shown live on the host while teams write, a dozen at a time
+/// next to a running countdown. So each is read from its string only when
+/// that string changes, and drawn once into a picture of its own that the
+/// screen then just shows, rather than every stroke again on every frame.
+class DrawingView extends StatefulWidget {
   const DrawingView({super.key, required this.drawing, this.background = 'blank', this.listRows = 5, this.backgroundImage});
 
   final String? drawing;
@@ -121,25 +150,115 @@ class DrawingView extends StatelessWidget {
   final ImageProvider? backgroundImage;
 
   @override
+  State<DrawingView> createState() => _DrawingViewState();
+}
+
+class _DrawingViewState extends State<DrawingView> {
+  late List<Stroke> _strokes = decodeDrawing(widget.drawing);
+
+  @override
+  void didUpdateWidget(DrawingView old) {
+    super.didUpdateWidget(old);
+    if (old.drawing != widget.drawing) _strokes = decodeDrawing(widget.drawing);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: drawingAspect(drawing),
+      aspectRatio: drawingAspect(widget.drawing),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: WhiteboardSurface(
-          background: background,
-          backgroundImage: backgroundImage,
-          ink: CustomPaint(
-            painter: WhiteboardPainter(
+          background: widget.background,
+          backgroundImage: widget.backgroundImage,
+          ink: _InkPicture(
+            board: WhiteboardPainter(
               fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
-              strokes: decodeDrawing(drawing),
-              background: backgroundImage == null && background == 'image' ? 'blank' : background,
-              listRows: listRows,
+              strokes: _strokes,
+              background: widget.backgroundImage == null && widget.background == 'image' ? 'blank' : widget.background,
+              listRows: widget.listRows,
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+/// [board] drawn into an image at the size it takes on screen, in its own
+/// layer, and drawn again only when the board or that size changes.
+class _InkPicture extends LeafRenderObjectWidget {
+  const _InkPicture({required this.board});
+
+  final WhiteboardPainter board;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderInkPicture(board);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderInkPicture renderObject) => renderObject.board = board;
+}
+
+class _RenderInkPicture extends RenderBox {
+  _RenderInkPicture(this._board);
+
+  WhiteboardPainter _board;
+  set board(WhiteboardPainter value) {
+    final changed = value.shouldRepaint(_board);
+    _board = value;
+    if (changed) {
+      _drop();
+      markNeedsPaint();
+    }
+  }
+
+  ui.Image? _image;
+
+  void _drop() {
+    _image?.dispose();
+    _image = null;
+  }
+
+  @override
+  bool get isRepaintBoundary => true;
+
+  @override
+  bool get sizedByParent => true;
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) => constraints.smallest;
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (size.isEmpty) return;
+    // As many pixels as the board covers on the screen, scaling included.
+    final transform = getTransformTo(null);
+    final scale = math.sqrt(transform.storage[0] * transform.storage[0] + transform.storage[1] * transform.storage[1]);
+    final ratio = math.min(scale <= 0 ? 1.0 : scale, 4096 / math.max(size.width, size.height));
+    final width = (size.width * ratio).ceil();
+    final height = (size.height * ratio).ceil();
+    var image = _image;
+    if (image == null || image.width != width || image.height != height) {
+      _drop();
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder)..scale(width / size.width, height / size.height);
+      _board.paint(canvas, size);
+      final picture = recorder.endRecording();
+      image = _image = picture.toImageSync(width, height);
+      picture.dispose();
+    }
+    context.canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+      offset & size,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+  }
+
+  @override
+  void dispose() {
+    _drop();
+    super.dispose();
   }
 }
 
@@ -204,6 +323,14 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
   late final List<Stroke> _strokes = decodeDrawing(widget.initial);
   late final double _aspect = widget.initial == null ? widget.aspect : drawingAspect(widget.initial);
 
+  /// Counts changes to [_strokes], which is changed in place.
+  int _version = 0;
+
+  void _change(VoidCallback change) => setState(() {
+    change();
+    _version++;
+  });
+
   void _emit() => widget.onChanged(encodeDrawing(_strokes, aspect: _aspect));
 
   InkPoint _point(Offset local, Size size) =>
@@ -227,14 +354,14 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
                 children: [
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onPanStart: !widget.enabled ? null : (d) => setState(() => _strokes.add([_point(d.localPosition, size)])),
-                    onPanUpdate: !widget.enabled ? null : (d) => setState(() => _strokes.last.add(_point(d.localPosition, size))),
+                    onPanStart: !widget.enabled ? null : (d) => _change(() => _strokes.add([_point(d.localPosition, size)])),
+                    onPanUpdate: !widget.enabled ? null : (d) => _change(() => _strokes.last.add(_point(d.localPosition, size))),
                     onPanEnd: !widget.enabled ? null : (_) => _emit(),
                     // A tap leaves a dot: the point of an "i", a decimal point.
                     onTapUp: !widget.enabled
                         ? null
                         : (d) {
-                            setState(() => _strokes.add([_point(d.localPosition, size)]));
+                            _change(() => _strokes.add([_point(d.localPosition, size)]));
                             _emit();
                           },
                     child: SizedBox.fromSize(
@@ -247,6 +374,7 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
                           painter: WhiteboardPainter(
                             fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
                             strokes: _strokes,
+                            version: _version,
                             background: widget.backgroundImage == null && widget.background == 'image'
                                 ? 'blank'
                                 : widget.background,
@@ -272,7 +400,7 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
                               color: Colors.black87,
                               onPressed: canEdit
                                   ? () {
-                                      setState(_strokes.removeLast);
+                                      _change(_strokes.removeLast);
                                       _emit();
                                     }
                                   : null,
@@ -283,7 +411,7 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
                               color: scheme.error,
                               onPressed: canEdit
                                   ? () {
-                                      setState(_strokes.clear);
+                                      _change(_strokes.clear);
                                       _emit();
                                     }
                                   : null,

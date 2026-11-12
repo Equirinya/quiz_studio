@@ -251,9 +251,37 @@ class SessionConnection {
     }
   }
 
+  Set<String> _pictureNames = const {};
+
+  /// Presenting: when a round with pictures starts (matching), shrink them
+  /// and send them to the teams' devices, over the local network and the
+  /// cloud.
+  Future<void> _sharePictures(SessionState? next) async {
+    final names = {...?next?.answerRound?.spec.pictures};
+    final gameId = _gameId;
+    if (!isPresenting || names.isEmpty || gameId == null || names.containsAll(_pictureNames) && _pictureNames.containsAll(names)) return;
+    _pictureNames = names;
+    try {
+      final pictures = <String, Uint8List>{};
+      for (final name in names) {
+        await MediaService.instance.ensureCached(gameId, name);
+        final bytes = await preparePictureFile(MediaService.instance.localFile(gameId, name));
+        if (bytes != null) pictures[name] = bytes;
+      }
+      if (pictures.isEmpty || _disposed) return;
+      _server?.setPictures(pictures);
+      await SessionRepository.instance.publishPictures(sessionId, pictures);
+    } catch (error) {
+      // The round still works; the devices name the pictures instead.
+      if (kDebugMode) print('Session: could not share the pictures: $error');
+      _pictureNames = const {};
+    }
+  }
+
   void _onState(SessionState? next) {
     state.value = next;
     _shareBackground(next);
+    _sharePictures(next);
     if (next?.gameId != _gameId) _watchGame(next?.gameId);
   }
 

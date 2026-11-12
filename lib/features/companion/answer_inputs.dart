@@ -21,7 +21,11 @@ class CompanionInput extends StatefulWidget {
     this.enabled = true,
     this.whiteboardAspect = kWhiteboardAspect,
     this.backgroundImage,
+    this.pictures = const {},
   });
+
+  /// Matching: the round's pictures that have arrived, by media name.
+  final Map<String, Uint8List> pictures;
 
   /// Whiteboards with a picture as paper: the picture, once it has arrived.
   final ImageProvider? backgroundImage;
@@ -245,8 +249,15 @@ class _CompanionInputState extends State<CompanionInput> {
         );
 
       case CompanionKind.match:
+        final leftImages = (widget.spec['optionImages'] as List? ?? const []);
+        ImageProvider? picture(Object? name) => name is String && widget.pictures[name] != null ? MemoryImage(widget.pictures[name]!) : null;
         return MatchInput(
           left: _left,
+          leftImages: [for (var i = 0; i < _left.length; i++) picture(leftImages.elementAtOrNull(i))],
+          rightImages: {
+            for (final entry in widget.spec['items'] as List? ?? const [])
+              ((entry as Map)['i'] as num).toInt(): ?picture(entry['img']),
+          },
           right: [for (final item in _items) (item.index, item.text)],
           enabled: enabled,
           onChanged: (pairs) => widget.onChanged(PlayerAnswer(pairs: pairs)),

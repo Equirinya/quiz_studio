@@ -35,6 +35,7 @@ class SessionClient implements CommandSink {
     this.cloudViews,
     this.cloudEndpoints,
     this.cloudBackground,
+    this.cloudPictures,
     this.cloudSend,
     this.onSendError,
     this.discover,
@@ -63,6 +64,7 @@ class SessionClient implements CommandSink {
       cloudViews: role == Role.player ? repo.watchPublicState(sessionId, teamId: teamId) : null,
       cloudEndpoints: repo.watchLanEndpoints(sessionId),
       cloudBackground: repo.watchBackground(sessionId),
+      cloudPictures: repo.watchPictures(sessionId),
       cloudSend: (command) => repo.sendCommand(sessionId, command, role: role, teamId: teamId),
       onSendError: onSendError,
       discover: () => discoverPresenter(sessionId),
@@ -83,6 +85,9 @@ class SessionClient implements CommandSink {
 
   /// The picture of a whiteboard round as the cloud delivers it.
   final Stream<(String, Uint8List)?>? cloudBackground;
+
+  /// The pictures of the current round (matching), by media name.
+  final Stream<Map<String, Uint8List>>? cloudPictures;
   final Future<void> Function(Command command)? cloudSend;
   final void Function(Object error)? onSendError;
 
@@ -103,6 +108,10 @@ class SessionClient implements CommandSink {
   /// The picture teams draw on, as (media name, image bytes); whichever
   /// transport brings it first.
   final ValueNotifier<(String, Uint8List)?> background = ValueNotifier(null);
+
+  /// Every round picture received so far (matching), by media name, from
+  /// either transport.
+  final ValueNotifier<Map<String, Uint8List>> pictures = ValueNotifier(const {});
 
   /// Screen effects, when the presenter is reached over the local network.
   Stream<Effect> get effects => _effectsOut.stream;
@@ -151,11 +160,19 @@ class SessionClient implements CommandSink {
     if (cloudBackground != null) {
       _subs.add(cloudBackground!.listen(_onBackground, onError: (Object _) {}));
     }
+    if (cloudPictures != null) {
+      _subs.add(cloudPictures!.listen((pictures) => pictures.forEach(_onPicture), onError: (Object _) {}));
+    }
     _lanLoop();
   }
 
   // A message can still be on its way when the client is disposed; it is
   // dropped then rather than handed to a notifier that is gone.
+
+  void _onPicture(String name, Uint8List bytes) {
+    if (_disposed || pictures.value.containsKey(name)) return;
+    pictures.value = {...pictures.value, name: bytes};
+  }
 
   void _onBackground((String, Uint8List)? next) {
     if (_disposed) return;
@@ -220,6 +237,7 @@ class SessionClient implements CommandSink {
         if (!_disposed) lanGame.value = game;
       }),
       client.backgrounds.listen(_onBackground),
+      client.pictures.listen((picture) => _onPicture(picture.$1, picture.$2)),
       client.effects.listen((effect) {
         if (!_disposed) _effectsOut.add(effect);
       }),
@@ -260,6 +278,7 @@ class SessionClient implements CommandSink {
     lanGame.dispose();
     link.dispose();
     background.dispose();
+    pictures.dispose();
     cloudOk.dispose();
     await _effectsOut.close();
   }

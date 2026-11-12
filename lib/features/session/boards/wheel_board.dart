@@ -23,7 +23,7 @@ class WheelBoard extends StatelessWidget {
     final questionDocs = [
       for (final category in group.categories)
         [
-          for (final question in category.questions) <String, dynamic>{pointsPlus: question.pointsPlus},
+          for (final question in category.questions) <String, dynamic>{pointsPlus: question.boardPoints},
         ],
     ];
     (int, int)? indexOf(QuestionRef? ref) {

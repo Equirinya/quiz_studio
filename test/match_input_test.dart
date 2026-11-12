@@ -29,7 +29,7 @@ void main() {
   }
 
   Finder slotOf(String left) => find.descendant(
-    of: find.ancestor(of: find.text(left), matching: find.byType(Row)).first,
+    of: find.ancestor(of: find.text(left), matching: find.byType(IntrinsicHeight)).first,
     matching: find.byIcon(Icons.add_rounded),
   );
 
@@ -62,7 +62,7 @@ void main() {
     final from = tester.getCenter(find.text('R0'));
     final gesture = await tester.startGesture(from);
     await tester.pump(const Duration(milliseconds: 300));
-    final row2 = find.ancestor(of: find.text('L2'), matching: find.byType(Row)).first;
+    final row2 = find.ancestor(of: find.text('L2'), matching: find.byType(IntrinsicHeight)).first;
     await gesture.moveTo(tester.getCenter(find.descendant(of: row2, matching: find.text('R2'))));
     await tester.pump();
     await gesture.up();

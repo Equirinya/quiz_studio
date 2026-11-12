@@ -32,9 +32,8 @@ class FakeBackend implements GameToolsBackend {
   String _id(String prefix) => '$prefix${++_next}';
 
   @override
-  Future<List<({String id, String name})>> listGames() async => [
-    for (final entry in games.entries) (id: entry.key, name: entry.value['name'] as String),
-  ];
+  Future<List<({String id, String name})>> listGames() async =>
+      [for (final entry in games.entries) (id: entry.key, name: entry.value['name'] as String)];
 
   @override
   Future<GameContent> loadGame(String gameId) async {
@@ -93,10 +92,12 @@ class FakeBackend implements GameToolsBackend {
       questions[categoryId]![questionId]!.addAll(data);
 
   @override
-  Future<void> deleteQuestion(String gameId, String categoryId, String questionId) async => questions[categoryId]!.remove(questionId);
+  Future<void> deleteQuestion(String gameId, String categoryId, String questionId) async =>
+      questions[categoryId]!.remove(questionId);
 
   @override
-  Future<void> updateGroup(String gameId, String groupId, Map<String, dynamic> data) async => groups[gameId]![groupId]!.addAll(data);
+  Future<void> updateGroup(String gameId, String groupId, Map<String, dynamic> data) async =>
+      groups[gameId]![groupId]!.addAll(data);
 
   @override
   Future<void> deleteGroup(String gameId, String groupId) async => groups[gameId]!.remove(groupId);
@@ -140,40 +141,21 @@ void main() {
       expect(data['answers'], ['a', 'b', 'c', 'd']);
       expect(data['answersCorrect'], [false, true, false, false]);
       expect(
-        questionDataFromArgs({
-          'type': 'abcd',
-          'question': 'Pick',
-          'answers': ['a', 'b'],
-          'correct': [true, false],
-        }, partial: false)['answers'],
+        questionDataFromArgs({'type': 'abcd', 'question': 'Pick', 'answers': ['a', 'b'], 'correct': [true, false]}, partial: false)['answers'],
         ['a', 'b'],
       );
       for (final args in <Map<String, dynamic>>[
-        {
-          'answers': ['a'],
-          'correct': [true],
-        },
+        {'answers': ['a'], 'correct': [true]},
         {'answers': List.filled(10, 'x'), 'correct': List.filled(10, false)},
-        {
-          'answers': ['a', 'b', 'c'],
-          'correct': [true, false],
-        },
+        {'answers': ['a', 'b', 'c'], 'correct': [true, false]},
       ]) {
-        expect(
-          () => questionDataFromArgs({'type': 'abcd', 'question': 'Pick', ...args}, partial: false),
-          throwsA(isA<ToolError>()),
-          reason: '$args',
-        );
+        expect(() => questionDataFromArgs({'type': 'abcd', 'question': 'Pick', ...args}, partial: false), throwsA(isA<ToolError>()), reason: '$args');
       }
       expect(() => questionDataFromArgs({'type': 'abcd', 'question': 'Pick'}, partial: false), throwsA(isA<ToolError>()));
     });
 
     test('progressing reveal keeps its three lists aligned', () {
-      final data = questionDataFromArgs({
-        'type': 'progressingReveal',
-        'question': 'Who?',
-        'information': ['one', 'two'],
-      }, partial: false);
+      final data = questionDataFromArgs({'type': 'progressingReveal', 'question': 'Who?', 'information': ['one', 'two']}, partial: false);
       expect(data['informationImage'], ['', '']);
       expect(data['informationMusic'], ['', '']);
     });
@@ -187,32 +169,15 @@ void main() {
       }, partial: false);
       expect(data['informationPercentage'], [70.0, 30.0]);
       expect(
-        () => questionDataFromArgs({
-          'type': 'feud',
-          'question': 'x',
-          'information': ['a', 'b'],
-          'values': [100],
-        }, partial: false),
+        () => questionDataFromArgs({'type': 'feud', 'question': 'x', 'information': ['a', 'b'], 'values': [100]}, partial: false),
         throwsA(isA<ToolError>()),
       );
     });
 
     test('fields of another type are refused', () {
+      expect(() => questionDataFromArgs({'question': 'x', 'answers': ['a', 'b', 'c', 'd']}, partial: false), throwsA(isA<ToolError>()));
       expect(
-        () => questionDataFromArgs({
-          'question': 'x',
-          'answers': ['a', 'b', 'c', 'd'],
-        }, partial: false),
-        throwsA(isA<ToolError>()),
-      );
-      expect(
-        () => questionDataFromArgs(
-          {
-            'information': ['a'],
-          },
-          partial: true,
-          existingType: QuestionType.abcd,
-        ),
+        () => questionDataFromArgs({'information': ['a']}, partial: true, existingType: QuestionType.abcd),
         throwsA(isA<ToolError>()),
       );
       expect(() => questionDataFromArgs({'type': 'riddle', 'question': 'x'}, partial: false), throwsA(isA<ToolError>()));
@@ -221,22 +186,10 @@ void main() {
 
     test('connections takes four groups of four, no word twice', () {
       final groups = [
-        {
-          'name': 'Fruit',
-          'words': ['Apple', 'Pear', 'Plum', 'Fig'],
-        },
-        {
-          'name': 'Planets',
-          'words': ['Mars', 'Venus', 'Earth', 'Saturn'],
-        },
-        {
-          'name': 'Card games',
-          'words': ['Bridge', 'Poker', 'Snap', 'Rummy'],
-        },
-        {
-          'name': '___ Pie',
-          'words': ['Cherry', 'Humble', 'Shepherd', 'Pork'],
-        },
+        {'name': 'Fruit', 'words': ['Apple', 'Pear', 'Plum', 'Fig']},
+        {'name': 'Planets', 'words': ['Mars', 'Venus', 'Earth', 'Saturn']},
+        {'name': 'Card games', 'words': ['Bridge', 'Poker', 'Snap', 'Rummy']},
+        {'name': '___ Pie', 'words': ['Cherry', 'Humble', 'Shepherd', 'Pork']},
       ];
       final data = questionDataFromArgs({
         'type': 'connections',
@@ -255,15 +208,9 @@ void main() {
       );
       final twice = [
         ...groups.take(3),
-        {
-          'name': 'Again',
-          'words': ['Apple', 'A', 'B', 'C'],
-        },
+        {'name': 'Again', 'words': ['Apple', 'A', 'B', 'C']},
       ];
-      expect(
-        () => questionDataFromArgs({'type': 'connections', 'question': 'x', 'groups': twice}, partial: false),
-        throwsA(isA<ToolError>()),
-      );
+      expect(() => questionDataFromArgs({'type': 'connections', 'question': 'x', 'groups': twice}, partial: false), throwsA(isA<ToolError>()));
       expect(() => questionDataFromArgs({'question': 'x', 'groups': groups}, partial: false), throwsA(isA<ToolError>()));
     });
 
@@ -333,6 +280,26 @@ void main() {
       );
     });
 
+    test('a last-team-standing question takes its order and prompts', () {
+      final data = questionDataFromArgs({
+        'type': 'lastStanding',
+        'question': 'Does this star have a biopic?',
+        'pointsPlus': 300,
+        'lastStanding': {
+          'order': 'fewestPoints',
+          'items': [
+            {'question': 'Freddie Mercury', 'answer': 'Bohemian Rhapsody'},
+            {'question': 'Bruno Mars', 'answer': 'No'},
+          ],
+        },
+      }, partial: false);
+      final question = Question.fromMap('q', data);
+      expect(question.lastStanding!.order, TurnOrder.fewestPoints);
+      expect(question.lastStanding!.items.last.question, 'Bruno Mars');
+      expect(describeQuestion(question)['lastStanding'], data['lastStanding']);
+      expect(() => questionDataFromArgs({'question': 'x', 'lastStanding': {'order': 'x'}}, partial: false), throwsA(isA<ToolError>()));
+    });
+
     test('a companion screen switches the buzzers off', () {
       final data = questionDataFromArgs({
         'question': 'What is 3+5?',
@@ -343,13 +310,7 @@ void main() {
       expect(spec.kind, CompanionKind.number);
       expect(spec.solution, 8);
       expect(
-        () => questionDataFromArgs({
-          'question': 'x',
-          'companion': {
-            'kind': 'order',
-            'options': ['only'],
-          },
-        }, partial: false),
+        () => questionDataFromArgs({'question': 'x', 'companion': {'kind': 'order', 'options': ['only']}}, partial: false),
         throwsA(isA<ToolError>()),
       );
     });
@@ -459,14 +420,7 @@ void main() {
           {'question': 'HAL is the computer in which film?', 'answer': '2001'},
         ],
       };
-      await tools.call('add_question', {
-        'gameId': 'g',
-        'categoryId': 'c1',
-        'type': 'rapidFire',
-        'question': 'Fragenhagel',
-        'pointsPlus': 20,
-        'rapidFire': rapid,
-      });
+      await tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', 'type': 'rapidFire', 'question': 'Fragenhagel', 'pointsPlus': 20, 'rapidFire': rapid});
       final pairs = [
         {'left': 'Jaws', 'right': '1975'},
         {'left': 'Alien', 'right': '1979'},
@@ -535,35 +489,11 @@ void main() {
 
       for (final args in <Map<String, dynamic>>[
         {'type': 'topAnswers', 'question': 'x'},
-        {
-          'type': 'topAnswers',
-          'question': 'x',
-          'topAnswers': {'items': []},
-        },
-        {
-          'type': 'topAnswers',
-          'question': 'x',
-          'topAnswers': {
-            'mode': 'shout',
-            'items': [
-              {'answer': 'y'},
-            ],
-          },
-        },
-        {
-          'question': 'x',
-          'topAnswers': {
-            'items': [
-              {'answer': 'y'},
-            ],
-          },
-        },
+        {'type': 'topAnswers', 'question': 'x', 'topAnswers': {'items': []}},
+        {'type': 'topAnswers', 'question': 'x', 'topAnswers': {'mode': 'shout', 'items': [{'answer': 'y'}]}},
+        {'question': 'x', 'topAnswers': {'items': [{'answer': 'y'}]}},
       ]) {
-        await expectLater(
-          tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', ...args}),
-          throwsA(isA<ToolError>()),
-          reason: '$args',
-        );
+        await expectLater(tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', ...args}), throwsA(isA<ToolError>()), reason: '$args');
       }
     });
 
@@ -589,49 +519,13 @@ void main() {
     test('a Fragenhagel needs items, a matching question two pairs', () async {
       for (final args in <Map<String, dynamic>>[
         {'type': 'rapidFire', 'question': 'x'},
-        {
-          'type': 'rapidFire',
-          'question': 'x',
-          'rapidFire': {'items': []},
-        },
-        {
-          'type': 'rapidFire',
-          'question': 'x',
-          'rapidFire': {
-            'mode': 'shout',
-            'items': [
-              {'question': 'y'},
-            ],
-          },
-        },
-        {
-          'type': 'matching',
-          'question': 'x',
-          'pairs': [
-            {'left': 'a', 'right': 'b'},
-          ],
-        },
-        {
-          'type': 'matching',
-          'question': 'x',
-          'pairs': [
-            {'left': 'a'},
-            {'left': 'b', 'right': 'c'},
-          ],
-        },
-        {
-          'question': 'x',
-          'pairs': [
-            {'left': 'a', 'right': 'b'},
-            {'left': 'c', 'right': 'd'},
-          ],
-        },
+        {'type': 'rapidFire', 'question': 'x', 'rapidFire': {'items': []}},
+        {'type': 'rapidFire', 'question': 'x', 'rapidFire': {'mode': 'shout', 'items': [{'question': 'y'}]}},
+        {'type': 'matching', 'question': 'x', 'pairs': [{'left': 'a', 'right': 'b'}]},
+        {'type': 'matching', 'question': 'x', 'pairs': [{'left': 'a'}, {'left': 'b', 'right': 'c'}]},
+        {'question': 'x', 'pairs': [{'left': 'a', 'right': 'b'}, {'left': 'c', 'right': 'd'}]},
       ]) {
-        await expectLater(
-          tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', ...args}),
-          throwsA(isA<ToolError>()),
-          reason: '$args',
-        );
+        await expectLater(tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', ...args}), throwsA(isA<ToolError>()), reason: '$args');
       }
     });
 
@@ -650,13 +544,7 @@ void main() {
               as Map)['questionId'];
       expect([for (final q in await described()) q['id']], ['q1', id, added]);
       await expectLater(
-        tools.call('reorder_questions', {
-          'gameId': 'g',
-          'categoryId': 'c1',
-          'questionIds': ['q1', id],
-        }),
-        throwsA(isA<ToolError>()),
-      );
+          tools.call('reorder_questions', {'gameId': 'g', 'categoryId': 'c1', 'questionIds': ['q1', id]}), throwsA(isA<ToolError>()));
     });
 
     test('pictures go up and onto questions, whiteboards and hints', () async {
@@ -689,26 +577,10 @@ void main() {
       expect([for (final card in category.cards) card.text], ['Thanks for having me!', '']);
       expect([for (final card in category.cards) card.style], [CardStyle.silentFilm, CardStyle.standard]);
       await expectLater(
-        tools.call('set_cards', {
-          'gameId': 'g',
-          'categoryId': 'c1',
-          'cards': [
-            {'text': 'x', 'style': 'gothic'},
-          ],
-        }),
-        throwsA(isA<ToolError>()),
-      );
+          tools.call('set_cards', {'gameId': 'g', 'categoryId': 'c1', 'cards': [{'text': 'x', 'style': 'gothic'}]}), throwsA(isA<ToolError>()));
       expect(OverlayCard.fromJson(const OverlayCard(text: 'x', style: CardStyle.poster).toJson()).style, CardStyle.poster);
       await expectLater(
-        tools.call('set_cards', {
-          'gameId': 'g',
-          'categoryId': 'c1',
-          'cards': [
-            {'image': 'builtin:nope'},
-          ],
-        }),
-        throwsA(isA<ToolError>()),
-      );
+          tools.call('set_cards', {'gameId': 'g', 'categoryId': 'c1', 'cards': [{'image': 'builtin:nope'}]}), throwsA(isA<ToolError>()));
 
       final sound = builtinSoundsFor(effectAnswerCorrect).first.key;
       await tools.call('set_sounds', {
@@ -717,22 +589,10 @@ void main() {
         'questionId': 'q1',
         'effects': {effectAnswerCorrect: sound, effectAnswerWrong: 'off'},
       });
-      await tools.call('set_sounds', {
-        'gameId': 'g',
-        'categoryId': 'c1',
-        'questionId': 'q1',
-        'effects': {effectAnswerWrong: ''},
-      });
+      await tools.call('set_sounds', {'gameId': 'g', 'categoryId': 'c1', 'questionId': 'q1', 'effects': {effectAnswerWrong: ''}});
       final question = (await backend.loadGame('g')).groups.single.categories.single.questions.single;
       expect(question.sounds.effects, {effectAnswerCorrect: sound});
-      await expectLater(
-        tools.call('set_sounds', {
-          'gameId': 'g',
-          'categoryId': 'c1',
-          'music': {'disco': 'x.mp3'},
-        }),
-        throwsA(isA<ToolError>()),
-      );
+      await expectLater(tools.call('set_sounds', {'gameId': 'g', 'categoryId': 'c1', 'music': {'disco': 'x.mp3'}}), throwsA(isA<ToolError>()));
     });
 
     test('changing and deleting a group', () async {
@@ -765,13 +625,7 @@ void main() {
       await server.stop();
     });
 
-    Future<(int, Object?)> send(
-      Object? body, {
-      String method = 'POST',
-      String path = '/mcp',
-      Map<String, String> headers = const {},
-      String? raw,
-    }) async {
+    Future<(int, Object?)> send(Object? body, {String method = 'POST', String path = '/mcp', Map<String, String> headers = const {}, String? raw}) async {
       final request = await http.open(method, '127.0.0.1', server.port, path);
       headers.forEach(request.headers.set);
       if (method == 'POST') {
@@ -915,17 +769,15 @@ void main() {
       final http = HttpClient();
       final request = await http.post('127.0.0.1', port, '/mcp');
       request.headers.contentType = ContentType.json;
-      request.write(
-        jsonEncode({
-          'jsonrpc': '2.0',
-          'id': 1,
-          'method': 'tools/call',
-          'params': {
-            'name': 'add_category',
-            'arguments': {'gameId': 'g', 'name': 'Rivers', 'groupId': 'r1'},
-          },
-        }),
-      );
+      request.write(jsonEncode({
+        'jsonrpc': '2.0',
+        'id': 1,
+        'method': 'tools/call',
+        'params': {
+          'name': 'add_category',
+          'arguments': {'gameId': 'g', 'name': 'Rivers', 'groupId': 'r1'},
+        },
+      }));
       await (await request.close()).drain<void>();
       http.close(force: true);
       expect(assistant.activity, ['Added category "Rivers"']);

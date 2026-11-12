@@ -6,6 +6,7 @@ library;
 import 'cards.dart';
 import 'companion.dart';
 import 'content.dart';
+import 'last_standing.dart';
 import 'results.dart';
 
 export 'results.dart';
@@ -52,20 +53,20 @@ class Team {
   Team withColor(int? color) => Team(id: id, name: name, points: points, sound: sound, color: color);
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'points': points,
-    if (sound != null) 'sound': sound,
-    if (color != null) 'color': color,
-  };
+        'id': id,
+        'name': name,
+        'points': points,
+        if (sound != null) 'sound': sound,
+        if (color != null) 'color': color,
+      };
 
   factory Team.fromJson(Map<String, dynamic> json) => Team(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    points: (json['points'] as num?)?.toInt() ?? 0,
-    sound: json['sound'] as String?,
-    color: (json['color'] as num?)?.toInt(),
-  );
+        id: json['id'] as String,
+        name: json['name'] as String,
+        points: (json['points'] as num?)?.toInt() ?? 0,
+        sound: json['sound'] as String?,
+        color: (json['color'] as num?)?.toInt(),
+      );
 }
 
 /// Colours a team can pick, as ARGB: strong enough to read white text on.
@@ -97,23 +98,24 @@ class OverlayCard {
   /// A media file of the game; shown full screen, without the text.
   final String? video;
 
-  bool get isEmpty => (title ?? '').trim().isEmpty && (text ?? '').trim().isEmpty && (image ?? '').isEmpty && (video ?? '').isEmpty;
+  bool get isEmpty =>
+      (title ?? '').trim().isEmpty && (text ?? '').trim().isEmpty && (image ?? '').isEmpty && (video ?? '').isEmpty;
 
   Map<String, dynamic> toJson() => {
-    if (title != null) 'title': title,
-    if (text != null) 'text': text,
-    if (image != null) 'image': image,
-    if (video != null) 'video': video,
-    if (style != CardStyle.standard) 'style': style.name,
-  };
+        if (title != null) 'title': title,
+        if (text != null) 'text': text,
+        if (image != null) 'image': image,
+        if (video != null) 'video': video,
+        if (style != CardStyle.standard) 'style': style.name,
+      };
 
   factory OverlayCard.fromJson(Map<String, dynamic> json) => OverlayCard(
-    title: json['title'] as String?,
-    text: json['text'] as String?,
-    image: json['image'] as String?,
-    video: json['video'] as String?,
-    style: CardStyle.fromName(json['style']),
-  );
+        title: json['title'] as String?,
+        text: json['text'] as String?,
+        image: json['image'] as String?,
+        video: json['video'] as String?,
+        style: CardStyle.fromName(json['style']),
+      );
 }
 
 /// The bets of a question played with bets: points (`Question.betting`)
@@ -220,6 +222,7 @@ class SessionState {
     this.overlay,
     this.results = const Results(),
     this.scoreLog = const [],
+    this.standing,
   });
 
   /// Incremented on every accepted command; lets a client drop stale updates.
@@ -311,6 +314,9 @@ class SessionState {
   /// The latest changes to the scores, oldest first; at most [kScoreLogLength].
   final List<ScoreChange> scoreLog;
 
+  /// A last-team-standing question being played.
+  final StandingPlay? standing;
+
   Team? team(String id) {
     for (final team in teams) {
       if (team.id == id) return team;
@@ -346,6 +352,7 @@ class SessionState {
     Object? overlay = _unset,
     Results? results,
     List<ScoreChange>? scoreLog,
+    Object? standing = _unset,
   }) => SessionState(
     seq: seq ?? this.seq,
     gameId: identical(gameId, _unset) ? this.gameId : gameId as String?,
@@ -374,6 +381,7 @@ class SessionState {
     overlay: identical(overlay, _unset) ? this.overlay : overlay as OverlayCard?,
     results: results ?? this.results,
     scoreLog: scoreLog ?? this.scoreLog,
+    standing: identical(standing, _unset) ? this.standing : standing as StandingPlay?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -404,6 +412,7 @@ class SessionState {
     'overlay': overlay?.toJson(),
     if (!results.isEmpty) 'results': results.toJson(),
     if (scoreLog.isNotEmpty) 'scoreLog': [for (final change in scoreLog) change.toJson()],
+    if (standing != null) 'standing': standing!.toJson(),
   };
 
   factory SessionState.fromJson(Map<String, dynamic> json) => SessionState(
@@ -438,5 +447,6 @@ class SessionState {
     overlay: json['overlay'] == null ? null : OverlayCard.fromJson(Map<String, dynamic>.from(json['overlay'] as Map)),
     results: Results.fromJson(json['results']),
     scoreLog: [for (final change in json['scoreLog'] as List? ?? const []) ?ScoreChange.fromJson(change)],
+    standing: StandingPlay.fromJson(json['standing']),
   );
 }

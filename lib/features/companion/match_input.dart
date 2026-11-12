@@ -14,7 +14,21 @@ import 'package:flutter/services.dart';
 ///   their top or bottom edge. The tray sits under the slots on an upright
 ///   phone and beside them when there is room (tablets, phones held sideways).
 class MatchInput extends StatefulWidget {
-  const MatchInput({super.key, required this.left, required this.right, required this.onChanged, this.enabled = true});
+  const MatchInput({
+    super.key,
+    required this.left,
+    required this.right,
+    required this.onChanged,
+    this.enabled = true,
+    this.leftImages = const [],
+    this.rightImages = const {},
+  });
+
+  /// A picture per left-hand item, where it has one and it has arrived.
+  final List<ImageProvider?> leftImages;
+
+  /// Pictures of right-hand items, by their original index.
+  final Map<int, ImageProvider> rightImages;
 
   /// The left-hand items, in their order.
   final List<String> left;
@@ -259,11 +273,21 @@ class _MatchInputState extends State<MatchInput> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               alignment: Alignment.centerLeft,
               decoration: BoxDecoration(color: scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
-              child: Text(
-                widget.left[slot],
-                style: textStyle?.copyWith(fontWeight: FontWeight.w600),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+              child: Row(
+                children: [
+                  if (widget.leftImages.elementAtOrNull(slot) case final image?) ...[
+                    _Thumb(image: image, size: minHeight - 8, zoomable: true),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: Text(
+                      widget.left[slot],
+                      style: textStyle?.copyWith(fontWeight: FontWeight.w600),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -317,6 +341,7 @@ class _MatchInputState extends State<MatchInput> {
         if (item < 0) return empty();
         final chip = _Chip(
           text: _text(item),
+          image: widget.rightImages[item],
           style: textStyle,
           minHeight: minHeight,
           placed: true,
@@ -399,11 +424,11 @@ class _MatchInputState extends State<MatchInput> {
                                 feedback: _feedback(context, item, box.maxWidth, style),
                                 childWhenDragging: Opacity(
                                   opacity: 0.3,
-                                  child: _Chip(text: _text(item), style: style, minHeight: 44, placed: false),
+                                  child: _Chip(text: _text(item), image: widget.rightImages[item], style: style, minHeight: 44, placed: false),
                                 ),
                                 child: GestureDetector(
                                   onTap: () => _tapTrayItem(item),
-                                  child: _Chip(text: _text(item), style: style, minHeight: 44, placed: false, selected: _selected == item),
+                                  child: _Chip(text: _text(item), image: widget.rightImages[item], style: style, minHeight: 44, placed: false, selected: _selected == item),
                                 ),
                               ),
                             ),
@@ -431,7 +456,7 @@ class _MatchInputState extends State<MatchInput> {
             elevation: 8,
             shadowColor: Colors.black54,
             borderRadius: BorderRadius.circular(12),
-            child: _Chip(text: _text(item), style: style, minHeight: 44, placed: true),
+            child: _Chip(text: _text(item), image: widget.rightImages[item], style: style, minHeight: 44, placed: true),
           ),
         ),
       ),
@@ -450,9 +475,11 @@ class _Chip extends StatelessWidget {
     this.highlighted = false,
     this.locked = false,
     this.expand = false,
+    this.image,
   });
 
   final String text;
+  final ImageProvider? image;
   final TextStyle? style;
   final double minHeight;
   final bool placed;
@@ -490,6 +517,7 @@ class _Chip extends StatelessWidget {
             Icon(Icons.drag_indicator_rounded, size: 18, color: foreground.withValues(alpha: 0.6)),
             const SizedBox(width: 4),
           ],
+          if (image != null) ...[_Thumb(image: image!, size: 36), const SizedBox(width: 8)],
           Flexible(
             child: Text(
               text,
@@ -501,6 +529,37 @@ class _Chip extends StatelessWidget {
           if (locked) ...[const SizedBox(width: 6), Icon(Icons.lock, size: 16, color: foreground.withValues(alpha: 0.7))],
         ],
       ),
+    );
+  }
+}
+
+/// A matching picture, small. Where [zoomable], a tap shows it large.
+class _Thumb extends StatelessWidget {
+  const _Thumb({required this.image, required this.size, this.zoomable = false});
+
+  final ImageProvider image;
+  final double size;
+  final bool zoomable;
+
+  @override
+  Widget build(BuildContext context) {
+    final thumb = ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image(image: image, width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true),
+    );
+    if (!zoomable) return thumb;
+    return GestureDetector(
+      onTap: () => showDialog<void>(
+        context: context,
+        builder: (context) => Dialog(
+          clipBehavior: Clip.antiAlias,
+          child: GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: InteractiveViewer(child: Image(image: image, fit: BoxFit.contain)),
+          ),
+        ),
+      ),
+      child: thumb,
     );
   }
 }

@@ -77,7 +77,9 @@ class _CompanionEditorState extends State<CompanionEditor> {
     _solution = TextEditingController(text: n(spec?.solution));
     _tolerance = TextEditingController(text: n(spec?.tolerance));
     _options = [for (final option in spec?.options ?? const <String>[]) TextEditingController(text: option)];
-    _targets = [for (var i = 0; i < _options.length; i++) TextEditingController(text: spec?.targets.elementAtOrNull(i) ?? '')];
+    _targets = [
+      for (var i = 0; i < _options.length; i++) TextEditingController(text: spec?.targets.elementAtOrNull(i) ?? ''),
+    ];
   }
 
   @override
@@ -341,14 +343,14 @@ List<CompanionKind> companionKindsFor(QuestionType type, {CompanionKind? current
     // The answers come from the question itself.
     QuestionType.abcd => const [CompanionKind.choice, CompanionKind.whiteboard, CompanionKind.text],
     QuestionType.free => const [
-      CompanionKind.whiteboard,
-      CompanionKind.text,
-      CompanionKind.number,
-      CompanionKind.slider,
-      CompanionKind.order,
-      CompanionKind.match,
-      CompanionKind.list,
-    ],
+        CompanionKind.whiteboard,
+        CompanionKind.text,
+        CompanionKind.number,
+        CompanionKind.slider,
+        CompanionKind.order,
+        CompanionKind.match,
+        CompanionKind.list,
+      ],
     QuestionType.feud => const [CompanionKind.whiteboard, CompanionKind.text, CompanionKind.list],
     _ => const [CompanionKind.whiteboard, CompanionKind.text],
   };

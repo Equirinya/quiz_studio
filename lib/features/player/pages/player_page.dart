@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -60,10 +61,14 @@ class _PlayerPageState extends State<PlayerPage> {
   @override
   Widget build(BuildContext context) {
     void leave() => Navigator.of(context).pop();
-    return Scaffold(
+    // Playing along is left by closing the app, not by a stray back gesture;
+    // the messages below (show not reachable, team removed) still offer "Leave".
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
       body: SafeArea(
         child: ListenableBuilder(
-          listenable: Listenable.merge([_client.view, _client.link, _client.cloudOk, _client.background]),
+          listenable: Listenable.merge([_client.view, _client.link, _client.cloudOk, _client.background, _client.pictures]),
           builder: (context, _) {
             final view = _client.view.value;
             final onLan = _client.link.value == LinkStatus.lan;
@@ -83,9 +88,11 @@ class _PlayerPageState extends State<PlayerPage> {
               link: _client.link.value,
               appVersion: _appVersion,
               backgroundImage: picture != null && picture.$1 == wanted ? MemoryImage(picture.$2) : null,
+              pictures: _client.pictures.value,
             );
           },
         ),
+      ),
       ),
     );
   }
@@ -99,15 +106,15 @@ class _Message extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(text, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
-        const SizedBox(height: 16),
-        TextButton(onPressed: onLeave, child: const Text("Leave")),
-      ],
-    ),
-  );
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(text, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            TextButton(onPressed: onLeave, child: const Text("Leave")),
+          ],
+        ),
+      );
 }
 
 /// What the player sees, given the public state. Separate from the page so
@@ -122,7 +129,11 @@ class PlayerView extends StatefulWidget {
     this.link,
     this.backgroundImage,
     this.appVersion,
+    this.pictures = const {},
   });
+
+  /// The pictures of the round (matching) that have arrived, by media name.
+  final Map<String, Uint8List> pictures;
 
   /// This app's version, to compare with what the session needs; unknown
   /// versions are let through.
@@ -156,11 +167,9 @@ class _PlayerViewState extends State<PlayerView> {
 
   void _buzz() {
     widget.send(Buzz(widget.teamId));
-    setState(
-      () => _justBuzzed = Timer(const Duration(seconds: 2), () {
-        if (mounted) setState(() => _justBuzzed = null);
-      }),
-    );
+    setState(() => _justBuzzed = Timer(const Duration(seconds: 2), () {
+          if (mounted) setState(() => _justBuzzed = null);
+        }));
   }
 
   @override
@@ -182,7 +191,20 @@ class _PlayerViewState extends State<PlayerView> {
     }
     final position = view.buzzQueue.indexOf(team.id);
     final answeringTeam = view.buzzQueue.isEmpty ? null : view.teams.where((t) => t.id == view.buzzQueue.first).firstOrNull;
-    final status = switch (view.phase) {
+    final standing = view.standing;
+    String nameOf(String? id) => view.teams.where((t) => t.id == id).firstOrNull?.name ?? "";
+    final status = standing != null && view.phase == Phase.question
+        // Last team standing: no buzzing, only whose turn it is.
+        ? (standing.winner == team.id
+              ? "You are the last team standing!"
+              : standing.winner != null
+              ? "${nameOf(standing.winner)} wins"
+              : standing.out.contains(team.id)
+              ? "You are out"
+              : standing.current == team.id
+              ? "Your turn!${standing.prompt == null ? "" : "\n${standing.prompt}"}"
+              : "${nameOf(standing.current)}'s turn")
+        : switch (view.phase) {
       Phase.buzzerTest => "Buzzer test: press to check",
       Phase.overview => "Waiting for the next question",
       Phase.answerRevealed => "Answer revealed",
@@ -215,12 +237,12 @@ class _PlayerViewState extends State<PlayerView> {
     final headline = kind == null
         ? status
         : view.answersOpen && !view.hasLocked(team.id)
-        ? (kind == CompanionKind.connections ? "Find four groups of four" : "Answer here")
-        : view.isRevealed(team.id)
-        ? "Your answer is being shown"
-        : view.answersOpen
-        ? "Locked in, waiting for the others"
-        : "Answers are in";
+            ? (kind == CompanionKind.connections ? "Find four groups of four" : "Answer here")
+            : view.isRevealed(team.id)
+                ? "Your answer is being shown"
+                : view.answersOpen
+                    ? "Locked in, waiting for the others"
+                    : "Answers are in";
     // While answering, the question stays the big line and where the team
     // stands goes under it.
     final question = view.question?['text'] as String? ?? '';
@@ -247,7 +269,6 @@ class _PlayerViewState extends State<PlayerView> {
         // What the team just got, for a moment.
         ScorePop(teamId: team.id, log: view.scoreLog, size: 20),
         if (widget.link != null) LinkStatusIcon(widget.link!),
-        if (widget.onLeave != null) IconButton(icon: const Icon(Icons.logout), tooltip: "Leave", onPressed: widget.onLeave),
       ],
     );
     final highlighted = position == 0 && view.phase == Phase.buzzered;
@@ -255,7 +276,10 @@ class _PlayerViewState extends State<PlayerView> {
       duration: const Duration(milliseconds: 200),
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: highlighted ? scheme.primary : scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: highlighted ? scheme.primary : scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Text(
         questionFirst ? question : headline,
         textAlign: TextAlign.center,
@@ -264,15 +288,19 @@ class _PlayerViewState extends State<PlayerView> {
         style: theme.textTheme.titleMedium?.copyWith(color: highlighted ? scheme.onPrimary : null),
       ),
     );
+    // While answering the question says it all; afterwards a word on where things stand.
+    final answering = view.answersOpen && !view.hasLocked(team.id);
     final questionText = questionFirst
-        ? Text(
-            headline,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline),
-          )
+        ? (answering ? null : Text(headline, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline)))
         : view.question == null
-        ? null
-        : Text(question, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyLarge);
+            ? null
+            : Text(
+                question,
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyLarge,
+              );
 
     if (kind == CompanionKind.connections) {
       return Padding(
@@ -285,7 +313,12 @@ class _PlayerViewState extends State<PlayerView> {
             ?_countdown(top: 10),
             const SizedBox(height: 8),
             Expanded(
-              child: ConnectionsPlay(key: ValueKey('connections-${view.answersOpenedAt}'), view: view, teamId: team.id, send: widget.send),
+              child: ConnectionsPlay(
+                key: ValueKey('connections-${view.answersOpenedAt}'),
+                view: view,
+                teamId: team.id,
+                send: widget.send,
+              ),
             ),
           ],
         ),
@@ -320,7 +353,7 @@ class _PlayerViewState extends State<PlayerView> {
                         const Spacer(),
                         _lockButton(team),
                         const SizedBox(height: 6),
-                        _note(team),
+                        ?_note(team),
                       ],
                     ),
                   ),
@@ -334,13 +367,7 @@ class _PlayerViewState extends State<PlayerView> {
               children: [
                 teamLine,
                 if (questionFirst)
-                  Text(
-                    question,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyLarge,
-                  ),
+                  Text(question, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyLarge),
                 ?questionText,
                 ?_countdown(top: 6),
                 const SizedBox(height: 6),
@@ -348,7 +375,7 @@ class _PlayerViewState extends State<PlayerView> {
                 const SizedBox(height: 6),
                 _lockButton(team),
                 const SizedBox(height: 4),
-                _note(team),
+                ?_note(team),
               ],
             ),
           );
@@ -405,8 +432,11 @@ class _PlayerViewState extends State<PlayerView> {
               Expanded(
                 child: Center(
                   child: LayoutBuilder(
-                    builder: (context, box) =>
-                        BuzzerButton(size: box.biggest.shortestSide * 0.8, onPressed: canBuzz ? _buzz : null, color: teamColor(team)),
+                    builder: (context, box) => BuzzerButton(
+                      size: box.biggest.shortestSide * 0.8,
+                      onPressed: canBuzz ? _buzz : null,
+                      color: teamColor(team),
+                    ),
                   ),
                 ),
               ),
@@ -425,14 +455,11 @@ class _PlayerViewState extends State<PlayerView> {
           if (questionText != null) Padding(padding: const EdgeInsets.only(top: 12), child: questionText),
           ?_countdown(top: 12),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Center(child: _input(team)),
-            ),
+            child: Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Center(child: _input(team))),
           ),
           _lockButton(team),
           const SizedBox(height: 4),
-          _note(team),
+          ?_note(team),
         ],
       ),
     );
@@ -492,6 +519,7 @@ class _PlayerViewState extends State<PlayerView> {
     return CompanionInput(
       key: ValueKey('${view.answersOpenedAt}/${view.question?['text']}'),
       spec: view.companion!,
+      pictures: widget.pictures,
       enabled: _editable(team),
       onChanged: (answer) => widget.send(SubmitAnswer(team.id, answer)),
     );
@@ -529,20 +557,19 @@ class _PlayerViewState extends State<PlayerView> {
           view.hasLocked(team.id)
               ? (took == null ? "Locked in" : "Locked in after ${took.toStringAsFixed(1)} s")
               : !view.answersOpen
-              ? "Time is up"
-              : view.hasSubmitted(team.id)
-              ? "Lock in answer"
-              : "Answer first",
+                  ? "Time is up"
+                  : view.hasSubmitted(team.id)
+                      ? "Lock in answer"
+                      : "Answer first",
         ),
       ),
     );
   }
 
-  Widget _note(Team team) => Text(
-    widget.view.isRevealed(team.id) ? "Your answer is on the big screen." : "Only the gamemaster sees this until it is shown.",
-    textAlign: TextAlign.center,
-    style: Theme.of(context).textTheme.bodySmall,
-  );
+  /// Only once the answer is on the big screen; until then nothing needs saying.
+  Widget? _note(Team team) => !widget.view.isRevealed(team.id)
+      ? null
+      : Text("Your answer is on the big screen.", textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall);
 }
 
 /// Holds a whiteboard back until its picture is here and its proportions
@@ -561,11 +588,14 @@ class _PictureBoard extends StatefulWidget {
 class _PictureBoardState extends State<_PictureBoard> {
   double? _aspect;
   ImageStream? _stream;
-  late final ImageStreamListener _listener = ImageStreamListener((info, _) {
-    if (!mounted || _aspect != null) return;
-    // Kept within what still fits a tile on the big screen.
-    setState(() => _aspect = (info.image.width / info.image.height).clamp(0.5, 2.0).toDouble());
-  }, onError: (_, _) => _giveUp());
+  late final ImageStreamListener _listener = ImageStreamListener(
+    (info, _) {
+      if (!mounted || _aspect != null) return;
+      // Kept within what still fits a tile on the big screen.
+      setState(() => _aspect = (info.image.width / info.image.height).clamp(0.5, 2.0).toDouble());
+    },
+    onError: (_, _) => _giveUp(),
+  );
   Timer? _patience;
 
   @override
@@ -702,7 +732,7 @@ class _BetScreenState extends State<BetScreen> {
                 ),
               ),
               if (widget.link != null) LinkStatusIcon(widget.link!),
-              if (widget.onLeave != null) IconButton(icon: const Icon(Icons.logout), tooltip: "Leave", onPressed: widget.onLeave),
+
             ],
           ),
           const SizedBox(height: 12),
@@ -734,8 +764,8 @@ class _BetScreenState extends State<BetScreen> {
                               !amount
                                   ? "Right: +$value · Wrong: −$value"
                                   : minus > 0
-                                  ? "Reached: +${(points ?? 0) * value} · Missed: −${minus * value}"
-                                  : "Reached: +${(points ?? 0) * value}",
+                                  ? "If successful: +${(points ?? 0) * value} · Missed: −${minus * value}"
+                                  : "If successful: +${(points ?? 0) * value}",
                               style: theme.textTheme.bodyMedium,
                             ),
                             const SizedBox(height: 12),

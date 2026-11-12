@@ -605,7 +605,8 @@ class _CategoryTile extends StatelessWidget {
   }
 
   /// Map boards: which bubble this category is drawn after. Several
-  /// categories after the same one make a branch.
+  /// categories after the same one make a branch; the map editor can also
+  /// give a bubble several arrows in, to join branches again.
   Future<void> _chooseFollows(BuildContext context) async {
     const previous = '\u0000previous';
     final choice = await showDialog<String>(
@@ -621,10 +622,9 @@ class _CategoryTile extends StatelessWidget {
       ),
     );
     if (choice == null || !context.mounted) return;
-    final layout = Map<String, dynamic>.from(group.data['mapLayout'] as Map? ?? const {});
-    final follows = Map<String, dynamic>.from(layout['follows'] as Map? ?? const {});
-    choice == previous ? follows.remove(category.id) : follows[category.id] = choice;
-    layout['follows'] = follows;
+    // One arrow in, in place of whatever arrows it had; the map editor can
+    // add more.
+    final layout = mapLayoutWithAfter(group.data['mapLayout'], category.id, choice == previous ? null : [if (choice.isNotEmpty) choice]);
     await guarded(context, () => _repo.updateGroup(game.id, group.id, {'mapLayout': layout}));
   }
 

@@ -71,4 +71,36 @@ void main() {
       expect(point.dx.isFinite && point.dy.isFinite, isTrue);
     }
   });
+
+  group('several arrows', () {
+    const b = Rect.fromLTWH(300, 0, 100, 60);
+    const c = Rect.fromLTWH(300, 200, 100, 60);
+    const d = Rect.fromLTWH(600, 100, 100, 60);
+
+    test('a branch fans out from one side instead of leaving from one point', () {
+      final [toB, toC] = routeArrows([(a, b), (a, c)], gap: 5);
+      expect(toB.start.dx, toC.start.dx);
+      // The arrow to the upper bubble leaves higher up, so they do not cross.
+      expect(toB.start.dy, lessThan(toC.start.dy));
+      expect((toB.start.dy + toC.start.dy) / 2, closeTo(a.center.dy, 1e-9));
+      expect(toB.start.dy, greaterThan(a.top));
+      expect(toC.start.dy, lessThan(a.bottom));
+      // Their tips still meet the middle of their own bubbles.
+      expect(toB.end, const Offset(295, 30));
+      expect(toC.end, const Offset(295, 230));
+    });
+
+    test('where branches join, the arrows arrive side by side', () {
+      final [fromB, fromC] = routeArrows([(b, d), (c, d)], gap: 5);
+      expect(fromB.end.dx, fromC.end.dx);
+      expect(fromB.end.dy, lessThan(fromC.end.dy));
+      expect(fromB.start, const Offset(405, 30));
+    });
+
+    test('a single arrow is routed as before', () {
+      final [only] = routeArrows([(a, b)], gap: 5);
+      final alone = routeArrow(a, b, gap: 5);
+      expect((only.start, only.control1, only.control2, only.end), (alone.start, alone.control1, alone.control2, alone.end));
+    });
+  });
 }

@@ -107,6 +107,8 @@ class MapCanvas extends StatefulWidget {
 
   /// The width of a bubble of scale 1 on a canvas of [canvas] laid out as
   /// [map], seen through a window [viewportWidth] wide.
+  /// Keep in step with [mapBubbleWidth], which the layout spaces the
+  /// bubbles by.
   static double bubbleWidth(MapLayout map, Size canvas, double viewportWidth) =>
       min(min(canvas.width / map.columns * 0.72, canvas.height / map.rows * 1.4), viewportWidth * 0.28);
 
@@ -173,10 +175,13 @@ class _MapBoardState extends State<MapCanvas> {
               child: CustomPaint(
                 painter: _ConnectionsPainter(
                   arrows: [
-                    for (final (from, to) in map.edges)
-                      // The way out of a finished bubble lights up: this is
+                    for (final (i, arrow) in routeArrows(
+                      [for (final (from, to) in map.edges) (rectOf(from), rectOf(to))],
+                      gap: unit * 0.5,
+                    ).indexed)
+                      // The ways out of a finished bubble light up: this is
                       // where the game goes next.
-                      (routeArrow(rectOf(from), rectOf(to), gap: unit * 0.5), done(from)),
+                      (arrow, done(map.edges[i].$1)),
                   ],
                   lines: [for (final line in map.decorations.whereType<MapLine>()) (at(line.from), at(line.to))],
                   color: scheme.outline,
@@ -297,7 +302,7 @@ class _Bubble extends StatelessWidget {
                       borderRadius: BorderRadius.circular(unit),
                     ),
                     child: Text(
-                      labels ? (question.description ?? question.pointsPlus.toString()) : question.pointsPlus.toString(),
+                      labels ? (question.description ?? question.boardPoints.toString()) : question.boardPoints.toString(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

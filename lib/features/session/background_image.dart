@@ -17,7 +17,7 @@ const int kBackgroundMaxBytes = 600 * 1024;
 ///
 /// Decoding and scaling are done by the engine; only the JPEG encoding runs
 /// in Dart, on an image that is already small.
-Future<Uint8List?> prepareBackground(Uint8List original) async {
+Future<Uint8List?> prepareBackground(Uint8List original, {int maxSide = kBackgroundMaxSide, int maxBytes = kBackgroundMaxBytes}) async {
   try {
     final probe = await ui.instantiateImageCodec(original);
     final first = (await probe.getNextFrame()).image;
@@ -28,8 +28,8 @@ Future<Uint8List?> prepareBackground(Uint8List original) async {
 
     final codec = await ui.instantiateImageCodec(
       original,
-      targetWidth: longest > kBackgroundMaxSide && landscape ? kBackgroundMaxSide : null,
-      targetHeight: longest > kBackgroundMaxSide && !landscape ? kBackgroundMaxSide : null,
+      targetWidth: longest > maxSide && landscape ? maxSide : null,
+      targetHeight: longest > maxSide && !landscape ? maxSide : null,
     );
     final frame = (await codec.getNextFrame()).image;
     final pixels = await frame.toByteData(format: ui.ImageByteFormat.rawRgba);
@@ -42,7 +42,7 @@ Future<Uint8List?> prepareBackground(Uint8List original) async {
     // Lower the quality until it fits; a form or a map survives that well.
     for (final quality in [82, 68, 52, 38]) {
       final jpeg = img.encodeJpg(image, quality: quality);
-      if (jpeg.length <= kBackgroundMaxBytes) return jpeg;
+      if (jpeg.length <= maxBytes) return jpeg;
     }
     return null;
   } catch (_) {
@@ -52,3 +52,13 @@ Future<Uint8List?> prepareBackground(Uint8List original) async {
 
 Future<Uint8List?> prepareBackgroundFile(File file) async =>
     await file.exists() ? prepareBackground(await file.readAsBytes()) : null;
+
+/// Longest side and size limit of a picture in a matching question as the
+/// teams' devices get it: small enough that a dozen pairs on both sides
+/// fit in one Firestore document together.
+const int kPictureMaxSide = 320;
+const int kPictureMaxBytes = 36 * 1024;
+
+/// A matching picture shrunk for the devices; null when it cannot be read.
+Future<Uint8List?> preparePictureFile(File file) async =>
+    await file.exists() ? prepareBackground(await file.readAsBytes(), maxSide: kPictureMaxSide, maxBytes: kPictureMaxBytes) : null;

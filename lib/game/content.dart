@@ -11,6 +11,7 @@ import 'companion.dart';
 import 'matching.dart';
 import 'top_answers.dart';
 import 'rapid_fire.dart';
+import 'last_standing.dart';
 
 // Music slots and built-in effect keys (v1 names, also used as stored keys).
 const String musicBackground = 'musicBackground';
@@ -23,7 +24,6 @@ const List<String> musicSlots = [musicBackground, musicCalm, musicExciting];
 // up per game: the slot names the bundled asset.
 const String ambienceWhiteNoise = 'ambienceWhiteNoise';
 const String ambienceSoftNoise = 'ambienceSoftNoise';
-
 /// Sound effects that come with the app (assets/sounds/effects). Played
 /// with the key `builtin:<id>`; a game's own effect of the same moment wins.
 class BuiltinSound {
@@ -129,7 +129,8 @@ const Set<String> timerOnlySounds = {'countdown/alarm_clock_ticking'};
 Iterable<BuiltinSound> get handSounds =>
     builtinSounds.where((s) => handSoundMoments.contains(s.id.split('/').first) && !timerOnlySounds.contains(s.id));
 
-BuiltinSound? builtinSound(String key) => builtinSounds.where((sound) => sound.key == key || sound.id == key).firstOrNull;
+BuiltinSound? builtinSound(String key) =>
+    builtinSounds.where((sound) => sound.key == key || sound.id == key).firstOrNull;
 
 /// The folder of built-in sounds each moment can choose from.
 const Map<String, String> effectMoments = {
@@ -146,10 +147,8 @@ const Map<String, String> effectMoments = {
 };
 
 /// The built-in sounds [effectKey] can be set to.
-List<BuiltinSound> builtinSoundsFor(String effectKey) => [
-  for (final sound in builtinSounds)
-    if (sound.id.split('/').first == effectMoments[effectKey]) sound,
-];
+List<BuiltinSound> builtinSoundsFor(String effectKey) =>
+    [for (final sound in builtinSounds) if (sound.id.split('/').first == effectMoments[effectKey]) sound];
 
 /// Stored for a moment that should stay silent, even if a level above has a sound.
 const String silentSound = 'off';
@@ -279,6 +278,7 @@ enum QuestionType {
   rapidFire("Fragenhagel"),
   matching("Matching"),
   topAnswers("Top answers"),
+  lastStanding("Last team standing"),
   unsupported("Unsupported");
 
   /// Played only on the teams' own devices: without them there is nothing
@@ -355,6 +355,7 @@ class Question {
     this.rapidFire,
     this.matching,
     this.topAnswers,
+    this.lastStanding,
     this.sounds = MusicConfig.empty,
     this.data = const {},
   });
@@ -374,7 +375,7 @@ class Question {
   final int pointsMinus;
 
   /// Place in the category, stored as `questionIndex`. Without it the
-  /// questions of a category go by [pointsPlus]; see [sortQuestions].
+  /// questions of a category go by [boardPoints]; see [sortQuestions].
   final int? position;
 
   /// Free questions only: no buzzing, e.g. for estimation questions.
@@ -403,6 +404,18 @@ class Question {
   /// many less, never below zero; a wrong answer still costs [pointsMinus].
   /// Stored as `rankStep`; for the types in [QuestionType.wagerable].
   final int? rankStep;
+
+  /// What the question is worth on the boards and how it sorts: its points,
+  /// or everything there is to win when they are given per item
+  /// (Fragenhagel: the points times the items; Top answers: all answers).
+  int get boardPoints => switch (type) {
+    QuestionType.rapidFire => pointsPlus * (maxReveal > 0 ? maxReveal : 1),
+    QuestionType.topAnswers =>
+      topAnswers == null || topAnswers!.items.isEmpty
+          ? pointsPlus
+          : topAnswers!.pointsFor([for (var i = 0; i < topAnswers!.items.length; i++) i], pointsPlus),
+    _ => pointsPlus,
+  };
 
   /// Whether this question is scored "by order"; see [rankStep].
   bool get ranked => rankStep != null && type.wagerable && !hasBets;
@@ -439,6 +452,9 @@ class Question {
   /// rapidFire: its items and how they are played. Stored as `rapidFire`.
   final RapidFire? rapidFire;
 
+  /// lastStanding: turn order and prompts. Stored as `lastStanding`.
+  final LastStanding? lastStanding;
+
   /// matching: its pairs, in the right pairing. Stored as `matching`.
   final Matching? matching;
 
@@ -446,8 +462,7 @@ class Question {
   final TopAnswers? topAnswers;
 
   /// Whether this question can only be played with the teams' devices.
-  bool get needsDevices =>
-      type.needsDevices ||
+  bool get needsDevices => type.needsDevices ||
       (type == QuestionType.rapidFire && rapidFire?.mode == RapidMode.devices) ||
       (type == QuestionType.topAnswers && topAnswers?.onDevices == true);
 
@@ -489,6 +504,8 @@ class Question {
       rapidFire: QuestionType.fromString(data['type']) == QuestionType.rapidFire ? RapidFire.fromMap(data['rapidFire']) : null,
       matching: QuestionType.fromString(data['type']) == QuestionType.matching ? Matching.fromMap(data['matching']) : null,
       topAnswers: QuestionType.fromString(data['type']) == QuestionType.topAnswers ? TopAnswers.fromMap(data['topAnswers']) : null,
+      lastStanding:
+          QuestionType.fromString(data['type']) == QuestionType.lastStanding ? LastStanding.fromMap(data['lastStanding']) : null,
       sounds: MusicConfig.fromMap(data),
       data: data,
     );
@@ -499,8 +516,8 @@ class Question {
   CompanionSpec? get companion {
     if (type == QuestionType.matching) {
       // Always on the teams' devices; the `companion` map holds the timer and
-      // whether teams may lock in. Pictures are shown on the big screen and
-      // named on the devices.
+      // whether teams may lock in. Pictures go to the devices shrunk; a
+      // picture without text is also named ("Picture C").
       final pairs = matching ?? const Matching();
       final numbers = pairs.rightNumbers(id);
       final stored = data['companion'] is Map ? Map<String, dynamic>.from(data['companion'] as Map) : <String, dynamic>{};
@@ -511,6 +528,9 @@ class Question {
         lockable: spec?.lockable ?? true,
         options: [for (var i = 0; i < pairs.pairs.length; i++) pairs.leftLabel(i)],
         targets: [for (var i = 0; i < pairs.pairs.length; i++) pairs.rightLabel(i, numbers)],
+        // The devices show the pictures too, shrunk.
+        optionImages: [for (final pair in pairs.pairs) pair.left.image],
+        targetImages: [for (final pair in pairs.pairs) pair.right.image],
       );
     }
     if (type == QuestionType.rapidFire) {
@@ -549,7 +569,7 @@ class Question {
   bool get buzzerable => switch (type) {
     // Teams that bet on an amount show it, they don't buzz.
     QuestionType.free => !noBuzzer && amountBet == null,
-    QuestionType.connections || QuestionType.matching => false,
+    QuestionType.connections || QuestionType.matching || QuestionType.lastStanding => false,
     QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
     QuestionType.topAnswers => topAnswers?.onDevices != true,
     _ => true,
@@ -559,13 +579,14 @@ class Question {
   /// and Connections award points through their own flow, and so does a
   /// Fragenhagel played on the teams' devices.
   bool get defaultJudging => switch (type) {
-    QuestionType.feud || QuestionType.connections => false,
-    QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
-    // Buzzing for an answer on the list: Wrong as usual, Right by
-    // picking the answer the team named.
-    QuestionType.topAnswers => topAnswers?.onDevices != true,
-    _ => true,
-  };
+        // Last team standing goes by turns, rated with the turn buttons.
+        QuestionType.feud || QuestionType.connections || QuestionType.lastStanding => false,
+        QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
+        // Buzzing for an answer on the list: Wrong as usual, Right by
+        // picking the answer the team named.
+        QuestionType.topAnswers => topAnswers?.onDevices != true,
+        _ => true,
+      };
 
   bool get hasMusic => music != null;
 
@@ -579,26 +600,27 @@ class Question {
   /// progressing reveal each have one step beyond their list: showing which
   /// answers are correct, and the final step of the reveal.
   int get maxReveal => switch (type) {
-    QuestionType.abcd => answers.length + 1,
-    QuestionType.progressingReveal => information.length + 1,
-    // One step per group, easiest first.
-    QuestionType.connections => kConnectionsGroups,
-    // One step per item; the last one ends the round.
-    QuestionType.rapidFire => rapidFire?.items.length ?? 0,
-    _ => 0,
-  };
+        QuestionType.abcd => answers.length + 1,
+        QuestionType.progressingReveal => information.length + 1,
+        // One step per group, easiest first.
+        QuestionType.connections => kConnectionsGroups,
+        // One step per item; the last one ends the round.
+        QuestionType.rapidFire => rapidFire?.items.length ?? 0,
+        _ => 0,
+      };
 
   /// Every media file this question needs, for caching ahead of the show.
   List<String> get mediaPaths => [
-    ?image,
-    ?music,
-    ...informationImages.where((e) => e.isNotEmpty),
-    ...informationMusic.where((e) => e.isNotEmpty),
-    ?companion?.backgroundImage,
-    ...?rapidFire?.mediaPaths,
-    ...?matching?.mediaPaths,
-    ...sounds.mediaPaths,
-  ];
+        ?image,
+        ?music,
+        ...informationImages.where((e) => e.isNotEmpty),
+        ...informationMusic.where((e) => e.isNotEmpty),
+        ?companion?.backgroundImage,
+        ...?rapidFire?.mediaPaths,
+        ...?lastStanding?.mediaPaths,
+        ...?matching?.mediaPaths,
+        ...sounds.mediaPaths,
+      ];
 }
 
 /// Puts the questions of one category in playing order: by their positions
@@ -606,9 +628,9 @@ class Question {
 /// lets a Fragenhagel worth 20 a question come after one worth 300.
 void sortQuestions(List<Question> questions) {
   if (questions.isNotEmpty && questions.every((q) => q.position != null)) {
-    questions.sort((a, b) => a.position != b.position ? a.position!.compareTo(b.position!) : a.pointsPlus.compareTo(b.pointsPlus));
+    questions.sort((a, b) => a.position != b.position ? a.position!.compareTo(b.position!) : a.boardPoints.compareTo(b.boardPoints));
   } else {
-    questions.sort((a, b) => a.pointsPlus.compareTo(b.pointsPlus));
+    questions.sort((a, b) => a.boardPoints.compareTo(b.boardPoints));
   }
 }
 
@@ -725,7 +747,8 @@ class QuestionRef {
   }
 
   @override
-  bool operator ==(Object other) => other is QuestionRef && other.categoryId == categoryId && other.questionId == questionId;
+  bool operator ==(Object other) =>
+      other is QuestionRef && other.categoryId == categoryId && other.questionId == questionId;
 
   @override
   int get hashCode => Object.hash(categoryId, questionId);
@@ -764,38 +787,44 @@ class CueCard {
   Iterable<String> get mediaPaths => [if (!isBuiltin) ?image, ?video];
 
   Map<String, dynamic> toMap() => {
-    'title': title,
-    'text': text,
-    'image': image,
-    'video': video,
-    if (hidden) 'hidden': true,
-    if (style != CardStyle.standard) 'style': style.name,
-  };
+        'title': title,
+        'text': text,
+        'image': image,
+        'video': video,
+        if (hidden) 'hidden': true,
+        if (style != CardStyle.standard) 'style': style.name,
+      };
 
   static List<CueCard> listFrom(Object? stored) => [
-    if (stored is List)
-      for (final entry in stored)
-        if (entry is Map)
-          CueCard(
-            title: entry['title'] is String ? entry['title'] as String : '',
-            text: entry['text'] is String ? entry['text'] as String : '',
-            image: _str(entry['image']),
-            video: _str(entry['video']),
-            hidden: entry['hidden'] == true,
-            style: CardStyle.fromName(entry['style']),
-          ),
-  ];
+        if (stored is List)
+          for (final entry in stored)
+            if (entry is Map)
+              CueCard(
+                title: entry['title'] is String ? entry['title'] as String : '',
+                text: entry['text'] is String ? entry['text'] as String : '',
+                image: _str(entry['image']),
+                video: _str(entry['video']),
+                hidden: entry['hidden'] == true,
+                style: CardStyle.fromName(entry['style']),
+              ),
+      ];
 
   /// [cards] with every built-in picture they do not mention added at the end.
   static List<CueCard> withBuiltins(List<CueCard> cards) => [
-    ...cards,
-    for (final image in builtinImages)
-      if (!cards.any((card) => card.image == image.name)) CueCard(image: image.name),
-  ];
+        ...cards,
+        for (final image in builtinImages)
+          if (!cards.any((card) => card.image == image.name)) CueCard(image: image.name),
+      ];
 }
 
 class GameContent {
-  GameContent({required this.id, this.name = '', this.groups = const [], this.sounds = MusicConfig.empty, this.data = const {}});
+  GameContent({
+    required this.id,
+    this.name = '',
+    this.groups = const [],
+    this.sounds = MusicConfig.empty,
+    this.data = const {},
+  });
 
   /// Cards of the whole game, switched off ones and built-in pictures
   /// included, in the order they are offered.
@@ -846,19 +875,17 @@ class GameContent {
           Question.fromMap(entry.key, entry.value),
       ];
       sortQuestions(categoryQuestions);
-      byGroup[target]!.add(
-        Category(
-          id: categoryId,
-          name: data['name'] is String ? data['name'] as String : '',
-          groupId: target == CategoryGroup.ungroupedId ? null : target,
-          index: _int(data['categoryIndex']),
-          active: active,
-          createdAtMillis: data['createdAt'] is int ? data['createdAt'] as int : null,
-          questions: categoryQuestions,
-          sounds: MusicConfig.fromMap(data),
-          data: data,
-        ),
-      );
+      byGroup[target]!.add(Category(
+        id: categoryId,
+        name: data['name'] is String ? data['name'] as String : '',
+        groupId: target == CategoryGroup.ungroupedId ? null : target,
+        index: _int(data['categoryIndex']),
+        active: active,
+        createdAtMillis: data['createdAt'] is int ? data['createdAt'] as int : null,
+        questions: categoryQuestions,
+        sounds: MusicConfig.fromMap(data),
+        data: data,
+      ));
     });
     for (final list in byGroup.values) {
       list.sort((a, b) {
@@ -905,33 +932,36 @@ class GameContent {
   /// timestamps and the like) are dropped; nothing the show needs is among
   /// them.
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'game': _jsonSafe(data),
-    'groups': {
-      for (final group in groups)
-        if (!group.isUngrouped) group.id: _jsonSafe(group.data),
-    },
-    'categories': {
-      for (final group in groups)
-        for (final category in group.categories) category.id: _jsonSafe(category.data),
-    },
-    'questions': {
-      for (final group in groups)
-        for (final category in group.categories)
-          category.id: {for (final question in category.questions) question.id: _jsonSafe(question.data)},
-    },
-  };
+        'id': id,
+        'game': _jsonSafe(data),
+        'groups': {
+          for (final group in groups)
+            if (!group.isUngrouped) group.id: _jsonSafe(group.data),
+        },
+        'categories': {
+          for (final group in groups)
+            for (final category in group.categories) category.id: _jsonSafe(category.data),
+        },
+        'questions': {
+          for (final group in groups)
+            for (final category in group.categories)
+              category.id: {for (final question in category.questions) question.id: _jsonSafe(question.data)},
+        },
+      };
 
   factory GameContent.fromJson(Map<String, dynamic> json) {
     Map<String, Map<String, dynamic>> docs(Object? value) => {
-      for (final entry in (value as Map? ?? const {}).entries) entry.key as String: Map<String, dynamic>.from(entry.value as Map),
-    };
+          for (final entry in (value as Map? ?? const {}).entries)
+            entry.key as String: Map<String, dynamic>.from(entry.value as Map),
+        };
     return GameContent.assemble(
       id: json['id'] as String,
       game: Map<String, dynamic>.from(json['game'] as Map? ?? const {}),
       groups: docs(json['groups']),
       categories: docs(json['categories']),
-      questions: {for (final entry in (json['questions'] as Map? ?? const {}).entries) entry.key as String: docs(entry.value)},
+      questions: {
+        for (final entry in (json['questions'] as Map? ?? const {}).entries) entry.key as String: docs(entry.value),
+      },
       // Whatever was filtered out is not in the JSON to begin with.
       activeOnly: false,
     );
@@ -973,22 +1003,27 @@ class GameContent {
   MusicConfig soundsFor({QuestionRef? ref, String? groupId}) {
     final category = ref == null ? null : this.category(ref.categoryId);
     final group = ref == null ? this.group(groupId) : groupOfCategory(ref.categoryId);
-    return MusicConfig.resolve([if (ref != null) ?question(ref)?.sounds, ?category?.sounds, ?group?.sounds, sounds]);
+    return MusicConfig.resolve([
+      if (ref != null) ?question(ref)?.sounds,
+      ?category?.sounds,
+      ?group?.sounds,
+      sounds,
+    ]);
   }
 
   /// Every media file the game needs, for caching ahead of the show.
   Set<String> get mediaPaths => {
-    ...sounds.mediaPaths,
-    // Built-in pictures come with the app; there is nothing to download.
-    for (final card in cards) ...card.mediaPaths,
-    for (final group in groups) ...[
-      ...group.mediaPaths,
-      for (final card in group.cards) ...card.mediaPaths,
-      for (final category in group.categories) ...[
-        ...category.sounds.mediaPaths,
-        for (final card in category.cards) ...card.mediaPaths,
-        for (final question in category.questions) ...question.mediaPaths,
-      ],
-    ],
-  };
+        ...sounds.mediaPaths,
+        // Built-in pictures come with the app; there is nothing to download.
+        for (final card in cards) ...card.mediaPaths,
+        for (final group in groups) ...[
+          ...group.mediaPaths,
+          for (final card in group.cards) ...card.mediaPaths,
+          for (final category in group.categories) ...[
+            ...category.sounds.mediaPaths,
+            for (final card in category.cards) ...card.mediaPaths,
+            for (final question in category.questions) ...question.mediaPaths,
+          ],
+        ],
+      };
 }

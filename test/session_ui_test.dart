@@ -22,18 +22,19 @@ void main() {
     host = SessionHost(initial: fixtureState());
     connection = SessionConnection.local(host, game: fixtureGame());
     addTearDown(connection.dispose);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Row(
-            children: [
-              SizedBox(width: 460, child: ControllerView(connection: connection)),
-              Expanded(child: PresenterView(connection: connection)),
-            ],
-          ),
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Row(
+          children: [
+            SizedBox(
+              width: 460,
+              child: ControllerView(connection: connection),
+            ),
+            Expanded(child: PresenterView(connection: connection)),
+          ],
         ),
       ),
-    );
+    ));
     await tester.pump();
   }
 
@@ -190,26 +191,8 @@ void main() {
     expect(inController(find.byType(DrawingView)), findsNothing);
 
     host
-      ..dispatch(
-        SubmitAnswer(
-          'red',
-          PlayerAnswer(
-            drawing: encodeDrawing([
-              [(0.2, 0.2), (0.8, 0.8)],
-            ]),
-          ),
-        ),
-      )
-      ..dispatch(
-        SubmitAnswer(
-          'blue',
-          PlayerAnswer(
-            drawing: encodeDrawing([
-              [(0.5, 0.1), (0.5, 0.9)],
-            ]),
-          ),
-        ),
-      );
+      ..dispatch(SubmitAnswer('red', PlayerAnswer(drawing: encodeDrawing([[(0.2, 0.2), (0.8, 0.8)]]))))
+      ..dispatch(SubmitAnswer('blue', PlayerAnswer(drawing: encodeDrawing([[(0.5, 0.1), (0.5, 0.9)]]))));
     await tester.pump();
     // The gamemaster sees both boards while they are being written.
     expect(inController(find.byType(DrawingView)), findsNWidgets(2));

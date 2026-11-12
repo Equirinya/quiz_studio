@@ -87,7 +87,7 @@ class _MapEditorState extends State<MapEditor> {
     super.dispose();
   }
 
-  /// Connecting: the bubble the next tap will be drawn after.
+  /// Connecting: the bubble the next tap draws an arrow from.
   bool _connecting = false;
   String? _from;
 
@@ -95,7 +95,8 @@ class _MapEditorState extends State<MapEditor> {
     final map = stored is Map ? stored : const {};
     return {
       if (map['width'] is num) 'width': map['width'],
-      'follows': Map<String, dynamic>.from(map['follows'] as Map? ?? const {}),
+      // Older layouts kept one `follows` per bubble; it becomes `after` here.
+      'after': <String, dynamic>{for (final entry in storedMapAfter(map).entries) entry.key: entry.value},
       'nodes': {
         for (final entry in (map['nodes'] as Map? ?? const {}).entries)
           entry.key as String: Map<String, dynamic>.from(entry.value as Map),
@@ -124,7 +125,7 @@ class _MapEditorState extends State<MapEditor> {
 
   Map<String, dynamic> get _nodes => _layout['nodes'] as Map<String, dynamic>;
 
-  Map<String, dynamic> get _follows => _layout['follows'] as Map<String, dynamic>;
+  Map<String, dynamic> get _after => _layout['after'] as Map<String, dynamic>;
 
   /// The group as it would be with the layout being edited.
   CategoryGroup get _draft => CategoryGroup(
@@ -213,14 +214,45 @@ class _MapEditorState extends State<MapEditor> {
     if (from == null) {
       setState(() => _from = categoryId);
     } else if (from == categoryId) {
-      // Tapped twice: this bubble follows nothing, it starts a chain.
+      // Tapped twice: no arrows lead into this bubble, it starts a chain.
       _change(() {
-        _follows[categoryId] = '';
+        _after[categoryId] = <String>[];
         _from = null;
       });
     } else {
+      // An arrow is added, or taken away where there is one already. The
+      // arrows the bubble has so far may be the default one, so they are
+      // read from the layout rather than from what is stored.
+      final edges = layoutMap(_draft).edges;
+      final into = [
+        for (final (a, b) in edges)
+          if (b == categoryId) a,
+      ];
+      if (!into.remove(from)) {
+        // An arrow that leads back round to where it started would make a
+        // loop with no beginning.
+        final seen = <String>{};
+        final todo = [categoryId];
+        while (todo.isNotEmpty) {
+          final at = todo.removeLast();
+          if (at == from) {
+            setState(() => _from = null);
+            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+              const SnackBar(content: Text("That arrow would go round in a circle.")),
+            );
+            return;
+          }
+          if (seen.add(at)) {
+            todo.addAll([
+              for (final (a, b) in edges)
+                if (a == at) b,
+            ]);
+          }
+        }
+        into.add(from);
+      }
       _change(() {
-        _follows[categoryId] = from;
+        _after[categoryId] = into;
         _from = null;
       });
     }
@@ -309,7 +341,8 @@ class _MapEditorState extends State<MapEditor> {
             _connecting
                 ? (_from == null
                     ? "Tap the bubble that comes first."
-                    : "Now tap the bubble that comes after it. Tap the same one again to make it a start.")
+                    : "Now tap the bubble it leads to: that adds an arrow, or removes the one already there. "
+                        "Tap the same bubble again to remove every arrow into it.")
                 : _bubble != null
                     ? "Drag to move. Use − and + below to change this bubble's size."
                     : selected != null

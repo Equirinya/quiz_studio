@@ -436,6 +436,7 @@ class _NowPanel extends StatelessWidget {
           ),
         const SizedBox(height: 8),
         if (q.type == QuestionType.rapidFire) _RapidPanel(state: state, question: q),
+        if (q.type == QuestionType.lastStanding) _StandingPanel(state: state, question: q, send: send),
         // Matching: the solution, as the big screen names the pieces.
         if (q.type == QuestionType.matching)
           Builder(
@@ -641,7 +642,12 @@ class _GiveBar extends StatelessWidget {
             : FilledButton.icon(
                 onPressed: () => send(const GivePoints()),
                 icon: const Icon(Icons.emoji_events_outlined),
-                label: Text("Give points · $summary", maxLines: 2, overflow: TextOverflow.ellipsis),
+                // Named while it fits; with many teams the cards show who gets what.
+                label: Text(
+                  pending.length <= 4 ? "Give points · $summary" : "Give points to ${pending.length} teams",
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
       ),
     );
@@ -792,7 +798,8 @@ class _ResultsPanel extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(12, 2, 2, 2),
                     child: Row(
                       children: [
-                        if (question.ranked && state.results.verdicts[team.id] != false) _PlaceButton(state: state, question: question, teamId: team.id, send: send),
+                        if (question.ranked && state.results.verdicts[team.id] != false)
+                          _PlaceButton(state: state, question: question, teamId: team.id, send: send),
                         Expanded(
                           child: Text(
                             amount ? "${team.name} · goal ${state.betting?.betOf(team.id) ?? 0}" : team.name,
@@ -828,6 +835,98 @@ class _ResultsPanel extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Last team standing: whose turn it is, the prompt with its answer, and
+/// every team in turn order. Right and Wrong (out) are on the pad; the
+/// free miss and taking a turn back are here.
+class _StandingPanel extends StatelessWidget {
+  const _StandingPanel({required this.state, required this.question, required this.send});
+
+  final SessionState state;
+  final Question question;
+  final void Function(Command) send;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final play = state.standing;
+    if (play == null) return const SizedBox.shrink();
+    final setup = question.lastStanding ?? const LastStanding();
+    final item = setup.itemAt(play.item);
+    final current = play.current == null ? null : state.team(play.current!);
+    final winner = play.winner == null ? null : state.team(play.winner!);
+    final out = play.out;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: winner != null ? Colors.green.withValues(alpha: 0.15) : scheme.primaryContainer,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                winner != null ? "${winner.name} wins · +${question.pointsPlus}" : current != null ? "${current.name}'s turn" : "Nobody left",
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              if (winner == null && item != null) ...[
+                const SizedBox(height: 6),
+                Text("${play.item + 1}. ${item.question}", style: theme.textTheme.titleMedium),
+                if (item.answer.isNotEmpty) Text(item.answer, style: theme.textTheme.bodyLarge?.copyWith(color: scheme.primary)),
+              ] else if (winner == null && setup.items.isNotEmpty)
+                Text("No prompts left", style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: play.current == null ? null : () => send(const TakeTurn(StandingResult.miss)),
+                icon: const Icon(Icons.replay),
+                label: const Text("Wrong, stays in"),
+              ),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: play.turns.isEmpty ? null : () => send(const UndoTurn()),
+              icon: const Icon(Icons.undo),
+              label: const Text("Undo"),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final id in play.order)
+              if (state.team(id) case final team?)
+                Chip(
+                  visualDensity: VisualDensity.compact,
+                  avatar: Icon(
+                    out.contains(id) ? Icons.close : (id == play.current ? Icons.play_arrow : (id == play.winner ? Icons.emoji_events : Icons.person_outline)),
+                    size: 18,
+                    color: out.contains(id) ? scheme.error : scheme.primary,
+                  ),
+                  label: Text(
+                    out.contains(id) ? "${team.name} · ${out.indexOf(id) + 1}. out" : team.name,
+                    style: out.contains(id) ? TextStyle(color: scheme.outline, decoration: TextDecoration.lineThrough) : null,
+                  ),
+                  backgroundColor: id == play.current ? scheme.primaryContainer : null,
+                ),
+          ],
+        ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 }
@@ -1055,15 +1154,21 @@ class _ActionPad extends StatelessWidget {
     final listening = state.phase == Phase.question || state.phase == Phase.buzzered;
     final feud = q?.type == QuestionType.feud;
     final steal = feud && answering && state.wrongAttempts >= 3;
+    // Last team standing: Right and Wrong rate the turn; Wrong puts the team out.
+    final turn = q?.type == QuestionType.lastStanding && state.standing?.current != null;
 
     // Top row: the verdict, and closing the question.
     // Top answers: a right answer is the one tapped on the list.
-    final Command? right = !answering || q == null || q.type == QuestionType.topAnswers
+    final Command? right = turn
+        ? const TakeTurn(StandingResult.right)
+        : !answering || q == null || q.type == QuestionType.topAnswers
         ? null
         : feud
         ? (steal ? const FeudSteal(success: true) : null)
         : const Judge(correct: true);
-    final Command? wrong = !answering || q == null
+    final Command? wrong = turn
+        ? const TakeTurn(StandingResult.out)
+        : !answering || q == null
         ? null
         : feud
         ? (steal ? const FeudSteal(success: false) : const FeudWrong())
@@ -1398,7 +1503,7 @@ class _BoardSheetState extends State<_BoardSheet> {
                                               : scheme.onSurface,
                                         ),
                                         onPressed: () => setState(() => _selected = ref),
-                                        child: Text(q.pointsPlus.toString()),
+                                        child: Text(q.boardPoints.toString()),
                                       ),
                                     );
                                   },
@@ -2111,7 +2216,8 @@ class _AnswersPanel extends StatelessWidget {
                               style: theme.textTheme.labelLarge,
                             ),
                           ),
-                          if (question.ranked && state.results.verdicts[team.id] != false) _PlaceButton(state: state, question: question, teamId: team.id, send: send),
+                          if (question.ranked && state.results.verdicts[team.id] != false)
+                            _PlaceButton(state: state, question: question, teamId: team.id, send: send),
                           _PointsChip(state: state, question: question, teamId: team.id),
                           const SizedBox(width: 8),
                           // What rating automatically would make of it.

@@ -3,12 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/features/games/widgets/map_editor.dart';
 import 'package:quiz_show/game/game.dart';
 
-CategoryGroup group({Map<String, dynamic> layout = const {}}) => CategoryGroup(
+CategoryGroup group({Map<String, dynamic> layout = const {}, int count = 3}) => CategoryGroup(
       id: 'g',
       name: 'Round',
       type: BoardType.map,
       categories: [
-        for (final (i, name) in ['Alpha', 'Beta', 'Gamma'].indexed) Category(id: 'c$i', name: name, index: i),
+        for (final (i, name) in ['Alpha', 'Beta', 'Gamma', 'Delta'].take(count).indexed) Category(id: 'c$i', name: name, index: i),
       ],
       data: {'mapLayout': layout},
     );
@@ -17,7 +17,7 @@ void main() {
   late Map<String, dynamic> saved;
   late int saves;
 
-  Future<void> pumpEditor(WidgetTester tester, {Map<String, dynamic> layout = const {}}) async {
+  Future<void> pumpEditor(WidgetTester tester, {Map<String, dynamic> layout = const {}, int count = 3}) async {
     tester.view.physicalSize = const Size(1280, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -26,7 +26,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: MapEditor(
-          group: group(layout: layout),
+          group: group(layout: layout, count: count),
           imageFile: (_) => null,
           pickImage: () async => 'picked.png',
           onSave: (next) {
@@ -65,7 +65,7 @@ void main() {
     expect(saved['nodes'], isEmpty);
   });
 
-  testWidgets('connecting: first bubble, then the one that follows it', (tester) async {
+  testWidgets('connecting: first bubble, then the one it leads to; again to take the arrow away', (tester) async {
     await pumpEditor(tester);
     await tester.tap(find.text('Connect'));
     await tester.pump();
@@ -74,17 +74,76 @@ void main() {
     await tester.pump();
     await tester.tap(bubble('c2'));
     await tester.pump();
-    expect(saved['follows'], {'c2': 'c0'});
-    // Both c1 (by default) and c2 now follow c0: a branch.
-    final map = layoutMap(group(layout: saved));
-    expect(map.edges.toSet(), {('c0', 'c1'), ('c0', 'c2')});
+    // An arrow is added next to the one c2 had by default.
+    expect(saved['after'], {
+      'c2': ['c1', 'c0'],
+    });
+    expect(layoutMap(group(layout: saved)).edges.toSet(), {('c0', 'c1'), ('c1', 'c2'), ('c0', 'c2')});
 
-    // Tapping one bubble twice makes it the start of its own chain.
+    // The same two again take that arrow away.
+    await tester.tap(bubble('c1'));
+    await tester.pump();
+    await tester.tap(bubble('c2'));
+    await tester.pump();
+    expect(saved['after'], {
+      'c2': ['c0'],
+    });
+    // Both c1 (by default) and c2 now come after c0: a branch.
+    expect(layoutMap(group(layout: saved)).edges.toSet(), {('c0', 'c1'), ('c0', 'c2')});
+
+    // Tapping one bubble twice takes every arrow into it away: it starts a chain.
     await tester.tap(bubble('c1'));
     await tester.pump();
     await tester.tap(bubble('c1'));
     await tester.pump();
-    expect(saved['follows'], {'c2': 'c0', 'c1': ''});
+    expect(saved['after'], {
+      'c2': ['c0'],
+      'c1': <String>[],
+    });
+  });
+
+  testWidgets('a branch can split and join again', (tester) async {
+    await pumpEditor(tester, count: 4);
+    await tester.tap(find.text('Connect'));
+    await tester.pump();
+    Future<void> connect(String from, String to) async {
+      await tester.tap(bubble(from));
+      await tester.pump();
+      await tester.tap(bubble(to));
+      await tester.pump();
+    }
+
+    // c0 -> c1 -> c2 -> c3 by default; make it c0 -> c1, c0 -> c2, both -> c3.
+    await connect('c0', 'c2');
+    await connect('c1', 'c2');
+    await connect('c1', 'c3');
+    final map = layoutMap(group(layout: saved, count: 4));
+    expect(map.edges.toSet(), {('c0', 'c1'), ('c0', 'c2'), ('c1', 'c3'), ('c2', 'c3')});
+    expect(map.nodes['c3']!.y, map.nodes['c0']!.y);
+  });
+
+  testWidgets('an arrow that would go round in a circle is refused', (tester) async {
+    await pumpEditor(tester);
+    await tester.tap(find.text('Connect'));
+    await tester.pump();
+    await tester.tap(bubble('c2'));
+    await tester.pump();
+    await tester.tap(bubble('c0'));
+    await tester.pump();
+    expect(saves, 0);
+    expect(find.text('That arrow would go round in a circle.'), findsOneWidget);
+  });
+
+  testWidgets('a layout saved with "follows" is kept and saved as "after"', (tester) async {
+    await pumpEditor(tester, layout: {
+      'follows': {'c2': 'c0'},
+    });
+    await tester.tap(find.text('Wider'));
+    await tester.pump();
+    expect(saved.containsKey('follows'), isFalse);
+    expect(saved['after'], {
+      'c2': ['c0'],
+    });
   });
 
   testWidgets('a title is added, selected, resized, renamed and removed', (tester) async {

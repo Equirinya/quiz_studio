@@ -11,6 +11,7 @@ export 'content_text.dart';
 export 'map_layout.dart';
 export 'matching.dart';
 export 'public_view.dart';
+export 'last_standing.dart';
 export 'rapid_fire.dart';
 export 'rating.dart';
 export 'reducer.dart';

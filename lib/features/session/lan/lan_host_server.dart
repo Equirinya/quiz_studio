@@ -40,10 +40,28 @@ class LanHostServer {
   GameContent? _sentGame;
   String? _gameJson;
   String? _backgroundMessage;
+  final Map<String, String> _pictureMessages = {};
 
   /// Hands every device the picture teams draw on in the current round, and
   /// every device that connects later too. [name] is the media file's name,
   /// by which devices match it to the round.
+  /// Hands every device the pictures of the current round (matching), and
+  /// every device that connects later too; ones it already sent are not
+  /// sent again.
+  void setPictures(Map<String, List<int>> pictures) {
+    final fresh = [
+      for (final MapEntry(key: name, value: bytes) in pictures.entries)
+        if (!_pictureMessages.containsKey(name)) _pictureMessages[name] = jsonEncode({'t': 'pic', 'n': name, 'd': base64Encode(bytes)}),
+    ];
+    for (final socket in _clients.keys.toList()) {
+      try {
+        fresh.forEach(socket.add);
+      } catch (_) {
+        _clients.remove(socket);
+      }
+    }
+  }
+
   void setBackground(String name, List<int> bytes) {
     _backgroundMessage = jsonEncode({'t': 'bg', 'n': name, 'd': base64Encode(bytes)});
     for (final socket in _clients.keys.toList()) {
@@ -125,6 +143,7 @@ class LanHostServer {
       _clients[socket] = granted;
       socket.add(jsonEncode({'t': 'welcome', 'role': granted.role.name, 'teamId': granted.teamId}));
       if (_backgroundMessage != null) socket.add(_backgroundMessage!);
+      _pictureMessages.values.forEach(socket.add);
       _sendCurrent(socket, granted, withGame: true);
       return;
     }

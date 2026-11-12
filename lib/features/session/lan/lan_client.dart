@@ -19,6 +19,7 @@ class LanClient {
   final StreamController<PublicView> _views = StreamController<PublicView>.broadcast();
   final StreamController<GameContent?> _games = StreamController<GameContent?>.broadcast();
   final StreamController<(String, Uint8List)> _backgrounds = StreamController<(String, Uint8List)>.broadcast();
+  final StreamController<(String, Uint8List)> _pictures = StreamController<(String, Uint8List)>.broadcast();
   final StreamController<Effect> _effects = StreamController<Effect>.broadcast();
   final Completer<void> _done = Completer<void>();
 
@@ -34,6 +35,10 @@ class LanClient {
 
   /// The picture of a whiteboard round, as (media name, image bytes).
   Stream<(String, Uint8List)> get backgrounds => _backgrounds.stream;
+
+  /// Pictures of the current round (matching), one at a time, as (media
+  /// name, image bytes).
+  Stream<(String, Uint8List)> get pictures => _pictures.stream;
 
   /// Controllers only: screen effects as the host plays them.
   Stream<Effect> get effects => _effects.stream;
@@ -87,6 +92,7 @@ class LanClient {
     await _views.close();
     await _games.close();
     await _backgrounds.close();
+    await _pictures.close();
     await _effects.close();
     if (!_done.isCompleted) _done.complete();
   }
@@ -106,6 +112,8 @@ class LanClient {
           _effects.add(VisualEffect(message['n'] as String));
         case 'bg':
           _backgrounds.add((message['n'] as String, base64Decode(message['d'] as String)));
+        case 'pic':
+          _pictures.add((message['n'] as String, base64Decode(message['d'] as String)));
       }
     } catch (_) {
       // One malformed message must not take the connection down.

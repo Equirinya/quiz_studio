@@ -5,6 +5,7 @@ library;
 import 'commands.dart';
 import 'companion.dart';
 import 'content.dart';
+import 'last_standing.dart';
 import 'rapid_fire.dart';
 import 'scoring.dart';
 import 'session_state.dart';
@@ -132,6 +133,10 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
         // A question with a companion screen puts it on the teams' devices
         // the moment it opens; with bets, once they are placed.
         answerRound: companion == null || opened.hasBets ? null : _newRound(companion, now),
+        // Last team standing: the turn order is fixed as it opens.
+        standing: opened.type == QuestionType.lastStanding
+            ? StandingPlay(order: turnOrder(s.teams, opened.lastStanding?.order ?? TurnOrder.teams))
+            : null,
         betting: opened.hasBets ? const Betting() : null,
         timer: opened.hasBets ? null : _timerFor(opened, now),
       );
@@ -461,6 +466,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
           ),
           betting: s.betting?.copyWith(bets: {...s.betting!.bets}..remove(teamId)),
           results: s.results.without(teamId),
+          standing: s.standing?.without(teamId),
           foundBy: {
             for (final entry in s.foundBy.entries)
               if (entry.value != teamId) entry.key: entry.value,
@@ -612,6 +618,26 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       if (question == null || pointsToGive(s, question).isEmpty) return _no(s);
       return _ok(_give(s, question));
 
+    case TakeTurn(:final result):
+      final play = s.standing;
+      if (question == null || play == null || play.current == null) return _no(s);
+      final next = play.withTurn(result);
+      final winner = next.winner;
+      // The last team left wins, and its points go up at once.
+      var after = s.copyWith(standing: next);
+      if (winner != null) after = _give(after.copyWith(results: after.results.rated(winner, true)), question);
+      return _ok(after, [
+        SoundEffect(result == StandingResult.right ? effectAnswerCorrect : effectAnswerWrong),
+        if (winner != null) const SoundEffect(effectFanfare),
+      ]);
+
+    case UndoTurn():
+      final play = s.standing;
+      if (question == null || play == null || play.turns.isEmpty) return _no(s);
+      final back = s.copyWith(standing: play.withoutLastTurn());
+      // A winner that is no longer one gives its points back.
+      return _ok(play.winner == null ? back : _give(back.copyWith(results: back.results.rated(play.winner!, null)), question));
+
     case ClearAnswers():
       if (s.answerRound == null) return _no(s);
       return _ok(s.copyWith(answerRound: null));
@@ -715,6 +741,7 @@ SessionState _backToBoard(SessionState s) => s.copyWith(
   betting: null,
   timer: null,
   results: const Results(),
+  standing: null,
 );
 
 /// After a wrong answer: the next queued team is up, or the question reopens.

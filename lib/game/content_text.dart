@@ -3,6 +3,7 @@ library;
 
 import 'companion.dart';
 import 'content.dart';
+import 'last_standing.dart';
 import 'matching.dart';
 import 'rapid_fire.dart';
 import 'top_answers.dart';
@@ -53,9 +54,7 @@ String questionAsText(Question q) {
       for (final (i, item) in rapid.items.indexed) {
         final media = [if (item.image != null) 'picture', if (item.music != null) 'sound'];
         final solution = devices ? (item.isTrue ? 'right' : 'wrong') : item.answer;
-        out.writeln(
-          '  ${i + 1}. ${item.question}${solution.isEmpty ? '' : ' – $solution'}${media.isEmpty ? '' : ' [${media.join(', ')}]'}',
-        );
+        out.writeln('  ${i + 1}. ${item.question}${solution.isEmpty ? '' : ' – $solution'}${media.isEmpty ? '' : ' [${media.join(', ')}]'}');
       }
     case QuestionType.matching:
       final pairs = q.matching ?? const Matching();
@@ -63,14 +62,18 @@ String questionAsText(Question q) {
         String side(MatchSide s) => [if (s.text.isNotEmpty) s.text, if (s.image != null) '[picture]'].join(' ');
         out.writeln('  ${side(pair.left)} = ${side(pair.right)}');
       }
+    case QuestionType.lastStanding:
+      final standing = q.lastStanding ?? const LastStanding();
+      out.writeln('  Turns: ${standing.order.uiString}');
+      for (final (i, item) in standing.items.indexed) {
+        out.writeln('  ${i + 1}. ${item.question}${item.answer.isEmpty ? '' : ' – ${item.answer}'}');
+      }
     case QuestionType.free:
       if (q.noBuzzer && q.companion == null) out.writeln('  No buzzers');
     case QuestionType.unsupported:
       break;
   }
-  final companion = q.type == QuestionType.rapidFire || q.type == QuestionType.matching || q.type == QuestionType.topAnswers
-      ? null
-      : q.companion;
+  final companion = q.type == QuestionType.rapidFire || q.type == QuestionType.matching || q.type == QuestionType.topAnswers ? null : q.companion;
   if (companion != null && q.type == QuestionType.connections) {
     final timer = companion.timerSeconds == null ? '' : ', ${companion.timerSeconds} s';
     out.writeln('  ${companion.mistakes} mistakes allowed$timer');

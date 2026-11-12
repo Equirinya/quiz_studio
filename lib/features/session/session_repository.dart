@@ -189,6 +189,19 @@ class SessionRepository {
         return name is String && image is Blob ? (name, image.bytes) : null;
       });
 
+  /// Puts the pictures of a matching round where every device of the
+  /// session can fetch them. Host only; together well under 1 MiB.
+  Future<void> publishPictures(String sessionId, Map<String, Uint8List> pictures) =>
+      session(sessionId).collection('public').doc('pictures').set({
+        'images': [for (final MapEntry(key: name, value: bytes) in pictures.entries) {'name': name, 'image': Blob(bytes)}],
+      });
+
+  Stream<Map<String, Uint8List>> watchPictures(String sessionId) =>
+      session(sessionId).collection('public').doc('pictures').snapshots().map((doc) => {
+            for (final entry in doc.data()?['images'] as List? ?? const [])
+              if (entry is Map && entry['name'] is String && entry['image'] is Blob) entry['name'] as String: (entry['image'] as Blob).bytes,
+          });
+
   Stream<List<String>> watchLanEndpoints(String sessionId) => session(sessionId)
       .collection('public')
       .doc('lan')

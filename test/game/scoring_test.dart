@@ -2,7 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/game/game.dart';
 
 import 'fixture.dart';
+import 'rapid_fixture.dart';
 import 'scoring_fixture.dart';
+import 'top_answers_fixture.dart';
 
 SessionState play(List<Command> commands, {SessionState? from, int? now}) {
   var state = from ?? scoringState();
@@ -110,5 +112,45 @@ void main() {
     expect(restored.order, ['green']);
     expect(restored.verdicts, {'red': false, 'blue': true});
     expect(restored.points, {'blue': 150});
+  });
+
+  group('on the boards', () {
+    test('points given per item show everything there is to win', () {
+      // Fragenhagel: 10 per item, three items.
+      expect(rapidGame().question(buzzerRound)!.boardPoints, 30);
+      // Top answers: 100 each, one worth 300 of its own.
+      expect(topAnswersGame().question(const QuestionRef('tc', 'films'))!.boardPoints, 700);
+      // Everything else: its points.
+      expect(scoringGame().question(raced)!.boardPoints, 600);
+    });
+
+    test('and questions sort by it', () {
+      final questions = [
+        Question.fromMap('a', const {'type': 'free', 'pointsPlus': 200}),
+        Question.fromMap('b', const {
+          'type': 'rapidFire',
+          'pointsPlus': 20,
+          'rapidFire': {
+            'items': [
+              {'question': '1'},
+              {'question': '2'},
+              {'question': '3'},
+              {'question': '4'},
+              {'question': '5'},
+              {'question': '6'},
+              {'question': '7'},
+              {'question': '8'},
+              {'question': '9'},
+              {'question': '10'},
+              {'question': '11'},
+              {'question': '12'},
+            ],
+          },
+        }),
+        Question.fromMap('c', const {'type': 'free', 'pointsPlus': 300}),
+      ];
+      sortQuestions(questions);
+      expect([for (final q in questions) q.id], ['a', 'b', 'c'], reason: '12 × 20 = 240 sits between 200 and 300');
+    });
   });
 }

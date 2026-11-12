@@ -12,9 +12,9 @@ import 'session_state.dart';
 
 class SessionHost {
   SessionHost({SessionState initial = const SessionState(), GameContent? game, int Function()? clock})
-    : _state = initial,
-      _game = game,
-      _clock = clock ?? (() => DateTime.now().millisecondsSinceEpoch) {
+      : _state = initial,
+        _game = game,
+        _clock = clock ?? (() => DateTime.now().millisecondsSinceEpoch) {
     _armTimer();
   }
 
