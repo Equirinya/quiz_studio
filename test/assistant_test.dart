@@ -258,12 +258,53 @@ void main() {
       final question = Question.fromMap('q', data);
       expect(question.ranked, isTrue);
       expect(placePoints(question, 1), 500);
-      expect(questionDataFromArgs({'rankStep': null}, partial: true), {'rankStep': null});
+      expect(questionDataFromArgs({'rankStep': null}, partial: true), {'rankStep': null, 'closest': null});
       // Switching to bets of points takes "by order" away.
       expect(questionDataFromArgs({'wager': true}, partial: true, existingType: QuestionType.free)['rankStep'], isNull);
       expect(() => questionDataFromArgs({'type': 'feud', 'question': 'x', 'rankStep': 100}, partial: false), throwsA(isA<ToolError>()));
       expect(() => questionDataFromArgs({'question': 'x', 'wager': true, 'rankStep': 100}, partial: false), throwsA(isA<ToolError>()));
       expect(() => questionDataFromArgs({'question': 'x', 'rankStep': -5}, partial: false), throwsA(isA<ToolError>()));
+    });
+
+    test('"by closeness" needs a number or slider with a solution, and defaults its step', () {
+      final data = questionDataFromArgs({
+        'question': 'How tall is the Eiffel Tower?',
+        'pointsPlus': 600,
+        'closest': true,
+        'companion': {'kind': 'slider', 'min': 0, 'max': 500, 'solution': 330},
+      }, partial: false);
+      final question = Question.fromMap('q', data);
+      expect((question.byCloseness, question.ranked, question.rankStep), (true, false, 100));
+      expect(describeQuestion(question)['closest'], isTrue);
+      expect(
+        () => questionDataFromArgs({'question': 'x', 'closest': true, 'companion': {'kind': 'text'}}, partial: false),
+        throwsA(isA<ToolError>()),
+      );
+      expect(() => questionDataFromArgs({'question': 'x', 'closest': true}, partial: false), throwsA(isA<ToolError>()));
+      expect(questionDataFromArgs({'wager': true}, partial: true, existingType: QuestionType.free)['closest'], isNull);
+    });
+
+    test('a Fragenhagel item keeps its hint for the gamemaster', () {
+      final data = questionDataFromArgs({
+        'type': 'rapidFire',
+        'question': 'Capitals',
+        'pointsPlus': 10,
+        'rapidFire': {
+          'items': [
+            {'question': 'France?', 'answer': 'Paris', 'hint': 'Also accept: Lutetia'},
+          ],
+        },
+      }, partial: false);
+      final question = Question.fromMap('q', data);
+      expect(question.rapidFire!.items.single.hint, 'Also accept: Lutetia');
+      expect((describeQuestion(question)['rapidFire'] as Map)['items'], [containsPair('hint', 'Also accept: Lutetia')]);
+    });
+
+    test('the tool descriptions point to bets and last team standing', () {
+      final add = gameToolSpecs.firstWhere((spec) => spec.name == 'add_question');
+      expect(add.description, allOf(contains('wager'), contains('amountBet'), contains('lastStanding'), contains('closest')));
+      final fields = (add.inputSchema['properties'] as Map);
+      expect(fields.keys, containsAll(['wager', 'amountBet', 'lastStanding', 'closest']));
     });
 
     test('reading a game back shows how each question is scored', () {

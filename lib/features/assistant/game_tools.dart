@@ -75,8 +75,12 @@ final Map<String, dynamic> _questionFields = {
         'device; each group found is worth a quarter of pointsPlus. '
         'rapidFire ("Fragenhagel"): many short questions in a row inside this one, see "rapidFire"; pointsPlus is '
         'per item. matching: pairs the teams put back together on their devices, see "pairs". '
-        'lastStanding ("Last team standing"): one player per team takes turns; a wrong answer puts the team out and the '
-        'last team left gets pointsPlus, see "lastStanding".',
+        'lastStanding ("Last team standing", also "last man standing", an elimination round, German "Wer bleibt übrig"): '
+        'one player per team takes turns in a fixed order; a wrong answer puts the team out and the last team left gets '
+        'pointsPlus, see "lastStanding". Minimal example: {"type": "lastStanding", "question": "Name a Disney film", '
+        '"pointsPlus": 300}. '
+        'Bets are not a type: for a bet question use "wager" or "amountBet" on a free (or abcd, progressingReveal, '
+        'matching) question.',
   },
   'question': {'type': 'string', 'description': 'The question as shown to the audience.'},
   'answerHint': {'type': 'string', 'description': 'The answer or notes; only the gamemaster sees this.'},
@@ -95,10 +99,12 @@ final Map<String, dynamic> _questionFields = {
   'wager': {
     'type': 'boolean',
     'description':
-        'Teams bet their own points instead of playing for fixed points: before the question is shown each '
+        'A bet question ("Teams bet their points", German "Einsatz"/"Wetten"; e.g. a final question). Set true and '
+        'teams bet their own points instead of playing for fixed points: before the question is shown each '
         'team bets, a right answer wins the bet and a wrong one loses it (pointsMinus is then not used). A team may bet up '
         'to its score, or up to pointsPlus (at least $kMinBetLimit) if it has less. For free, abcd, progressingReveal and '
-        'matching questions only.',
+        'matching questions only. Example: {"type": "free", "question": "Final: which year ...?", "pointsPlus": 500, '
+        '"wager": true}.',
   },
   'amountBet': {
     'type': ['object', 'null'],
@@ -107,7 +113,9 @@ final Map<String, dynamic> _questionFields = {
         'push-ups. First only "prompt" is shown and each team picks a number up to "max"; then the question runs (give it '
         'a companion screen such as list or whiteboard, or none for a physical challenge, and a timer). The gamemaster '
         'judges per team whether it reached its number: reached gives pointsPlus times the number, missed takes '
-        'pointsMinus times the number. null switches it off. Not together with "wager".',
+        'pointsMinus times the number. null switches it off. Not together with "wager". Example: {"type": "free", '
+        '"question": "Name science fiction films", "pointsPlus": 50, "amountBet": {"prompt": "How many science fiction '
+        'films can you name?", "max": 15}, "companion": {"kind": "list", "timer": 60}}.',
     'properties': {
       'prompt': {'type': 'string', 'description': 'The bet question, e.g. "How many science fiction films can you name?"'},
       'max': {'type': 'integer', 'minimum': 1, 'description': 'Highest number a team may bet; default $kDefaultAmountMax.'},
@@ -120,7 +128,18 @@ final Map<String, dynamic> _questionFields = {
         '"By order" scoring, e.g. for answers ranked by speed: the first team gets pointsPlus, each after it '
         'this many points less (never below 0); wrong answers lose pointsMinus. The order is the order teams lock in a right '
         'answer on their devices, or the order the gamemaster taps them in (e.g. charades on stage). null switches it off. '
-        'For free, abcd, progressingReveal and matching questions; not together with "wager" or "amountBet".',
+        'For free, abcd, progressingReveal and matching questions; not together with "wager" or "amountBet". With '
+        '"closest": true the places go by closeness instead, see there.',
+  },
+  'closest': {
+    'type': 'boolean',
+    'description':
+        '"By closeness" scoring for estimation questions: needs a companion of kind number or slider with a '
+        '"solution". Once answering is closed, the team whose number is nearest the solution gets pointsPlus, each '
+        'place after it rankStep less (rankStep defaults to 100 if not given); teams equally near share a place, and '
+        'the big screen shows the places with the answers. false switches it back to "by order". Example: {"type": '
+        '"free", "question": "How tall is the Eiffel Tower?", "pointsPlus": 600, "rankStep": 200, "closest": true, '
+        '"companion": {"kind": "slider", "min": 0, "max": 500, "unit": "m", "solution": 330}}.',
   },
   'timer': {
     'type': ['integer', 'null'],
@@ -218,6 +237,10 @@ final Map<String, dynamic> _questionFields = {
             'question': {'type': 'string', 'description': 'The question, or in devices mode the statement.'},
             'answer': {'type': 'string', 'description': 'buzzer mode: the answer, for the gamemaster.'},
             'true': {'type': 'boolean', 'description': 'devices mode: whether the statement is right. Default true.'},
+            'hint': {
+              'type': 'string',
+              'description': 'Optional note only the gamemaster sees with this item, e.g. other answers to accept.',
+            },
             'image': {'type': 'string', 'description': 'Optional picture, a name from upload_media.'},
             'music': {'type': 'string', 'description': 'Optional sound, e.g. a soundtrack to guess.'},
           },
@@ -379,7 +402,12 @@ final List<ToolSpec> gameToolSpecs = [
     'add_question',
     'Adds a question to a category, at its end when the category has its own order. Give at least the question '
         'text and pointsPlus. A typical category has five questions rising in value, e.g. 100 to 500. Pictures and '
-        'sounds are names from upload_media.',
+        'sounds are names from upload_media. '
+        'The format is "type" (free, abcd, progressingReveal, feud, topAnswers, connections, rapidFire, matching, '
+        'lastStanding), each with its own field (see "type"). How it is scored is a separate choice, one at a time: '
+        'fixed points (default: pointsPlus/pointsMinus); "wager" (teams bet their points); "amountBet" (teams bet how '
+        'many they can do); "rankStep" (by order or speed); "rankStep" with "closest" (by closeness, for number or '
+        'slider estimates). The field descriptions have examples.',
     _object({'gameId': _string, 'categoryId': _string, ..._questionFields}, ['gameId', 'categoryId', 'question']),
   ),
   ToolSpec(
@@ -543,7 +571,10 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
       throw const ToolError('"wager" is for free, abcd, progressingReveal and matching questions.');
     }
     data['wager'] = wager;
-    if (wager) data['rankStep'] = null;
+    if (wager) {
+      data['rankStep'] = null;
+      data['closest'] = null;
+    }
   }
   if (args.containsKey('amountBet')) {
     final bet = args['amountBet'];
@@ -573,6 +604,25 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
       data['amountBet'] = null;
     }
     data['rankStep'] = (step as num?)?.round();
+    if (step == null) data['closest'] = null;
+  }
+  final closest = take<bool>('closest');
+  if (closest != null) {
+    if (closest) {
+      if (effective != QuestionType.free) throw const ToolError('"closest" is for free questions with a number or slider companion.');
+      if (wager == true || args['amountBet'] != null) throw const ToolError('"closest" does not go with "wager" or "amountBet".');
+      final kind = args['companion'] is Map ? (args['companion'] as Map)['kind'] : null;
+      if (kind != null && kind != 'number' && kind != 'slider') {
+        throw const ToolError('"closest" needs a companion of kind number or slider, with its "solution".');
+      }
+      if (!partial && (kind == null || (args['companion'] as Map)['solution'] is! num)) {
+        throw const ToolError('"closest" needs a companion of kind number or slider, with its "solution".');
+      }
+      if (args['rankStep'] == null) data['rankStep'] = 100;
+      data['wager'] = false;
+      data['amountBet'] = null;
+    }
+    data['closest'] = closest ? true : null;
   }
   if (args.containsKey('timer')) {
     final timer = args['timer'];
@@ -811,9 +861,9 @@ Map<String, dynamic> describeQuestion(Question q) => {
   if (q.noBuzzer) 'noBuzzer': true,
   if (q.noPhoneBuzzer) 'noPhoneBuzzer': true,
   if (q.betting) 'wager': true,
-  if (q.betting) 'wager': true,
   if (q.amountBet != null) 'amountBet': q.amountBet!.toMap(),
   if (q.rankStep != null) 'rankStep': q.rankStep,
+  if (q.closest) 'closest': true,
   if (q.data['timer'] is num) 'timer': q.data['timer'],
   if (q.type == QuestionType.abcd) ...{'answers': q.answers, 'correct': q.answersCorrect},
   if (q.type == QuestionType.progressingReveal || q.type == QuestionType.feud) 'information': q.information,
