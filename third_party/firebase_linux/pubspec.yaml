@@ -1,0 +1,42 @@
+name: firebase_linux
+description: >-
+  Dart-only Linux implementations of firebase_core, firebase_auth,
+  cloud_firestore and firebase_storage, covering what Quiz Studio uses.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>3.8.0 <4.0.0'
+  flutter: '>=3.32.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  collection: ^1.19.0
+  fixnum: ^1.1.1
+  grpc: ^5.0.0
+  http: ^1.5.0
+  path_provider: ^2.1.3
+  protobuf: ^6.0.0
+  firebase_core: ^4.0.0
+  firebase_core_platform_interface: ^8.0.0
+  firebase_auth_platform_interface: ^9.0.0
+  cloud_firestore_platform_interface: ^8.0.0
+  firebase_storage_platform_interface: ^6.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  # For the emulator tests, which go through the app-facing packages.
+  cloud_firestore:
+    path: ../cloud_firestore
+  firebase_auth:
+    path: ../firebase_auth
+  firebase_storage:
+    path: ../firebase_storage
+
+flutter:
+  plugin:
+    platforms:
+      linux:
+        dartPluginClass: FirebaseLinux

@@ -29,10 +29,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.windows:
         return windows;
       case TargetPlatform.linux:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for linux - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return linux;
       default:
         throw UnsupportedError(
           'DefaultFirebaseOptions are not supported for this platform.',
@@ -85,4 +82,8 @@ class DefaultFirebaseOptions {
     authDomain: 'quiz-8541e.firebaseapp.com',
     storageBucket: 'quiz-8541e.appspot.com',
   );
+
+  // Like Windows, Linux talks to Firebase as the web app does
+  // (third_party/firebase_linux).
+  static const FirebaseOptions linux = windows;
 }
