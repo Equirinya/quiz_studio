@@ -71,6 +71,16 @@ class AnswerView extends StatelessWidget {
           style: style.copyWith(fontSize: fontSize * 1.5, fontWeight: FontWeight.w700),
         );
       case CompanionKind.choice:
+        if (answer.choices case final picks?) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (picks.isEmpty) Text("–", style: style),
+              for (final pick in picks) Text("${String.fromCharCode(0x41 + pick)}   ${option(spec.options, pick)}", style: style),
+            ],
+          );
+        }
         final choice = answer.choice ?? -1;
         return Text("${String.fromCharCode(0x41 + choice)}   ${option(spec.options, choice)}", style: style);
       case CompanionKind.order:

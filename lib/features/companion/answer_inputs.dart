@@ -63,6 +63,10 @@ class _CompanionInputState extends State<CompanionInput> {
   // choice
   int? _choice;
 
+  // choice with several picks allowed
+  late final bool _multiple = widget.spec['multiple'] == true;
+  final List<int> _choices = [];
+
   // order: the items in the team's current order
   late final List<_Item> _items = [
     for (final entry in widget.spec['items'] as List? ?? const [])
@@ -189,10 +193,16 @@ class _CompanionInputState extends State<CompanionInput> {
                       child: _ChoiceTile(
                         letter: String.fromCharCode(0x41 + i),
                         text: option,
-                        selected: i == _choice,
+                        selected: _multiple ? _choices.contains(i) : i == _choice,
+                        several: _multiple,
                         tall: sideways,
                         onTap: !enabled
                             ? null
+                            : _multiple
+                            ? () {
+                                setState(() => _choices.contains(i) ? _choices.remove(i) : _choices.add(i));
+                                widget.onChanged(PlayerAnswer(choices: [..._choices]..sort()));
+                              }
                             : () {
                                 setState(() => _choice = i);
                                 widget.onChanged(PlayerAnswer(choice: i));
@@ -306,11 +316,21 @@ class _CompanionInputState extends State<CompanionInput> {
 /// One answer to pick: letter and text, filled in once picked, and still
 /// filled in after the answer is locked.
 class _ChoiceTile extends StatelessWidget {
-  const _ChoiceTile({required this.letter, required this.text, required this.selected, required this.tall, this.onTap});
+  const _ChoiceTile({
+    required this.letter,
+    required this.text,
+    required this.selected,
+    required this.tall,
+    this.several = false,
+    this.onTap,
+  });
 
   final String letter;
   final String text;
   final bool selected;
+
+  /// Several may be picked: a box to tick shows on every answer.
+  final bool several;
   final bool tall;
   final VoidCallback? onTap;
 
@@ -338,7 +358,10 @@ class _ChoiceTile extends StatelessWidget {
                   Text(letter, style: theme.textTheme.titleMedium?.copyWith(color: foreground, fontWeight: FontWeight.w800)),
                   const SizedBox(width: 14),
                   Expanded(child: Text(text, style: theme.textTheme.titleMedium?.copyWith(color: foreground))),
-                  if (selected) Icon(locked ? Icons.lock : Icons.check_circle, color: foreground),
+                  if (several && !locked)
+                    Icon(selected ? Icons.check_box : Icons.check_box_outline_blank, color: foreground)
+                  else if (selected)
+                    Icon(locked ? Icons.lock : Icons.check_circle, color: foreground),
                 ],
               ),
             ),

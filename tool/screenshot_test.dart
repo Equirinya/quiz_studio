@@ -740,6 +740,14 @@ void main() {
     await companion(tester, 'companion_slider', const CompanionSpec(kind: CompanionKind.slider, min: 0, max: 500, step: 10, unit: 'km', timerSeconds: 30));
   });
 
+  testWidgets('companion: pick several', (tester) async {
+    await companion(
+      tester,
+      'companion_choice_several',
+      const CompanionSpec(kind: CompanionKind.choice, options: ['Mercury', 'Venus', 'Earth', 'Mars'], multiple: true),
+    );
+  });
+
   testWidgets('companion: order', (tester) async {
     await companion(tester, 'companion_order', const CompanionSpec(kind: CompanionKind.order, options: ['Mercury', 'Venus', 'Earth', 'Mars']));
   });

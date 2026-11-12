@@ -7,6 +7,19 @@ void main() {
   final game = fixtureGame();
   Reduction apply(SessionState s, Command c, {int? now}) => reduce(s, c, game, now: now);
 
+  test('several picks: right only when exactly the right ones; stored and sent along', () {
+    const spec = CompanionSpec(kind: CompanionKind.choice, options: ['a', 'b', 'c'], multiple: true);
+    const correct = [true, false, true];
+    expect(autoVerdict(spec, const PlayerAnswer(choices: [0, 2]), choiceCorrect: correct), isTrue);
+    expect(autoVerdict(spec, const PlayerAnswer(choices: [0]), choiceCorrect: correct), isFalse);
+    expect(autoVerdict(spec, const PlayerAnswer(choices: [0, 1, 2]), choiceCorrect: correct), isFalse);
+    expect(const PlayerAnswer(choices: [1]).matches(CompanionKind.choice), isTrue);
+    expect(PlayerAnswer.fromJson(const PlayerAnswer(choices: [0, 2], locked: true).toJson()).choices, [0, 2]);
+    expect(CompanionSpec.fromMap(spec.toMap())!.multiple, isTrue);
+    expect(spec.toPublicMap('x')['multiple'], isTrue);
+    expect(spec.withOptions(const ['x', 'y']).multiple, isTrue);
+  });
+
   test('a question can leave buzzing to the buzzer box: the devices show nothing', () {
     final boxOnly = GameContent.assemble(
       id: 'game',

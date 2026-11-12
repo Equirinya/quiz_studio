@@ -1886,5 +1886,7 @@
   "scoringClosenessNoSolution": "Places go by how near each number is to the solution, so give the slider or number a right value under How teams answer.",
   "placeN": "{place} place",
   "@placeN": {"placeholders": {"place": {"type": "String"}}},
-  "statusRapidIntro": "Question open · read it out first"
+  "statusRapidIntro": "Question open · read it out first",
+  "pickSeveral": "Teams can pick several",
+  "pickSeveralText": "For questions with more than one right answer: right only when a team picks exactly the right ones"
 }

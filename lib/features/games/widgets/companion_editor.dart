@@ -29,6 +29,9 @@ class _CompanionEditorState extends State<CompanionEditor> {
   late bool _noBuzzer;
   late int? _timer;
   late bool _lockable;
+
+  /// Choice: teams may pick several answers.
+  late bool _multiple;
   late int _mistakes;
   late String _background;
   String? _backgroundImage;
@@ -56,6 +59,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
     final own = widget.question.data['timer'];
     _timer = played?.timerSeconds ?? (spec == null && own is num ? own.toInt() : null);
     _lockable = played?.lockable ?? true;
+    _multiple = spec?.multiple ?? false;
     _mistakes = played?.mistakes ?? 3;
     // Read from the stored value: a "Picture" paper without a picture yet
     // should stay selected while one is being chosen.
@@ -132,6 +136,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
         options: _hasItems ? [for (final c in _options) c.text] : const [],
         targets: kind == CompanionKind.match ? [for (final c in _targets) c.text] : const [],
         lockable: _lockable,
+        multiple: kind == CompanionKind.choice && _multiple,
       ).toMap(),
       'timer': null,
       // Teams answer on their devices; a buzzer would only get in the way.
@@ -257,6 +262,14 @@ class _CompanionEditorState extends State<CompanionEditor> {
             subtitle: Text(context.l10n.noBuzzingAtAllText),
             value: _noBuzzer,
             onChanged: (value) => _change(() => _noBuzzer = value),
+          ),
+        if (kind == CompanionKind.choice)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(context.l10n.pickSeveral),
+            subtitle: Text(context.l10n.pickSeveralText),
+            value: _multiple,
+            onChanged: (value) => _change(() => _multiple = value),
           ),
         if (kind != null)
           LockInSwitch(

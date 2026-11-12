@@ -137,6 +137,22 @@ void main() {
     expect(host.state.answerRound!.answers['blue']!.choice, 2);
   });
 
+  testWidgets('with several allowed, picks are ticked on and off', (tester) async {
+    host
+      ..dispatch(const OpenQuestion(abcd))
+      ..dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.choice, options: ['a', 'b', 'c', 'd'], multiple: true)));
+    await pumpPlayer(tester, teamId: 'blue');
+    await tester.tap(find.text('c'));
+    await tester.pump();
+    await tester.tap(find.text('a'));
+    await tester.pump();
+    expect(host.state.answerRound!.answers['blue']!.choices, [0, 2]);
+    await tester.tap(find.text('c'));
+    await tester.pump();
+    expect(host.state.answerRound!.answers['blue']!.choices, [0]);
+    expect(find.byIcon(Icons.check_box), findsOneWidget);
+  });
+
   testWidgets('a slider answers with a number on its step', (tester) async {
     host
       ..dispatch(const OpenQuestion(estimate))

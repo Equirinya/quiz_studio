@@ -878,5 +878,7 @@
   "scoringClosenessText": "Das Team, dessen Zahl am nächsten am richtigen Wert liegt, bekommt die meisten Punkte, jeder weitere Platz etwas weniger. Gleich nahe Teams teilen sich einen Platz. Die Plätze zählen, sobald die Antworten gesperrt sind, und der große Bildschirm zeigt sie mit den Antworten.",
   "scoringClosenessNoSolution": "Die Plätze richten sich danach, wie nah jede Zahl an der Lösung ist. Gib dafür unter „Wie Teams antworten“ einen richtigen Wert an.",
   "placeN": "{place} Platz",
-  "statusRapidIntro": "Frage offen · erst vorlesen"
+  "statusRapidIntro": "Frage offen · erst vorlesen",
+  "pickSeveral": "Mehrfachauswahl",
+  "pickSeveralText": "Für Fragen mit mehreren richtigen Antworten: Richtig ist nur, wer genau die richtigen wählt"
 }

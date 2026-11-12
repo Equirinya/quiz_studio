@@ -5371,6 +5371,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Question open · read it out first'**
   String get statusRapidIntro;
+
+  /// No description provided for @pickSeveral.
+  ///
+  /// In en, this message translates to:
+  /// **'Teams can pick several'**
+  String get pickSeveral;
+
+  /// No description provided for @pickSeveralText.
+  ///
+  /// In en, this message translates to:
+  /// **'For questions with more than one right answer: right only when a team picks exactly the right ones'**
+  String get pickSeveralText;
 }
 
 class _AppLocalizationsDelegate

@@ -337,6 +337,11 @@ final Map<String, dynamic> _questionFields = {
       'options': {'type': 'array', 'items': _string, 'description': 'order: the items in the RIGHT order. match: the left-hand items.'},
       'targets': {'type': 'array', 'items': _string, 'description': 'match: right-hand items, aligned with options.'},
       'lock': {'type': 'boolean', 'description': 'Whether teams may lock in before the time is up. Default true.'},
+      'multiple': {
+        'type': 'boolean',
+        'description': 'choice only (abcd on the devices): teams may pick several answers; right only when they pick exactly the '
+            'ones marked in "correct". Use it when more than one answer is right.',
+      },
       'mistakes': {'type': 'integer', 'minimum': 1, 'maximum': 6, 'description': 'connections: wrong guesses allowed, default 3.'},
     },
     'required': ['kind'],

@@ -120,6 +120,8 @@ List<String> _strings(Object? v) => [
 ///   lock:        whether teams may lock their answer in before the time is
 ///                up, which records when they did; absent = true
 ///   mistakes:    connections: wrong guesses a team may make (default 3)
+///   multiple:    choice: teams may pick several answers (all the right
+///                ones count); absent = one
 ///   groups:      connections: the four groups, easiest first. On the
 ///                question they are stored as `connections`; see
 ///                [Question.companion].
@@ -143,6 +145,7 @@ class CompanionSpec {
     this.groups = const [],
     this.optionImages = const [],
     this.targetImages = const [],
+    this.multiple = false,
   });
 
   final CompanionKind kind;
@@ -163,6 +166,9 @@ class CompanionSpec {
   final List<ConnectionGroup> groups;
   final List<String?> optionImages;
   final List<String?> targetImages;
+
+  /// Choice: teams may pick several answers.
+  final bool multiple;
 
   /// Every picture of this screen, for sending to the devices.
   List<String> get pictures => {...optionImages.nonNulls, ...targetImages.nonNulls}.toList();
@@ -196,6 +202,7 @@ class CompanionSpec {
       groups: kind == CompanionKind.connections ? ConnectionGroup.listFrom(stored['groups']) : const [],
       optionImages: _images(stored['optionImages']),
       targetImages: _images(stored['targetImages']),
+      multiple: kind == CompanionKind.choice && stored['multiple'] == true,
     );
   }
 
@@ -222,6 +229,7 @@ class CompanionSpec {
         if (kind == CompanionKind.connections && groups.isNotEmpty) 'groups': [for (final group in groups) group.toMap()],
         if (optionImages.any((name) => name != null)) 'optionImages': optionImages,
         if (targetImages.any((name) => name != null)) 'targetImages': targetImages,
+        if (multiple) 'multiple': true,
       };
 
   /// The same screen with the groups of a Connections question.
@@ -233,6 +241,7 @@ class CompanionSpec {
         groups: groups,
         optionImages: optionImages,
         targetImages: targetImages,
+        multiple: multiple,
       );
 
   /// The same screen with [rows] lines to fill in (at most 20).
@@ -255,6 +264,7 @@ class CompanionSpec {
     groups: groups,
     optionImages: optionImages,
     targetImages: targetImages,
+    multiple: multiple,
   );
 
   CompanionSpec withOptions(List<String> options) => CompanionSpec(
@@ -276,6 +286,7 @@ class CompanionSpec {
         groups: groups,
         optionImages: optionImages,
         targetImages: targetImages,
+        multiple: multiple,
       );
 
   /// The slider's range, with defaults where the editor left a gap.
@@ -343,6 +354,7 @@ class CompanionSpec {
       if (step != null) 'step': step,
       if (unit != null) 'unit': unit,
       if (kind == CompanionKind.choice) 'options': options,
+      if (multiple) 'multiple': true,
       if (kind == CompanionKind.order) 'items': shuffled(options, 'order'),
       if (kind == CompanionKind.match) 'options': options,
       if (kind == CompanionKind.match) 'items': [
@@ -395,6 +407,7 @@ class PlayerAnswer {
     this.text,
     this.number,
     this.choice,
+    this.choices,
     this.order,
     this.pairs,
     this.drawing,
@@ -409,6 +422,10 @@ class PlayerAnswer {
 
   /// Index into the options.
   final int? choice;
+
+  /// Choice with [CompanionSpec.multiple]: the indices picked, in order;
+  /// may be empty.
+  final List<int>? choices;
 
   /// "Put in order": original indices of the items, in the team's order.
   final List<int>? order;
@@ -438,6 +455,7 @@ class PlayerAnswer {
       text == null &&
       number == null &&
       choice == null &&
+      (choices == null || choices!.isEmpty) &&
       order == null &&
       pairs == null &&
       drawing == null &&
@@ -452,13 +470,13 @@ class PlayerAnswer {
   /// Whether a device may send this as its answer to a round of [kind].
   bool matches(CompanionKind kind) {
     if (connections != null) return false;
-    final set = [text, number, choice, order, pairs, drawing, items].where((v) => v != null).length;
+    final set = [text, number, choice, choices, order, pairs, drawing, items].where((v) => v != null).length;
     if (set != 1) return false;
     return switch (kind) {
       CompanionKind.whiteboard => drawing != null,
       CompanionKind.text => text != null,
       CompanionKind.number || CompanionKind.slider => number != null,
-      CompanionKind.choice => choice != null,
+      CompanionKind.choice => choice != null || choices != null,
       CompanionKind.order => order != null,
       CompanionKind.match => pairs != null,
       CompanionKind.connections => false,
@@ -471,6 +489,7 @@ class PlayerAnswer {
         text: text,
         number: number,
         choice: choice,
+        choices: choices,
         order: order,
         pairs: pairs,
         drawing: drawing,
@@ -484,6 +503,7 @@ class PlayerAnswer {
         if (text != null) 'text': text,
         if (number != null) 'number': number,
         if (choice != null) 'choice': choice,
+        if (choices != null) 'choices': choices,
         if (order != null) 'order': order,
         if (pairs != null) 'pairs': pairs,
         if (drawing != null) 'drawing': drawing,
@@ -499,6 +519,7 @@ class PlayerAnswer {
       text: json['text'] as String?,
       number: _num(json['number']),
       choice: (json['choice'] as num?)?.toInt(),
+      choices: ints(json['choices']),
       order: ints(json['order']),
       pairs: ints(json['pairs']),
       drawing: json['drawing'] as String?,
@@ -604,6 +625,13 @@ bool? autoVerdict(CompanionSpec spec, PlayerAnswer? answer, {List<bool> choiceCo
       list.length == length && Iterable<int>.generate(length).every((i) => list[i] == i);
   switch (spec.kind) {
     case CompanionKind.choice:
+      final picked = answer.choices;
+      if (picked != null) {
+        // Several picks: right when they are exactly the right ones.
+        if (choiceCorrect.isEmpty) return null;
+        final right = {for (final (i, correct) in choiceCorrect.indexed) if (correct) i};
+        return picked.toSet().length == right.length && right.containsAll(picked);
+      }
       final choice = answer.choice;
       if (choice == null || choiceCorrect.isEmpty) return null;
       return choice >= 0 && choice < choiceCorrect.length && choiceCorrect[choice];

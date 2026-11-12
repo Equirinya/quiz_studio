@@ -3295,4 +3295,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get statusRapidIntro => 'Frage offen · erst vorlesen';
+
+  @override
+  String get pickSeveral => 'Mehrfachauswahl';
+
+  @override
+  String get pickSeveralText =>
+      'Für Fragen mit mehreren richtigen Antworten: Richtig ist nur, wer genau die richtigen wählt';
 }

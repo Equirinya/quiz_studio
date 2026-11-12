@@ -3275,4 +3275,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statusRapidIntro => 'Question open · read it out first';
+
+  @override
+  String get pickSeveral => 'Teams can pick several';
+
+  @override
+  String get pickSeveralText =>
+      'For questions with more than one right answer: right only when a team picks exactly the right ones';
 }
