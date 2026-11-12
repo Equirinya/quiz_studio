@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:quiz_show/features/games/widgets/editor_section.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/features/games/widgets/ranker_import.dart';
 import 'package:quiz_show/game/game.dart';
@@ -7,9 +8,12 @@ import 'package:quiz_show/game/game.dart';
 /// Queues a partial update of the question document.
 typedef SaveQuestion = void Function(Map<String, dynamic> data);
 
+/// Puts a type's own settings (null if it has none) and its content in place.
+typedef TypeEditorLayout = Widget Function(Widget? settings, Widget content);
+
 String questionTypeExplanation(QuestionType type) => switch (type) {
       QuestionType.free =>
-        "The most basic question: no answer options and nothing to reveal. Buzzers can be disabled, e.g. for estimation questions.",
+        "The most basic question: no answer options and nothing to reveal. Under \"How teams answer\" buzzers can be switched off, e.g. for estimation questions.",
       QuestionType.abcd => "Shows right and wrong answer suggestions, which the gamemaster reveals one by one.",
       QuestionType.progressingReveal => "The gamemaster reveals more information piece by piece.",
       QuestionType.feud =>
@@ -33,6 +37,7 @@ class QuestionTypeEditor extends StatelessWidget {
     required this.question,
     required this.save,
     required this.onImported,
+    required this.layout,
   });
 
   final String gameId;
@@ -42,23 +47,27 @@ class QuestionTypeEditor extends StatelessWidget {
   /// An import replaced the question text and answer hint as well.
   final void Function(String text, String answerHint) onImported;
 
+  /// Places the type's own settings (how teams answer), if it has any, and
+  /// its content in the card.
+  final TypeEditorLayout layout;
+
   @override
   Widget build(BuildContext context) {
-    final editor = switch (question.type) {
-      QuestionType.free => _FreeEditor(question: question, save: save),
-      QuestionType.abcd => _AbcdEditor(question: question, save: save),
+    Widget content(Widget editor) =>
+        question.needsDevices ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [const DevicesOnlyHint(), editor]) : editor;
+    Widget place(Widget? settings, Widget editor) => layout(settings, content(editor));
+    return switch (question.type) {
+      QuestionType.free => place(null, const SizedBox.shrink()),
+      QuestionType.abcd => place(null, _AbcdEditor(question: question, save: save)),
       QuestionType.progressingReveal =>
-        _InformationEditor(gameId: gameId, question: question, save: save, feud: false, onImported: onImported),
-      QuestionType.feud =>
-        _InformationEditor(gameId: gameId, question: question, save: save, feud: true, onImported: onImported),
-      QuestionType.connections => _ConnectionsEditor(question: question, save: save),
-      QuestionType.rapidFire => _RapidFireEditor(gameId: gameId, question: question, save: save),
-      QuestionType.matching => _MatchingEditor(gameId: gameId, question: question, save: save),
-      QuestionType.topAnswers => _TopAnswersEditor(question: question, save: save),
-      QuestionType.unsupported => const SizedBox(),
+        place(null, _InformationEditor(gameId: gameId, question: question, save: save, feud: false, onImported: onImported)),
+      QuestionType.feud => place(null, _InformationEditor(gameId: gameId, question: question, save: save, feud: true, onImported: onImported)),
+      QuestionType.connections => place(null, _ConnectionsEditor(question: question, save: save)),
+      QuestionType.rapidFire => _RapidFireEditor(gameId: gameId, question: question, save: save, layout: place),
+      QuestionType.matching => _MatchingEditor(gameId: gameId, question: question, save: save, layout: place),
+      QuestionType.topAnswers => _TopAnswersEditor(question: question, save: save, layout: place),
+      QuestionType.unsupported => place(null, const SizedBox.shrink()),
     };
-    if (!question.needsDevices) return editor;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [const DevicesOnlyHint(), editor]);
   }
 }
 
@@ -178,33 +187,6 @@ class _ConnectionsEditorState extends State<_ConnectionsEditor> {
 // The same colours as on screen; see features/companion/connections.dart.
 const List<Color> _groupColors = [Color(0xFFF9DF6D), Color(0xFFA0C35A), Color(0xFFB0C4EF), Color(0xFFBA81C5)];
 const List<String> _groupNames = ['Yellow', 'Green', 'Blue', 'Purple'];
-
-class _FreeEditor extends StatefulWidget {
-  const _FreeEditor({required this.question, required this.save});
-
-  final Question question;
-  final SaveQuestion save;
-
-  @override
-  State<_FreeEditor> createState() => _FreeEditorState();
-}
-
-class _FreeEditorState extends State<_FreeEditor> {
-  late bool _noBuzzer = widget.question.noBuzzer;
-
-  @override
-  Widget build(BuildContext context) {
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      title: const Text("Disable buzzers"),
-      value: _noBuzzer,
-      onChanged: (value) {
-        setState(() => _noBuzzer = value);
-        widget.save({'noBuzzer': value});
-      },
-    );
-  }
-}
 
 class _AbcdEditor extends StatefulWidget {
   const _AbcdEditor({required this.question, required this.save});
@@ -541,11 +523,12 @@ class _RapidRow {
 /// Fragenhagel: how the teams answer, what shows the progress, and the items
 /// with their answer (or whether the statement is right), picture and sound.
 class _RapidFireEditor extends StatefulWidget {
-  const _RapidFireEditor({required this.gameId, required this.question, required this.save});
+  const _RapidFireEditor({required this.gameId, required this.question, required this.save, required this.layout});
 
   final String gameId;
   final Question question;
   final SaveQuestion save;
+  final TypeEditorLayout layout;
 
   @override
   State<_RapidFireEditor> createState() => _RapidFireEditorState();
@@ -577,43 +560,38 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
   @override
   Widget build(BuildContext context) {
     final devices = _mode == RapidMode.devices;
-    return Column(
+    final settings = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            SegmentedButton<RapidMode>(
-              segments: const [
-                ButtonSegment(value: RapidMode.buzzer, icon: Icon(Icons.notifications_active_outlined), label: Text("Teams buzz")),
-                ButtonSegment(value: RapidMode.devices, icon: Icon(Icons.tablet_android), label: Text("Right or wrong on devices")),
-              ],
-              selected: {_mode},
-              onSelectionChanged: (selected) => _change(() => _mode = selected.first),
-            ),
-            DropdownMenu<ProgressStyle>(
-              label: const Text("Progress on the big screen"),
-              width: 260,
-              initialSelection: _progress,
-              dropdownMenuEntries: [
-                for (final style in ProgressStyle.values) DropdownMenuEntry(value: style, label: style.uiString),
-              ],
-              onSelected: (style) {
-                if (style != null) _change(() => _progress = style);
-              },
-            ),
+        SegmentedButton<RapidMode>(
+          segments: const [
+            ButtonSegment(value: RapidMode.buzzer, icon: Icon(Icons.notifications_active_outlined), label: Text("Teams buzz")),
+            ButtonSegment(value: RapidMode.devices, icon: Icon(Icons.tablet_android), label: Text("On the devices")),
           ],
+          selected: {_mode},
+          onSelectionChanged: (selected) => _change(() => _mode = selected.first),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 12),
+        FillDropdown<ProgressStyle>(
+          label: "Progress on the big screen",
+          value: _progress,
+          entries: [for (final style in ProgressStyle.values) DropdownMenuEntry(value: style, label: style.uiString)],
+          onSelected: (style) {
+            if (style != null) _change(() => _progress = style);
+          },
+        ),
+        const SizedBox(height: 8),
         Text(
           devices
-              ? "Each item is a statement. Every team picks right or wrong on its device; when you move on, a right pick gets the points above."
-              : "Teams buzz for each item. A right answer gets the points above and moves straight on to the next item.",
+              ? "Each item is a statement. Every team picks right or wrong on its device; when you move on, a right pick gets the points."
+              : "Teams buzz for each item. A right answer gets the points and moves straight on to the next item.",
           style: Theme.of(context).textTheme.bodySmall,
         ),
+      ],
+    );
+    return widget.layout(settings, Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         ReorderableListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -651,9 +629,11 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: SegmentedButton<bool>(
+                              // Without icons "Wrong" fits beside a narrow statement field.
+                              showSelectedIcon: false,
                               segments: const [
-                                ButtonSegment(value: true, icon: Icon(Icons.check), label: Text("Right")),
-                                ButtonSegment(value: false, icon: Icon(Icons.close), label: Text("Wrong")),
+                                ButtonSegment(value: true, label: Text("Right")),
+                                ButtonSegment(value: false, label: Text("Wrong")),
                               ],
                               selected: {row.isTrue},
                               onSelectionChanged: (selected) => _change(() => row.isTrue = selected.first),
@@ -703,7 +683,7 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
           ),
         ),
       ],
-    );
+    ));
   }
 }
 
@@ -759,19 +739,18 @@ class _MatchRow {
 /// Matching: the pairs as they belong together, each side a text, a picture
 /// or both; plus the time the teams get.
 class _MatchingEditor extends StatefulWidget {
-  const _MatchingEditor({required this.gameId, required this.question, required this.save});
+  const _MatchingEditor({required this.gameId, required this.question, required this.save, required this.layout});
 
   final String gameId;
   final Question question;
   final SaveQuestion save;
+  final TypeEditorLayout layout;
 
   @override
   State<_MatchingEditor> createState() => _MatchingEditorState();
 }
 
 class _MatchingEditorState extends State<_MatchingEditor> {
-  static const _timers = [null, 30, 60, 90, 120, 180, 300];
-
   late final List<_MatchRow> _rows = [
     for (final pair in (widget.question.matching ?? const Matching()).pairs) _MatchRow(pair),
   ];
@@ -796,49 +775,31 @@ class _MatchingEditorState extends State<_MatchingEditor> {
     _write();
   }
 
-  Widget _side(String label, TextEditingController text, String? image, ValueChanged<String?> onImage) => Expanded(
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: text,
-                decoration: InputDecoration(labelText: label, isDense: true),
-                onChanged: (_) => _write(),
-              ),
-            ),
-            MediaButton(gameId: widget.gameId, kind: MediaKind.image, name: image, onChanged: onImage),
-          ],
+  Widget _side(String label, TextEditingController text, String? image, ValueChanged<String?> onImage) => Row(
+    children: [
+      Expanded(
+        child: TextField(
+          controller: text,
+          decoration: InputDecoration(labelText: label, isDense: true),
+          onChanged: (_) => _write(),
         ),
-      );
+      ),
+      MediaButton(gameId: widget.gameId, kind: MediaKind.image, name: image, onChanged: onImage),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final settings = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            DropdownMenu<int?>(
-              label: const Text("Time"),
-              width: 160,
-              initialSelection: _timer,
-              dropdownMenuEntries: [
-                for (final seconds in _timers) DropdownMenuEntry(value: seconds, label: seconds == null ? "No timer" : "$seconds s"),
-              ],
-              onSelected: (seconds) => _change(() => _timer = seconds),
-            ),
-            FilterChip(
-              label: const Text("Teams can lock in early"),
-              selected: _lock,
-              onSelected: (on) => _change(() => _lock = on),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
+        FieldGrid(minWidth: 170, children: [TimerDropdown(seconds: _timer, onChanged: (seconds) => _change(() => _timer = seconds))]),
+        LockInSwitch(value: _lock, onChanged: (on) => _change(() => _lock = on)),
+      ],
+    );
+    return widget.layout(settings, Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         Text(
           "Write each pair the way it belongs together; the teams get the right side mixed up. "
           "A side can be a text, a picture or both. Pictures appear on the big screen with a letter or number, which the devices show.",
@@ -851,9 +812,23 @@ class _MatchingEditorState extends State<_MatchingEditor> {
             child: Row(
               children: [
                 SizedBox(width: 28, child: Text(Matching.letter(i), style: Theme.of(context).textTheme.titleMedium)),
-                _side("Left", row.left, row.leftImage, (name) => _change(() => row.leftImage = name)),
-                const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.link)),
-                _side("Belongs to", row.right, row.rightImage, (name) => _change(() => row.rightImage = name)),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, box) {
+                      final left = _side("Left", row.left, row.leftImage, (name) => _change(() => row.leftImage = name));
+                      final right = _side("Belongs to", row.right, row.rightImage, (name) => _change(() => row.rightImage = name));
+                      // On a phone the two sides go one above the other.
+                      if (box.maxWidth < 480) return Column(children: [left, const SizedBox(height: 6), right]);
+                      return Row(
+                        children: [
+                          Expanded(child: left),
+                          const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.link)),
+                          Expanded(child: right),
+                        ],
+                      );
+                    },
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.close),
                   tooltip: "Remove pair",
@@ -875,7 +850,7 @@ class _MatchingEditorState extends State<_MatchingEditor> {
           ),
         ),
       ],
-    );
+    ));
   }
 }
 
@@ -898,18 +873,17 @@ class _TopRow {
 /// Top answers: the list, most popular first, each answer with its points,
 /// and how the teams answer.
 class _TopAnswersEditor extends StatefulWidget {
-  const _TopAnswersEditor({required this.question, required this.save});
+  const _TopAnswersEditor({required this.question, required this.save, required this.layout});
 
   final Question question;
   final SaveQuestion save;
+  final TypeEditorLayout layout;
 
   @override
   State<_TopAnswersEditor> createState() => _TopAnswersEditorState();
 }
 
 class _TopAnswersEditorState extends State<_TopAnswersEditor> {
-  static const _timers = [null, 30, 60, 90, 120, 180, 300];
-
   late final TopAnswers _stored = widget.question.topAnswers ?? const TopAnswers();
   late TopAnswersMode _mode = _stored.mode;
   late final List<_TopRow> _rows = [for (final item in _stored.items) _TopRow(item)];
@@ -944,43 +918,24 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final devices = _mode != TopAnswersMode.buzzer;
-    return Column(
+    final settings = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            SegmentedButton<TopAnswersMode>(
-              segments: const [
-                ButtonSegment(value: TopAnswersMode.buzzer, icon: Icon(Icons.notifications_active_outlined), label: Text("Teams buzz")),
-                ButtonSegment(value: TopAnswersMode.typed, icon: Icon(Icons.keyboard_outlined), label: Text("Typed in")),
-                ButtonSegment(value: TopAnswersMode.whiteboard, icon: Icon(Icons.draw_outlined), label: Text("Whiteboard")),
-              ],
-              selected: {_mode},
-              onSelectionChanged: (selected) => _change(() => _mode = selected.first),
-            ),
-            if (devices) ...[
-              DropdownMenu<int?>(
-                label: const Text("Time"),
-                width: 160,
-                initialSelection: _timer,
-                dropdownMenuEntries: [
-                  for (final seconds in _timers) DropdownMenuEntry(value: seconds, label: seconds == null ? "No timer" : "$seconds s"),
-                ],
-                onSelected: (seconds) => _change(() => _timer = seconds),
-              ),
-              FilterChip(
-                label: const Text("Teams can lock in early"),
-                selected: _lock,
-                onSelected: (on) => _change(() => _lock = on),
-              ),
-            ],
+        SegmentedButton<TopAnswersMode>(
+          segments: const [
+            ButtonSegment(value: TopAnswersMode.buzzer, icon: Icon(Icons.notifications_active_outlined), label: Text("Buzz")),
+            ButtonSegment(value: TopAnswersMode.typed, icon: Icon(Icons.keyboard_outlined), label: Text("Typed")),
+            ButtonSegment(value: TopAnswersMode.whiteboard, icon: Icon(Icons.draw_outlined), label: Text("Whiteboard")),
           ],
+          selected: {_mode},
+          onSelectionChanged: (selected) => _change(() => _mode = selected.first),
         ),
-        const SizedBox(height: 4),
+        if (devices) ...[
+          const SizedBox(height: 12),
+          FieldGrid(minWidth: 170, children: [TimerDropdown(seconds: _timer, onChanged: (seconds) => _change(() => _timer = seconds))]),
+          LockInSwitch(value: _lock, onChanged: (on) => _change(() => _lock = on)),
+        ],
+        const SizedBox(height: 8),
         Text(
           switch (_mode) {
             TopAnswersMode.buzzer =>
@@ -991,9 +946,13 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
           },
           style: theme.textTheme.bodySmall,
         ),
-        const SizedBox(height: 4),
+      ],
+    );
+    return widget.layout(settings, Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         Text(
-          "Most popular first. Without its own points an answer is worth the points above. Other spellings to accept go after a /.",
+          "Most popular first. Without its own points an answer is worth the question's points. Other spellings to accept go after a /.",
           style: theme.textTheme.bodySmall,
         ),
         ReorderableListView.builder(
@@ -1059,6 +1018,6 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
           ),
         ),
       ],
-    );
+    ));
   }
 }

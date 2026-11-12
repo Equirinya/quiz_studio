@@ -91,27 +91,32 @@ void main() {
 
     test('right gives the question\'s points, wrong takes its minus, and a ruling can change', () {
       var s = run(fixtureState(), [const OpenQuestion(sum), const RateAnswer('red', correct: true)]);
+      expect(points(s, 'red'), 0, reason: 'rated, but not given yet');
+      expect(pointsDue(s, game.question(sum)!, 'red'), 400);
+      s = run(s, [const GivePoints()]);
       expect(points(s, 'red'), 400);
-      s = run(s, [const RateAnswer('red', correct: false)]);
+      expect(apply(s, const GivePoints()).accepted, isFalse, reason: 'nothing left to give');
+      s = run(s, [const RateAnswer('red', correct: false), const GivePoints()]);
       expect(points(s, 'red'), 0, reason: 'this question has no minus points');
       s = run(s, [const RateAnswer('red', correct: true), const RateAnswer('red', correct: null)]);
+      expect(apply(s, const GivePoints()).accepted, isFalse, reason: 'rated and taken back: nothing changed');
       expect(points(s, 'red'), 0);
-      expect(s.answerRound!.verdicts, isEmpty);
+      expect(s.results.verdicts, isEmpty);
       expect(apply(s, const RateAnswer('red', correct: null)).accepted, isFalse);
     });
 
     test('several teams can be right', () {
-      final s = run(fixtureState(), [const OpenQuestion(sum), const RateAnswer('red', correct: true), const RateAnswer('blue', correct: true)]);
+      final s = run(fixtureState(), [const OpenQuestion(sum), const RateAnswer('red', correct: true), const RateAnswer('blue', correct: true), const GivePoints()]);
       expect((points(s, 'red'), points(s, 'blue')), (400, 400));
     });
 
     test('custom points replace what the team got for this round', () {
-      var s = run(fixtureState(), [const OpenQuestion(sum), const RateAnswer('red', correct: true), const AwardAnswer('red', 150)]);
+      var s = run(fixtureState(), [const OpenQuestion(sum), const RateAnswer('red', correct: true), const AwardAnswer('red', 150), const GivePoints()]);
       expect(points(s, 'red'), 150);
-      expect(s.answerRound!.verdicts['red'], isTrue);
-      s = run(s, [const AwardAnswer('red', 0)]);
+      expect(s.results.verdicts['red'], isTrue);
+      s = run(s, [const AwardAnswer('red', 0), const GivePoints()]);
       expect(points(s, 'red'), 0);
-      expect(s.answerRound!.verdicts['red'], isFalse);
+      expect(s.results.verdicts['red'], isFalse);
     });
 
     test('points stay when the question closes; the round goes', () {
@@ -149,8 +154,7 @@ void main() {
       final round = s.answerRound!;
       expect(round.answers, isEmpty);
       expect(round.revealed, isEmpty);
-      expect(round.verdicts, isEmpty);
-      expect(round.awarded, isEmpty);
+      expect(s.results.isEmpty, isTrue);
       // Points it was given are gone with it; nobody else's changed.
       expect(points(s, 'blue'), 0);
     });

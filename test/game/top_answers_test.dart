@@ -138,19 +138,21 @@ void main() {
 
       s = play(game, const [
         MarkTopAnswers('red', [0, 2]),
+        GivePoints(),
       ], s);
       expect(points(s, 'red'), 400);
       expect(s.answerRound!.found['red'], [0, 2]);
-      expect(s.answerRound!.verdicts['red'], isTrue);
+      expect(s.results.verdicts['red'], isTrue);
 
       // Changing the ticks never counts twice.
       s = play(game, const [
         MarkTopAnswers('red', [0]),
+        GivePoints(),
       ], s);
       expect(points(s, 'red'), 100);
-      s = play(game, const [MarkTopAnswers('red', [])], s);
+      s = play(game, const [MarkTopAnswers('red', []), GivePoints()], s);
       expect(points(s, 'red'), 0);
-      expect(s.answerRound!.verdicts['red'], isFalse);
+      expect(s.results.verdicts['red'], isFalse);
     });
 
     test('rating automatically ticks what the typed lines match', () {
@@ -162,7 +164,7 @@ void main() {
         LockAnswers(),
       ]);
       final commands = autoRating(s, s.answerRound!, game.question(films)!);
-      final rated = play(game, commands, s);
+      final rated = play(game, [...commands, const GivePoints()], s);
       expect(rated.answerRound!.found, {
         'red': [1, 3],
         'blue': [4],

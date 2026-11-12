@@ -22,19 +22,18 @@ void main() {
     host = SessionHost(initial: fixtureState());
     connection = SessionConnection.local(host, game: fixtureGame());
     addTearDown(connection.dispose);
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Row(
-          children: [
-            SizedBox(
-              width: 460,
-              child: ControllerView(connection: connection),
-            ),
-            Expanded(child: PresenterView(connection: connection)),
-          ],
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Row(
+            children: [
+              SizedBox(width: 460, child: ControllerView(connection: connection)),
+              Expanded(child: PresenterView(connection: connection)),
+            ],
+          ),
         ),
       ),
-    ));
+    );
     await tester.pump();
   }
 
@@ -191,8 +190,26 @@ void main() {
     expect(inController(find.byType(DrawingView)), findsNothing);
 
     host
-      ..dispatch(SubmitAnswer('red', PlayerAnswer(drawing: encodeDrawing([[(0.2, 0.2), (0.8, 0.8)]]))))
-      ..dispatch(SubmitAnswer('blue', PlayerAnswer(drawing: encodeDrawing([[(0.5, 0.1), (0.5, 0.9)]]))));
+      ..dispatch(
+        SubmitAnswer(
+          'red',
+          PlayerAnswer(
+            drawing: encodeDrawing([
+              [(0.2, 0.2), (0.8, 0.8)],
+            ]),
+          ),
+        ),
+      )
+      ..dispatch(
+        SubmitAnswer(
+          'blue',
+          PlayerAnswer(
+            drawing: encodeDrawing([
+              [(0.5, 0.1), (0.5, 0.9)],
+            ]),
+          ),
+        ),
+      );
     await tester.pump();
     // The gamemaster sees both boards while they are being written.
     expect(inController(find.byType(DrawingView)), findsNWidgets(2));
@@ -214,11 +231,21 @@ void main() {
     await tap(tester, inController(find.byTooltip('Right')).first);
     await tester.ensureVisible(inController(find.byTooltip('Wrong')).last);
     await tap(tester, inController(find.byTooltip('Wrong')).last);
+    expect(host.state.results.verdicts, {'red': true, 'blue': false});
+    // Rated, not given yet: the button says what giving would do.
+    expect(host.state.team('red')!.points, 0);
+    final give = inController(find.textContaining('Give points · Red +400'));
+    await tester.ensureVisible(give);
+    await tap(tester, give);
     expect(host.state.team('red')!.points, 400);
     expect(host.state.team('blue')!.points, 0);
-    expect(host.state.answerRound!.verdicts, {'red': true, 'blue': false});
+    expect(inController(find.text('All points given')), findsOneWidget);
     // Changing one's mind does not count twice.
+    await tester.ensureVisible(inController(find.byTooltip('Right')).first);
     await tap(tester, inController(find.byTooltip('Right')).first);
+    final takeBack = inController(find.textContaining('Give points · Red −400'));
+    await tester.ensureVisible(takeBack);
+    await tap(tester, takeBack);
     expect(host.state.team('red')!.points, 0);
   });
 

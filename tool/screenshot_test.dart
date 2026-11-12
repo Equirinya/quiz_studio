@@ -34,13 +34,16 @@ import 'package:quiz_show/features/session/boards/map_board.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
 import 'package:quiz_show/features/session/pages/rapid_progress.dart';
 import 'package:quiz_show/features/session/presenter_window.dart';
+import 'package:quiz_show/features/session/widgets/score_pop.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
 
 import '../test/fake_buzzer_port.dart';
+import '../test/game/betting_fixture.dart';
 import '../test/game/connections_fixture.dart';
 import '../test/game/fixture.dart';
 import '../test/game/rapid_fixture.dart';
+import '../test/game/scoring_fixture.dart';
 
 /// The fonts that come with the Flutter SDK running the test.
 final _fonts = '${Platform.environment['FLUTTER_ROOT'] ?? '/home/jacob/development/flutter'}/bin/cache/artifacts/material_fonts';
@@ -75,12 +78,7 @@ void main() {
   ThemeData theme(Brightness brightness) => buildAppTheme(brightness);
 
   /// The controller as on a phone.
-  Future<void> phone(
-    WidgetTester tester,
-    List<Command> commands, {
-    Brightness brightness = Brightness.light,
-    GameContent? game,
-  }) async {
+  Future<void> phone(WidgetTester tester, List<Command> commands, {Brightness brightness = Brightness.light, GameContent? game}) async {
     tester.view.physicalSize = const Size(412, 892);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -90,17 +88,16 @@ void main() {
     for (final command in commands) {
       host.dispatch(command);
     }
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(brightness),
-      home: Scaffold(
-        appBar: AppBar(title: const Text("Quiz night")),
-        body: ControllerView(
-          connection: connection,
-          onConnectDevices: () {},
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(brightness),
+        home: Scaffold(
+          appBar: AppBar(title: const Text("Quiz night")),
+          body: ControllerView(connection: connection, onConnectDevices: () {}),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 400));
   }
 
@@ -115,11 +112,13 @@ void main() {
     for (final command in commands) {
       host.dispatch(command);
     }
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.dark),
-      home: Scaffold(body: PresenterView(connection: connection)),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.dark),
+        home: Scaffold(body: PresenterView(connection: connection)),
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 400));
   }
 
@@ -152,11 +151,12 @@ void main() {
   });
 
   testWidgets('controller: fragenhagel on the devices', (tester) async {
-    await phone(
-      tester,
-      const [OpenQuestion(devicesRound), SubmitAnswer('red', PlayerAnswer(choice: 0)), LockAnswer('red'), SubmitAnswer('blue', PlayerAnswer(choice: 1))],
-      game: rapidGame(),
-    );
+    await phone(tester, const [
+      OpenQuestion(devicesRound),
+      SubmitAnswer('red', PlayerAnswer(choice: 0)),
+      LockAnswer('red'),
+      SubmitAnswer('blue', PlayerAnswer(choice: 1)),
+    ], game: rapidGame());
     await shot('controller_fragenhagel');
   });
 
@@ -171,11 +171,7 @@ void main() {
   });
 
   testWidgets('controller: feud, dark', (tester) async {
-    await phone(
-      tester,
-      const [OpenQuestion(feud), Buzz('blue'), FeudToggle(0), FeudToggle(2), FeudWrong()],
-      brightness: Brightness.dark,
-    );
+    await phone(tester, const [OpenQuestion(feud), Buzz('blue'), FeudToggle(0), FeudToggle(2), FeudWrong()], brightness: Brightness.dark);
     await shot('controller_feud');
   });
 
@@ -204,28 +200,31 @@ void main() {
   });
 
   testWidgets('session setup', (tester) async {
-    final teams = ValueNotifier<SessionState?>(const SessionState(
-      teams: [Team(id: 'red', name: 'Red', color: 0xFFD32F2F), Team(id: 'blue', name: 'Blue', color: 0xFF1976D2), Team(id: 'owls', name: 'Night owls')],
-    ));
+    final teams = ValueNotifier<SessionState?>(
+      const SessionState(
+        teams: [
+          Team(id: 'red', name: 'Red', color: 0xFFD32F2F),
+          Team(id: 'blue', name: 'Blue', color: 0xFF1976D2),
+          Team(id: 'owls', name: 'Night owls'),
+        ],
+      ),
+    );
     tester.view.physicalSize = const Size(412, 892);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        appBar: AppBar(title: const Text("Set up Quiz night")),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SessionSetupView(
-            state: teams,
-            send: (_) {},
-            onConnectDevices: () {},
-            onBuzzerSetup: () {},
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          appBar: AppBar(title: const Text("Set up Quiz night")),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SessionSetupView(state: teams, send: (_) {}, onConnectDevices: () {}, onBuzzerSetup: () {}),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/session_setup.png'));
     await tester.tap(find.text('Teams'));
@@ -288,11 +287,11 @@ void main() {
   });
 
   testWidgets('fragenhagel: devices with a battery', (tester) async {
-    await screen(
-      tester,
-      const [OpenQuestion(devicesRound), SubmitAnswer('red', PlayerAnswer(choice: 0)), LockAnswer('red')],
-      game: rapidWith(ProgressStyle.battery, mode: 'devices'),
-    );
+    await screen(tester, const [
+      OpenQuestion(devicesRound),
+      SubmitAnswer('red', PlayerAnswer(choice: 0)),
+      LockAnswer('red'),
+    ], game: rapidWith(ProgressStyle.battery, mode: 'devices'));
     await tester.pump(const Duration(milliseconds: 900));
     await shot('fragenhagel_presenter_devices');
   });
@@ -302,38 +301,40 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     const unit = 7.0;
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.dark),
-      home: Scaffold(
-        body: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            for (final style in ProgressStyle.values.where((s) => s != ProgressStyle.off && s != ProgressStyle.flux)) ...[
-              Text(style.uiString),
-              const SizedBox(height: 8),
-              RapidProgress(style: style, done: 6, total: 10, unit: unit),
-              const SizedBox(height: 28),
-            ],
-            const Text("Thermometer: 2 of 10, 10 of 10"),
-            const SizedBox(height: 8),
-            RapidProgress(style: ProgressStyle.thermometer, done: 2, total: 10, unit: unit),
-            const SizedBox(height: 8),
-            RapidProgress(style: ProgressStyle.thermometer, done: 10, total: 10, unit: unit),
-            const SizedBox(height: 28),
-            const Text("Flux capacitor: 3 of 10, 9 of 10"),
-            const SizedBox(height: 8),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                RapidProgress(style: ProgressStyle.flux, done: 3, total: 10, unit: unit),
-                RapidProgress(style: ProgressStyle.flux, done: 9, total: 10, unit: unit),
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.dark),
+        home: Scaffold(
+          body: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              for (final style in ProgressStyle.values.where((s) => s != ProgressStyle.off && s != ProgressStyle.flux)) ...[
+                Text(style.uiString),
+                const SizedBox(height: 8),
+                RapidProgress(style: style, done: 6, total: 10, unit: unit),
+                const SizedBox(height: 28),
               ],
-            ),
-          ],
+              const Text("Thermometer: 2 of 10, 10 of 10"),
+              const SizedBox(height: 8),
+              RapidProgress(style: ProgressStyle.thermometer, done: 2, total: 10, unit: unit),
+              const SizedBox(height: 8),
+              RapidProgress(style: ProgressStyle.thermometer, done: 10, total: 10, unit: unit),
+              const SizedBox(height: 28),
+              const Text("Flux capacitor: 3 of 10, 9 of 10"),
+              const SizedBox(height: 8),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  RapidProgress(style: ProgressStyle.flux, done: 3, total: 10, unit: unit),
+                  RapidProgress(style: ProgressStyle.flux, done: 9, total: 10, unit: unit),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 900));
     await shot('fragenhagel_progress_styles');
   });
@@ -352,13 +353,17 @@ void main() {
     for (final command in commands) {
       host.dispatch(command);
     }
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        body: SafeArea(child: PlayerView(view: PublicView(host.publicState), teamId: 'red', send: (_) {}, onLeave: () {})),
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          body: SafeArea(
+            child: PlayerView(view: PublicView(host.publicState), teamId: 'red', send: (_) {}, onLeave: () {}),
+          ),
+        ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 400));
   }
 
@@ -382,23 +387,25 @@ void main() {
     host
       ..dispatch(const OpenQuestion(abcd))
       ..dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.choice, options: options)));
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        body: SafeArea(
-          child: StreamBuilder<SessionState>(
-            stream: host.states,
-            builder: (context, _) => PlayerView(
-              view: PublicView(host.publicState),
-              teamId: 'red',
-              send: (command) => host.dispatch(command, sender: const Sender(Role.player, teamId: 'red')),
-              onLeave: () {},
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          body: SafeArea(
+            child: StreamBuilder<SessionState>(
+              stream: host.states,
+              builder: (context, _) => PlayerView(
+                view: PublicView(host.publicState),
+                teamId: 'red',
+                send: (command) => host.dispatch(command, sender: const Sender(Role.player, teamId: 'red')),
+                onLeave: () {},
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('Saturn'));
     await tester.pump(const Duration(milliseconds: 300));
@@ -408,7 +415,12 @@ void main() {
   });
 
   testWidgets('player: choice', (tester) async {
-    await player(tester, const [OpenQuestion(abcd), Reveal(1), Reveal(1), OpenAnswers(CompanionSpec(kind: CompanionKind.choice, options: ['a', 'b', 'c', 'd']))]);
+    await player(tester, const [
+      OpenQuestion(abcd),
+      Reveal(1),
+      Reveal(1),
+      OpenAnswers(CompanionSpec(kind: CompanionKind.choice, options: ['a', 'b', 'c', 'd'])),
+    ]);
     await shot('player_choice');
   });
 
@@ -421,11 +433,16 @@ void main() {
     tester.view.physicalSize = const Size(412, 892);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(appBar: AppBar(title: const Text("Quiz Studio")), body: body),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          appBar: AppBar(title: const Text("Quiz Studio")),
+          body: body,
+        ),
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 400));
   }
 
@@ -462,7 +479,10 @@ void main() {
       tester,
       Builder(
         builder: (context) => Center(
-          child: TextButton(onPressed: () => showNewSessionSheet(context, games: games), child: const Text("open")),
+          child: TextButton(
+            onPressed: () => showNewSessionSheet(context, games: games),
+            child: const Text("open"),
+          ),
         ),
       ),
     );
@@ -498,7 +518,10 @@ void main() {
   });
 
   testWidgets('matching: big screen during the round', (tester) async {
-    await screen(tester, const [OpenQuestion(matchingRound), SubmitAnswer('red', PlayerAnswer(pairs: [0, 1, 2, 3]))], game: matchingGame());
+    await screen(tester, const [
+      OpenQuestion(matchingRound),
+      SubmitAnswer('red', PlayerAnswer(pairs: [0, 1, 2, 3])),
+    ], game: matchingGame());
     await shot('matching_presenter');
   });
 
@@ -560,16 +583,18 @@ void main() {
     tester.view.physicalSize = const Size(1600, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.dark),
-      home: Scaffold(
-        body: Padding(
-          padding: const EdgeInsets.all(24),
-          child: MapBoard(group: group, state: state, imageFile: (_) => null),
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.dark),
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.all(24),
+            child: MapBoard(group: group, state: state, imageFile: (_) => null),
+          ),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 400));
     await shot(name);
   }
@@ -595,31 +620,22 @@ void main() {
 
   /// "8", written by hand.
   String eight() => encodeDrawing([
-        [
-          for (var i = 0; i <= 40; i++)
-            (0.5 + 0.11 * math.sin(i / 40 * 2 * math.pi), 0.33 - 0.16 * math.cos(i / 40 * 2 * math.pi)),
-        ],
-        [
-          for (var i = 0; i <= 40; i++)
-            (0.5 + 0.14 * math.sin(i / 40 * 2 * math.pi), 0.68 - 0.19 * math.cos(i / 40 * 2 * math.pi)),
-        ],
-      ]);
+    [for (var i = 0; i <= 40; i++) (0.5 + 0.11 * math.sin(i / 40 * 2 * math.pi), 0.33 - 0.16 * math.cos(i / 40 * 2 * math.pi))],
+    [for (var i = 0; i <= 40; i++) (0.5 + 0.14 * math.sin(i / 40 * 2 * math.pi), 0.68 - 0.19 * math.cos(i / 40 * 2 * math.pi))],
+  ]);
 
   /// "9", wrong.
   String nine() => encodeDrawing([
-        [
-          for (var i = 0; i <= 40; i++)
-            (0.5 + 0.13 * math.sin(i / 40 * 2 * math.pi), 0.36 - 0.17 * math.cos(i / 40 * 2 * math.pi)),
-        ],
-        [(0.63, 0.36), (0.62, 0.6), (0.55, 0.82), (0.42, 0.86)],
-      ]);
+    [for (var i = 0; i <= 40; i++) (0.5 + 0.13 * math.sin(i / 40 * 2 * math.pi), 0.36 - 0.17 * math.cos(i / 40 * 2 * math.pi))],
+    [(0.63, 0.36), (0.62, 0.6), (0.55, 0.82), (0.42, 0.86)],
+  ]);
 
   List<Command> scenario() => [
-        const OpenQuestion(sum),
-        SubmitAnswer('red', PlayerAnswer(drawing: eight())),
-        const LockAnswer('red'),
-        SubmitAnswer('blue', PlayerAnswer(drawing: nine())),
-      ];
+    const OpenQuestion(sum),
+    SubmitAnswer('red', PlayerAnswer(drawing: eight())),
+    const LockAnswer('red'),
+    SubmitAnswer('blue', PlayerAnswer(drawing: nine())),
+  ];
 
   testWidgets('scenario: tablet whiteboard', (tester) async {
     tester.view.physicalSize = const Size(1024, 768);
@@ -628,24 +644,26 @@ void main() {
     host = SessionHost(initial: fixtureState(), game: fixtureGame());
     addTearDown(host.dispose);
     host.dispatch(const OpenQuestion(sum));
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        body: SafeArea(
-          child: StreamBuilder<SessionState>(
-            stream: host.states,
-            builder: (context, _) => PlayerView(
-              view: PublicView(host.publicState),
-              teamId: 'red',
-              send: (command) => host.dispatch(command, sender: const Sender(Role.player, teamId: 'red')),
-              onLeave: () {},
-              link: LinkStatus.lan,
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          body: SafeArea(
+            child: StreamBuilder<SessionState>(
+              stream: host.states,
+              builder: (context, _) => PlayerView(
+                view: PublicView(host.publicState),
+                teamId: 'red',
+                send: (command) => host.dispatch(command, sender: const Sender(Role.player, teamId: 'red')),
+                onLeave: () {},
+                link: LinkStatus.lan,
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 300));
     // Write an 8 on the board, the way a finger would.
     final board = tester.getRect(find.descendant(of: find.byType(WhiteboardPad), matching: find.byType(CustomPaint)).first);
@@ -702,27 +720,51 @@ void main() {
       ..dispatch(const OpenQuestion(estimate))
       ..dispatch(OpenAnswers(spec));
     if (answer != null) host.dispatch(SubmitAnswer('red', answer));
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        body: SafeArea(child: PlayerView(view: PublicView(host.publicState), teamId: 'red', send: (_) {}, onLeave: () {})),
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          body: SafeArea(
+            child: PlayerView(view: PublicView(host.publicState), teamId: 'red', send: (_) {}, onLeave: () {}),
+          ),
+        ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 400));
     await shot(name);
   }
 
   testWidgets('companion: slider', (tester) async {
-    await companion(tester, 'companion_slider', const CompanionSpec(kind: CompanionKind.slider, min: 0, max: 500, step: 10, unit: 'km', timerSeconds: 30));
+    await companion(
+      tester,
+      'companion_slider',
+      const CompanionSpec(kind: CompanionKind.slider, min: 0, max: 500, step: 10, unit: 'km', timerSeconds: 30),
+    );
   });
 
   testWidgets('companion: order', (tester) async {
-    await companion(tester, 'companion_order', const CompanionSpec(kind: CompanionKind.order, options: ['Mercury', 'Venus', 'Earth', 'Mars']));
+    await companion(
+      tester,
+      'companion_order',
+      const CompanionSpec(kind: CompanionKind.order, options: ['Mercury', 'Venus', 'Earth', 'Mars']),
+    );
   });
 
   group('companion: match by drag and drop', () {
-    const films = ['Jaws', 'Star Wars', 'E.T.', 'Back to the Future', 'Jurassic Park', 'Titanic', 'The Matrix', 'Gladiator', 'Avatar', 'Inception', 'Frozen'];
+    const films = [
+      'Jaws',
+      'Star Wars',
+      'E.T.',
+      'Back to the Future',
+      'Jurassic Park',
+      'Titanic',
+      'The Matrix',
+      'Gladiator',
+      'Avatar',
+      'Inception',
+      'Frozen',
+    ];
     const years = ['1975', '1977', '1982', '1985', '1993', '1997', '1999', '2000', '2009', '2010', '2013'];
     final eleven = CompanionSpec(
       kind: CompanionKind.match,
@@ -732,12 +774,19 @@ void main() {
     const three = CompanionSpec(kind: CompanionKind.match, options: ['France', 'Italy', 'Spain'], targets: ['Paris', 'Rome', 'Madrid']);
 
     Widget app() => MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: theme(Brightness.light),
-          home: Scaffold(
-            body: SafeArea(child: PlayerView(view: PublicView(host.publicState), teamId: 'red', send: (command) => host.dispatch(command, sender: const Sender(Role.player, teamId: 'red')), onLeave: () {})),
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        body: SafeArea(
+          child: PlayerView(
+            view: PublicView(host.publicState),
+            teamId: 'red',
+            send: (command) => host.dispatch(command, sender: const Sender(Role.player, teamId: 'red')),
+            onLeave: () {},
           ),
-        );
+        ),
+      ),
+    );
 
     Future<void> open(WidgetTester tester, CompanionSpec spec, Size size) async {
       tester.view.physicalSize = size;
@@ -773,7 +822,13 @@ void main() {
     testWidgets('eleven pairs on a phone', (tester) async {
       await open(tester, eleven, const Size(412, 892));
       await shot('companion_match_11');
-      for (final (film, year) in [('A · Jaws', '1975'), ('B · Star Wars', '1977'), ('C · E.T.', '1982'), ('D · Back to the Future', '1985'), ('E · Jurassic Park', '1993')]) {
+      for (final (film, year) in [
+        ('A · Jaws', '1975'),
+        ('B · Star Wars', '1977'),
+        ('C · E.T.', '1982'),
+        ('D · Back to the Future', '1985'),
+        ('E · Jurassic Park', '1993'),
+      ]) {
         await place(tester, year, film);
       }
       await tester.tap(find.textContaining('2009').last);
@@ -840,14 +895,16 @@ void main() {
     tester.view.physicalSize = const Size(1280, 860);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        appBar: AppBar(title: const Text("Map · Round 2")),
-        body: MapEditor(group: mapGroup(), imageFile: (_) => null, pickImage: () async => null, onSave: (_) {}),
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          appBar: AppBar(title: const Text("Map · Round 2")),
+          body: MapEditor(group: mapGroup(), imageFile: (_) => null, pickImage: () async => null, onSave: (_) {}),
+        ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 300));
     // Select the title, as after tapping it.
     await tester.tap(find.byKey(const ValueKey('decoration-0')));
@@ -859,19 +916,19 @@ void main() {
     tester.view.physicalSize = const Size(900, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        appBar: AppBar(title: const Text("Maths")),
-        body: ListView(
-          padding: const EdgeInsets.all(8),
-          children: [
-            QuestionCard(gameId: 'g', categoryId: 'c', question: Question.fromMap('q', data), initiallyExpanded: true),
-          ],
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          appBar: AppBar(title: const Text("Maths")),
+          body: ListView(
+            padding: const EdgeInsets.all(8),
+            children: [QuestionCard(gameId: 'g', categoryId: 'c', question: Question.fromMap('q', data), initiallyExpanded: true)],
+          ),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 500));
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/$name.png'));
   }
@@ -903,15 +960,11 @@ void main() {
   });
 
   testWidgets('editor: fragenhagel, teams buzz', (tester) async {
-    await questionCard(tester, 'editor_fragenhagel', {
-      ...rapidGame().question(buzzerRound)!.data,
-    });
+    await questionCard(tester, 'editor_fragenhagel', {...rapidGame().question(buzzerRound)!.data});
   });
 
   testWidgets('editor: fragenhagel on the devices', (tester) async {
-    await questionCard(tester, 'editor_fragenhagel_devices', {
-      ...rapidGame().question(devicesRound)!.data,
-    });
+    await questionCard(tester, 'editor_fragenhagel_devices', {...rapidGame().question(devicesRound)!.data});
   });
 
   testWidgets('editor: matching question', (tester) async {
@@ -925,22 +978,24 @@ void main() {
     final base = fixtureGame();
     final cards = [const CueCard(title: 'Rules').toMap(), const CueCard(image: 'builtin:wrong', hidden: true).toMap()];
     final game = GameContent(id: base.id, name: base.name, groups: base.groups, sounds: base.sounds, data: {...base.data, 'cards': cards});
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: GameEditorView(
-        snapshot: GameSnapshot(
-          content: game,
-          role: GameRole.admin,
-          data: {
-            ...game.data,
-            'admin': ['me'],
-            'full': ['ann', 'bob'],
-            'cards': [const CueCard(title: 'Rules').toMap(), const CueCard(image: 'builtin:wrong', hidden: true).toMap()],
-          },
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: GameEditorView(
+          snapshot: GameSnapshot(
+            content: game,
+            role: GameRole.admin,
+            data: {
+              ...game.data,
+              'admin': ['me'],
+              'full': ['ann', 'bob'],
+              'cards': [const CueCard(title: 'Rules').toMap(), const CueCard(image: 'builtin:wrong', hidden: true).toMap()],
+            },
+          ),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 400));
   }
 
@@ -958,26 +1013,28 @@ void main() {
     tester.view.physicalSize = const Size(700, 1300);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        body: SoundsDialog(
-          gameId: 'g',
-          title: 'Sounds for the whole game',
-          isGame: true,
-          data: const {
-            'musicBackground': 'theme.mp3',
-            'musicEffects': {
-              'musicEffectAnswerCorrect': 'builtin:right_answer/voice_correct_female',
-              'musicEffectAnswerWrong': 'buzz.mp3',
-              'musicEffectLockIn': 'off',
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          body: SoundsDialog(
+            gameId: 'g',
+            title: 'Sounds for the whole game',
+            isGame: true,
+            data: const {
+              'musicBackground': 'theme.mp3',
+              'musicEffects': {
+                'musicEffectAnswerCorrect': 'builtin:right_answer/voice_correct_female',
+                'musicEffectAnswerWrong': 'buzz.mp3',
+                'musicEffectLockIn': 'off',
+              },
             },
-          },
-          save: (_) {},
+            save: (_) {},
+          ),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 400));
     await shot('editor_sounds');
   });
@@ -987,6 +1044,15 @@ void main() {
     await tapText(tester, find.text('Board settings').first);
     await tester.pump(const Duration(milliseconds: 400));
     await shot('editor_board_settings');
+  });
+
+  testWidgets('editor: question with a slider on the devices', (tester) async {
+    await questionCard(tester, 'editor_question_slider', {
+      'type': 'free',
+      'question': 'How tall is the Eiffel Tower?',
+      'pointsPlus': 300,
+      'companion': {'kind': 'slider', 'min': 0, 'max': 500, 'step': 10, 'unit': 'm', 'solution': 330, 'tolerance': 20},
+    });
   });
 
   testWidgets('editor: question with pairs to match', (tester) async {
@@ -1009,7 +1075,14 @@ void main() {
     final image = img.Image(width: 800, height: 600)..clear(img.ColorRgb8(236, 244, 250));
     img.fillPolygon(
       image,
-      vertices: [img.Point(150, 120), img.Point(520, 80), img.Point(680, 300), img.Point(560, 520), img.Point(240, 480), img.Point(110, 300)],
+      vertices: [
+        img.Point(150, 120),
+        img.Point(520, 80),
+        img.Point(680, 300),
+        img.Point(560, 520),
+        img.Point(240, 480),
+        img.Point(110, 300),
+      ],
       color: img.ColorRgb8(200, 224, 190),
     );
     for (final (x, y) in [(260, 220), (470, 190), (480, 400)]) {
@@ -1028,15 +1101,17 @@ void main() {
     host
       ..dispatch(const OpenQuestion(estimate))
       ..dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.whiteboard, background: 'image', backgroundImage: 'map.png')));
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        body: SafeArea(
-          child: PlayerView(view: PublicView(host.publicState), teamId: 'red', send: (_) {}, onLeave: () {}, backgroundImage: picture),
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          body: SafeArea(
+            child: PlayerView(view: PublicView(host.publicState), teamId: 'red', send: (_) {}, onLeave: () {}, backgroundImage: picture),
+          ),
         ),
       ),
-    ));
+    );
     await tester.runAsync(() => precacheImage(picture, tester.element(find.byType(PlayerView))));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
@@ -1079,19 +1154,44 @@ void main() {
       categories: mapGroup(count: 8).categories,
     );
     Widget board(SessionState state) => MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: theme(Brightness.dark),
-          home: Scaffold(
-            body: Padding(padding: const EdgeInsets.all(24), child: MapBoard(group: group, state: state, imageFile: (_) => null)),
-          ),
-        );
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.dark),
+      home: Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: MapBoard(group: group, state: state, imageFile: (_) => null),
+        ),
+      ),
+    );
     await tester.pumpWidget(board(const SessionState()));
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.pumpWidget(board(const SessionState(
-      phase: Phase.question,
-      current: QuestionRef('c4', 'q1'),
-      played: {'c0/q0', 'c0/q1', 'c0/q2', 'c0/q3', 'c1/q0', 'c1/q1', 'c1/q2', 'c1/q3', 'c2/q0', 'c2/q1', 'c2/q2', 'c2/q3', 'c3/q0', 'c3/q1', 'c3/q2', 'c3/q3', 'c4/q0'},
-    )));
+    await tester.pumpWidget(
+      board(
+        const SessionState(
+          phase: Phase.question,
+          current: QuestionRef('c4', 'q1'),
+          played: {
+            'c0/q0',
+            'c0/q1',
+            'c0/q2',
+            'c0/q3',
+            'c1/q0',
+            'c1/q1',
+            'c1/q2',
+            'c1/q3',
+            'c2/q0',
+            'c2/q1',
+            'c2/q2',
+            'c2/q3',
+            'c3/q0',
+            'c3/q1',
+            'c3/q2',
+            'c3/q3',
+            'c4/q0',
+          },
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     await shot('map_wide_in_game');
   });
@@ -1100,14 +1200,16 @@ void main() {
     tester.view.physicalSize = const Size(1280, 860);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        appBar: AppBar(title: const Text("Map · Round 2")),
-        body: MapEditor(group: mapGroup(count: 8), imageFile: (_) => null, pickImage: () async => null, onSave: (_) {}),
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          appBar: AppBar(title: const Text("Map · Round 2")),
+          body: MapEditor(group: mapGroup(count: 8), imageFile: (_) => null, pickImage: () async => null, onSave: (_) {}),
+        ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.byKey(const ValueKey('bubble-c1')));
     await tester.pump(const Duration(milliseconds: 300));
@@ -1128,27 +1230,34 @@ void main() {
     final port = FakePort();
     final link = BuzzerLink(port, clock: () => now);
     link.use('COM3');
-    const teams = [Team(id: 'red', name: 'Red'), Team(id: 'blue', name: 'Blue'), Team(id: 'green', name: 'Green'), Team(id: 'gold', name: 'Gold')];
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        appBar: AppBar(title: const Text("Buzzers")),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            BuzzersView(
-              link: link,
-              teams: teams,
-              assignments: const {3: 'red'},
-              onPort: (_) {},
-              onAssign: (_, _) {},
-              onThreshold: (_, _) {},
-            ),
-          ],
+    const teams = [
+      Team(id: 'red', name: 'Red'),
+      Team(id: 'blue', name: 'Blue'),
+      Team(id: 'green', name: 'Green'),
+      Team(id: 'gold', name: 'Gold'),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          appBar: AppBar(title: const Text("Buzzers")),
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              BuzzersView(
+                link: link,
+                teams: teams,
+                assignments: const {3: 'red'},
+                onPort: (_) {},
+                onAssign: (_, _) {},
+                onThreshold: (_, _) {},
+              ),
+            ],
+          ),
         ),
       ),
-    ));
+    );
     Future<void> send(String line, {int millis = 80}) async {
       port.send('$line\n');
       for (var i = 0; i < millis ~/ 10; i++) {
@@ -1180,19 +1289,21 @@ void main() {
     final link = BuzzerLink(port, clock: () => now);
     link.use('COM3');
     const teams = [Team(id: 'red', name: 'Red'), Team(id: 'blue', name: 'Blue'), Team(id: 'green', name: 'Green')];
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.dark),
-      home: Scaffold(
-        appBar: AppBar(title: const Text("Buzzers")),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            BuzzersView(link: link, teams: teams, assignments: const {}, onPort: (_) {}, onAssign: (_, _) {}, onThreshold: (_, _) {}),
-          ],
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.dark),
+        home: Scaffold(
+          appBar: AppBar(title: const Text("Buzzers")),
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              BuzzersView(link: link, teams: teams, assignments: const {}, onPort: (_) {}, onAssign: (_, _) {}, onThreshold: (_, _) {}),
+            ],
+          ),
         ),
       ),
-    ));
+    );
     port.send('0:12,1:20,2:8\n');
     for (var i = 0; i < 10; i++) {
       now += 10;
@@ -1236,25 +1347,25 @@ void main() {
   });
 
   Future<void> assistantPage(WidgetTester tester, AssistantClient client, List<String> activity) => page(
-        tester,
-        AccountView(
-          username: 'Jacob',
-          email: 'jacob@example.com',
-          guest: false,
-          version: '2.0.0',
-          onRename: () {},
-          onUpgrade: () {},
-          onSignOut: () {},
-          assistant: AssistantCard(
-            running: true,
-            url: 'http://localhost:47820/mcp',
-            client: client,
-            onClientChanged: (_) {},
-            activity: activity,
-            onChanged: (_) {},
-          ),
-        ),
-      );
+    tester,
+    AccountView(
+      username: 'Jacob',
+      email: 'jacob@example.com',
+      guest: false,
+      version: '2.0.0',
+      onRename: () {},
+      onUpgrade: () {},
+      onSignOut: () {},
+      assistant: AssistantCard(
+        running: true,
+        url: 'http://localhost:47820/mcp',
+        client: client,
+        onClientChanged: (_) {},
+        activity: activity,
+        onChanged: (_) {},
+      ),
+    ),
+  );
 
   testWidgets('account: assistant on', (tester) async {
     await assistantPage(tester, AssistantClient.claudeCode, const [
@@ -1339,11 +1450,13 @@ void main() {
     // them: a load started under the test's fake clock never finishes.
     await tester.pumpWidget(const MaterialApp(home: Scaffold()));
     await loadPictures(tester, game);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.dark),
-      home: Scaffold(body: PresenterView(connection: connection)),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.dark),
+        home: Scaffold(body: PresenterView(connection: connection)),
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 400));
     await shot('presenter_picture_strip');
   });
@@ -1385,26 +1498,24 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final game = pictureGame();
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        appBar: AppBar(title: const Text("Cities")),
-        body: Builder(
-          builder: (context) => Center(
-            child: TextButton(
-              onPressed: () => showQuestionPreview(
-                context,
-                gameId: game.id,
-                categoryId: 'c',
-                question: game.question(const QuestionRef('c', 'q'))!,
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          appBar: AppBar(title: const Text("Cities")),
+          body: Builder(
+            builder: (context) => Center(
+              child: TextButton(
+                onPressed: () =>
+                    showQuestionPreview(context, gameId: game.id, categoryId: 'c', question: game.question(const QuestionRef('c', 'q'))!),
+                child: const Text("open"),
               ),
-              child: const Text("open"),
             ),
           ),
         ),
       ),
-    ));
+    );
     await loadPictures(tester, game);
     await tapText(tester, find.text('open'));
     await tester.tap(find.byTooltip('Reveal next'));
@@ -1424,21 +1535,23 @@ void main() {
     final link = BuzzerLink(port, clock: () => now);
     link.use('COM3');
     const teams = [Team(id: 'red', name: 'Red', sound: 'horn.mp3'), Team(id: 'blue', name: 'Blue'), Team(id: 'green', name: 'Green')];
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        appBar: AppBar(title: const Text("Buzzers")),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            BuzzersView(link: link, teams: teams, assignments: const {}, onPort: (_) {}, onAssign: (_, _) {}, onThreshold: (_, _) {}),
-            const Divider(height: 40),
-            TeamSoundsList(teams: teams, uploading: const {'green'}, onChoose: (_) {}, onClear: (_) {}),
-          ],
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          appBar: AppBar(title: const Text("Buzzers")),
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              BuzzersView(link: link, teams: teams, assignments: const {}, onPort: (_) {}, onAssign: (_, _) {}, onThreshold: (_, _) {}),
+              const Divider(height: 40),
+              TeamSoundsList(teams: teams, uploading: const {'green'}, onChoose: (_) {}, onClear: (_) {}),
+            ],
+          ),
         ),
       ),
-    ));
+    );
     for (var i = 0; i < 14; i++) {
       port.send('0:${12 + i % 3},1:${20 + i * 40},2:${8 + i % 2}\n');
       now += 10;
@@ -1457,10 +1570,17 @@ void main() {
   /// A picture without ending the round; [shot] clears it afterwards.
   Future<void> snap(String name) => expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/$name.png'));
 
-  const connectionTeams = [Team(id: 'red', name: 'Red', points: 300), Team(id: 'blue', name: 'Blue', points: 150), Team(id: 'green', name: 'Green')];
+  const connectionTeams = [
+    Team(id: 'red', name: 'Red', points: 300),
+    Team(id: 'blue', name: 'Blue', points: 150),
+    Team(id: 'green', name: 'Green'),
+  ];
 
   SessionHost connectionsHost({int? timer = 120}) {
-    final h = SessionHost(initial: const SessionState(gameId: 'cg', teams: connectionTeams), game: connectionsGame(timer: timer));
+    final h = SessionHost(
+      initial: const SessionState(gameId: 'cg', teams: connectionTeams),
+      game: connectionsGame(timer: timer),
+    );
     h.dispatch(const OpenQuestion(puzzle));
     return h;
   }
@@ -1470,26 +1590,33 @@ void main() {
 
   List<int> mixed(int i) => [placesOf(0)[i], placesOf(1)[i], placesOf(2)[i], placesOf(3)[i]];
 
-  Future<void> tablet(WidgetTester tester, SessionHost h, {Brightness brightness = Brightness.light, Size size = const Size(820, 1180)}) async {
+  Future<void> tablet(
+    WidgetTester tester,
+    SessionHost h, {
+    Brightness brightness = Brightness.light,
+    Size size = const Size(820, 1180),
+  }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(brightness),
-      home: Scaffold(
-        body: SafeArea(
-          child: StreamBuilder<SessionState>(
-            stream: h.states,
-            builder: (context, _) => PlayerView(
-              view: PublicView(h.publicStateFor('red')),
-              teamId: 'red',
-              send: (command) => h.dispatch(command, sender: const Sender(Role.player, teamId: 'red')),
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(brightness),
+        home: Scaffold(
+          body: SafeArea(
+            child: StreamBuilder<SessionState>(
+              stream: h.states,
+              builder: (context, _) => PlayerView(
+                view: PublicView(h.publicStateFor('red')),
+                teamId: 'red',
+                send: (command) => h.dispatch(command, sender: const Sender(Role.player, teamId: 'red')),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 400));
   }
 
@@ -1549,11 +1676,13 @@ void main() {
     addTearDown(tester.view.reset);
     final connection = SessionConnection.local(h, game: h.game);
     addTearDown(connection.dispose);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.dark),
-      home: Scaffold(body: PresenterView(connection: connection)),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.dark),
+        home: Scaffold(body: PresenterView(connection: connection)),
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 400));
   }
 
@@ -1595,11 +1724,16 @@ void main() {
     guess(h, 'green', placesOf(3));
     final connection = SessionConnection.local(h, game: h.game);
     addTearDown(connection.dispose);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(appBar: AppBar(title: const Text("Quiz night")), body: ControllerView(connection: connection)),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          appBar: AppBar(title: const Text("Quiz night")),
+          body: ControllerView(connection: connection),
+        ),
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 400));
     await snap('connections_controller');
     await tester.tap(find.widgetWithText(FilledButton, 'Reveal group'));
@@ -1614,10 +1748,22 @@ void main() {
       'question': 'Find four groups of four',
       'pointsPlus': 400,
       'connections': [
-        {'name': 'Fruit', 'words': ['Apple', 'Pear', 'Plum', 'Fig']},
-        {'name': 'Planets', 'words': ['Mars', 'Venus', 'Earth', 'Saturn']},
-        {'name': 'Card games', 'words': ['Bridge', 'Poker', 'Snap', '']},
-        {'name': '', 'words': ['', '', '', '']},
+        {
+          'name': 'Fruit',
+          'words': ['Apple', 'Pear', 'Plum', 'Fig'],
+        },
+        {
+          'name': 'Planets',
+          'words': ['Mars', 'Venus', 'Earth', 'Saturn'],
+        },
+        {
+          'name': 'Card games',
+          'words': ['Bridge', 'Poker', 'Snap', ''],
+        },
+        {
+          'name': '',
+          'words': ['', '', '', ''],
+        },
       ],
       'companion': {'timer': 120, 'mistakes': 3},
     });
@@ -1639,15 +1785,21 @@ void main() {
     await loadBuiltins(tester);
     final base = fixtureGame();
     // The game's own cards first, two built-in pictures switched off.
-    final game = GameContent(id: base.id, name: base.name, groups: base.groups, sounds: base.sounds, data: {
-      ...base.data,
-      'cards': [
-        const CueCard(title: 'Rules', text: 'No phones.').toMap(),
-        const CueCard(title: 'Intro', video: 'intro.mp4').toMap(),
-        const CueCard(image: 'builtin:correct', hidden: true).toMap(),
-        const CueCard(image: 'builtin:wrong', hidden: true).toMap(),
-      ],
-    });
+    final game = GameContent(
+      id: base.id,
+      name: base.name,
+      groups: base.groups,
+      sounds: base.sounds,
+      data: {
+        ...base.data,
+        'cards': [
+          const CueCard(title: 'Rules', text: 'No phones.').toMap(),
+          const CueCard(title: 'Intro', video: 'intro.mp4').toMap(),
+          const CueCard(image: 'builtin:correct', hidden: true).toMap(),
+          const CueCard(image: 'builtin:wrong', hidden: true).toMap(),
+        ],
+      },
+    );
     await phone(tester, const [SetCardAnimation(CardAnimation.bounce)], game: game);
     await tapText(tester, find.text('Effects'));
     await tester.pump(const Duration(milliseconds: 400));
@@ -1663,11 +1815,13 @@ void main() {
     final connection = SessionConnection.local(host, game: fixtureGame());
     addTearDown(connection.dispose);
     host.dispatch(SetCardAnimation(animation));
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.dark),
-      home: Scaffold(body: PresenterView(connection: connection)),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.dark),
+        home: Scaffold(body: PresenterView(connection: connection)),
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 400));
     host.dispatch(ShowCard(card));
     await tester.pump();
@@ -1676,22 +1830,43 @@ void main() {
   }
 
   testWidgets('cards: built-in picture on screen', (tester) async {
-    await cardScreen(tester, CardAnimation.fade, const OverlayCard(image: 'builtin:correct'), const Duration(seconds: 1), 'cards_builtin_on_screen');
+    await cardScreen(
+      tester,
+      CardAnimation.fade,
+      const OverlayCard(image: 'builtin:correct'),
+      const Duration(seconds: 1),
+      'cards_builtin_on_screen',
+    );
   });
 
   testWidgets('cards: bouncing in', (tester) async {
-    await cardScreen(tester, CardAnimation.bounce, const OverlayCard(image: 'builtin:times_up'), const Duration(milliseconds: 170), 'cards_bounce_midway');
+    await cardScreen(
+      tester,
+      CardAnimation.bounce,
+      const OverlayCard(image: 'builtin:times_up'),
+      const Duration(milliseconds: 170),
+      'cards_bounce_midway',
+    );
   });
 
   testWidgets('cards: sliding in from the bottom', (tester) async {
-    await cardScreen(tester, CardAnimation.slideUp, const OverlayCard(title: 'Round 2', text: 'Pictures and sounds'), const Duration(milliseconds: 140), 'cards_slide_midway');
+    await cardScreen(
+      tester,
+      CardAnimation.slideUp,
+      const OverlayCard(title: 'Round 2', text: 'Pictures and sounds'),
+      const Duration(milliseconds: 140),
+      'cards_slide_midway',
+    );
   });
 
   testWidgets('cards: silent film', (tester) async {
     await cardScreen(
       tester,
       CardAnimation.fade,
-      const OverlayCard(text: 'Sorry for being late! I was finishing one of my favourite films, from when I was only 13.', style: CardStyle.silentFilm),
+      const OverlayCard(
+        text: 'Sorry for being late! I was finishing one of my favourite films, from when I was only 13.',
+        style: CardStyle.silentFilm,
+      ),
       const Duration(seconds: 1),
       'cards_style_silent_film',
     );
@@ -1728,7 +1903,13 @@ void main() {
   });
 
   testWidgets('cards: flipping in', (tester) async {
-    await cardScreen(tester, CardAnimation.flip, const OverlayCard(image: 'builtin:final_round'), const Duration(milliseconds: 200), 'cards_flip_midway');
+    await cardScreen(
+      tester,
+      CardAnimation.flip,
+      const OverlayCard(image: 'builtin:final_round'),
+      const Duration(milliseconds: 200),
+      'cards_flip_midway',
+    );
   });
 
   testWidgets('cards: editor list', (tester) async {
@@ -1736,22 +1917,24 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await loadBuiltins(tester);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: Scaffold(
-        body: CardsDialog(
-          gameId: 'g',
-          cards: CueCard.withBuiltins(const [
-            CueCard(title: 'Rules', text: 'No phones. Answers in by the buzzer only.'),
-            CueCard(title: 'Intro', video: 'intro.mp4'),
-            CueCard(image: 'builtin:winner', text: 'Drumroll please'),
-            CueCard(image: 'builtin:correct', hidden: true),
-          ]),
-          save: (_) {},
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          body: CardsDialog(
+            gameId: 'g',
+            cards: CueCard.withBuiltins(const [
+              CueCard(title: 'Rules', text: 'No phones. Answers in by the buzzer only.'),
+              CueCard(title: 'Intro', video: 'intro.mp4'),
+              CueCard(image: 'builtin:winner', text: 'Drumroll please'),
+              CueCard(image: 'builtin:correct', hidden: true),
+            ]),
+            save: (_) {},
+          ),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 400));
     await shot('cards_editor');
   });
@@ -1761,13 +1944,18 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await loadBuiltins(tester);
-    await tester.pumpWidget(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      home: const Scaffold(
-        body: CardEditorDialog(gameId: 'g', card: CueCard(title: 'Break', text: 'Back in ten minutes', style: CardStyle.poster)),
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: const Scaffold(
+          body: CardEditorDialog(
+            gameId: 'g',
+            card: CueCard(title: 'Break', text: 'Back in ten minutes', style: CardStyle.poster),
+          ),
+        ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 400));
     await shot('cards_editing');
   });
@@ -1785,5 +1973,385 @@ void main() {
     await shot('presenter_window');
     await tester.pump(const Duration(seconds: 9));
   });
-}
 
+  group('scoring', () {
+    const answered = [
+      OpenQuestion(raced),
+      SubmitAnswer('blue', PlayerAnswer(text: 'Metropolis')),
+      LockAnswer('blue'),
+      SubmitAnswer('red', PlayerAnswer(text: 'metropolis')),
+      LockAnswer('red'),
+      SubmitAnswer('green', PlayerAnswer(text: 'Nosferatu')),
+      LockAnswer('green'),
+      RateAnswer('blue', correct: true),
+      RateAnswer('red', correct: true),
+      RateAnswer('green', correct: false),
+    ];
+
+    Future<SessionConnection> start(WidgetTester tester, List<Command> commands, Size size) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      host = SessionHost(initial: scoringState());
+      final connection = SessionConnection.local(host, game: scoringGame());
+      addTearDown(connection.dispose);
+      for (final command in commands) {
+        host.dispatch(command);
+      }
+      return connection;
+    }
+
+    Future<void> controller(WidgetTester tester, List<Command> commands, Size size) async {
+      final connection = await start(tester, commands, size);
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme(Brightness.light),
+          home: Scaffold(
+            appBar: AppBar(title: const Text("Quiz night")),
+            body: ControllerView(connection: connection, onConnectDevices: () {}),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('controller: by order, rated, points not given yet', (tester) async {
+      await controller(tester, answered, const Size(412, 892));
+      await shot('scoring_controller_ranked');
+    });
+
+    testWidgets('controller: by order, points given', (tester) async {
+      await controller(tester, [...answered, const GivePoints()], const Size(412, 892));
+      await shot('scoring_controller_given');
+    });
+
+    testWidgets('controller: by order on a tablet', (tester) async {
+      await controller(tester, answered, const Size(1180, 820));
+      await shot('scoring_controller_tablet');
+    });
+
+    testWidgets('controller: charades, teams tapped in as they finish', (tester) async {
+      await controller(tester, const [OpenQuestion(mime), PlaceTeam('green'), PlaceTeam('red')], const Size(412, 892));
+      await shot('scoring_controller_charades');
+    });
+
+    testWidgets('presenter: points popping up', (tester) async {
+      final connection = await start(tester, answered, const Size(1600, 900));
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme(Brightness.dark),
+          home: Scaffold(body: PresenterView(connection: connection)),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      host.dispatch(const GivePoints());
+      // Frame by frame, as on a real screen: all three are up once the last one has popped.
+      for (var i = 0; i < 26; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await shot('scoring_presenter_pops');
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.byType(ScorePop), findsNWidgets(3));
+    });
+
+    testWidgets('a phone: what its team just got', (tester) async {
+      await start(tester, answered, const Size(412, 892));
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme(Brightness.light),
+          home: Scaffold(
+            body: SafeArea(
+              child: StreamBuilder<SessionState>(
+                stream: host.states,
+                builder: (context, _) =>
+                    PlayerView(view: PublicView(host.publicStateFor('red')), teamId: 'red', send: (_) {}, onLeave: () {}),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      host.dispatch(const GivePoints());
+      for (var i = 0; i < 14; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await shot('scoring_player_pop');
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('editor: by order', (tester) async {
+      await questionCard(tester, 'scoring_editor_ranked', {
+        'type': 'free',
+        'question': 'Which film is it? (frames get clearer)',
+        'noBuzzer': true,
+        'pointsPlus': 600,
+        'pointsMinus': 0,
+        'rankStep': 100,
+        'companion': {'kind': 'text', 'timer': 60},
+      });
+    });
+  });
+
+  group('bets', () {
+    const placed = [OpenQuestion(buzzed), PlaceBet('red', 300)];
+    const started = [OpenQuestion(buzzed), PlaceBet('red', 300), PlaceBet('blue', 150), CloseBets(), StartQuestion(), Buzz('blue')];
+
+    Future<void> controller(WidgetTester tester, List<Command> commands, Size size) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      host = SessionHost(initial: bettingState());
+      final connection = SessionConnection.local(host, game: bettingGame());
+      addTearDown(connection.dispose);
+      for (final command in commands) {
+        host.dispatch(command);
+      }
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme(Brightness.light),
+          home: Scaffold(
+            appBar: AppBar(title: const Text("Quiz night")),
+            body: ControllerView(connection: connection, onConnectDevices: () {}),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Future<void> bigScreen(WidgetTester tester, List<Command> commands) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      host = SessionHost(initial: bettingState());
+      final connection = SessionConnection.local(host, game: bettingGame());
+      addTearDown(connection.dispose);
+      for (final command in commands) {
+        host.dispatch(command);
+      }
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme(Brightness.dark),
+          home: Scaffold(body: PresenterView(connection: connection)),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Future<void> device(WidgetTester tester, List<Command> commands, Size size, String teamId) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      host = SessionHost(initial: bettingState(), game: bettingGame());
+      addTearDown(host.dispose);
+      for (final command in commands) {
+        host.dispatch(command);
+      }
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme(Brightness.light),
+          home: Scaffold(
+            body: SafeArea(
+              child: StreamBuilder<SessionState>(
+                stream: host.states,
+                builder: (context, _) => PlayerView(
+                  view: PublicView(host.publicStateFor(teamId)),
+                  teamId: teamId,
+                  send: (command) => host.dispatch(command, sender: Sender(Role.player, teamId: teamId)),
+                  onLeave: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('controller while teams bet, phone', (tester) async {
+      await controller(tester, placed, const Size(412, 892));
+      await shot('bets_controller_phone');
+    });
+
+    testWidgets('controller while teams bet, tablet', (tester) async {
+      await controller(tester, placed, const Size(1180, 820));
+      await shot('bets_controller_tablet');
+    });
+
+    testWidgets('controller: entering a bet for a team', (tester) async {
+      await controller(tester, placed, const Size(412, 892));
+      await tapText(tester, find.textContaining('Blue · up to'));
+      await shot('bets_controller_enter');
+    });
+
+    testWidgets('controller: bets in, a team answering', (tester) async {
+      await controller(tester, started, const Size(412, 892));
+      await shot('bets_controller_answering');
+    });
+
+    testWidgets('big screen while teams bet', (tester) async {
+      await bigScreen(tester, placed);
+      await shot('bets_presenter_betting');
+    });
+
+    testWidgets('big screen with the bets up', (tester) async {
+      await bigScreen(tester, started);
+      await shot('bets_presenter_question');
+    });
+
+    testWidgets('phone placing a bet', (tester) async {
+      await device(tester, const [OpenQuestion(buzzed)], const Size(412, 892), 'red');
+      await tester.tap(find.text('Half'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(seconds: 1));
+      await shot('bets_player_phone');
+    });
+
+    testWidgets('phone after placing a bet, team in debt', (tester) async {
+      await device(tester, const [OpenQuestion(buzzed), PlaceBet('green', 200)], const Size(412, 892), 'green');
+      await shot('bets_player_phone_placed');
+    });
+
+    testWidgets('tablet held sideways placing a bet', (tester) async {
+      await device(tester, const [OpenQuestion(picked)], const Size(1180, 820), 'red');
+      await tester.tap(find.text('All in'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(seconds: 1));
+      await shot('bets_player_tablet');
+    });
+
+    testWidgets('phone answering after the bets', (tester) async {
+      await device(tester, const [OpenQuestion(picked), PlaceBet('red', 250), CloseBets(), StartQuestion()], const Size(412, 892), 'red');
+      await shot('bets_player_answering');
+    });
+
+    // Bets on how many: the bet question first, then the question with a
+    // clock; a timer keeps running, so the question is closed at the end.
+    const goals = [
+      OpenQuestion(pushUps),
+      PlaceBet('red', 25),
+      PlaceBet('blue', 12),
+      CloseBets(),
+      StartQuestion(),
+      JudgeBet('blue', reached: true),
+    ];
+
+    testWidgets('amount: controller while teams bet, phone', (tester) async {
+      await controller(tester, const [OpenQuestion(films), PlaceBet('red', 6)], const Size(412, 892));
+      await shot('bets_amount_controller_betting');
+    });
+
+    testWidgets('amount: controller judging, phone', (tester) async {
+      await controller(tester, goals, const Size(412, 892));
+      await shot('bets_amount_controller_judging');
+      host.dispatch(const CloseQuestion());
+    });
+
+    testWidgets('amount: controller judging, tablet', (tester) async {
+      await controller(tester, goals, const Size(1180, 820));
+      await shot('bets_amount_controller_tablet');
+      host.dispatch(const CloseQuestion());
+    });
+
+    testWidgets('amount: big screen while teams bet', (tester) async {
+      await bigScreen(tester, const [OpenQuestion(films), PlaceBet('red', 6)]);
+      await shot('bets_amount_presenter_betting');
+    });
+
+    testWidgets('amount: big screen with goals and the clock', (tester) async {
+      await bigScreen(tester, goals);
+      await shot('bets_amount_presenter_running');
+      host.dispatch(const CloseQuestion());
+    });
+
+    testWidgets('amount: big screen with the answer list', (tester) async {
+      await bigScreen(tester, const [OpenQuestion(films), PlaceBet('red', 4), PlaceBet('blue', 2), CloseBets(), StartQuestion()]);
+      await shot('bets_amount_presenter_list');
+    });
+
+    testWidgets('amount: phone placing a bet', (tester) async {
+      await device(tester, const [OpenQuestion(films)], const Size(412, 892), 'red');
+      for (var i = 0; i < 5; i++) {
+        await tester.tap(find.text('+ 1'));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await tester.pump(const Duration(seconds: 1));
+      await shot('bets_amount_player_phone');
+    });
+
+    testWidgets('amount: tablet placing a bet', (tester) async {
+      await device(tester, const [OpenQuestion(pushUps), PlaceBet('red', 30)], const Size(1180, 820), 'red');
+      await tester.pump(const Duration(seconds: 1));
+      await shot('bets_amount_player_tablet');
+    });
+
+    testWidgets('amount: phone going for its goal, no screen', (tester) async {
+      await device(tester, goals, const Size(412, 892), 'red');
+      await shot('bets_amount_player_goal');
+      host.dispatch(const CloseQuestion());
+    });
+
+    testWidgets('amount: phone writing its list', (tester) async {
+      await device(tester, const [OpenQuestion(films), PlaceBet('red', 5), CloseBets(), StartQuestion()], const Size(412, 892), 'red');
+      await shot('bets_amount_player_list');
+    });
+
+    testWidgets('timer: big screen, buzzer question with a clock', (tester) async {
+      await bigScreen(tester, const [OpenQuestion(timed)]);
+      await shot('timer_presenter_buzzer');
+      host.dispatch(const CloseQuestion());
+    });
+
+    testWidgets('editor: bets on how many, with a timer and nothing on the devices', (tester) async {
+      await questionCard(tester, 'bets_amount_editor', {
+        'type': 'free',
+        'question': 'Push-ups, go!',
+        'pointsPlus': 10,
+        'pointsMinus': 10,
+        'noPhoneBuzzer': true,
+        'timer': 30,
+        'amountBet': {'prompt': 'How many push-ups can you do in 30 seconds?', 'max': 50},
+      });
+    });
+
+    const revealed = [OpenQuestion(buzzed), PlaceBet('red', 300), PlaceBet('blue', 150), CloseBets()];
+
+    testWidgets('reveal: big screen shows the bets', (tester) async {
+      await bigScreen(tester, revealed);
+      await tester.pump(const Duration(seconds: 2));
+      await shot('bets_reveal_presenter');
+    });
+
+    testWidgets('reveal: big screen shows the goals', (tester) async {
+      await bigScreen(tester, const [OpenQuestion(pushUps), PlaceBet('red', 25), PlaceBet('blue', 12), CloseBets()]);
+      await tester.pump(const Duration(seconds: 2));
+      await shot('bets_reveal_presenter_goals');
+    });
+
+    testWidgets('reveal: controller', (tester) async {
+      await controller(tester, revealed, const Size(412, 892));
+      await shot('bets_reveal_controller');
+    });
+
+    testWidgets('reveal: phone', (tester) async {
+      await device(tester, revealed, const Size(412, 892), 'blue');
+      await shot('bets_reveal_player');
+    });
+
+    testWidgets('editor: a question with bets', (tester) async {
+      await questionCard(tester, 'bets_editor', {
+        'type': 'free',
+        'question': 'Capital of Peru?',
+        'answerHint': 'Lima',
+        'pointsPlus': 200,
+        'pointsMinus': 100,
+        'wager': true,
+      });
+    });
+  });
+}

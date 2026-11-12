@@ -12,9 +12,9 @@ import 'session_state.dart';
 
 class SessionHost {
   SessionHost({SessionState initial = const SessionState(), GameContent? game, int Function()? clock})
-      : _state = initial,
-        _game = game,
-        _clock = clock ?? (() => DateTime.now().millisecondsSinceEpoch) {
+    : _state = initial,
+      _game = game,
+      _clock = clock ?? (() => DateTime.now().millisecondsSinceEpoch) {
     _armTimer();
   }
 
@@ -87,12 +87,14 @@ class SessionHost {
     return true;
   }
 
-  /// Keeps one timer running for the answer round that has a deadline. Also
-  /// covers a show resumed after a restart: a deadline already passed locks
-  /// the round at once.
+  /// Keeps one timer running for the answer round that has a deadline, or
+  /// else for the question's own clock. Also covers a show resumed after a
+  /// restart: a deadline already passed locks the round at once.
   void _armTimer() {
     final round = _state.answerRound;
-    final endsAt = round != null && round.open ? round.endsAtMillis : null;
+    final clock = _state.timer;
+    final roundEnds = round != null && round.open ? round.endsAtMillis : null;
+    final endsAt = roundEnds ?? (clock != null && clock.running ? clock.endsAtMillis : null);
     if (endsAt == _armedFor) return;
     _roundTimer?.cancel();
     _countdownTimer?.cancel();
@@ -101,9 +103,14 @@ class SessionHost {
     final remaining = endsAt - _clock();
     _roundTimer = Timer(Duration(milliseconds: remaining < 0 ? 0 : remaining), () {
       _armedFor = null;
-      if (dispatch(const LockAnswers())) _effects.add(const SoundEffect(effectTimesUp));
+      if (roundEnds == null) {
+        // The reducer plays the sound for the question's own clock.
+        dispatch(const TimeUp());
+      } else if (dispatch(const LockAnswers())) {
+        _effects.add(const SoundEffect(effectTimesUp));
+      }
     });
-    final opened = round!.openedAtMillis;
+    final opened = roundEnds != null ? round!.openedAtMillis : clock!.openedAtMillis;
     final length = opened == null ? remaining : endsAt - opened;
     if (length >= 2 * countdownMillis && remaining > countdownMillis) {
       _countdownTimer = Timer(Duration(milliseconds: remaining - countdownMillis), () {

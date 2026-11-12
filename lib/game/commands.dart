@@ -30,13 +30,16 @@ class Sender {
   final String? teamId;
 }
 
-/// Players may only buzz, answer and lock their answer, and only for their own team. Whether the
+/// Players may only buzz, bet, answer and lock their answer, and only for their own team. Whether the
 /// game currently accepts that buzz or answer is the reducer's decision.
 bool mayIssue(Sender sender, Command command) {
   if (sender.role != Role.player) return true;
   return switch (command) {
-    Buzz(:final teamId) || SubmitAnswer(:final teamId) || LockAnswer(:final teamId) || GuessConnection(:final teamId) =>
-      sender.teamId != null && teamId == sender.teamId,
+    Buzz(:final teamId) ||
+    PlaceBet(:final teamId) ||
+    SubmitAnswer(:final teamId) ||
+    LockAnswer(:final teamId) ||
+    GuessConnection(:final teamId) => sender.teamId != null && teamId == sender.teamId,
     _ => false,
   };
 }
@@ -71,6 +74,11 @@ sealed class Command {
       'buzz' => Buzz(j['teamId'] as String),
       'judge' => Judge(correct: j['correct'] as bool),
       'skipBuzzer' => const SkipBuzzer(),
+      'placeBet' => PlaceBet(j['teamId'] as String, (j['amount'] as num).toInt()),
+      'closeBets' => const CloseBets(),
+      'startQuestion' => const StartQuestion(),
+      'judgeBet' => JudgeBet(j['teamId'] as String, reached: j['reached'] as bool?),
+      'timeUp' => const TimeUp(),
       'reopenQuestion' => const ReopenQuestion(),
       'reveal' => Reveal((j['delta'] as num).toInt()),
       'imageFocus' => ImageFocus((j['delta'] as num).toInt()),
@@ -99,8 +107,7 @@ sealed class Command {
       'awardConnections' => const AwardConnections(),
       'setTeamSound' => SetTeamSound(j['teamId'] as String, j['sound'] as String?),
       'openAnswers' => OpenAnswers(CompanionSpec.fromMap(j['spec'])!),
-      'submitAnswer' =>
-        SubmitAnswer(j['teamId'] as String, PlayerAnswer.fromJson(Map<String, dynamic>.from(j['answer'] as Map))),
+      'submitAnswer' => SubmitAnswer(j['teamId'] as String, PlayerAnswer.fromJson(Map<String, dynamic>.from(j['answer'] as Map))),
       'lockAnswer' => LockAnswer(j['teamId'] as String),
       'lockAnswers' => const LockAnswers(),
       'unlockAnswers' => const UnlockAnswers(),
@@ -110,6 +117,8 @@ sealed class Command {
       'rateAnswer' => RateAnswer(j['teamId'] as String, correct: j['correct'] as bool?),
       'awardAnswer' => AwardAnswer(j['teamId'] as String, (j['points'] as num).toInt()),
       'clearAnswers' => const ClearAnswers(),
+      'placeTeam' => PlaceTeam(j['teamId'] as String),
+      'givePoints' => const GivePoints(),
       'showCard' => ShowCard(OverlayCard.fromJson(Map<String, dynamic>.from(j['card'] as Map))),
       'hideCard' => const HideCard(),
       'screenEffect' => ScreenEffect(j['name'] as String),
@@ -446,6 +455,55 @@ class SetQueueBuzzers extends Command {
   Map<String, dynamic> get _args => {'on': on};
 }
 
+// ── bets ─────────────────────────────────────────────────────────────────────
+
+/// A team's bet on the open question, while bets are being placed. Sent
+/// again to change it; kept between nothing and `maxBet`.
+class PlaceBet extends Command {
+  const PlaceBet(this.teamId, this.amount);
+  final String teamId;
+  final int amount;
+  @override
+  String get type => 'placeBet';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId, 'amount': amount};
+}
+
+/// Ends the betting and puts every team's bet on the big screen. The
+/// question still waits for [StartQuestion].
+class CloseBets extends Command {
+  const CloseBets();
+  @override
+  String get type => 'closeBets';
+}
+
+/// After the bets were shown: starts the question. Buzzers open, or the
+/// teams' devices start answering, and a timer starts running.
+class StartQuestion extends Command {
+  const StartQuestion();
+  @override
+  String get type => 'startQuestion';
+}
+
+/// Amount bets: whether a team reached the number it bet; the same as
+/// [RateAnswer] (null withdraws it).
+class JudgeBet extends Command {
+  const JudgeBet(this.teamId, {required this.reached});
+  final String teamId;
+  final bool? reached;
+  @override
+  String get type => 'judgeBet';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId, 'reached': reached};
+}
+
+/// The open question's own timer has run out. Sent by the host's clock.
+class TimeUp extends Command {
+  const TimeUp();
+  @override
+  String get type => 'timeUp';
+}
+
 // ── answers from the teams' own devices ─────────────────────────────────────
 
 /// Starts collecting answers for the open question on the screen [spec]
@@ -542,8 +600,9 @@ class RevealAnswers extends Command {
   String get type => 'revealAnswers';
 }
 
-/// Rules a team's answer right or wrong and gives or takes the question's
-/// points; null withdraws the ruling and its points.
+/// Rates a team right or wrong on the open question (null: not rated), with
+/// or without an answer round. What that is worth follows the question's
+/// scoring rule; it goes on the scoreboard with [GivePoints].
 class RateAnswer extends Command {
   const RateAnswer(this.teamId, {required this.correct});
   final String teamId;
@@ -554,8 +613,9 @@ class RateAnswer extends Command {
   Map<String, dynamic> get _args => {'teamId': teamId, 'correct': correct};
 }
 
-/// Gives a team a number of points of the gamemaster's choosing for its
-/// answer, replacing whatever it got for this round before.
+/// Sets the points a team gets for the open question, whatever the scoring
+/// rule says, e.g. part of the points. Rated right when more than zero. Goes
+/// on the scoreboard with [GivePoints].
 class AwardAnswer extends Command {
   const AwardAnswer(this.teamId, this.points);
   final String teamId;
@@ -564,6 +624,25 @@ class AwardAnswer extends Command {
   String get type => 'awardAnswer';
   @override
   Map<String, dynamic> get _args => {'teamId': teamId, 'points': points};
+}
+
+/// "By order" scoring: puts a team next in order, or takes it out again
+/// (the teams after it move up).
+class PlaceTeam extends Command {
+  const PlaceTeam(this.teamId);
+  final String teamId;
+  @override
+  String get type => 'placeTeam';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId};
+}
+
+/// Puts what the teams are due for the open question on the scoreboard: the
+/// difference to what they were given for it before.
+class GivePoints extends Command {
+  const GivePoints();
+  @override
+  String get type => 'givePoints';
 }
 
 class ClearAnswers extends Command {

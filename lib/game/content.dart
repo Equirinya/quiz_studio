@@ -23,6 +23,7 @@ const List<String> musicSlots = [musicBackground, musicCalm, musicExciting];
 // up per game: the slot names the bundled asset.
 const String ambienceWhiteNoise = 'ambienceWhiteNoise';
 const String ambienceSoftNoise = 'ambienceSoftNoise';
+
 /// Sound effects that come with the app (assets/sounds/effects). Played
 /// with the key `builtin:<id>`; a game's own effect of the same moment wins.
 class BuiltinSound {
@@ -128,8 +129,7 @@ const Set<String> timerOnlySounds = {'countdown/alarm_clock_ticking'};
 Iterable<BuiltinSound> get handSounds =>
     builtinSounds.where((s) => handSoundMoments.contains(s.id.split('/').first) && !timerOnlySounds.contains(s.id));
 
-BuiltinSound? builtinSound(String key) =>
-    builtinSounds.where((sound) => sound.key == key || sound.id == key).firstOrNull;
+BuiltinSound? builtinSound(String key) => builtinSounds.where((sound) => sound.key == key || sound.id == key).firstOrNull;
 
 /// The folder of built-in sounds each moment can choose from.
 const Map<String, String> effectMoments = {
@@ -146,8 +146,10 @@ const Map<String, String> effectMoments = {
 };
 
 /// The built-in sounds [effectKey] can be set to.
-List<BuiltinSound> builtinSoundsFor(String effectKey) =>
-    [for (final sound in builtinSounds) if (sound.id.split('/').first == effectMoments[effectKey]) sound];
+List<BuiltinSound> builtinSoundsFor(String effectKey) => [
+  for (final sound in builtinSounds)
+    if (sound.id.split('/').first == effectMoments[effectKey]) sound,
+];
 
 /// Stored for a moment that should stay silent, even if a level above has a sound.
 const String silentSound = 'off';
@@ -283,6 +285,10 @@ enum QuestionType {
   /// to answer with.
   bool get needsDevices => this == connections || this == matching;
 
+  /// Can be played with bets: one right-or-wrong answer per team. The
+  /// types that share out points by their own rules can't.
+  bool get wagerable => this == free || this == abcd || this == progressingReveal || this == matching;
+
   const QuestionType(this.uiString);
 
   final String uiString;
@@ -290,6 +296,35 @@ enum QuestionType {
   factory QuestionType.fromString(Object? type) =>
       QuestionType.values.firstWhere((e) => e.name == type, orElse: () => QuestionType.unsupported);
 }
+
+/// "Bet on how many": before the question, each team says how many it can
+/// do, e.g. how many films of a kind it can name or how many push-ups. Then
+/// the question runs, and a team that reaches its number gets the
+/// question's points for each one; one that doesn't loses its minus points
+/// for each. Stored on a free question as `amountBet`.
+class AmountBet {
+  const AmountBet({this.prompt = '', this.max = kDefaultAmountMax});
+
+  /// What the teams bet on, shown before the question itself, e.g. "How
+  /// many science fiction films can you name?".
+  final String prompt;
+
+  /// The highest number a team may bet.
+  final int max;
+
+  static AmountBet? fromMap(Object? stored) {
+    if (stored is! Map) return null;
+    final max = stored['max'];
+    return AmountBet(
+      prompt: stored['prompt'] is String ? stored['prompt'] as String : '',
+      max: max is num && max >= 1 ? max.toInt() : kDefaultAmountMax,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {'prompt': prompt, 'max': max};
+}
+
+const int kDefaultAmountMax = 20;
 
 class Question {
   Question({
@@ -305,6 +340,9 @@ class Question {
     this.position,
     this.noBuzzer = false,
     this.noPhoneBuzzer = false,
+    this.wager = false,
+    this.amountBet,
+    this.rankStep,
     this.answers = const [],
     this.answersCorrect = const [],
     this.information = const [],
@@ -346,6 +384,38 @@ class Question {
   /// can buzz.
   final bool noPhoneBuzzer;
 
+  /// Teams bet their own points instead of playing for fixed points: a right
+  /// answer wins the bet, a wrong one loses it. Stored as `wager`, and only
+  /// counts for the types in [QuestionType.wagerable]; see [betting].
+  final bool wager;
+
+  /// Whether this question is played with bets of points.
+  bool get betting => wager && type.wagerable && amountBet == null;
+
+  /// Free questions only: teams bet how many they can do; see [AmountBet].
+  final AmountBet? amountBet;
+
+  /// Whether teams bet anything before this question: points or an amount.
+  bool get hasBets => betting || amountBet != null;
+
+  /// "By order" scoring: the first team the gamemaster puts in order (or the
+  /// first to lock in a right answer) gets [pointsPlus], each after it this
+  /// many less, never below zero; a wrong answer still costs [pointsMinus].
+  /// Stored as `rankStep`; for the types in [QuestionType.wagerable].
+  final int? rankStep;
+
+  /// Whether this question is scored "by order"; see [rankStep].
+  bool get ranked => rankStep != null && type.wagerable && !hasBets;
+
+  /// How long the question runs, in seconds, when the teams' devices have no
+  /// screen of their own for it (that screen has its own timer). Stored as
+  /// `timer`.
+  int? get questionTimer {
+    if (companion != null) return null;
+    final timer = data['timer'];
+    return timer is num && timer > 0 ? timer.toInt() : null;
+  }
+
   // abcd
   final List<String> answers;
   final List<bool> answersCorrect;
@@ -376,7 +446,8 @@ class Question {
   final TopAnswers? topAnswers;
 
   /// Whether this question can only be played with the teams' devices.
-  bool get needsDevices => type.needsDevices ||
+  bool get needsDevices =>
+      type.needsDevices ||
       (type == QuestionType.rapidFire && rapidFire?.mode == RapidMode.devices) ||
       (type == QuestionType.topAnswers && topAnswers?.onDevices == true);
 
@@ -401,6 +472,9 @@ class Question {
       position: data['questionIndex'] is num ? (data['questionIndex'] as num).toInt() : null,
       noBuzzer: data['noBuzzer'] == true,
       noPhoneBuzzer: data['noPhoneBuzzer'] == true,
+      wager: data['wager'] == true,
+      amountBet: QuestionType.fromString(data['type']) == QuestionType.free ? AmountBet.fromMap(data['amountBet']) : null,
+      rankStep: data['rankStep'] is num && (data['rankStep'] as num) >= 0 ? (data['rankStep'] as num).toInt() : null,
       answers: _strings(data['answers']),
       answersCorrect: correct is List ? [for (final e in correct) e == true] : const [],
       information: _strings(data['information']),
@@ -473,24 +547,25 @@ class Question {
   }
 
   bool get buzzerable => switch (type) {
-        QuestionType.free => !noBuzzer,
-        QuestionType.connections || QuestionType.matching => false,
-        QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
-        QuestionType.topAnswers => topAnswers?.onDevices != true,
-        _ => true,
-      };
+    // Teams that bet on an amount show it, they don't buzz.
+    QuestionType.free => !noBuzzer && amountBet == null,
+    QuestionType.connections || QuestionType.matching => false,
+    QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
+    QuestionType.topAnswers => topAnswers?.onDevices != true,
+    _ => true,
+  };
 
   /// Whether the generic "answer right / answer wrong" judging applies. Feud
   /// and Connections award points through their own flow, and so does a
   /// Fragenhagel played on the teams' devices.
   bool get defaultJudging => switch (type) {
-        QuestionType.feud || QuestionType.connections => false,
-        QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
-        // Buzzing for an answer on the list: Wrong as usual, Right by
-        // picking the answer the team named.
-        QuestionType.topAnswers => topAnswers?.onDevices != true,
-        _ => true,
-      };
+    QuestionType.feud || QuestionType.connections => false,
+    QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
+    // Buzzing for an answer on the list: Wrong as usual, Right by
+    // picking the answer the team named.
+    QuestionType.topAnswers => topAnswers?.onDevices != true,
+    _ => true,
+  };
 
   bool get hasMusic => music != null;
 
@@ -504,26 +579,26 @@ class Question {
   /// progressing reveal each have one step beyond their list: showing which
   /// answers are correct, and the final step of the reveal.
   int get maxReveal => switch (type) {
-        QuestionType.abcd => answers.length + 1,
-        QuestionType.progressingReveal => information.length + 1,
-        // One step per group, easiest first.
-        QuestionType.connections => kConnectionsGroups,
-        // One step per item; the last one ends the round.
-        QuestionType.rapidFire => rapidFire?.items.length ?? 0,
-        _ => 0,
-      };
+    QuestionType.abcd => answers.length + 1,
+    QuestionType.progressingReveal => information.length + 1,
+    // One step per group, easiest first.
+    QuestionType.connections => kConnectionsGroups,
+    // One step per item; the last one ends the round.
+    QuestionType.rapidFire => rapidFire?.items.length ?? 0,
+    _ => 0,
+  };
 
   /// Every media file this question needs, for caching ahead of the show.
   List<String> get mediaPaths => [
-        ?image,
-        ?music,
-        ...informationImages.where((e) => e.isNotEmpty),
-        ...informationMusic.where((e) => e.isNotEmpty),
-        ?companion?.backgroundImage,
-        ...?rapidFire?.mediaPaths,
-        ...?matching?.mediaPaths,
-        ...sounds.mediaPaths,
-      ];
+    ?image,
+    ?music,
+    ...informationImages.where((e) => e.isNotEmpty),
+    ...informationMusic.where((e) => e.isNotEmpty),
+    ?companion?.backgroundImage,
+    ...?rapidFire?.mediaPaths,
+    ...?matching?.mediaPaths,
+    ...sounds.mediaPaths,
+  ];
 }
 
 /// Puts the questions of one category in playing order: by their positions
@@ -650,8 +725,7 @@ class QuestionRef {
   }
 
   @override
-  bool operator ==(Object other) =>
-      other is QuestionRef && other.categoryId == categoryId && other.questionId == questionId;
+  bool operator ==(Object other) => other is QuestionRef && other.categoryId == categoryId && other.questionId == questionId;
 
   @override
   int get hashCode => Object.hash(categoryId, questionId);
@@ -690,44 +764,38 @@ class CueCard {
   Iterable<String> get mediaPaths => [if (!isBuiltin) ?image, ?video];
 
   Map<String, dynamic> toMap() => {
-        'title': title,
-        'text': text,
-        'image': image,
-        'video': video,
-        if (hidden) 'hidden': true,
-        if (style != CardStyle.standard) 'style': style.name,
-      };
+    'title': title,
+    'text': text,
+    'image': image,
+    'video': video,
+    if (hidden) 'hidden': true,
+    if (style != CardStyle.standard) 'style': style.name,
+  };
 
   static List<CueCard> listFrom(Object? stored) => [
-        if (stored is List)
-          for (final entry in stored)
-            if (entry is Map)
-              CueCard(
-                title: entry['title'] is String ? entry['title'] as String : '',
-                text: entry['text'] is String ? entry['text'] as String : '',
-                image: _str(entry['image']),
-                video: _str(entry['video']),
-                hidden: entry['hidden'] == true,
-                style: CardStyle.fromName(entry['style']),
-              ),
-      ];
+    if (stored is List)
+      for (final entry in stored)
+        if (entry is Map)
+          CueCard(
+            title: entry['title'] is String ? entry['title'] as String : '',
+            text: entry['text'] is String ? entry['text'] as String : '',
+            image: _str(entry['image']),
+            video: _str(entry['video']),
+            hidden: entry['hidden'] == true,
+            style: CardStyle.fromName(entry['style']),
+          ),
+  ];
 
   /// [cards] with every built-in picture they do not mention added at the end.
   static List<CueCard> withBuiltins(List<CueCard> cards) => [
-        ...cards,
-        for (final image in builtinImages)
-          if (!cards.any((card) => card.image == image.name)) CueCard(image: image.name),
-      ];
+    ...cards,
+    for (final image in builtinImages)
+      if (!cards.any((card) => card.image == image.name)) CueCard(image: image.name),
+  ];
 }
 
 class GameContent {
-  GameContent({
-    required this.id,
-    this.name = '',
-    this.groups = const [],
-    this.sounds = MusicConfig.empty,
-    this.data = const {},
-  });
+  GameContent({required this.id, this.name = '', this.groups = const [], this.sounds = MusicConfig.empty, this.data = const {}});
 
   /// Cards of the whole game, switched off ones and built-in pictures
   /// included, in the order they are offered.
@@ -778,17 +846,19 @@ class GameContent {
           Question.fromMap(entry.key, entry.value),
       ];
       sortQuestions(categoryQuestions);
-      byGroup[target]!.add(Category(
-        id: categoryId,
-        name: data['name'] is String ? data['name'] as String : '',
-        groupId: target == CategoryGroup.ungroupedId ? null : target,
-        index: _int(data['categoryIndex']),
-        active: active,
-        createdAtMillis: data['createdAt'] is int ? data['createdAt'] as int : null,
-        questions: categoryQuestions,
-        sounds: MusicConfig.fromMap(data),
-        data: data,
-      ));
+      byGroup[target]!.add(
+        Category(
+          id: categoryId,
+          name: data['name'] is String ? data['name'] as String : '',
+          groupId: target == CategoryGroup.ungroupedId ? null : target,
+          index: _int(data['categoryIndex']),
+          active: active,
+          createdAtMillis: data['createdAt'] is int ? data['createdAt'] as int : null,
+          questions: categoryQuestions,
+          sounds: MusicConfig.fromMap(data),
+          data: data,
+        ),
+      );
     });
     for (final list in byGroup.values) {
       list.sort((a, b) {
@@ -835,36 +905,33 @@ class GameContent {
   /// timestamps and the like) are dropped; nothing the show needs is among
   /// them.
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'game': _jsonSafe(data),
-        'groups': {
-          for (final group in groups)
-            if (!group.isUngrouped) group.id: _jsonSafe(group.data),
-        },
-        'categories': {
-          for (final group in groups)
-            for (final category in group.categories) category.id: _jsonSafe(category.data),
-        },
-        'questions': {
-          for (final group in groups)
-            for (final category in group.categories)
-              category.id: {for (final question in category.questions) question.id: _jsonSafe(question.data)},
-        },
-      };
+    'id': id,
+    'game': _jsonSafe(data),
+    'groups': {
+      for (final group in groups)
+        if (!group.isUngrouped) group.id: _jsonSafe(group.data),
+    },
+    'categories': {
+      for (final group in groups)
+        for (final category in group.categories) category.id: _jsonSafe(category.data),
+    },
+    'questions': {
+      for (final group in groups)
+        for (final category in group.categories)
+          category.id: {for (final question in category.questions) question.id: _jsonSafe(question.data)},
+    },
+  };
 
   factory GameContent.fromJson(Map<String, dynamic> json) {
     Map<String, Map<String, dynamic>> docs(Object? value) => {
-          for (final entry in (value as Map? ?? const {}).entries)
-            entry.key as String: Map<String, dynamic>.from(entry.value as Map),
-        };
+      for (final entry in (value as Map? ?? const {}).entries) entry.key as String: Map<String, dynamic>.from(entry.value as Map),
+    };
     return GameContent.assemble(
       id: json['id'] as String,
       game: Map<String, dynamic>.from(json['game'] as Map? ?? const {}),
       groups: docs(json['groups']),
       categories: docs(json['categories']),
-      questions: {
-        for (final entry in (json['questions'] as Map? ?? const {}).entries) entry.key as String: docs(entry.value),
-      },
+      questions: {for (final entry in (json['questions'] as Map? ?? const {}).entries) entry.key as String: docs(entry.value)},
       // Whatever was filtered out is not in the JSON to begin with.
       activeOnly: false,
     );
@@ -906,27 +973,22 @@ class GameContent {
   MusicConfig soundsFor({QuestionRef? ref, String? groupId}) {
     final category = ref == null ? null : this.category(ref.categoryId);
     final group = ref == null ? this.group(groupId) : groupOfCategory(ref.categoryId);
-    return MusicConfig.resolve([
-      if (ref != null) ?question(ref)?.sounds,
-      ?category?.sounds,
-      ?group?.sounds,
-      sounds,
-    ]);
+    return MusicConfig.resolve([if (ref != null) ?question(ref)?.sounds, ?category?.sounds, ?group?.sounds, sounds]);
   }
 
   /// Every media file the game needs, for caching ahead of the show.
   Set<String> get mediaPaths => {
-        ...sounds.mediaPaths,
-        // Built-in pictures come with the app; there is nothing to download.
-        for (final card in cards) ...card.mediaPaths,
-        for (final group in groups) ...[
-          ...group.mediaPaths,
-          for (final card in group.cards) ...card.mediaPaths,
-          for (final category in group.categories) ...[
-            ...category.sounds.mediaPaths,
-            for (final card in category.cards) ...card.mediaPaths,
-            for (final question in category.questions) ...question.mediaPaths,
-          ],
-        ],
-      };
+    ...sounds.mediaPaths,
+    // Built-in pictures come with the app; there is nothing to download.
+    for (final card in cards) ...card.mediaPaths,
+    for (final group in groups) ...[
+      ...group.mediaPaths,
+      for (final card in group.cards) ...card.mediaPaths,
+      for (final category in group.categories) ...[
+        ...category.sounds.mediaPaths,
+        for (final card in category.cards) ...card.mediaPaths,
+        for (final question in category.questions) ...question.mediaPaths,
+      ],
+    ],
+  };
 }

@@ -13,6 +13,7 @@ import 'package:quiz_show/features/session/boards/wheel_board.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/pages/video_card.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
+import 'package:quiz_show/features/session/widgets/score_pop.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/game/game.dart';
 import 'package:quiz_show/features/session/pages/rapid_fire_display.dart';
@@ -73,11 +74,7 @@ class PresenterView extends StatelessWidget {
                 // off again when the clip is over.
                 videoBuilder: !videoCards
                     ? null
-                    : (file) => VideoCard(
-                          key: ValueKey(file.path),
-                          file: file,
-                          onFinished: () => connection.send(const HideCard()),
-                        ),
+                    : (file) => VideoCard(key: ValueKey(file.path), file: file, onFinished: () => connection.send(const HideCard())),
               ),
               ScreenEffectLayer(effects: connection.effects),
             ],
@@ -98,10 +95,28 @@ class PresenterView extends StatelessWidget {
               padding: EdgeInsets.all(unit * 2),
               child: Column(
                 children: [
-                  _Scores(state: state, unit: unit),
+                  _Scores(state: state, unit: unit, question: question),
+                  // The question's own clock, when the devices have none.
+                  if (state.timer case final timer? when timer.running && state.answerRound == null)
+                    Padding(
+                      padding: EdgeInsets.only(top: unit * 1.5),
+                      child: RoundCountdown(
+                        openedAt: timer.openedAtMillis,
+                        endsAt: timer.endsAtMillis,
+                        hostClock: true,
+                        height: unit * 1.6,
+                      ),
+                    ),
                   SizedBox(height: unit * 2),
                   Expanded(
-                    child: question != null
+                    child: question != null && state.waitingForBets
+                        ? BettingDisplay(
+                            state: state,
+                            category: game.category(state.current!.categoryId)?.name,
+                            question: question,
+                            unit: unit,
+                          )
+                        : question != null
                         ? QuestionDisplay(gameId: game.id, state: state, question: question, unit: unit)
                         : group == null
                         ? const SizedBox()
@@ -110,15 +125,15 @@ class PresenterView extends StatelessWidget {
                             builder: (context, box) => WheelBoard(group: group, state: state, size: box.biggest),
                           )
                         : group.type == BoardType.map
-                                        ? MapBoard(
-                                            group: group,
-                                            state: state,
-                                            imageFile: (name) {
-                                              final file = MediaService.instance.localFile(game.id, name);
-                                              return file.existsSync() ? file : null;
-                                            },
-                                          )
-                                        : _BoardGrid(group: group, state: state, unit: unit),
+                        ? MapBoard(
+                            group: group,
+                            state: state,
+                            imageFile: (name) {
+                              final file = MediaService.instance.localFile(game.id, name);
+                              return file.existsSync() ? file : null;
+                            },
+                          )
+                        : _BoardGrid(group: group, state: state, unit: unit),
                   ),
                 ],
               ),
@@ -131,15 +146,25 @@ class PresenterView extends StatelessWidget {
 }
 
 class _Scores extends StatelessWidget {
-  const _Scores({required this.state, required this.unit});
+  const _Scores({required this.state, required this.unit, this.question});
 
   final SessionState state;
   final double unit;
+  final Question? question;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final showQueue = state.phase == Phase.buzzered || state.phase == Phase.buzzerTest;
+    // Bets go up once they are closed, for as long as the question is open.
+    // While the bets are revealed big they stay out of the score boxes.
+    final bets = state.betting != null && !state.waitingForBets ? state.betting!.bets : null;
+    // Teams scoring together pop up one after another, in the order they scored.
+    final popOrder = <String>[];
+    for (final change in state.scoreLog.reversed) {
+      if (popOrder.contains(change.teamId)) break;
+      popOrder.insert(0, change.teamId);
+    }
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: unit,
@@ -155,13 +180,13 @@ class _Scores extends StatelessWidget {
               final color = own != null
                   ? (position < 0 || position == 0 ? own : Color.lerp(own, scheme.surfaceContainerHigh, 0.4)!)
                   : position < 0
-                      ? scheme.surfaceContainerHigh
-                      : Color.lerp(scheme.primaryContainer, scheme.surfaceContainerHigh, position / state.buzzQueue.length)!;
+                  ? scheme.surfaceContainerHigh
+                  : Color.lerp(scheme.primaryContainer, scheme.surfaceContainerHigh, position / state.buzzQueue.length)!;
               final text = own == null ? null : onTeamColor(color);
-              return AnimatedContainer(
+              final box = AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: unit * 22,
-                height: unit * 12,
+                height: unit * (bets == null ? 12 : 14),
                 decoration: BoxDecoration(
                   color: color,
                   borderRadius: BorderRadius.circular(unit * 2),
@@ -181,12 +206,196 @@ class _Scores extends StatelessWidget {
                       team.points.toString(),
                       style: TextStyle(fontSize: unit * 4.5, fontWeight: FontWeight.w600, color: text),
                     ),
+                    if (bets != null)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "${question?.amountBet == null ? "Bet" : "Goal"} ${bets[team.id] ?? 0}",
+                            style: TextStyle(fontSize: unit * 2.2, fontWeight: FontWeight.w600, color: text ?? scheme.primary),
+                          ),
+                          // Amount bets: reached or missed, once judged.
+                          if (question?.amountBet != null && state.results.verdicts[team.id] != null)
+                            Padding(
+                              padding: EdgeInsets.only(left: unit * 0.5),
+                              child: Icon(
+                                state.results.verdicts[team.id]! ? Icons.check_circle : Icons.cancel,
+                                size: unit * 2.4,
+                                color: text ?? (state.results.verdicts[team.id]! ? Colors.green.shade400 : scheme.error),
+                              ),
+                            ),
+                        ],
+                      ),
                   ],
                 ),
+              );
+              // What the team just got pops up under its box for a moment.
+              return ScorePop(
+                teamId: team.id,
+                log: state.scoreLog,
+                size: unit * 3.2,
+                delay: Duration(milliseconds: 350 * (popOrder.indexOf(team.id).clamp(0, 99))),
+                child: box,
               );
             },
           ),
       ],
+    );
+  }
+}
+
+/// While teams bet on a question: its category or bet question, and which
+/// teams have bet, never how much. Once the bets are closed: every team's
+/// bet, big, until the question starts.
+class BettingDisplay extends StatelessWidget {
+  const BettingDisplay({super.key, required this.state, required this.unit, this.category, this.question});
+
+  final SessionState state;
+  final String? category;
+  final double unit;
+
+  /// For bets on an amount: its bet question and points.
+  final Question? question;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final bets = state.betting?.bets ?? const {};
+    final amount = question?.amountBet;
+    final prompt = amount?.prompt.trim() ?? '';
+    final shown = state.betsShown;
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(unit * 3),
+      decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 3)),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.casino_outlined, size: unit * 10, color: scheme.primary),
+          SizedBox(height: unit * 2),
+          if (prompt.isNotEmpty)
+            Text(
+              prompt,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: unit * 6.5, fontWeight: FontWeight.w700),
+            )
+          else
+            Text(
+              shown ? "The bets" : "Place your bets",
+              style: TextStyle(fontSize: unit * 8, fontWeight: FontWeight.w700),
+            ),
+          if (amount != null)
+            Padding(
+              padding: EdgeInsets.only(top: unit),
+              child: Text(
+                shown
+                    ? "The goals"
+                    : prompt.isEmpty
+                    ? "How many can you do?"
+                    : "Place your bets",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: unit * 4.5, color: scheme.primary),
+              ),
+            )
+          else if (category != null)
+            Padding(
+              padding: EdgeInsets.only(top: unit),
+              child: Text(
+                category!,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: unit * 4.5, color: scheme.primary),
+              ),
+            ),
+          SizedBox(height: unit),
+          Text(
+            amount == null
+                ? "Right wins your bet, wrong loses it"
+                : question!.pointsMinus > 0
+                ? "Reach your number: ${question!.pointsPlus} points for each one · miss it: −${question!.pointsMinus} for each"
+                : "Reach your number: ${question!.pointsPlus} points for each one",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: unit * 3, color: scheme.onSurfaceVariant),
+          ),
+          SizedBox(height: unit * 4),
+          if (shown)
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: unit * 2.5,
+              runSpacing: unit * 2,
+              children: [
+                for (final (index, team) in state.teams.indexed)
+                  // One after the other, each with a little bounce.
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: Duration(milliseconds: 450 + 250 * index),
+                    curve: Interval(index / (state.teams.length + 1), 1, curve: Curves.easeOutBack),
+                    builder: (context, t, child) => Opacity(
+                      opacity: t.clamp(0.0, 1.0),
+                      child: Transform.scale(scale: 0.6 + 0.4 * t, child: child),
+                    ),
+                    child: Container(
+                      width: unit * 24,
+                      padding: EdgeInsets.symmetric(vertical: unit * 2, horizontal: unit),
+                      decoration: BoxDecoration(
+                        color: teamColor(team) ?? scheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(unit * 2.5),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            team.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: unit * 3.2,
+                              color: teamColor(team) == null ? scheme.onPrimaryContainer : onTeamColor(teamColor(team)!),
+                            ),
+                          ),
+                          Text(
+                            "${bets[team.id] ?? 0}",
+                            style: TextStyle(
+                              fontSize: unit * 10,
+                              fontWeight: FontWeight.w800,
+                              color: teamColor(team) == null ? scheme.onPrimaryContainer : onTeamColor(teamColor(team)!),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            )
+          else
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: unit * 2,
+              runSpacing: unit,
+              children: [
+                for (final team in state.teams)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    padding: EdgeInsets.symmetric(horizontal: unit * 2, vertical: unit),
+                    decoration: BoxDecoration(
+                      color: bets.containsKey(team.id) ? scheme.primaryContainer : scheme.surface,
+                      borderRadius: BorderRadius.circular(unit * 2),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          bets.containsKey(team.id) ? Icons.check_circle : Icons.hourglass_empty,
+                          size: unit * 3.5,
+                          color: bets.containsKey(team.id) ? scheme.primary : scheme.outline,
+                        ),
+                        SizedBox(width: unit),
+                        Text(team.name, style: TextStyle(fontSize: unit * 3.2)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }
@@ -381,7 +590,10 @@ class QuestionDisplay extends StatelessWidget {
         SizedBox(height: unit * 2),
         // Top answers: the list takes over once its first answer is uncovered.
         if (question.type == QuestionType.topAnswers && (round == null || state.feudRevealed.isNotEmpty))
-          Expanded(flex: 4, child: _TopAnswersBoard(state: state, question: question, unit: unit))
+          Expanded(
+            flex: 4,
+            child: _TopAnswersBoard(state: state, question: question, unit: unit),
+          )
         else if (round != null)
           Expanded(
             flex: 3,
@@ -412,8 +624,7 @@ class QuestionDisplay extends StatelessWidget {
               ),
             ),
             // Pictures only: the strip above says it all.
-            QuestionType.progressingReveal when strip && question.information.every((text) => text.trim().isEmpty) =>
-              const SizedBox(),
+            QuestionType.progressingReveal when strip && question.information.every((text) => text.trim().isEmpty) => const SizedBox(),
             QuestionType.progressingReveal => Expanded(
               flex: 2,
               child: _Tiles(
@@ -460,7 +671,6 @@ class QuestionDisplay extends StatelessWidget {
     );
   }
 
-
   static String _feudValue(Question question, int index) {
     final value = question.percentages.elementAtOrNull(index) ?? 0;
     final text = value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
@@ -494,30 +704,30 @@ class _RevealDisplay extends StatelessWidget {
 
     // The question, with the bars that dance while its sound plays.
     Widget questionText(double size, int lines) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (question.hasMusic)
-              Padding(
-                padding: EdgeInsets.only(right: size * 0.5),
-                child: MiniMusicVisualizer(
-                  animate: state.media == MediaPlayback.playing,
-                  color: scheme.primary,
-                  width: size * 0.3,
-                  height: size,
-                  radius: size * 0.08,
-                ),
-              ),
-            Flexible(
-              child: Text(
-                question.text,
-                textAlign: TextAlign.center,
-                maxLines: lines,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: size, fontWeight: FontWeight.w600),
-              ),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (question.hasMusic)
+          Padding(
+            padding: EdgeInsets.only(right: size * 0.5),
+            child: MiniMusicVisualizer(
+              animate: state.media == MediaPlayback.playing,
+              color: scheme.primary,
+              width: size * 0.3,
+              height: size,
+              radius: size * 0.08,
             ),
-          ],
-        );
+          ),
+        Flexible(
+          child: Text(
+            question.text,
+            textAlign: TextAlign.center,
+            maxLines: lines,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: size, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
 
     final picturesStrip = strip
         ? Padding(
@@ -547,7 +757,13 @@ class _RevealDisplay extends StatelessWidget {
           if (caption.isNotEmpty)
             Padding(
               padding: EdgeInsets.only(top: unit),
-              child: Text(caption, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: unit * 3.2)),
+              child: Text(
+                caption,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: unit * 3.2),
+              ),
             ),
           picturesStrip,
         ],
@@ -565,7 +781,9 @@ class _RevealDisplay extends StatelessWidget {
         if (question.description != null)
           Padding(
             padding: EdgeInsets.only(bottom: unit),
-            child: Chip(label: Text(question.description!, style: TextStyle(fontSize: unit * 2.4))),
+            child: Chip(
+              label: Text(question.description!, style: TextStyle(fontSize: unit * 2.4)),
+            ),
           ),
         Flexible(
           flex: 2,
@@ -580,7 +798,10 @@ class _RevealDisplay extends StatelessWidget {
                   Flexible(
                     child: Padding(
                       padding: EdgeInsets.only(right: unit * 2),
-                      child: ClipRRect(borderRadius: BorderRadius.circular(unit * 2), child: Image.file(mainImage, fit: BoxFit.contain)),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(unit * 2),
+                        child: Image.file(mainImage, fit: BoxFit.contain),
+                      ),
                     ),
                   ),
                 Flexible(flex: 2, child: Center(child: questionText(unit * 4, 3))),
@@ -601,40 +822,48 @@ class _RevealDisplay extends StatelessWidget {
                       children: [
                         for (var c = 0; c < columns; c++)
                           Expanded(
-                            child: Builder(builder: (context) {
-                              final i = r * columns + c;
-                              if (i >= texts.length) return const SizedBox();
-                              final visible = i < shown;
-                              return AnimatedOpacity(
-                                duration: const Duration(milliseconds: 300),
-                                opacity: visible ? 1 : 0.3,
-                                child: Container(
-                                  margin: EdgeInsets.all(unit * 0.6),
-                                  padding: EdgeInsets.symmetric(horizontal: unit * 2, vertical: unit),
-                                  decoration: BoxDecoration(color: scheme.surfaceContainerLow, borderRadius: BorderRadius.circular(unit * 1.5)),
-                                  child: Row(
-                                    children: [
-                                      Text("${i + 1}", style: TextStyle(fontSize: unit * 2.6, fontWeight: FontWeight.bold, color: scheme.tertiary)),
-                                      SizedBox(width: unit * 1.5),
-                                      Expanded(
-                                        // Long hints shrink to fit rather than being cut off.
-                                        child: FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: ConstrainedBox(
-                                            constraints: BoxConstraints(maxWidth: unit * 160 / columns),
-                                            child: Text(
-                                              visible ? texts[i] : "",
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(fontSize: unit * 3.2, height: 1.2),
+                            child: Builder(
+                              builder: (context) {
+                                final i = r * columns + c;
+                                if (i >= texts.length) return const SizedBox();
+                                final visible = i < shown;
+                                return AnimatedOpacity(
+                                  duration: const Duration(milliseconds: 300),
+                                  opacity: visible ? 1 : 0.3,
+                                  child: Container(
+                                    margin: EdgeInsets.all(unit * 0.6),
+                                    padding: EdgeInsets.symmetric(horizontal: unit * 2, vertical: unit),
+                                    decoration: BoxDecoration(
+                                      color: scheme.surfaceContainerLow,
+                                      borderRadius: BorderRadius.circular(unit * 1.5),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          "${i + 1}",
+                                          style: TextStyle(fontSize: unit * 2.6, fontWeight: FontWeight.bold, color: scheme.tertiary),
+                                        ),
+                                        SizedBox(width: unit * 1.5),
+                                        Expanded(
+                                          // Long hints shrink to fit rather than being cut off.
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: ConstrainedBox(
+                                              constraints: BoxConstraints(maxWidth: unit * 160 / columns),
+                                              child: Text(
+                                                visible ? texts[i] : "",
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(fontSize: unit * 3.2, height: 1.2),
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              );
-                            }),
+                                );
+                              },
+                            ),
                           ),
                       ],
                     ),
@@ -687,7 +916,10 @@ class _TopAnswersBoard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text("${i + 1}", style: TextStyle(fontSize: unit * 3, fontWeight: FontWeight.w800, color: scheme.tertiary)),
+              Text(
+                "${i + 1}",
+                style: TextStyle(fontSize: unit * 3, fontWeight: FontWeight.w800, color: scheme.tertiary),
+              ),
               SizedBox(width: unit * 2),
               Expanded(
                 child: AnimatedSwitcher(
@@ -715,7 +947,10 @@ class _TopAnswersBoard extends StatelessWidget {
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: unit * 1.2, vertical: unit * 0.4),
                       decoration: BoxDecoration(color: scheme.primary, borderRadius: BorderRadius.circular(unit)),
-                      child: Text(team.name, style: TextStyle(fontSize: unit * 1.9, color: scheme.onPrimary, fontWeight: FontWeight.w600)),
+                      child: Text(
+                        team.name,
+                        style: TextStyle(fontSize: unit * 1.9, color: scheme.onPrimary, fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
               if (shown) ...[
@@ -801,37 +1036,45 @@ class _ConnectionsDisplay extends StatelessWidget {
             runSpacing: unit,
             children: [
               for (final team in state.teams)
-                Builder(builder: (context) {
-                  final answer = round.answers[team.id];
-                  final progress = answer?.connections ?? const ConnectionsProgress();
-                  final took = answer?.secondsTaken(round);
-                  final done = progress.finished(spec) || answer?.locked == true;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    padding: EdgeInsets.symmetric(horizontal: unit * 2, vertical: unit * 1),
-                    decoration: BoxDecoration(
-                      color: progress.solved.length == kConnectionsGroups ? scheme.primaryContainer : scheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(unit * 2),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(team.name, style: TextStyle(fontSize: unit * 3.2, fontWeight: FontWeight.w700)),
-                        SizedBox(width: unit * 1.5),
-                        ConnectionsProgressRow(
-                          solved: progress.solved,
-                          mistakes: progress.mistakes,
-                          allowed: spec.mistakes,
-                          size: unit * 3.2,
-                        ),
-                        if (done && took != null) ...[
-                          SizedBox(width: unit),
-                          Text("${took.toStringAsFixed(1)} s", style: TextStyle(fontSize: unit * 2.6, color: scheme.outline)),
+                Builder(
+                  builder: (context) {
+                    final answer = round.answers[team.id];
+                    final progress = answer?.connections ?? const ConnectionsProgress();
+                    final took = answer?.secondsTaken(round);
+                    final done = progress.finished(spec) || answer?.locked == true;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      padding: EdgeInsets.symmetric(horizontal: unit * 2, vertical: unit * 1),
+                      decoration: BoxDecoration(
+                        color: progress.solved.length == kConnectionsGroups ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(unit * 2),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            team.name,
+                            style: TextStyle(fontSize: unit * 3.2, fontWeight: FontWeight.w700),
+                          ),
+                          SizedBox(width: unit * 1.5),
+                          ConnectionsProgressRow(
+                            solved: progress.solved,
+                            mistakes: progress.mistakes,
+                            allowed: spec.mistakes,
+                            size: unit * 3.2,
+                          ),
+                          if (done && took != null) ...[
+                            SizedBox(width: unit),
+                            Text(
+                              "${took.toStringAsFixed(1)} s",
+                              style: TextStyle(fontSize: unit * 2.6, color: scheme.outline),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  );
-                }),
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ],
@@ -860,11 +1103,7 @@ class _MatchingBoard extends StatelessWidget {
       ..sort((a, b) => a.$1.compareTo(b.$1));
     return Column(
       children: [
-        Expanded(
-          child: _row([
-            for (final (i, pair) in matching.pairs.indexed) (Matching.letter(i), pair.left),
-          ], context),
-        ),
+        Expanded(child: _row([for (final (i, pair) in matching.pairs.indexed) (Matching.letter(i), pair.left)], context)),
         SizedBox(height: unit * 1.5),
         Expanded(child: _row([for (final (number, side) in right) ('$number', side)], context)),
       ],
@@ -886,7 +1125,10 @@ class _MatchingBoard extends StatelessWidget {
                   CircleAvatar(
                     radius: unit * 2.4,
                     backgroundColor: scheme.primary,
-                    child: Text(label, style: TextStyle(fontSize: unit * 2.6, color: scheme.onPrimary, fontWeight: FontWeight.w700)),
+                    child: Text(
+                      label,
+                      style: TextStyle(fontSize: unit * 2.6, color: scheme.onPrimary, fontWeight: FontWeight.w700),
+                    ),
                   ),
                   SizedBox(height: unit * 0.6),
                   if (file(side.image) != null)
@@ -897,7 +1139,9 @@ class _MatchingBoard extends StatelessWidget {
                       ),
                     )
                   else if (side.image != null)
-                    Expanded(child: Icon(Icons.image_outlined, size: unit * 6, color: scheme.outline)),
+                    Expanded(
+                      child: Icon(Icons.image_outlined, size: unit * 6, color: scheme.outline),
+                    ),
                   if (side.text.isNotEmpty)
                     Padding(
                       padding: EdgeInsets.only(top: unit * 0.5),
@@ -1080,34 +1324,39 @@ class _AnswerRoundDisplay extends StatelessWidget {
                 runSpacing: unit * 1.5,
                 children: [
                   for (final team in state.teams)
-                    Builder(builder: (context) {
-                      final answer = round.answers[team.id];
-                      final done = answer?.locked == true || (!round.open && answer != null && !answer.isEmpty);
-                      final writing = answer != null && !answer.isEmpty;
-                      return Container(
-                        padding: EdgeInsets.symmetric(horizontal: unit * 3, vertical: unit * 1.5),
-                        decoration: BoxDecoration(
-                          color: done ? scheme.primaryContainer : scheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(unit * 2),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              done
-                                  ? Icons.lock
-                                  : writing
-                                      ? Icons.edit
-                                      : Icons.hourglass_empty,
-                              size: unit * 3.5,
-                              color: done ? scheme.onPrimaryContainer : scheme.outline,
-                            ),
-                            SizedBox(width: unit * 1.5),
-                            Text(team.name, style: TextStyle(fontSize: unit * 3.2, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      );
-                    }),
+                    Builder(
+                      builder: (context) {
+                        final answer = round.answers[team.id];
+                        final done = answer?.locked == true || (!round.open && answer != null && !answer.isEmpty);
+                        final writing = answer != null && !answer.isEmpty;
+                        return Container(
+                          padding: EdgeInsets.symmetric(horizontal: unit * 3, vertical: unit * 1.5),
+                          decoration: BoxDecoration(
+                            color: done ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(unit * 2),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                done
+                                    ? Icons.lock
+                                    : writing
+                                    ? Icons.edit
+                                    : Icons.hourglass_empty,
+                                size: unit * 3.5,
+                                color: done ? scheme.onPrimaryContainer : scheme.outline,
+                              ),
+                              SizedBox(width: unit * 1.5),
+                              Text(
+                                team.name,
+                                style: TextStyle(fontSize: unit * 3.2, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),
@@ -1119,86 +1368,89 @@ class _AnswerRoundDisplay extends StatelessWidget {
               children: [
                 for (final team in shown)
                   Expanded(
-                    child: Builder(builder: (context) {
-                      final verdict = round.verdicts[team.id];
-                      final awarded = round.awarded[team.id];
-                      final took = round.answers[team.id]?.secondsTaken(round);
-                      return Container(
-                        margin: EdgeInsets.symmetric(horizontal: unit * 0.8),
-                        padding: EdgeInsets.all(unit * 1.5),
-                        decoration: BoxDecoration(
-                          color: scheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(unit * 2),
-                          border: Border.all(
-                            width: unit * 0.5,
-                            color: verdict == null
-                                ? Colors.transparent
-                                : verdict
-                                    ? Colors.green
-                                    : scheme.error,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    team.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: unit * 2.8, fontWeight: FontWeight.w700, color: scheme.primary),
-                                  ),
-                                ),
-                                if (took != null)
-                                  Text(
-                                    "  ${took.toStringAsFixed(1)} s",
-                                    style: TextStyle(fontSize: unit * 2.2, color: scheme.outline),
-                                  ),
-                                if (verdict != null) ...[
-                                  SizedBox(width: unit),
-                                  Icon(
-                                    verdict ? Icons.check_circle : Icons.cancel,
-                                    size: unit * 3.2,
-                                    color: verdict ? Colors.green : scheme.error,
-                                  ),
-                                  if (awarded != null && awarded != 0)
-                                    Text(
-                                      " ${awarded > 0 ? "+" : ""}$awarded",
-                                      style: TextStyle(fontSize: unit * 2.6, fontWeight: FontWeight.w700),
-                                    ),
-                                ],
-                              ],
+                    child: Builder(
+                      builder: (context) {
+                        final verdict = state.results.verdicts[team.id];
+                        // Shown once it is on the scoreboard, not while it is being rated.
+                        final awarded = state.results.given[team.id];
+                        final took = round.answers[team.id]?.secondsTaken(round);
+                        return Container(
+                          margin: EdgeInsets.symmetric(horizontal: unit * 0.8),
+                          padding: EdgeInsets.all(unit * 1.5),
+                          decoration: BoxDecoration(
+                            color: scheme.surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(unit * 2),
+                            border: Border.all(
+                              width: unit * 0.5,
+                              color: verdict == null
+                                  ? Colors.transparent
+                                  : verdict
+                                  ? Colors.green
+                                  : scheme.error,
                             ),
-                            SizedBox(height: unit),
-                            Expanded(
-                              child: Center(
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(maxWidth: unit * 60),
-                                    child: SizedBox(
-                                      // Wide enough to fill the tile; an upright
-                                      // board is scaled down to its height.
-                                      width: round.kind == CompanionKind.whiteboard
-                                          ? unit * 60 * (drawingAspect(round.answers[team.id]?.drawing) < 1 ? 0.6 : 1)
-                                          : null,
-                                      child: AnswerView(
-                                        spec: round.spec,
-                                        answer: round.answers[team.id],
-                                        fontSize: unit * 3.4,
-                                        backgroundImage: backgroundImage,
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      team.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(fontSize: unit * 2.8, fontWeight: FontWeight.w700, color: scheme.primary),
+                                    ),
+                                  ),
+                                  if (took != null)
+                                    Text(
+                                      "  ${took.toStringAsFixed(1)} s",
+                                      style: TextStyle(fontSize: unit * 2.2, color: scheme.outline),
+                                    ),
+                                  if (verdict != null) ...[
+                                    SizedBox(width: unit),
+                                    Icon(
+                                      verdict ? Icons.check_circle : Icons.cancel,
+                                      size: unit * 3.2,
+                                      color: verdict ? Colors.green : scheme.error,
+                                    ),
+                                    if (awarded != null && awarded != 0)
+                                      Text(
+                                        " ${awarded > 0 ? "+" : ""}$awarded",
+                                        style: TextStyle(fontSize: unit * 2.6, fontWeight: FontWeight.w700),
+                                      ),
+                                  ],
+                                ],
+                              ),
+                              SizedBox(height: unit),
+                              Expanded(
+                                child: Center(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(maxWidth: unit * 60),
+                                      child: SizedBox(
+                                        // Wide enough to fill the tile; an upright
+                                        // board is scaled down to its height.
+                                        width: round.kind == CompanionKind.whiteboard
+                                            ? unit * 60 * (drawingAspect(round.answers[team.id]?.drawing) < 1 ? 0.6 : 1)
+                                            : null,
+                                        child: AnswerView(
+                                          spec: round.spec,
+                                          answer: round.answers[team.id],
+                                          fontSize: unit * 3.4,
+                                          backgroundImage: backgroundImage,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
               ],
             ),

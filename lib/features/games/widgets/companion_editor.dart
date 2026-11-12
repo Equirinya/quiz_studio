@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:quiz_show/features/games/widgets/editor_section.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/game/game.dart';
 
@@ -30,6 +31,9 @@ class _CompanionEditorState extends State<CompanionEditor> {
 
   /// With no screen: whether the devices show a buzzer, or nothing at all.
   late bool _phoneBuzzer;
+
+  /// With nothing on the devices: no buzzer boxes either (free questions).
+  late bool _noBuzzer;
   late int? _timer;
   late bool _lockable;
   late int _mistakes;
@@ -54,7 +58,10 @@ class _CompanionEditorState extends State<CompanionEditor> {
     final played = connections ? widget.question.companion : spec;
     _kind = connections ? CompanionKind.connections : spec?.kind;
     _phoneBuzzer = _canBuzz && widget.question.data['noBuzzer'] != true && widget.question.data['noPhoneBuzzer'] != true;
-    _timer = played?.timerSeconds;
+    _noBuzzer = widget.question.data['noBuzzer'] == true;
+    // With a buzzer or nothing on the devices the question has its own timer.
+    final own = widget.question.data['timer'];
+    _timer = played?.timerSeconds ?? (spec == null && own is num ? own.toInt() : null);
     _lockable = played?.lockable ?? true;
     _mistakes = played?.mistakes ?? 3;
     // Read from the stored value: a "Picture" paper without a picture yet
@@ -70,9 +77,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
     _solution = TextEditingController(text: n(spec?.solution));
     _tolerance = TextEditingController(text: n(spec?.tolerance));
     _options = [for (final option in spec?.options ?? const <String>[]) TextEditingController(text: option)];
-    _targets = [
-      for (var i = 0; i < _options.length; i++) TextEditingController(text: spec?.targets.elementAtOrNull(i) ?? ''),
-    ];
+    _targets = [for (var i = 0; i < _options.length; i++) TextEditingController(text: spec?.targets.elementAtOrNull(i) ?? '')];
   }
 
   @override
@@ -101,8 +106,9 @@ class _CompanionEditorState extends State<CompanionEditor> {
       // buzzes, if the question is buzzed at all.
       widget.save({
         'companion': null,
+        'timer': _timer,
         'noPhoneBuzzer': !_phoneBuzzer,
-        if (widget.question.type == QuestionType.free && _phoneBuzzer) 'noBuzzer': false,
+        if (widget.question.type == QuestionType.free) 'noBuzzer': !_phoneBuzzer && _noBuzzer,
       });
       return;
     }
@@ -110,6 +116,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
       // The groups are the question's own; only how it is played goes here.
       widget.save({
         'companion': CompanionSpec(kind: kind, timerSeconds: _timer, lockable: _lockable, mistakes: _mistakes).toMap(),
+        'timer': null,
       });
       return;
     }
@@ -131,6 +138,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
         targets: kind == CompanionKind.match ? [for (final c in _targets) c.text] : const [],
         lockable: _lockable,
       ).toMap(),
+      'timer': null,
       // Teams answer on their devices; a buzzer would only get in the way.
       if (widget.question.type == QuestionType.free) 'noBuzzer': true,
     });
@@ -141,128 +149,124 @@ class _CompanionEditorState extends State<CompanionEditor> {
     _write();
   }
 
-  Widget _number(TextEditingController controller, String label) => SizedBox(
-        width: 110,
-        child: TextField(
-          controller: controller,
-          decoration: InputDecoration(labelText: label, isDense: true),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-          onChanged: (_) => _write(),
-        ),
-      );
+  Widget _number(TextEditingController controller, String label) => TextField(
+    controller: controller,
+    decoration: InputDecoration(labelText: label, isDense: true),
+    keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+    onChanged: (_) => _write(),
+  );
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final kind = _kind;
     final connections = kind == CompanionKind.connections;
+    // A free question with nothing on the devices may still be buzzed on
+    // buzzer boxes, or not at all.
+    final free = widget.question.type == QuestionType.free && widget.question.amountBet == null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Divider(height: 32),
-        Text("On the teams' devices", style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
-        const SizedBox(height: 4),
         Text(
           connections
               ? "Every team solves the puzzle on its own device. You see live which groups each team has found."
+              : kind == null
+              ? "Choose a screen to open on every team's device with the question. You see the answers as they are written "
+                    "and decide when to show them."
               : "Opens on every team's device with the question. You see the answers as they are written and decide when to show them.",
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        FieldGrid(
+          minWidth: 170,
           children: [
             if (!connections)
-              DropdownMenu<String>(
-                label: const Text("Screen"),
-                initialSelection: kind?.name ?? (_phoneBuzzer ? _buzzer : _nothing),
-                dropdownMenuEntries: [
+              FillDropdown<String>(
+                label: "On the devices",
+                value: kind?.name ?? (_phoneBuzzer ? _buzzer : _nothing),
+                entries: [
                   if (_canBuzz) const DropdownMenuEntry(value: _buzzer, label: "Buzzer"),
                   const DropdownMenuEntry(value: _nothing, label: "Nothing"),
                   for (final option in companionKindsFor(widget.question.type, current: kind))
                     DropdownMenuEntry(
                       value: option.name,
-                      label: option == recommendedCompanionKind(widget.question.type) ? "${option.uiString} (recommended)" : option.uiString,
+                      label: option.uiString,
+                      trailingIcon: option == recommendedCompanionKind(widget.question.type)
+                          ? const Tooltip(message: "Recommended", child: Icon(Icons.star_outline, size: 18))
+                          : null,
                     ),
                 ],
                 onSelected: (value) => _change(() {
                   _kind = CompanionKind.values.where((k) => k.name == value).firstOrNull;
                   if (_kind == null) _phoneBuzzer = value == _buzzer;
+                  if (_kind == null && _phoneBuzzer) _noBuzzer = false;
                 }),
               ),
-            if (kind != null)
-              DropdownMenu<int?>(
-                label: const Text("Timer"),
-                initialSelection: _timer,
-                dropdownMenuEntries: [
-                  const DropdownMenuEntry(value: null, label: "No timer"),
-                  for (final seconds in [10, 20, 30, 45, 60, 90, 120, 180, 300])
-                    DropdownMenuEntry(value: seconds, label: seconds < 60 ? "$seconds seconds" : "${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')} minutes"),
-                ],
-                onSelected: (value) => _change(() => _timer = value),
-              ),
+            TimerDropdown(seconds: _timer, onChanged: (value) => _change(() => _timer = value)),
             if (connections)
-              DropdownMenu<int>(
-                label: const Text("Mistakes allowed"),
-                initialSelection: _mistakes,
-                dropdownMenuEntries: [for (var n = 1; n <= 6; n++) DropdownMenuEntry(value: n, label: "$n")],
+              FillDropdown<int>(
+                label: "Mistakes allowed",
+                value: _mistakes,
+                entries: [for (var n = 1; n <= 6; n++) DropdownMenuEntry(value: n, label: "$n")],
                 onSelected: (value) => _change(() => _mistakes = value ?? 3),
               ),
             if (kind == CompanionKind.whiteboard)
-              DropdownMenu<String>(
-                label: const Text("Paper"),
-                initialSelection: _background,
-                dropdownMenuEntries: [
-                  for (final entry in _backgroundNames.entries) DropdownMenuEntry(value: entry.key, label: entry.value),
-                ],
+              FillDropdown<String>(
+                label: "Paper",
+                value: _background,
+                entries: [for (final entry in _backgroundNames.entries) DropdownMenuEntry(value: entry.key, label: entry.value)],
                 onSelected: (value) => _change(() => _background = value ?? 'blank'),
               ),
-            if (kind == CompanionKind.whiteboard && _background == 'image')
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  MediaButton(
-                    gameId: widget.gameId,
-                    kind: MediaKind.image,
-                    name: _backgroundImage,
-                    onChanged: (name) => _change(() => _backgroundImage = name),
-                  ),
-                  Text(_backgroundImage == null ? "Choose the picture to draw on" : "Picture set"),
-                ],
-              ),
             if ((kind == CompanionKind.whiteboard && _background == 'list') || kind == CompanionKind.list)
-              DropdownMenu<int>(
-                label: const Text("Rows"),
-                initialSelection: _listRows,
-                dropdownMenuEntries: [for (var rows = 2; rows <= 12; rows++) DropdownMenuEntry(value: rows, label: "$rows")],
+              FillDropdown<int>(
+                label: "Rows",
+                value: _listRows,
+                entries: [for (var rows = 2; rows <= 12; rows++) DropdownMenuEntry(value: rows, label: "$rows")],
                 onSelected: (value) => _change(() => _listRows = value ?? 5),
               ),
-            if (_hasRange) ...[
-              _number(_solution, "Right value"),
-              _number(_tolerance, "Right within ±"),
-              SizedBox(
-                width: 110,
-                child: TextField(
-                  controller: _unit,
-                  decoration: const InputDecoration(labelText: "Unit", isDense: true),
-                  onChanged: (_) => _write(),
-                ),
-              ),
-            ],
-            if (kind == CompanionKind.slider) ...[_number(_min, "From"), _number(_max, "To"), _number(_step, "Step")],
           ],
         ),
-        if (kind != null)
+        if (kind == CompanionKind.whiteboard && _background == 'image')
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                MediaButton(
+                  gameId: widget.gameId,
+                  kind: MediaKind.image,
+                  name: _backgroundImage,
+                  onChanged: (name) => _change(() => _backgroundImage = name),
+                ),
+                Expanded(child: Text(_backgroundImage == null ? "Choose the picture to draw on" : "Picture set")),
+              ],
+            ),
+          ),
+        if (_hasRange) ...[
+          const SizedBox(height: 12),
+          FieldGrid(
+            children: [
+              if (kind == CompanionKind.slider) ...[_number(_min, "From"), _number(_max, "To"), _number(_step, "Step")],
+              TextField(
+                controller: _unit,
+                decoration: const InputDecoration(labelText: "Unit", isDense: true),
+                onChanged: (_) => _write(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FieldGrid(children: [_number(_solution, "Right value"), _number(_tolerance, "Right within ±")]),
+        ],
+        if (kind == null && free && !_phoneBuzzer)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(connections ? "Teams can stop early" : "Teams can lock in early"),
-            subtitle: Text(
-              _lockable
-                  ? "Locking in ends a team's time, and how long it took is kept"
-                  : "Every answer counts as it stands when the time is up or you end the round",
-            ),
+            title: const Text("No buzzing at all"),
+            subtitle: const Text("Buzzer boxes stay off too, e.g. for estimation questions"),
+            value: _noBuzzer,
+            onChanged: (value) => _change(() => _noBuzzer = value),
+          ),
+        if (kind != null)
+          LockInSwitch(
+            title: connections ? "Teams can stop early" : "Teams can lock in early",
             value: _lockable,
             onChanged: (value) => _change(() => _lockable = value),
           ),
@@ -337,14 +341,14 @@ List<CompanionKind> companionKindsFor(QuestionType type, {CompanionKind? current
     // The answers come from the question itself.
     QuestionType.abcd => const [CompanionKind.choice, CompanionKind.whiteboard, CompanionKind.text],
     QuestionType.free => const [
-        CompanionKind.whiteboard,
-        CompanionKind.text,
-        CompanionKind.number,
-        CompanionKind.slider,
-        CompanionKind.order,
-        CompanionKind.match,
-        CompanionKind.list,
-      ],
+      CompanionKind.whiteboard,
+      CompanionKind.text,
+      CompanionKind.number,
+      CompanionKind.slider,
+      CompanionKind.order,
+      CompanionKind.match,
+      CompanionKind.list,
+    ],
     QuestionType.feud => const [CompanionKind.whiteboard, CompanionKind.text, CompanionKind.list],
     _ => const [CompanionKind.whiteboard, CompanionKind.text],
   };
@@ -353,3 +357,50 @@ List<CompanionKind> companionKindsFor(QuestionType type, {CompanionKind? current
 
 /// The screen a question of [type] is meant for, marked in the menu.
 CompanionKind? recommendedCompanionKind(QuestionType type) => type == QuestionType.abcd ? CompanionKind.choice : null;
+
+/// How teams answer [question], in one line: "Slider 1900–2020 · right 1989 ±2 · timer 0:30".
+String answeringSummary(Question question) {
+  String n(double? v) => v == null ? '?' : formatNumber(v);
+  String? timer(int? seconds) => seconds == null ? null : "timer ${timerLabel(seconds)}";
+  final companion = question.companion;
+  final parts = switch (question.type) {
+    QuestionType.rapidFire => [
+      (question.rapidFire?.mode ?? RapidMode.buzzer).uiString,
+      "progress: ${(question.rapidFire?.progress ?? ProgressStyle.values.first).uiString.toLowerCase()}",
+    ],
+    QuestionType.topAnswers => [
+      (question.topAnswers?.mode ?? TopAnswersMode.buzzer).uiString,
+      ?timer(companion?.timerSeconds),
+    ],
+    QuestionType.matching => ["On the devices", ?timer(companion?.timerSeconds)],
+    QuestionType.connections => [
+      "On the devices",
+      ?timer(companion?.timerSeconds),
+      "${companion?.mistakes ?? 3} mistakes allowed",
+    ],
+    _ when companion == null => [
+      if (!question.buzzerable)
+        "Out loud, no buzzer"
+      else if (question.noPhoneBuzzer)
+        "Buzzer boxes only"
+      else
+        "Buzzer",
+      ?timer(question.questionTimer),
+    ],
+    _ => [
+      switch (companion.kind) {
+        CompanionKind.slider => "Slider ${n(companion.min)}–${n(companion.max)}",
+        CompanionKind.whiteboard => "Whiteboard, ${(_backgroundNames[companion.background] ?? "blank").toLowerCase()}",
+        CompanionKind.order => "Put ${companion.options.length} in order",
+        CompanionKind.match => "Match ${companion.options.length} pairs",
+        CompanionKind.list => "Answer list, ${companion.listRows} rows",
+        final kind => kind.uiString,
+      },
+      if (companion.solution != null)
+        "right ${n(companion.solution)}${companion.tolerance == null || companion.tolerance == 0 ? '' : ' ±${n(companion.tolerance)}'}"
+            "${companion.unit == null ? '' : ' ${companion.unit}'}",
+      ?timer(companion.timerSeconds),
+    ],
+  };
+  return parts.join(" · ");
+}

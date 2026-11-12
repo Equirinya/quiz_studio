@@ -5,6 +5,7 @@ library;
 import 'commands.dart';
 import 'companion.dart';
 import 'content.dart';
+import 'scoring.dart';
 import 'session_state.dart';
 import 'top_answers.dart';
 
@@ -16,9 +17,9 @@ import 'top_answers.dart';
 /// Only answers that are final count: locked in, or the round is closed.
 /// Empty when there is nothing the button would do, so it is not shown.
 List<Command> autoRating(SessionState state, AnswerRound round, Question question) => [
-      for (final command in _candidates(state, round, question))
-        if (_final(round, command) && _changes(round, command, question)) command,
-    ];
+  for (final command in _candidates(state, round, question))
+    if (_final(round, command) && _changes(state, round, command, question)) command,
+];
 
 bool _final(AnswerRound round, Command command) {
   final teamId = switch (command) {
@@ -28,18 +29,19 @@ bool _final(AnswerRound round, Command command) {
   return teamId != null && (!round.open || round.answers[teamId]?.locked == true);
 }
 
-bool _changes(AnswerRound round, Command command, Question question) => switch (command) {
-      RateAnswer(:final teamId, :final correct) => round.verdicts[teamId] != correct ||
-          round.awarded[teamId] != (correct == true ? question.pointsPlus : -question.pointsMinus),
-      AwardAnswer(:final teamId, :final points) => round.awarded[teamId] != points,
-      MarkTopAnswers(:final teamId, :final found) =>
-        !round.awarded.containsKey(teamId) || !_sameSet(round.found[teamId] ?? const [], found),
-      _ => true,
-    };
+bool _changes(SessionState state, AnswerRound round, Command command, Question question) => switch (command) {
+  RateAnswer(:final teamId, :final correct) => state.results.verdicts[teamId] != correct || state.results.points.containsKey(teamId),
+  AwardAnswer(:final teamId, :final points) => state.results.points[teamId] != points,
+  MarkTopAnswers(:final teamId, :final found) =>
+    !state.results.points.containsKey(teamId) || !_sameSet(round.found[teamId] ?? const [], found),
+  _ => true,
+};
 
 bool _sameSet(List<int> a, List<int> b) => a.toSet().length == b.toSet().length && a.toSet().containsAll(b);
 
 List<Command> _candidates(SessionState state, AnswerRound round, Question question) {
+  // Whether a team reached the number it bet is for the gamemaster to say.
+  if (question.amountBet != null) return const [];
   final top = question.topAnswers;
   if (question.type == QuestionType.topAnswers) {
     if (top == null || round.kind != CompanionKind.list) return const [];
@@ -57,7 +59,7 @@ List<Command> _candidates(SessionState state, AnswerRound round, Question questi
       commands.add(
         partial.right == partial.of || partial.right == 0
             ? RateAnswer(team.id, correct: partial.right == partial.of)
-            : AwardAnswer(team.id, partialPoints(partial, question.pointsPlus)),
+            : AwardAnswer(team.id, partialPoints(partial, pointsIfRight(state, question, team.id))),
       );
       continue;
     }
@@ -69,10 +71,25 @@ List<Command> _candidates(SessionState state, AnswerRound round, Question questi
 
 /// Points for an estimate, shared out the way [scoring] says: a full hit is
 /// rated right, nothing is rated wrong without taking points away.
-List<Command> estimateRating(AnswerRound round, Question question, EstimateScoring scoring) => [
-  for (final MapEntry(key: teamId, value: points) in estimatePoints(round.spec, round.answers, question.pointsPlus, scoring).entries)
-    points == question.pointsPlus ? RateAnswer(teamId, correct: true) : AwardAnswer(teamId, points),
-];
+///
+/// With bets each team's share is of its own bet, and a team that gets
+/// nothing loses its bet.
+List<Command> estimateRating(SessionState state, AnswerRound round, Question question, EstimateScoring scoring) {
+  if (question.amountBet != null) return const [];
+  if (!question.betting || state.betting == null) {
+    return [
+      for (final MapEntry(key: teamId, value: points) in estimatePoints(round.spec, round.answers, question.pointsPlus, scoring).entries)
+        points == question.pointsPlus ? RateAnswer(teamId, correct: true) : AwardAnswer(teamId, points),
+    ];
+  }
+  const whole = 1000;
+  return [
+    for (final MapEntry(key: teamId, value: share) in estimatePoints(round.spec, round.answers, whole, scoring).entries)
+      share == whole || share == 0
+          ? RateAnswer(teamId, correct: share == whole)
+          : AwardAnswer(teamId, (state.betting!.betOf(teamId) * share / whole).round()),
+  ];
+}
 
 /// The answers on the top answers list that [team] found, as ticked so far.
 List<int> foundBy(AnswerRound round, String teamId) => round.found[teamId] ?? const [];

@@ -6,6 +6,7 @@ import 'commands.dart';
 import 'companion.dart';
 import 'content.dart';
 import 'rapid_fire.dart';
+import 'scoring.dart';
 import 'session_state.dart';
 
 /// Something the presenter should do once, as opposed to state it should show.
@@ -44,6 +45,8 @@ class Reduction {
 /// Whether a buzz by any team would count right now.
 bool buzzersOpen(SessionState state, GameContent? game) {
   if (state.phase == Phase.buzzerTest) return true;
+  // Bets come first.
+  if (state.waitingForBets) return false;
   final ref = state.current;
   final question = ref == null ? null : game?.question(ref);
   if (question == null || !question.buzzerable) return false;
@@ -81,10 +84,30 @@ String? feudOpponent(SessionState state) {
 ///
 /// [now] is the host's clock in milliseconds; it is only needed to start the
 /// timer of an answer round, and is passed in so this stays a pure function.
+///
+/// Every change to a team's score, whatever the command, is added to
+/// [SessionState.scoreLog].
 Reduction reduce(SessionState s, Command command, GameContent? game, {int? now}) {
+  final result = _reduce(s, command, game, now: now);
+  if (!result.accepted) return result;
+  final before = {for (final team in s.teams) team.id: team.points};
+  var id = s.scoreLog.isEmpty ? 0 : s.scoreLog.last.id;
+  final changes = [
+    for (final team in result.state.teams)
+      if (before[team.id] case final points? when points != team.points)
+        ScoreChange(id: ++id, teamId: team.id, delta: team.points - points),
+  ];
+  if (changes.isEmpty) return result;
+  final log = [...s.scoreLog, ...changes];
+  return Reduction(
+    result.state.copyWith(scoreLog: log.length > kScoreLogLength ? log.sublist(log.length - kScoreLogLength) : log),
+    effects: result.effects,
+  );
+}
+
+Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}) {
   final question = s.current == null ? null : game?.question(s.current!);
-  final questionOpen =
-      s.current != null && (s.phase == Phase.question || s.phase == Phase.buzzered || s.phase == Phase.answerRevealed);
+  final questionOpen = s.current != null && (s.phase == Phase.question || s.phase == Phase.buzzered || s.phase == Phase.answerRevealed);
 
   switch (command) {
     // ── game and board ───────────────────────────────────────────────────────
@@ -100,15 +123,17 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       if (s.phase == Phase.buzzerTest || game?.question(ref) == null) return _no(s);
       final opened = game!.question(ref)!;
       final companion = opened.companion;
-      final next = _backToBoard(s).copyWith(
+      final next = _backToBoard(_givenBeforeClosing(s, game)).copyWith(
         phase: Phase.question,
         current: ref,
         groupId: game.groupOfCategory(ref.categoryId)?.id ?? s.groupId,
         boardFocus: ref.categoryId,
         played: {...s.played, ?s.current?.key},
         // A question with a companion screen puts it on the teams' devices
-        // the moment it opens.
-        answerRound: companion == null ? null : _newRound(companion, now),
+        // the moment it opens; with bets, once they are placed.
+        answerRound: companion == null || opened.hasBets ? null : _newRound(companion, now),
+        betting: opened.hasBets ? const Betting() : null,
+        timer: opened.hasBets ? null : _timerFor(opened, now),
       );
       // A Fragenhagel starts with its first item, sound and all.
       return _ok(opened.type == QuestionType.rapidFire ? _rapidAt(next, opened, 0, now) : next, const [SoundEffect(effectQuestionOpen)]);
@@ -116,8 +141,53 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
     case CloseQuestion(:final markPlayed):
       if (s.current == null) return _no(s);
       return _ok(
-        _backToBoard(s).copyWith(played: markPlayed ? {...s.played, s.current!.key} : null),
+        _backToBoard(markPlayed ? _givenBeforeClosing(s, game) : s).copyWith(played: markPlayed ? {...s.played, s.current!.key} : null),
         [if (markPlayed) const SoundEffect(effectAnswerClosed)],
+      );
+
+    // ── bets ─────────────────────────────────────────────────────────────────
+    case PlaceBet(:final teamId, :final amount):
+      final team = s.team(teamId);
+      final betting = s.betting;
+      if (!s.placingBets || betting == null || team == null || question == null) return _no(s);
+      final limit = maxBet(team, question);
+      final bet = amount < 0 ? 0 : (amount > limit ? limit : amount);
+      if (betting.bets[teamId] == bet) return _no(s);
+      return _ok(s.copyWith(betting: betting.copyWith(bets: {...betting.bets, teamId: bet})));
+
+    case CloseBets():
+      if (!s.placingBets || question == null) return _no(s);
+      return _ok(s.copyWith(betting: s.betting!.copyWith(open: false, shown: true)), const [SoundEffect(effectReveal)]);
+
+    case StartQuestion():
+      if (!s.betsShown || question == null) return _no(s);
+      var companion = question.companion;
+      // A list to fill in gets a line for every one the boldest team bet.
+      if (companion != null && question.amountBet != null) {
+        final most = s.betting!.bets.values.fold(0, (a, b) => a > b ? a : b);
+        if (most > companion.listRows) companion = companion.withListRows(most > 20 ? 20 : most);
+      }
+      return _ok(
+        s.copyWith(
+          betting: s.betting!.copyWith(shown: false),
+          answerRound: companion == null ? null : _newRound(companion, now),
+          timer: _timerFor(question, now),
+        ),
+        const [SoundEffect(effectQuestionOpen)],
+      );
+
+    case JudgeBet(:final teamId, :final reached):
+      if (question?.amountBet == null || s.betting == null) return _no(s);
+      return _reduce(s, RateAnswer(teamId, correct: reached), game, now: now);
+
+    case TimeUp():
+      final timer = s.timer;
+      if (timer == null || !timer.running) return _no(s);
+      return _ok(
+        s.copyWith(
+          timer: QuestionTimer(openedAtMillis: timer.openedAtMillis, endsAtMillis: timer.endsAtMillis, running: false),
+        ),
+        const [SoundEffect(effectTimesUp)],
       );
 
     case UnmarkPlayed(:final ref):
@@ -152,24 +222,22 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       if (correct && question.type == QuestionType.rapidFire) {
         // Right: the points, and straight on to the next item.
         final finished = s.revealed + 1 >= question.maxReveal;
-        return _ok(
-          _rapidAt(s.copyWith(teams: _addPoints(s.teams, team, question.pointsPlus)), question, s.revealed + 1, now),
-          [const SoundEffect(effectAnswerCorrect), if (finished) const SoundEffect(effectFanfare)],
-        );
+        return _ok(_rapidAt(s.copyWith(teams: _addPoints(s.teams, team, question.pointsPlus)), question, s.revealed + 1, now), [
+          const SoundEffect(effectAnswerCorrect),
+          if (finished) const SoundEffect(effectFanfare),
+        ]);
       }
       if (correct) {
         return _ok(
-          _backToBoard(s).copyWith(
-            teams: _addPoints(s.teams, team, question.pointsPlus),
-            played: {...s.played, s.current!.key},
-          ),
+          _backToBoard(
+            s,
+          ).copyWith(teams: _addPoints(s.teams, team, pointsIfRight(s, question, team)), played: {...s.played, s.current!.key}),
           const [SoundEffect(effectAnswerCorrect)],
         );
       }
-      return _ok(
-        _nextBuzzer(s, question).copyWith(teams: _addPoints(s.teams, team, -question.pointsMinus)),
-        const [SoundEffect(effectAnswerWrong)],
-      );
+      return _ok(_nextBuzzer(s, question).copyWith(teams: _addPoints(s.teams, team, -pointsIfWrong(s, question, team))), const [
+        SoundEffect(effectAnswerWrong),
+      ]);
 
     case SkipBuzzer():
       if (s.phase != Phase.buzzered || s.buzzQueue.length < 2) return _no(s);
@@ -177,16 +245,18 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
 
     case ReopenQuestion():
       if (s.phase != Phase.buzzered || question == null) return _no(s);
-      return _ok(s.copyWith(
-        phase: Phase.question,
-        buzzQueue: const [],
-        wrongAttempts: 0,
-        media: question.musicAt(s.revealed) != null ? MediaPlayback.playing : null,
-      ));
+      return _ok(
+        s.copyWith(
+          phase: Phase.question,
+          buzzQueue: const [],
+          wrongAttempts: 0,
+          media: question.musicAt(s.revealed) != null ? MediaPlayback.playing : null,
+        ),
+      );
 
     // ── reveals ──────────────────────────────────────────────────────────────
     case Reveal(:final delta):
-      if (!questionOpen || question == null || delta == 0) return _no(s);
+      if (!questionOpen || question == null || delta == 0 || s.waitingForBets) return _no(s);
       final revealed = s.revealed + delta;
       if (revealed < 0 || revealed > question.maxReveal) return _no(s);
       if (question.type == QuestionType.rapidFire) {
@@ -196,18 +266,15 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
         if (devices && delta < 0) return _no(s);
         final scored = devices ? _scoreRapidItem(s, question) : s;
         final finished = revealed >= question.maxReveal;
-        return _ok(_rapidAt(scored, question, revealed, now), [
-          if (delta > 0) SoundEffect(finished ? effectFanfare : effectNextItem),
-        ]);
+        return _ok(_rapidAt(scored, question, revealed, now), [if (delta > 0) SoundEffect(finished ? effectFanfare : effectNextItem)]);
       }
       // The enlarged image follows a new reveal and never points past the
       // last revealed one.
       final focus = delta > 0 ? revealed : (s.imageFocus > revealed ? revealed : s.imageFocus);
       // Teams keep playing while groups come up; their time runs on.
-      return _ok(
-        s.copyWith(revealed: revealed, imageFocus: question.type == QuestionType.progressingReveal ? focus : null),
-        [if (question.type == QuestionType.connections && delta > 0) const SoundEffect(effectReveal)],
-      );
+      return _ok(s.copyWith(revealed: revealed, imageFocus: question.type == QuestionType.progressingReveal ? focus : null), [
+        if (question.type == QuestionType.connections && delta > 0) const SoundEffect(effectReveal),
+      ]);
 
     case ImageFocus(:final delta):
       if (!questionOpen || question?.type != QuestionType.progressingReveal || delta == 0) return _no(s);
@@ -266,21 +333,22 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       final finder = s.foundBy[index];
       if (s.feudRevealed.contains(index)) {
         // Covered again: whoever found it gives the points back.
-        return _ok(s.copyWith(
-          feudRevealed: [...s.feudRevealed]..remove(index),
-          foundBy: {...s.foundBy}..remove(index),
-          teams: finder == null ? null : _addPoints(s.teams, finder, -top.pointsOf(index, question!.pointsPlus)),
-          phase: s.phase == Phase.answerRevealed ? Phase.question : null,
-        ));
+        return _ok(
+          s.copyWith(
+            feudRevealed: [...s.feudRevealed]..remove(index),
+            foundBy: {...s.foundBy}..remove(index),
+            teams: finder == null ? null : _addPoints(s.teams, finder, -top.pointsOf(index, question!.pointsPlus)),
+            phase: s.phase == Phase.answerRevealed ? Phase.question : null,
+          ),
+        );
       }
       final revealed = [...s.feudRevealed, index];
       final all = revealed.length >= top.items.length;
       final answering = !top.onDevices && s.phase == Phase.buzzered && s.buzzQueue.isNotEmpty ? s.buzzQueue.first : null;
       if (answering == null) {
-        return _ok(
-          s.copyWith(feudRevealed: revealed, phase: all && !top.onDevices ? Phase.answerRevealed : null),
-          [SoundEffect(all ? effectFanfare : effectReveal)],
-        );
+        return _ok(s.copyWith(feudRevealed: revealed, phase: all && !top.onDevices ? Phase.answerRevealed : null), [
+          SoundEffect(all ? effectFanfare : effectReveal),
+        ]);
       }
       // The answering team named it: its points, and the others may buzz again.
       final next = s.copyWith(
@@ -297,18 +365,25 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       final top = question?.topAnswers;
       final round = s.answerRound;
       if (round == null || top == null || s.team(teamId) == null) return _no(s);
-      final indices = {for (final i in found) if (i >= 0 && i < top.items.length) i}.toList()..sort();
+      final indices = {
+        for (final i in found)
+          if (i >= 0 && i < top.items.length) i,
+      }.toList()..sort();
       final before = [...?round.found[teamId]]..sort();
-      if (_sameList(indices, before) && round.awarded.containsKey(teamId)) return _no(s);
+      if (_sameList(indices, before) && s.results.points.containsKey(teamId)) return _no(s);
       final points = top.pointsFor(indices, question!.pointsPlus);
-      final marked = round.copyWith(found: {...round.found, teamId: indices});
-      return _ok(_award(s, marked, teamId, points, verdict: indices.isNotEmpty));
+      return _ok(
+        s.copyWith(
+          answerRound: round.copyWith(found: {...round.found, teamId: indices}),
+          results: s.results.rated(teamId, indices.isNotEmpty, points: points),
+        ),
+      );
 
     // ── audio ────────────────────────────────────────────────────────────────
     case SetMedia(:final playback):
       if (playback == s.media) return _no(s);
       if (playback != MediaPlayback.stopped) {
-        final listening = s.phase == Phase.question || s.phase == Phase.buzzered;
+        final listening = (s.phase == Phase.question || s.phase == Phase.buzzered) && !s.waitingForBets;
         if (!listening || question?.musicAt(s.revealed) == null) return _no(s);
       }
       // The question's own sound and the background music never overlap.
@@ -316,10 +391,7 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
 
     case SetMusic(:final slot):
       if (slot == s.music || (slot != null && !musicSlots.contains(slot))) return _no(s);
-      return _ok(s.copyWith(
-        music: slot,
-        media: slot != null && s.media == MediaPlayback.playing ? MediaPlayback.paused : null,
-      ));
+      return _ok(s.copyWith(music: slot, media: slot != null && s.media == MediaPlayback.playing ? MediaPlayback.paused : null));
 
     case SetAmbience(:final slot):
       if (slot == s.ambience || (slot != null && !ambienceAssets.containsKey(slot))) return _no(s);
@@ -358,7 +430,14 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       final trimmed = name.trim();
       if (teamId.isEmpty || trimmed.isEmpty) return _no(s);
       if (s.teams.any((team) => team.id == teamId || team.name == trimmed)) return _no(s);
-      return _ok(s.copyWith(teams: [...s.teams, Team(id: teamId, name: trimmed)]));
+      return _ok(
+        s.copyWith(
+          teams: [
+            ...s.teams,
+            Team(id: teamId, name: trimmed),
+          ],
+        ),
+      );
 
     case RenameTeam(:final teamId, :final name):
       final trimmed = name.trim();
@@ -369,20 +448,25 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       if (s.team(teamId) == null) return _no(s);
       final queue = s.buzzQueue.where((id) => id != teamId).toList();
       final round = s.answerRound;
-      return _ok(s.copyWith(
-        teams: s.teams.where((team) => team.id != teamId).toList(),
-        buzzQueue: queue,
-        // Nobody is left to answer: let the others buzz again.
-        phase: s.phase == Phase.buzzered && queue.isEmpty ? Phase.question : null,
-        answerRound: round?.copyWith(
-          answers: {...round.answers}..remove(teamId),
-          revealed: [...round.revealed]..remove(teamId),
-          verdicts: {...round.verdicts}..remove(teamId),
-          awarded: {...round.awarded}..remove(teamId),
-          found: {...round.found}..remove(teamId),
+      return _ok(
+        s.copyWith(
+          teams: s.teams.where((team) => team.id != teamId).toList(),
+          buzzQueue: queue,
+          // Nobody is left to answer: let the others buzz again.
+          phase: s.phase == Phase.buzzered && queue.isEmpty ? Phase.question : null,
+          answerRound: round?.copyWith(
+            answers: {...round.answers}..remove(teamId),
+            revealed: [...round.revealed]..remove(teamId),
+            found: {...round.found}..remove(teamId),
+          ),
+          betting: s.betting?.copyWith(bets: {...s.betting!.bets}..remove(teamId)),
+          results: s.results.without(teamId),
+          foundBy: {
+            for (final entry in s.foundBy.entries)
+              if (entry.value != teamId) entry.key: entry.value,
+          },
         ),
-        foundBy: {for (final entry in s.foundBy.entries) if (entry.value != teamId) entry.key: entry.value},
-      ));
+      );
 
     case SetTeamColor(:final teamId, :final color):
       if (s.team(teamId) == null || s.team(teamId)!.color == color) return _no(s);
@@ -399,7 +483,7 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
 
     // ── answers from the teams' own devices ─────────────────────────────────
     case OpenAnswers(:final spec):
-      if (!questionOpen) return _no(s);
+      if (!questionOpen || s.waitingForBets) return _no(s);
       return _ok(s.copyWith(answerRound: _newRound(spec, now)));
 
     case SubmitAnswer(:final teamId, :final answer):
@@ -454,16 +538,16 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
     case AwardConnections():
       final round = s.answerRound;
       if (round == null || round.kind != CompanionKind.connections || question == null) return _no(s);
-      var next = s;
-      var changed = false;
+      // Rated and given in one go: every group found is worth its share.
+      var results = s.results;
       for (final team in s.teams) {
         final points = connectionsPoints(question.pointsPlus, round.answers[team.id]?.connections);
-        final current = next.answerRound!;
-        if (current.awarded.containsKey(team.id) && current.awarded[team.id] == points) continue;
-        next = _award(next, current, team.id, points, verdict: points > 0);
-        changed = true;
+        results = results.rated(team.id, points > 0, points: points);
       }
-      return changed ? _ok(next, const [SoundEffect(effectAnswerCorrect)]) : _no(s);
+      final given = _give(s.copyWith(results: results), question);
+      return identical(given.teams, s.teams) && given.results.given.length == s.results.given.length
+          ? _no(s)
+          : _ok(given, const [SoundEffect(effectAnswerCorrect)]);
 
     case LockAnswers():
       if (s.answerRound?.open != true) return _no(s);
@@ -472,13 +556,15 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
     case UnlockAnswers():
       final round = s.answerRound;
       if (round == null) return _no(s);
-      return _ok(s.copyWith(
-        answerRound: round.copyWith(
-          open: true,
-          endsAtMillis: null,
-          answers: {for (final entry in round.answers.entries) entry.key: entry.value.asLocked(false)},
+      return _ok(
+        s.copyWith(
+          answerRound: round.copyWith(
+            open: true,
+            endsAtMillis: null,
+            answers: {for (final entry in round.answers.entries) entry.key: entry.value.asLocked(false)},
+          ),
         ),
-      ));
+      );
 
     case RevealAnswer(:final teamId, :final show):
       final round = s.answerRound;
@@ -494,28 +580,37 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
     case RevealAnswers():
       final round = s.answerRound;
       if (round == null || s.teams.every((team) => round.revealed.contains(team.id))) return _no(s);
-      return _ok(s.copyWith(
-        answerRound: _reveal(round, [
-          ...round.revealed,
-          for (final team in s.teams)
-            if (!round.revealed.contains(team.id)) team.id,
-        ]),
-      ));
-
-    case RateAnswer(:final teamId, :final correct):
-      final round = s.answerRound;
-      if (round == null || question == null || s.team(teamId) == null) return _no(s);
-      final points = correct == null ? 0 : (correct ? question.pointsPlus : -question.pointsMinus);
-      if (round.verdicts[teamId] == correct && (round.awarded[teamId] ?? 0) == points) return _no(s);
       return _ok(
-        _award(s, round, teamId, points, verdict: correct),
-        [if (correct != null) SoundEffect(correct ? effectAnswerCorrect : effectAnswerWrong)],
+        s.copyWith(
+          answerRound: _reveal(round, [
+            ...round.revealed,
+            for (final team in s.teams)
+              if (!round.revealed.contains(team.id)) team.id,
+          ]),
+        ),
       );
 
+    case RateAnswer(:final teamId, :final correct):
+      if (question == null || s.team(teamId) == null || s.waitingForBets) return _no(s);
+      final results = s.results.rated(teamId, correct);
+      if (s.results.verdicts[teamId] == correct && !s.results.points.containsKey(teamId)) return _no(s);
+      return _ok(s.copyWith(results: results), [if (correct != null) SoundEffect(correct ? effectAnswerCorrect : effectAnswerWrong)]);
+
     case AwardAnswer(:final teamId, :final points):
-      final round = s.answerRound;
-      if (round == null || s.team(teamId) == null) return _no(s);
-      return _ok(_award(s, round, teamId, points, verdict: points > 0));
+      if (question == null || s.team(teamId) == null || s.waitingForBets) return _no(s);
+      if (s.results.points[teamId] == points && s.results.verdicts[teamId] == points > 0) return _no(s);
+      return _ok(s.copyWith(results: s.results.rated(teamId, points > 0, points: points)));
+
+    case PlaceTeam(:final teamId):
+      if (question == null || !question.ranked || s.team(teamId) == null) return _no(s);
+      final order = s.results.order;
+      return _ok(
+        s.copyWith(results: s.results.copyWith(order: order.contains(teamId) ? ([...order]..remove(teamId)) : [...order, teamId])),
+      );
+
+    case GivePoints():
+      if (question == null || pointsToGive(s, question).isEmpty) return _no(s);
+      return _ok(_give(s, question));
 
     case ClearAnswers():
       if (s.answerRound == null) return _no(s);
@@ -526,11 +621,13 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
       if (card.isEmpty) return _no(s);
       // A video brings its own sound; nothing else plays over it.
       final video = (card.video ?? '').isNotEmpty;
-      return _ok(s.copyWith(
-        overlay: card,
-        music: video ? null : _keepTimer,
-        media: video && s.media == MediaPlayback.playing ? MediaPlayback.paused : null,
-      ));
+      return _ok(
+        s.copyWith(
+          overlay: card,
+          music: video ? null : _keepTimer,
+          media: video && s.media == MediaPlayback.playing ? MediaPlayback.paused : null,
+        ),
+      );
 
     case SetCardAnimation(:final animation):
       if (animation == s.cardAnimation) return _no(s);
@@ -550,10 +647,10 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
 const Object _keepTimer = Object();
 
 AnswerRound _newRound(CompanionSpec spec, int? now) => AnswerRound(
-      spec: spec,
-      openedAtMillis: now,
-      endsAtMillis: now != null && spec.timerSeconds != null ? now + spec.timerSeconds! * 1000 : null,
-    );
+  spec: spec,
+  openedAtMillis: now,
+  endsAtMillis: now != null && spec.timerSeconds != null ? now + spec.timerSeconds! * 1000 : null,
+);
 
 /// [round] with [answer] for [teamId]. Once every team has locked in there is
 /// nothing left to wait for, so the round closes.
@@ -569,46 +666,61 @@ bool _sameList(List<int> a, List<int> b) => a.length == b.length && Iterable<int
 AnswerRound _reveal(AnswerRound round, List<String> revealed) =>
     round.copyWith(revealed: revealed, open: revealed.isEmpty ? null : false, endsAtMillis: revealed.isEmpty ? _keepTimer : null);
 
-/// Gives [teamId] exactly [points] for this round, taking back whatever it
-/// had been given for it before.
-SessionState _award(SessionState s, AnswerRound round, String teamId, int points, {required bool? verdict}) {
-  final before = round.awarded[teamId] ?? 0;
+/// The clock of [question] started now, if it runs for a set time and the
+/// teams' devices have no timer of their own for it.
+QuestionTimer? _timerFor(Question question, int? now) {
+  final seconds = question.questionTimer;
+  return seconds == null || now == null ? null : QuestionTimer(openedAtMillis: now, endsAtMillis: now + seconds * 1000);
+}
+
+/// Puts what every team is due for the open question on the scoreboard;
+/// see [pointsToGive].
+SessionState _give(SessionState s, Question question) {
+  final deltas = pointsToGive(s, question);
+  if (deltas.isEmpty) return s;
   return s.copyWith(
-    teams: _addPoints(s.teams, teamId, points - before),
-    answerRound: round.copyWith(
-      verdicts: verdict == null ? ({...round.verdicts}..remove(teamId)) : {...round.verdicts, teamId: verdict},
-      awarded: verdict == null ? ({...round.awarded}..remove(teamId)) : {...round.awarded, teamId: points},
+    teams: [for (final team in s.teams) team.copyWith(points: team.points + (deltas[team.id] ?? 0))],
+    results: s.results.copyWith(
+      given: {
+        for (final team in s.teams)
+          if (pointsDue(s, question, team.id) case final due? when due != 0) team.id: due,
+      },
     ),
   );
 }
 
-Reduction _ok(SessionState state, [List<Effect> effects = const []]) =>
-    Reduction(state.copyWith(seq: state.seq + 1), effects: effects);
+/// [s] with the open question's points given, before it closes: ratings
+/// that were made count even when "Give points" was not pressed.
+SessionState _givenBeforeClosing(SessionState s, GameContent? game) {
+  final question = s.current == null ? null : game?.question(s.current!);
+  return question == null ? s : _give(s, question);
+}
+
+Reduction _ok(SessionState state, [List<Effect> effects = const []]) => Reduction(state.copyWith(seq: state.seq + 1), effects: effects);
 
 Reduction _no(SessionState state) => Reduction(state, accepted: false);
 
 /// No question open and everything that belonged to one cleared.
 SessionState _backToBoard(SessionState s) => s.copyWith(
-      phase: Phase.overview,
-      current: null,
-      buzzQueue: const [],
-      revealed: 0,
-      imageFocus: 0,
-      feudRevealed: const [],
-      foundBy: const {},
-      wrongAttempts: 0,
-      media: MediaPlayback.stopped,
-      answerRound: null,
-    );
+  phase: Phase.overview,
+  current: null,
+  buzzQueue: const [],
+  revealed: 0,
+  imageFocus: 0,
+  feudRevealed: const [],
+  foundBy: const {},
+  wrongAttempts: 0,
+  media: MediaPlayback.stopped,
+  answerRound: null,
+  betting: null,
+  timer: null,
+  results: const Results(),
+);
 
 /// After a wrong answer: the next queued team is up, or the question reopens.
 SessionState _nextBuzzer(SessionState s, Question question) {
   if (s.buzzQueue.length > 1) return s.copyWith(buzzQueue: s.buzzQueue.sublist(1));
-  return s.copyWith(
-    phase: Phase.question,
-    buzzQueue: const [],
-    media: question.musicAt(s.revealed) != null ? MediaPlayback.playing : null,
-  );
+  return s.copyWith(phase: Phase.question, buzzQueue: const [], media: question.musicAt(s.revealed) != null ? MediaPlayback.playing : null);
 }
 
 /// A Fragenhagel at item [index]: everyone may answer again, the item's sound
@@ -649,5 +761,6 @@ SessionState _scoreRapidItem(SessionState s, Question question) {
 bool _feudAnswering(SessionState s, Question? question) =>
     question?.type == QuestionType.feud && s.phase == Phase.buzzered && s.buzzQueue.isNotEmpty;
 
-List<Team> _addPoints(List<Team> teams, String teamId, int delta) =>
-    [for (final team in teams) team.id == teamId ? team.copyWith(points: team.points + delta) : team];
+List<Team> _addPoints(List<Team> teams, String teamId, int delta) => [
+  for (final team in teams) team.id == teamId ? team.copyWith(points: team.points + delta) : team,
+];

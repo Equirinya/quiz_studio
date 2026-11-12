@@ -52,11 +52,11 @@ class ToolSpec {
 }
 
 Map<String, dynamic> _object(Map<String, dynamic> properties, [List<String> required = const []]) => {
-      'type': 'object',
-      'properties': properties,
-      'required': required,
-      'additionalProperties': false,
-    };
+  'type': 'object',
+  'properties': properties,
+  'required': required,
+  'additionalProperties': false,
+};
 
 const Map<String, dynamic> _string = {'type': 'string'};
 
@@ -65,7 +65,8 @@ final Map<String, dynamic> _questionFields = {
   'type': {
     'type': 'string',
     'enum': ['free', 'abcd', 'progressingReveal', 'feud', 'connections', 'rapidFire', 'matching', 'topAnswers'],
-    'description': 'free: plain question. abcd: 2 to 9 answer options (A, B, C, ...). progressingReveal: hints revealed one by one. '
+    'description':
+        'free: plain question. abcd: 2 to 9 answer options (A, B, C, ...). progressingReveal: hints revealed one by one. '
         'feud ("Survey duel"): a survey; the team that buzzed uncovers answers until its third strike, then the other '
         'team may steal; each answer is worth a share of the points. '
         'topAnswers ("Top answers"): "name the five most popular ...": teams find answers on a list by buzzing or on '
@@ -83,11 +84,49 @@ final Map<String, dynamic> _questionFields = {
   'pointsPlus': {
     'type': 'integer',
     'minimum': 0,
-    'description': 'Points for a right answer. Questions sort by this unless the category has its own order '
+    'description':
+        'Points for a right answer. Questions sort by this unless the category has its own order '
         '(reorder_questions).',
   },
   'pointsMinus': {'type': 'integer', 'minimum': 0, 'description': 'Points taken for a wrong answer; usually 0 or half.'},
   'noBuzzer': {'type': 'boolean', 'description': 'free only: no buzzing, e.g. for estimation questions.'},
+  'wager': {
+    'type': 'boolean',
+    'description':
+        'Teams bet their own points instead of playing for fixed points: before the question is shown each '
+        'team bets, a right answer wins the bet and a wrong one loses it (pointsMinus is then not used). A team may bet up '
+        'to its score, or up to pointsPlus (at least $kMinBetLimit) if it has less. For free, abcd, progressingReveal and '
+        'matching questions only.',
+  },
+  'amountBet': {
+    'type': ['object', 'null'],
+    'description':
+        'free only: teams bet how many they can do, e.g. how many films of a kind they can name or how many '
+        'push-ups. First only "prompt" is shown and each team picks a number up to "max"; then the question runs (give it '
+        'a companion screen such as list or whiteboard, or none for a physical challenge, and a timer). The gamemaster '
+        'judges per team whether it reached its number: reached gives pointsPlus times the number, missed takes '
+        'pointsMinus times the number. null switches it off. Not together with "wager".',
+    'properties': {
+      'prompt': {'type': 'string', 'description': 'The bet question, e.g. "How many science fiction films can you name?"'},
+      'max': {'type': 'integer', 'minimum': 1, 'description': 'Highest number a team may bet; default $kDefaultAmountMax.'},
+    },
+  },
+  'rankStep': {
+    'type': ['integer', 'null'],
+    'minimum': 0,
+    'description':
+        '"By order" scoring, e.g. for answers ranked by speed: the first team gets pointsPlus, each after it '
+        'this many points less (never below 0); wrong answers lose pointsMinus. The order is the order teams lock in a right '
+        'answer on their devices, or the order the gamemaster taps them in (e.g. charades on stage). null switches it off. '
+        'For free, abcd, progressingReveal and matching questions; not together with "wager" or "amountBet".',
+  },
+  'timer': {
+    'type': ['integer', 'null'],
+    'minimum': 1,
+    'description':
+        'Seconds the question runs when the teams\' devices show only a buzzer or nothing; counts down on the big '
+        'screen. With a companion screen use its own "timer" instead. null removes it.',
+  },
   'noPhoneBuzzer': {
     'type': 'boolean',
     'description': 'Without a companion: the teams\' devices show nothing, not even a buzzer, so only a USB buzzer box can buzz.',
@@ -114,7 +153,8 @@ final Map<String, dynamic> _questionFields = {
   'informationImages': {
     'type': 'array',
     'items': _string,
-    'description': 'progressingReveal only, given together with "information": a picture per hint, names from '
+    'description':
+        'progressingReveal only, given together with "information": a picture per hint, names from '
         'upload_media, "" for none. A hint may be "" when its picture says it all.',
   },
   'informationMusic': {
@@ -126,10 +166,7 @@ final Map<String, dynamic> _questionFields = {
     'type': 'boolean',
     'description': 'progressingReveal with pictures: the row of small pictures under the question. Default true.',
   },
-  'absoluteValues': {
-    'type': 'boolean',
-    'description': 'feud only: "values" are counts (e.g. votes) rather than percentages.',
-  },
+  'absoluteValues': {'type': 'boolean', 'description': 'feud only: "values" are counts (e.g. votes) rather than percentages.'},
   'rapidFire': {
     'type': 'object',
     'description': 'rapidFire only: the items and how they are played.',
@@ -137,7 +174,8 @@ final Map<String, dynamic> _questionFields = {
       'mode': {
         'type': 'string',
         'enum': ['buzzer', 'devices'],
-        'description': 'buzzer (default): teams buzz, the gamemaster judges, a right answer moves on. devices: each '
+        'description':
+            'buzzer (default): teams buzz, the gamemaster judges, a right answer moves on. devices: each '
             'item is a statement every team marks right or wrong on its own device.',
       },
       'progress': {
@@ -170,7 +208,8 @@ final Map<String, dynamic> _questionFields = {
       'mode': {
         'type': 'string',
         'enum': ['buzzer', 'typed', 'whiteboard'],
-        'description': 'buzzer (default): a team buzzes and names an answer, the gamemaster taps it and the team gets its '
+        'description':
+            'buzzer (default): a team buzzes and names an answer, the gamemaster taps it and the team gets its '
             'points. typed: every team types a list on its device. whiteboard: every team writes on a numbered whiteboard. '
             'On the devices the gamemaster ticks what each team found.',
       },
@@ -193,16 +232,12 @@ final Map<String, dynamic> _questionFields = {
   'pairs': {
     'type': 'array',
     'minItems': 2,
-    'description': 'matching only: the pairs in the RIGHT pairing; the devices show them shuffled. Each side is a '
+    'description':
+        'matching only: the pairs in the RIGHT pairing; the devices show them shuffled. Each side is a '
         'text, a picture (a name from upload_media; only the big screen shows it) or both.',
     'items': {
       'type': 'object',
-      'properties': {
-        'left': _string,
-        'right': _string,
-        'leftImage': _string,
-        'rightImage': _string,
-      },
+      'properties': {'left': _string, 'right': _string, 'leftImage': _string, 'rightImage': _string},
     },
   },
   'values': {
@@ -214,7 +249,8 @@ final Map<String, dynamic> _questionFields = {
     'type': 'array',
     'minItems': 4,
     'maxItems': 4,
-    'description': 'connections only: exactly four groups, easiest (yellow) first and hardest (purple) last. '
+    'description':
+        'connections only: exactly four groups, easiest (yellow) first and hardest (purple) last. '
         'No word may appear twice. A good puzzle has red herrings: words that seem to fit another group.',
     'items': {
       'type': 'object',
@@ -227,7 +263,8 @@ final Map<String, dynamic> _questionFields = {
   },
   'companion': {
     'type': 'object',
-    'description': 'Optional screen on the teams\' own devices while the question is open. For connections, '
+    'description':
+        'Optional screen on the teams\' own devices while the question is open. For connections, '
         'matching and topAnswers the screen comes from the question; only timer, lock (and mistakes) apply.',
     'properties': {
       'kind': {
@@ -248,11 +285,7 @@ final Map<String, dynamic> _questionFields = {
       'unit': {'type': 'string'},
       'solution': {'type': 'number', 'description': 'number and slider: the right value.'},
       'tolerance': {'type': 'number', 'description': 'number and slider: how far from the solution still counts as right.'},
-      'options': {
-        'type': 'array',
-        'items': _string,
-        'description': 'order: the items in the RIGHT order. match: the left-hand items.',
-      },
+      'options': {'type': 'array', 'items': _string, 'description': 'order: the items in the RIGHT order. match: the left-hand items.'},
       'targets': {'type': 'array', 'items': _string, 'description': 'match: right-hand items, aligned with options.'},
       'lock': {'type': 'boolean', 'description': 'Whether teams may lock in before the time is up. Default true.'},
       'mistakes': {'type': 'integer', 'minimum': 1, 'maximum': 6, 'description': 'connections: wrong guesses allowed, default 3.'},
@@ -273,34 +306,43 @@ final List<ToolSpec> gameToolSpecs = [
   ToolSpec(
     'add_category_group',
     'Adds a category group, which is one board of the show (e.g. "Round 1"). Categories belong to a group.',
-    _object({
-      'gameId': _string,
-      'name': _string,
-      'board': {
-        'type': 'string',
-        'enum': ['wheel', 'map', 'display'],
-        'description': 'How the board is drawn. wheel is the default.',
+    _object(
+      {
+        'gameId': _string,
+        'name': _string,
+        'board': {
+          'type': 'string',
+          'enum': ['wheel', 'map', 'display'],
+          'description': 'How the board is drawn. wheel is the default.',
+        },
       },
-    }, ['gameId', 'name']),
+      ['gameId', 'name'],
+    ),
   ),
   ToolSpec(
     'add_category',
     'Adds a category to a game, at the end of the given group. Returns its id.',
-    _object({
-      'gameId': _string,
-      'name': _string,
-      'groupId': {'type': 'string', 'description': 'From get_game. Leave out to add it outside any group.'},
-    }, ['gameId', 'name']),
+    _object(
+      {
+        'gameId': _string,
+        'name': _string,
+        'groupId': {'type': 'string', 'description': 'From get_game. Leave out to add it outside any group.'},
+      },
+      ['gameId', 'name'],
+    ),
   ),
   ToolSpec(
     'update_category',
     'Renames a category or switches it in or out of play.',
-    _object({
-      'gameId': _string,
-      'categoryId': _string,
-      'name': _string,
-      'active': {'type': 'boolean', 'description': 'Inactive categories stay in the editor but are not played.'},
-    }, ['gameId', 'categoryId']),
+    _object(
+      {
+        'gameId': _string,
+        'categoryId': _string,
+        'name': _string,
+        'active': {'type': 'boolean', 'description': 'Inactive categories stay in the editor but are not played.'},
+      },
+      ['gameId', 'categoryId'],
+    ),
   ),
   ToolSpec(
     'delete_category',
@@ -318,8 +360,7 @@ final List<ToolSpec> gameToolSpecs = [
     'update_question',
     'Changes fields of an existing question. Only the fields given are changed. When changing "type", give the '
         'fields the new type needs.',
-    _object({'gameId': _string, 'categoryId': _string, 'questionId': _string, ..._questionFields},
-        ['gameId', 'categoryId', 'questionId']),
+    _object({'gameId': _string, 'categoryId': _string, 'questionId': _string, ..._questionFields}, ['gameId', 'categoryId', 'questionId']),
   ),
   ToolSpec(
     'delete_question',
@@ -330,25 +371,34 @@ final List<ToolSpec> gameToolSpecs = [
     'reorder_questions',
     'Puts the questions of a category in the given order, independent of their points. Use it when the order of '
         'play is not the order of value, e.g. on a display board played top to bottom.',
-    _object({
-      'gameId': _string,
-      'categoryId': _string,
-      'questionIds': {'type': 'array', 'items': _string, 'description': 'Every question of the category, in order.'},
-    }, ['gameId', 'categoryId', 'questionIds']),
+    _object(
+      {
+        'gameId': _string,
+        'categoryId': _string,
+        'questionIds': {'type': 'array', 'items': _string, 'description': 'Every question of the category, in order.'},
+      },
+      ['gameId', 'categoryId', 'questionIds'],
+    ),
   ),
   ToolSpec(
     'update_category_group',
     'Changes a category group (board): its name, how it is drawn, and its look.',
-    _object({
-      'gameId': _string,
-      'groupId': _string,
-      'name': _string,
-      'board': {'type': 'string', 'enum': ['wheel', 'map', 'display']},
-      'text': {'type': 'string', 'description': 'display boards: text shown on the board. "" removes it.'},
-      'color': {'type': 'string', 'description': 'Board colour as #RRGGBB. "" goes back to the theme\'s.'},
-      'accentColor': {'type': 'string', 'description': 'Accent colour as #RRGGBB. "" goes back to the theme\'s.'},
-      'splitPointFields': {'type': 'boolean', 'description': 'wheel only: split a point field when a value appears twice.'},
-    }, ['gameId', 'groupId']),
+    _object(
+      {
+        'gameId': _string,
+        'groupId': _string,
+        'name': _string,
+        'board': {
+          'type': 'string',
+          'enum': ['wheel', 'map', 'display'],
+        },
+        'text': {'type': 'string', 'description': 'display boards: text shown on the board. "" removes it.'},
+        'color': {'type': 'string', 'description': 'Board colour as #RRGGBB. "" goes back to the theme\'s.'},
+        'accentColor': {'type': 'string', 'description': 'Accent colour as #RRGGBB. "" goes back to the theme\'s.'},
+        'splitPointFields': {'type': 'boolean', 'description': 'wheel only: split a point field when a value appears twice.'},
+      },
+      ['gameId', 'groupId'],
+    ),
   ),
   ToolSpec(
     'delete_category_group',
@@ -360,30 +410,34 @@ final List<ToolSpec> gameToolSpecs = [
     'Replaces the cards of a category or a group: what the gamemaster can put over the big screen while one of '
         'its questions (or the board) is in play, e.g. a line a mute guest "says" or a picture. Give exactly one of '
         'categoryId and groupId. Pass all cards; an empty list removes them.',
-    _object({
-      'gameId': _string,
-      'categoryId': _string,
-      'groupId': _string,
-      'cards': {
-        'type': 'array',
-        'items': {
-          'type': 'object',
-          'properties': {
-            'title': _string,
-            'text': _string,
-            'image': {'type': 'string', 'description': 'A name from upload_media, or a built-in picture "builtin:<id>".'},
-            'video': {'type': 'string', 'description': 'A name from upload_media; the card plays it.'},
-            'hidden': {'type': 'boolean', 'description': 'Kept but not offered during the show.'},
-            'style': {
-              'type': 'string',
-              'enum': [for (final style in CardStyle.values) style.name],
-              'description': 'How the card looks: standard (default), silentFilm (an intertitle of an old silent '
-                  'film, pictures in sepia), poster (big letters on the theme colour), plain (just the words).',
+    _object(
+      {
+        'gameId': _string,
+        'categoryId': _string,
+        'groupId': _string,
+        'cards': {
+          'type': 'array',
+          'items': {
+            'type': 'object',
+            'properties': {
+              'title': _string,
+              'text': _string,
+              'image': {'type': 'string', 'description': 'A name from upload_media, or a built-in picture "builtin:<id>".'},
+              'video': {'type': 'string', 'description': 'A name from upload_media; the card plays it.'},
+              'hidden': {'type': 'boolean', 'description': 'Kept but not offered during the show.'},
+              'style': {
+                'type': 'string',
+                'enum': [for (final style in CardStyle.values) style.name],
+                'description':
+                    'How the card looks: standard (default), silentFilm (an intertitle of an old silent '
+                    'film, pictures in sepia), poster (big letters on the theme colour), plain (just the words).',
+              },
             },
           },
         },
       },
-    }, ['gameId', 'cards']),
+      ['gameId', 'cards'],
+    ),
   ),
   ToolSpec(
     'set_sounds',
@@ -391,37 +445,31 @@ final List<ToolSpec> gameToolSpecs = [
         'they choose them in the app otherwise. A question needs categoryId and questionId; a category categoryId; '
         'a group groupId. Values: a name from upload_media, a built-in sound "builtin:<id>" (list_builtin_media), '
         '"off" for silence even if a level above has a sound, or "" to inherit again. Keys not given stay.',
-    _object({
-      'gameId': _string,
-      'groupId': _string,
-      'categoryId': _string,
-      'questionId': _string,
-      'music': {
-        'type': 'object',
-        'description': 'Music slots: ${musicSlots.join(', ')}.',
-        'additionalProperties': _string,
+    _object(
+      {
+        'gameId': _string,
+        'groupId': _string,
+        'categoryId': _string,
+        'questionId': _string,
+        'music': {'type': 'object', 'description': 'Music slots: ${musicSlots.join(', ')}.', 'additionalProperties': _string},
+        'effects': {'type': 'object', 'description': 'Moments: ${builtInEffects.join(', ')}.', 'additionalProperties': _string},
       },
-      'effects': {
-        'type': 'object',
-        'description': 'Moments: ${builtInEffects.join(', ')}.',
-        'additionalProperties': _string,
-      },
-    }, ['gameId']),
+      ['gameId'],
+    ),
   ),
   ToolSpec(
     'upload_media',
     'Uploads a picture, sound or video from this computer (the one running the app) into the game and returns '
         'the name to use in image, music and similar fields. Only upload files the user pointed you to.',
-    _object({
-      'gameId': _string,
-      'path': {'type': 'string', 'description': 'Absolute path of the file on this computer.'},
-    }, ['gameId', 'path']),
+    _object(
+      {
+        'gameId': _string,
+        'path': {'type': 'string', 'description': 'Absolute path of the file on this computer.'},
+      },
+      ['gameId', 'path'],
+    ),
   ),
-  ToolSpec(
-    'list_builtin_media',
-    'Lists the pictures and sound effects that come with the app, for cards and set_sounds.',
-    _object({}),
-  ),
+  ToolSpec('list_builtin_media', 'Lists the pictures and sound effects that come with the app, for cards and set_sounds.', _object({})),
 ];
 
 /// Turns a tool's question arguments into the fields stored on a question.
@@ -463,6 +511,48 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
   if (noBuzzer != null) data['noBuzzer'] = noBuzzer;
   final noPhoneBuzzer = take<bool>('noPhoneBuzzer');
   if (noPhoneBuzzer != null) data['noPhoneBuzzer'] = noPhoneBuzzer;
+  final wager = take<bool>('wager');
+  if (wager != null) {
+    if (wager && !effective.wagerable) {
+      throw const ToolError('"wager" is for free, abcd, progressingReveal and matching questions.');
+    }
+    data['wager'] = wager;
+    if (wager) data['rankStep'] = null;
+  }
+  if (args.containsKey('amountBet')) {
+    final bet = args['amountBet'];
+    if (bet == null) {
+      data['amountBet'] = null;
+    } else {
+      if (bet is! Map) throw const ToolError('"amountBet" must be an object with "prompt" and "max", or null.');
+      if (effective != QuestionType.free) throw const ToolError('"amountBet" is for free questions.');
+      if (wager == true) throw const ToolError('Use either "wager" or "amountBet", not both.');
+      final max = bet['max'];
+      if (max != null && (max is! num || max < 1)) throw const ToolError('"amountBet.max" must be at least 1.');
+      data['amountBet'] = AmountBet(
+        prompt: bet['prompt'] is String ? bet['prompt'] as String : '',
+        max: (max as num?)?.round() ?? kDefaultAmountMax,
+      ).toMap();
+      data['wager'] = false;
+      data['rankStep'] = null;
+    }
+  }
+  if (args.containsKey('rankStep')) {
+    final step = args['rankStep'];
+    if (step != null) {
+      if (step is! num || step < 0) throw const ToolError('"rankStep" must be 0 or more, or null.');
+      if (!effective.wagerable) throw const ToolError('"rankStep" is for free, abcd, progressingReveal and matching questions.');
+      if (wager == true || args['amountBet'] != null) throw const ToolError('Use only one of "wager", "amountBet" and "rankStep".');
+      data['wager'] = false;
+      data['amountBet'] = null;
+    }
+    data['rankStep'] = (step as num?)?.round();
+  }
+  if (args.containsKey('timer')) {
+    final timer = args['timer'];
+    if (timer != null && (timer is! num || timer < 1)) throw const ToolError('"timer" must be a number of seconds, or null.');
+    data['timer'] = (timer as num?)?.round();
+  }
 
   List<S>? list<S>(String key) {
     final value = take<List<dynamic>>(key);
@@ -538,7 +628,9 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     final progress = rapid['progress'] ?? ProgressStyle.bar.name;
     if (!ProgressStyle.values.any((p) => p.name == progress)) throw ToolError('Unknown "progress" "$progress".');
     final items = rapid['items'];
-    if (items is! List || items.isEmpty || items.any((i) => i is! Map || i['question'] is! String || (i['question'] as String).trim().isEmpty)) {
+    if (items is! List ||
+        items.isEmpty ||
+        items.any((i) => i is! Map || i['question'] is! String || (i['question'] as String).trim().isEmpty)) {
       throw const ToolError('"rapidFire" needs "items", each with its "question".');
     }
     data['rapidFire'] = RapidFire(
@@ -585,11 +677,16 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     final mode = top['mode'] ?? TopAnswersMode.buzzer.name;
     if (!TopAnswersMode.values.any((m) => m.name == mode)) throw const ToolError('"mode" must be buzzer, typed or whiteboard.');
     final items = top['items'];
-    if (items is! List || items.isEmpty || items.any((i) => i is! Map || i['answer'] is! String || (i['answer'] as String).trim().isEmpty)) {
+    if (items is! List ||
+        items.isEmpty ||
+        items.any((i) => i is! Map || i['answer'] is! String || (i['answer'] as String).trim().isEmpty)) {
       throw const ToolError('"topAnswers" needs "items", each with its "answer".');
     }
     if (items.length > 20) throw const ToolError('A top answers list has at most 20 answers.');
-    data['topAnswers'] = TopAnswers(mode: TopAnswersMode.fromName(mode), items: [for (final item in items) TopAnswer.fromMap(item)]).toMap();
+    data['topAnswers'] = TopAnswers(
+      mode: TopAnswersMode.fromName(mode),
+      items: [for (final item in items) TopAnswer.fromMap(item)],
+    ).toMap();
   }
   if (!partial && effective == QuestionType.topAnswers && top == null) {
     throw const ToolError('A topAnswers question needs "topAnswers" with its items.');
@@ -619,7 +716,11 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     if (companion is! Map) throw const ToolError('"companion" must be an object.');
     // The pairs come from "pairs"; the screen keeps only its timer and lock.
     final spec = CompanionSpec.fromMap({...companion, 'kind': CompanionKind.match.name})!;
-    data['companion'] = {'kind': CompanionKind.match.name, if (spec.timerSeconds != null) 'timer': spec.timerSeconds, if (!spec.lockable) 'lock': false};
+    data['companion'] = {
+      'kind': CompanionKind.match.name,
+      if (spec.timerSeconds != null) 'timer': spec.timerSeconds,
+      if (!spec.lockable) 'lock': false,
+    };
   } else if (companion != null && effective == QuestionType.topAnswers) {
     if (companion is! Map) throw const ToolError('"companion" must be an object.');
     // The screen follows from the mode; only its timer and lock are kept.
@@ -656,101 +757,109 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
   return data;
 }
 
-Map<String, dynamic> _describeQuestion(Question q) => {
-      'id': q.id,
-      'type': q.type.name,
-      'question': q.text,
-      if (q.answerHint != null) 'answerHint': q.answerHint,
-      if (q.description != null) 'label': q.description,
-      'pointsPlus': q.pointsPlus,
-      'pointsMinus': q.pointsMinus,
-      if (q.position != null) 'position': q.position,
-      if (q.noBuzzer) 'noBuzzer': true,
-      if (q.noPhoneBuzzer) 'noPhoneBuzzer': true,
-      if (q.type == QuestionType.abcd) ...{'answers': q.answers, 'correct': q.answersCorrect},
-      if (q.type == QuestionType.progressingReveal || q.type == QuestionType.feud) 'information': q.information,
-      if (q.type == QuestionType.progressingReveal && q.hasInformationImages) 'informationImages': q.informationImages,
-      if (q.type == QuestionType.progressingReveal && q.informationMusic.any((e) => e.isNotEmpty))
-        'informationMusic': q.informationMusic,
-      if (q.type == QuestionType.progressingReveal && !q.pictureStrip) 'pictureStrip': false,
-      if (q.type == QuestionType.feud) 'values': q.percentages,
-      if (q.type == QuestionType.feud && q.absoluteValues) 'absoluteValues': true,
-      if (q.type == QuestionType.connections) 'groups': [for (final g in q.connectionGroups) g.toMap()],
-      if (q.type == QuestionType.rapidFire && q.rapidFire != null) 'rapidFire': q.rapidFire!.toMap(),
-      if (q.type == QuestionType.matching && q.matching != null)
-        'pairs': [
-          for (final pair in q.matching!.pairs)
-            {
-              'left': pair.left.text,
-              'right': pair.right.text,
-              if (pair.left.image != null) 'leftImage': pair.left.image,
-              if (pair.right.image != null) 'rightImage': pair.right.image,
-            },
-        ],
-      if (q.type == QuestionType.topAnswers && q.topAnswers != null) 'topAnswers': q.topAnswers!.toMap(),
-      if (q.companion != null && q.type != QuestionType.rapidFire)
-        'companion': switch (q.type) {
-          QuestionType.connections => q.companion!.toMap()..remove('groups'),
-          QuestionType.matching => q.companion!.toMap()..remove('options')..remove('targets'),
-          QuestionType.topAnswers => {
-              if (q.companion!.timerSeconds != null) 'timer': q.companion!.timerSeconds,
-              if (!q.companion!.lockable) 'lock': false,
-            },
-          _ => q.companion!.toMap(),
+/// A question as the tools report it, e.g. in get_game.
+Map<String, dynamic> describeQuestion(Question q) => {
+  'id': q.id,
+  'type': q.type.name,
+  'question': q.text,
+  if (q.answerHint != null) 'answerHint': q.answerHint,
+  if (q.description != null) 'label': q.description,
+  'pointsPlus': q.pointsPlus,
+  'pointsMinus': q.pointsMinus,
+  if (q.position != null) 'position': q.position,
+  if (q.noBuzzer) 'noBuzzer': true,
+  if (q.noPhoneBuzzer) 'noPhoneBuzzer': true,
+  if (q.betting) 'wager': true,
+  if (q.betting) 'wager': true,
+  if (q.amountBet != null) 'amountBet': q.amountBet!.toMap(),
+  if (q.rankStep != null) 'rankStep': q.rankStep,
+  if (q.data['timer'] is num) 'timer': q.data['timer'],
+  if (q.type == QuestionType.abcd) ...{'answers': q.answers, 'correct': q.answersCorrect},
+  if (q.type == QuestionType.progressingReveal || q.type == QuestionType.feud) 'information': q.information,
+  if (q.type == QuestionType.progressingReveal && q.hasInformationImages) 'informationImages': q.informationImages,
+  if (q.type == QuestionType.progressingReveal && q.informationMusic.any((e) => e.isNotEmpty)) 'informationMusic': q.informationMusic,
+  if (q.type == QuestionType.progressingReveal && !q.pictureStrip) 'pictureStrip': false,
+  if (q.type == QuestionType.feud) 'values': q.percentages,
+  if (q.type == QuestionType.feud && q.absoluteValues) 'absoluteValues': true,
+  if (q.type == QuestionType.connections) 'groups': [for (final g in q.connectionGroups) g.toMap()],
+  if (q.type == QuestionType.rapidFire && q.rapidFire != null) 'rapidFire': q.rapidFire!.toMap(),
+  if (q.type == QuestionType.matching && q.matching != null)
+    'pairs': [
+      for (final pair in q.matching!.pairs)
+        {
+          'left': pair.left.text,
+          'right': pair.right.text,
+          if (pair.left.image != null) 'leftImage': pair.left.image,
+          if (pair.right.image != null) 'rightImage': pair.right.image,
         },
-      if (q.image != null) 'image': q.image,
-      if (q.music != null) 'music': q.music,
-      ..._describeSounds(q.sounds),
-    };
+    ],
+  if (q.type == QuestionType.topAnswers && q.topAnswers != null) 'topAnswers': q.topAnswers!.toMap(),
+  if (q.companion != null && q.type != QuestionType.rapidFire)
+    'companion': switch (q.type) {
+      QuestionType.connections => q.companion!.toMap()..remove('groups'),
+      QuestionType.matching =>
+        q.companion!.toMap()
+          ..remove('options')
+          ..remove('targets'),
+      QuestionType.topAnswers => {
+        if (q.companion!.timerSeconds != null) 'timer': q.companion!.timerSeconds,
+        if (!q.companion!.lockable) 'lock': false,
+      },
+      _ => q.companion!.toMap(),
+    },
+  if (q.image != null) 'image': q.image,
+  if (q.music != null) 'music': q.music,
+  ..._describeSounds(q.sounds),
+};
 
 Map<String, dynamic> _describeSounds(MusicConfig sounds) => {
-      if (sounds.slots.isNotEmpty) 'music': sounds.slots,
-      if (sounds.effects.isNotEmpty) 'effects': sounds.effects,
-    };
+  if (sounds.slots.isNotEmpty) 'music': sounds.slots,
+  if (sounds.effects.isNotEmpty) 'effects': sounds.effects,
+};
 
 List<Map<String, dynamic>> _describeCards(List<CueCard> cards) => [
-      for (final card in cards)
-        {
-          if (card.title.isNotEmpty) 'title': card.title,
-          if (card.text.isNotEmpty) 'text': card.text,
-          if (card.image != null) 'image': card.image,
-          if (card.video != null) 'video': card.video,
-          if (card.hidden) 'hidden': true,
-          if (card.style != CardStyle.standard) 'style': card.style.name,
-        },
-    ];
+  for (final card in cards)
+    {
+      if (card.title.isNotEmpty) 'title': card.title,
+      if (card.text.isNotEmpty) 'text': card.text,
+      if (card.image != null) 'image': card.image,
+      if (card.video != null) 'video': card.video,
+      if (card.hidden) 'hidden': true,
+      if (card.style != CardStyle.standard) 'style': card.style.name,
+    },
+];
 
 String _hex(int argb) => '#${(argb & 0xffffff).toRadixString(16).padLeft(6, '0')}';
 
 Map<String, dynamic> describeGame(GameContent game) => {
-      'id': game.id,
-      'name': game.name,
-      'groups': [
-        for (final group in game.groups)
-          {
-            'id': group.isUngrouped ? null : group.id,
-            'name': group.isUngrouped ? '(no group)' : group.name,
-            'board': group.type.name,
-            if (group.text != null) 'text': group.text,
-            if (group.color != null) 'color': _hex(group.color!),
-            if (group.accentColor != null) 'accentColor': _hex(group.accentColor!),
-            if (group.splitPointFields) 'splitPointFields': true,
-            if (group.cards.isNotEmpty) 'cards': _describeCards(group.cards),
-            ..._describeSounds(group.sounds),
-            'categories': [
-              for (final category in group.categories)
-                {
-                  'id': category.id,
-                  'name': category.name,
-                  'active': category.active,
-                  if (category.cards.isNotEmpty) 'cards': _describeCards(category.cards),
-                  ..._describeSounds(category.sounds),
-                  'questions': [for (final question in category.questions) _describeQuestion(question)],
-                },
-            ],
-          },
-      ],
-    };
+  'id': game.id,
+  'name': game.name,
+  'groups': [
+    for (final group in game.groups)
+      {
+        'id': group.isUngrouped ? null : group.id,
+        'name': group.isUngrouped ? '(no group)' : group.name,
+        'board': group.type.name,
+        if (group.text != null) 'text': group.text,
+        if (group.color != null) 'color': _hex(group.color!),
+        if (group.accentColor != null) 'accentColor': _hex(group.accentColor!),
+        if (group.splitPointFields) 'splitPointFields': true,
+        if (group.cards.isNotEmpty) 'cards': _describeCards(group.cards),
+        ..._describeSounds(group.sounds),
+        'categories': [
+          for (final category in group.categories)
+            {
+              'id': category.id,
+              'name': category.name,
+              'active': category.active,
+              if (category.cards.isNotEmpty) 'cards': _describeCards(category.cards),
+              ..._describeSounds(category.sounds),
+              'questions': [for (final question in category.questions) describeQuestion(question)],
+            },
+        ],
+      },
+  ],
+};
 
 /// Runs tools against a backend and keeps a short record of what was done,
 /// for the user to see.
@@ -961,7 +1070,9 @@ class GameTools {
               style: CardStyle.fromName(card['style']),
             ).toMap(),
         ];
-        if (stored.any((c) => (c['title'] as String).isEmpty && (c['text'] as String).isEmpty && c['image'] == null && c['video'] == null)) {
+        if (stored.any(
+          (c) => (c['title'] as String).isEmpty && (c['text'] as String).isEmpty && c['image'] == null && c['video'] == null,
+        )) {
           throw const ToolError('Every card needs a title, a text, an image or a video.');
         }
         for (final card in stored) {
@@ -1023,8 +1134,7 @@ class GameTools {
           'pictures': {for (final image in builtinImages) image.name: image.label},
           'music': {for (final track in builtinMusicTracks) track.key: track.label},
           'sounds': {
-            for (final moment in builtInEffects)
-              moment: {for (final sound in builtinSoundsFor(moment)) sound.key: sound.label},
+            for (final moment in builtInEffects) moment: {for (final sound in builtinSoundsFor(moment)) sound.key: sound.label},
           },
         };
     }

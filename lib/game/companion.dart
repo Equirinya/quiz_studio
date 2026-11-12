@@ -94,10 +94,10 @@ const List<String> whiteboardBackgrounds = ['blank', 'lines', 'grid', 'list', 'i
 double? _num(Object? v) => v is num ? v.toDouble() : null;
 
 List<String> _strings(Object? v) => [
-      if (v is List)
-        for (final e in v)
-          if (e is String) e,
-    ];
+  if (v is List)
+    for (final e in v)
+      if (e is String) e,
+];
 
 /// How a companion screen is set up for one question. Stored on the question
 /// document as `companion`; the same shape travels in the session state.
@@ -189,51 +189,66 @@ class CompanionSpec {
   }
 
   Map<String, dynamic> toMap() => {
-        'kind': kind.name,
-        if (timerSeconds != null) 'timer': timerSeconds,
-        if (kind == CompanionKind.whiteboard) 'background': background,
-        if (kind == CompanionKind.whiteboard && backgroundImage != null) 'backgroundImage': backgroundImage,
-        if ((kind == CompanionKind.whiteboard && background == 'list') || kind == CompanionKind.list) 'listRows': listRows,
-        if (min != null) 'min': min,
-        if (max != null) 'max': max,
-        if (step != null) 'step': step,
-        if (unit != null) 'unit': unit,
-        if (solution != null) 'solution': solution,
-        if (tolerance != null) 'tolerance': tolerance,
-        if (options.isNotEmpty) 'options': options,
-        if (targets.isNotEmpty) 'targets': targets,
-        if (!lockable) 'lock': false,
-        if (kind == CompanionKind.connections) 'mistakes': mistakes,
-        if (kind == CompanionKind.connections && groups.isNotEmpty) 'groups': [for (final group in groups) group.toMap()],
-      };
+    'kind': kind.name,
+    if (timerSeconds != null) 'timer': timerSeconds,
+    if (kind == CompanionKind.whiteboard) 'background': background,
+    if (kind == CompanionKind.whiteboard && backgroundImage != null) 'backgroundImage': backgroundImage,
+    if ((kind == CompanionKind.whiteboard && background == 'list') || kind == CompanionKind.list) 'listRows': listRows,
+    if (min != null) 'min': min,
+    if (max != null) 'max': max,
+    if (step != null) 'step': step,
+    if (unit != null) 'unit': unit,
+    if (solution != null) 'solution': solution,
+    if (tolerance != null) 'tolerance': tolerance,
+    if (options.isNotEmpty) 'options': options,
+    if (targets.isNotEmpty) 'targets': targets,
+    if (!lockable) 'lock': false,
+    if (kind == CompanionKind.connections) 'mistakes': mistakes,
+    if (kind == CompanionKind.connections && groups.isNotEmpty) 'groups': [for (final group in groups) group.toMap()],
+  };
 
   /// The same screen with the groups of a Connections question.
-  CompanionSpec withGroups(List<ConnectionGroup> groups) => CompanionSpec(
-        kind: kind,
-        timerSeconds: timerSeconds,
-        lockable: lockable,
-        mistakes: mistakes,
-        groups: groups,
-      );
+  CompanionSpec withGroups(List<ConnectionGroup> groups) =>
+      CompanionSpec(kind: kind, timerSeconds: timerSeconds, lockable: lockable, mistakes: mistakes, groups: groups);
+
+  /// The same screen with [rows] lines to fill in (at most 20).
+  CompanionSpec withListRows(int rows) => CompanionSpec(
+    kind: kind,
+    timerSeconds: timerSeconds,
+    background: background,
+    backgroundImage: backgroundImage,
+    listRows: rows.clamp(1, 20),
+    min: min,
+    max: max,
+    step: step,
+    unit: unit,
+    solution: solution,
+    tolerance: tolerance,
+    options: options,
+    targets: targets,
+    lockable: lockable,
+    mistakes: mistakes,
+    groups: groups,
+  );
 
   CompanionSpec withOptions(List<String> options) => CompanionSpec(
-        kind: kind,
-        timerSeconds: timerSeconds,
-        background: background,
-        backgroundImage: backgroundImage,
-        listRows: listRows,
-        min: min,
-        max: max,
-        step: step,
-        unit: unit,
-        solution: solution,
-        tolerance: tolerance,
-        options: options,
-        targets: targets,
-        lockable: lockable,
-        mistakes: mistakes,
-        groups: groups,
-      );
+    kind: kind,
+    timerSeconds: timerSeconds,
+    background: background,
+    backgroundImage: backgroundImage,
+    listRows: listRows,
+    min: min,
+    max: max,
+    step: step,
+    unit: unit,
+    solution: solution,
+    tolerance: tolerance,
+    options: options,
+    targets: targets,
+    lockable: lockable,
+    mistakes: mistakes,
+    groups: groups,
+  );
 
   /// The slider's range, with defaults where the editor left a gap.
   ({double min, double max, double step}) get range {
@@ -259,7 +274,9 @@ class CompanionSpec {
   /// item keeps its original index, which is what the device answers with.
   Map<String, dynamic> toPublicMap(String seed) {
     List<Map<String, dynamic>> shuffled(List<String> items, String salt) {
-      final indexed = [for (final (i, text) in items.indexed) {'i': i, 't': text}];
+      final indexed = [
+        for (final (i, text) in items.indexed) {'i': i, 't': text},
+      ];
       if (indexed.length < 2) return indexed;
       final random = Random(Object.hash(seed, salt));
       final original = [...indexed];
@@ -328,12 +345,12 @@ class ConnectionsProgress {
   Map<String, dynamic> toJson() => {'solved': solved, 'wrong': wrong, 'oneAway': oneAway};
 
   factory ConnectionsProgress.fromJson(Map<String, dynamic> json) => ConnectionsProgress(
-        solved: [for (final e in json['solved'] as List? ?? const []) (e as num).toInt()],
-        wrong: [
-          for (final guess in json['wrong'] as List? ?? const []) [for (final e in guess as List) (e as num).toInt()],
-        ],
-        oneAway: [for (final e in json['oneAway'] as List? ?? const []) e == true],
-      );
+    solved: [for (final e in json['solved'] as List? ?? const []) (e as num).toInt()],
+    wrong: [
+      for (final guess in json['wrong'] as List? ?? const []) [for (final e in guess as List) (e as num).toInt()],
+    ],
+    oneAway: [for (final e in json['oneAway'] as List? ?? const []) e == true],
+  );
 }
 
 /// Points for a Connections round: the question's value shared out over the
@@ -397,9 +414,8 @@ class PlayerAnswer {
       connections == null;
 
   /// Seconds from the start of [round] until the team locked in.
-  double? secondsTaken(AnswerRound round) => lockedAtMillis == null || round.openedAtMillis == null
-      ? null
-      : (lockedAtMillis! - round.openedAtMillis!) / 1000;
+  double? secondsTaken(AnswerRound round) =>
+      lockedAtMillis == null || round.openedAtMillis == null ? null : (lockedAtMillis! - round.openedAtMillis!) / 1000;
 
   /// Whether a device may send this as its answer to a round of [kind].
   bool matches(CompanionKind kind) {
@@ -420,30 +436,30 @@ class PlayerAnswer {
 
   /// Locked in at [atMillis], or unlocked again.
   PlayerAnswer asLocked(bool locked, {int? atMillis}) => PlayerAnswer(
-        text: text,
-        number: number,
-        choice: choice,
-        order: order,
-        pairs: pairs,
-        drawing: drawing,
-        items: items,
-        connections: connections,
-        locked: locked,
-        lockedAtMillis: locked ? (atMillis ?? lockedAtMillis) : null,
-      );
+    text: text,
+    number: number,
+    choice: choice,
+    order: order,
+    pairs: pairs,
+    drawing: drawing,
+    items: items,
+    connections: connections,
+    locked: locked,
+    lockedAtMillis: locked ? (atMillis ?? lockedAtMillis) : null,
+  );
 
   Map<String, dynamic> toJson() => {
-        if (text != null) 'text': text,
-        if (number != null) 'number': number,
-        if (choice != null) 'choice': choice,
-        if (order != null) 'order': order,
-        if (pairs != null) 'pairs': pairs,
-        if (drawing != null) 'drawing': drawing,
-        if (items != null) 'items': items,
-        if (connections != null) 'connections': connections!.toJson(),
-        if (locked) 'locked': true,
-        if (lockedAtMillis != null) 'lockedAt': lockedAtMillis,
-      };
+    if (text != null) 'text': text,
+    if (number != null) 'number': number,
+    if (choice != null) 'choice': choice,
+    if (order != null) 'order': order,
+    if (pairs != null) 'pairs': pairs,
+    if (drawing != null) 'drawing': drawing,
+    if (items != null) 'items': items,
+    if (connections != null) 'connections': connections!.toJson(),
+    if (locked) 'locked': true,
+    if (lockedAtMillis != null) 'lockedAt': lockedAtMillis,
+  };
 
   factory PlayerAnswer.fromJson(Map<String, dynamic> json) {
     List<int>? ints(Object? v) => v is List ? [for (final e in v) (e as num).toInt()] : null;
@@ -455,9 +471,7 @@ class PlayerAnswer {
       pairs: ints(json['pairs']),
       drawing: json['drawing'] as String?,
       items: json['items'] is List ? [for (final e in json['items'] as List) '$e'] : null,
-      connections: json['connections'] is Map
-          ? ConnectionsProgress.fromJson(Map<String, dynamic>.from(json['connections'] as Map))
-          : null,
+      connections: json['connections'] is Map ? ConnectionsProgress.fromJson(Map<String, dynamic>.from(json['connections'] as Map)) : null,
       locked: json['locked'] == true,
       lockedAtMillis: (json['lockedAt'] as num?)?.toInt(),
     );
@@ -474,8 +488,6 @@ class AnswerRound {
     this.endsAtMillis,
     this.answers = const {},
     this.revealed = const [],
-    this.verdicts = const {},
-    this.awarded = const {},
     this.found = const {},
   });
 
@@ -496,13 +508,6 @@ class AnswerRound {
   /// Team ids whose answers are on the big screen, in the order shown.
   final List<String> revealed;
 
-  /// The gamemaster's ruling per team, where one was made.
-  final Map<String, bool> verdicts;
-
-  /// Points given for this round per team, so a ruling can be changed
-  /// without counting twice.
-  final Map<String, int> awarded;
-
   /// Top answers on the devices: per team, the answers on the list the
   /// gamemaster has ticked as found.
   final Map<String, List<int>> found;
@@ -511,60 +516,48 @@ class AnswerRound {
 
   AnswerRound copyWith({
     bool? open,
+
     /// An int sets the timer, null clears it; leave out (or pass any other
     /// object) to keep it as it is.
     Object? endsAtMillis = _keep,
     Map<String, PlayerAnswer>? answers,
     List<String>? revealed,
-    Map<String, bool>? verdicts,
-    Map<String, int>? awarded,
     Map<String, List<int>>? found,
-  }) =>
-      AnswerRound(
-        spec: spec,
-        open: open ?? this.open,
-        openedAtMillis: openedAtMillis,
-        endsAtMillis: endsAtMillis is int? ? endsAtMillis : this.endsAtMillis,
-        answers: answers ?? this.answers,
-        revealed: revealed ?? this.revealed,
-        verdicts: verdicts ?? this.verdicts,
-        awarded: awarded ?? this.awarded,
-        found: found ?? this.found,
-      );
+  }) => AnswerRound(
+    spec: spec,
+    open: open ?? this.open,
+    openedAtMillis: openedAtMillis,
+    endsAtMillis: endsAtMillis is int? ? endsAtMillis : this.endsAtMillis,
+    answers: answers ?? this.answers,
+    revealed: revealed ?? this.revealed,
+    found: found ?? this.found,
+  );
 
   Map<String, dynamic> toJson() => {
-        'spec': spec.toMap(),
-        'open': open,
-        'openedAt': openedAtMillis,
-        'endsAt': endsAtMillis,
-        'answers': {for (final entry in answers.entries) entry.key: entry.value.toJson()},
-        'revealed': revealed,
-        'verdicts': verdicts,
-        'awarded': awarded,
-        if (found.isNotEmpty) 'found': found,
-      };
+    'spec': spec.toMap(),
+    'open': open,
+    'openedAt': openedAtMillis,
+    'endsAt': endsAtMillis,
+    'answers': {for (final entry in answers.entries) entry.key: entry.value.toJson()},
+    'revealed': revealed,
+    if (found.isNotEmpty) 'found': found,
+  };
 
   factory AnswerRound.fromJson(Map<String, dynamic> json) => AnswerRound(
-        spec: CompanionSpec.fromMap(json['spec']) ?? const CompanionSpec(kind: CompanionKind.text),
-        open: json['open'] == true,
-        openedAtMillis: (json['openedAt'] as num?)?.toInt(),
-        endsAtMillis: (json['endsAt'] as num?)?.toInt(),
-        answers: {
-          for (final entry in (json['answers'] as Map? ?? const {}).entries)
-            entry.key as String: PlayerAnswer.fromJson(Map<String, dynamic>.from(entry.value as Map)),
-        },
-        revealed: (json['revealed'] as List? ?? const []).cast<String>().toList(),
-        verdicts: {
-          for (final entry in (json['verdicts'] as Map? ?? const {}).entries) entry.key as String: entry.value == true,
-        },
-        awarded: {
-          for (final entry in (json['awarded'] as Map? ?? const {}).entries) entry.key as String: (entry.value as num).toInt(),
-        },
-        found: {
-          for (final entry in (json['found'] as Map? ?? const {}).entries)
-            entry.key as String: [for (final e in entry.value as List) (e as num).toInt()],
-        },
-      );
+    spec: CompanionSpec.fromMap(json['spec']) ?? const CompanionSpec(kind: CompanionKind.text),
+    open: json['open'] == true,
+    openedAtMillis: (json['openedAt'] as num?)?.toInt(),
+    endsAtMillis: (json['endsAt'] as num?)?.toInt(),
+    answers: {
+      for (final entry in (json['answers'] as Map? ?? const {}).entries)
+        entry.key as String: PlayerAnswer.fromJson(Map<String, dynamic>.from(entry.value as Map)),
+    },
+    revealed: (json['revealed'] as List? ?? const []).cast<String>().toList(),
+    found: {
+      for (final entry in (json['found'] as Map? ?? const {}).entries)
+        entry.key as String: [for (final e in entry.value as List) (e as num).toInt()],
+    },
+  );
 }
 
 const Object _keep = Object();
@@ -574,8 +567,7 @@ const Object _keep = Object();
 /// everything that needs the gamemaster's eye.
 bool? autoVerdict(CompanionSpec spec, PlayerAnswer? answer, {List<bool> choiceCorrect = const []}) {
   if (answer == null) return null;
-  bool identity(List<int> list, int length) =>
-      list.length == length && Iterable<int>.generate(length).every((i) => list[i] == i);
+  bool identity(List<int> list, int length) => list.length == length && Iterable<int>.generate(length).every((i) => list[i] == i);
   switch (spec.kind) {
     case CompanionKind.choice:
       final choice = answer.choice;
@@ -617,8 +609,7 @@ bool? autoVerdict(CompanionSpec spec, PlayerAnswer? answer, {List<bool> choiceCo
 }
 
 /// The question's points shared out over the items in the right place.
-int partialPoints(({int right, int of}) score, int pointsPlus) =>
-    score.of == 0 ? 0 : (pointsPlus * score.right / score.of).round();
+int partialPoints(({int right, int of}) score, int pointsPlus) => score.of == 0 ? 0 : (pointsPlus * score.right / score.of).round();
 
 /// Ways to share out the points of an estimate.
 enum EstimateScoring {

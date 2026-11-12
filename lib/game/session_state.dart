@@ -6,6 +6,9 @@ library;
 import 'cards.dart';
 import 'companion.dart';
 import 'content.dart';
+import 'results.dart';
+
+export 'results.dart';
 
 enum Phase {
   /// The board is shown, no question open.
@@ -49,20 +52,20 @@ class Team {
   Team withColor(int? color) => Team(id: id, name: name, points: points, sound: sound, color: color);
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'points': points,
-        if (sound != null) 'sound': sound,
-        if (color != null) 'color': color,
-      };
+    'id': id,
+    'name': name,
+    'points': points,
+    if (sound != null) 'sound': sound,
+    if (color != null) 'color': color,
+  };
 
   factory Team.fromJson(Map<String, dynamic> json) => Team(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        points: (json['points'] as num?)?.toInt() ?? 0,
-        sound: json['sound'] as String?,
-        color: (json['color'] as num?)?.toInt(),
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    points: (json['points'] as num?)?.toInt() ?? 0,
+    sound: json['sound'] as String?,
+    color: (json['color'] as num?)?.toInt(),
+  );
 }
 
 /// Colours a team can pick, as ARGB: strong enough to read white text on.
@@ -94,24 +97,96 @@ class OverlayCard {
   /// A media file of the game; shown full screen, without the text.
   final String? video;
 
-  bool get isEmpty =>
-      (title ?? '').trim().isEmpty && (text ?? '').trim().isEmpty && (image ?? '').isEmpty && (video ?? '').isEmpty;
+  bool get isEmpty => (title ?? '').trim().isEmpty && (text ?? '').trim().isEmpty && (image ?? '').isEmpty && (video ?? '').isEmpty;
 
   Map<String, dynamic> toJson() => {
-        if (title != null) 'title': title,
-        if (text != null) 'text': text,
-        if (image != null) 'image': image,
-        if (video != null) 'video': video,
-        if (style != CardStyle.standard) 'style': style.name,
-      };
+    if (title != null) 'title': title,
+    if (text != null) 'text': text,
+    if (image != null) 'image': image,
+    if (video != null) 'video': video,
+    if (style != CardStyle.standard) 'style': style.name,
+  };
 
   factory OverlayCard.fromJson(Map<String, dynamic> json) => OverlayCard(
-        title: json['title'] as String?,
-        text: json['text'] as String?,
-        image: json['image'] as String?,
-        video: json['video'] as String?,
-        style: CardStyle.fromName(json['style']),
-      );
+    title: json['title'] as String?,
+    text: json['text'] as String?,
+    image: json['image'] as String?,
+    video: json['video'] as String?,
+    style: CardStyle.fromName(json['style']),
+  );
+}
+
+/// The bets of a question played with bets: points (`Question.betting`)
+/// or an amount (`Question.amountBet`).
+///
+/// While [open], teams place and change their bets, nobody sees anyone
+/// else's, and the question waits. Closing the bets fixes them and puts them
+/// on the big screen for everyone ([shown]); the question still waits until
+/// the gamemaster starts it. A team that placed no bet bets nothing.
+class Betting {
+  const Betting({this.open = true, this.shown = false, this.bets = const {}});
+
+  final bool open;
+
+  /// The bets are closed and on the big screen; the question hasn't started.
+  final bool shown;
+
+  /// By team id; never negative.
+  final Map<String, int> bets;
+
+  /// What [teamId] bet.
+  int betOf(String teamId) => bets[teamId] ?? 0;
+
+  Betting copyWith({bool? open, bool? shown, Map<String, int>? bets}) =>
+      Betting(open: open ?? this.open, shown: shown ?? this.shown, bets: bets ?? this.bets);
+
+  Map<String, dynamic> toJson() => {'open': open, if (shown) 'shown': true, 'bets': bets};
+
+  factory Betting.fromJson(Map<String, dynamic> json) =>
+      Betting(open: json['open'] == true, shown: json['shown'] == true, bets: _ints(json['bets']));
+
+  static Map<String, int> _ints(Object? map) => {
+    for (final entry in (map is Map ? map : const {}).entries)
+      if (entry.value is num) '${entry.key}': (entry.value as num).toInt(),
+  };
+}
+
+/// The smallest top limit for a bet of points: a team with fewer points, or
+/// none or below zero, may still bet this much, or the question's points if
+/// those are more.
+const int kMinBetLimit = 100;
+
+/// The most [team] may bet on [question]: for an amount, the question's
+/// highest number; for points, its points, or the question's points (at
+/// least [kMinBetLimit]) when it has fewer.
+int maxBet(Team team, Question question) {
+  final amount = question.amountBet;
+  if (amount != null) return amount.max;
+  final floor = question.pointsPlus > kMinBetLimit ? question.pointsPlus : kMinBetLimit;
+  return team.points > floor ? team.points : floor;
+}
+
+/// The clock of a question that runs for a set time without a screen on the
+/// teams' devices (those have their own, see `AnswerRound`). Host clock.
+class QuestionTimer {
+  const QuestionTimer({this.openedAtMillis, required this.endsAtMillis, this.running = true});
+
+  final int? openedAtMillis;
+  final int endsAtMillis;
+
+  /// False once the time is up.
+  final bool running;
+
+  Map<String, dynamic> toJson() => {'openedAt': openedAtMillis, 'endsAt': endsAtMillis, 'running': running};
+
+  static QuestionTimer? fromJson(Object? json) {
+    if (json is! Map || json['endsAt'] is! num) return null;
+    return QuestionTimer(
+      openedAtMillis: (json['openedAt'] as num?)?.toInt(),
+      endsAtMillis: (json['endsAt'] as num).toInt(),
+      running: json['running'] != false,
+    );
+  }
 }
 
 const Object _unset = Object();
@@ -140,7 +215,11 @@ class SessionState {
     this.ambienceVolume = 30,
     this.boardFocus,
     this.answerRound,
+    this.betting,
+    this.timer,
     this.overlay,
+    this.results = const Results(),
+    this.scoreLog = const [],
   });
 
   /// Incremented on every accepted command; lets a client drop stale updates.
@@ -208,8 +287,29 @@ class SessionState {
   final String? boardFocus;
   final AnswerRound? answerRound;
 
+  /// The bets of the open question, when it is played with bets.
+  final Betting? betting;
+
+  /// The open question's own clock, when it has one.
+  final QuestionTimer? timer;
+
+  /// Whether teams are still placing their bets: the question waits.
+  bool get placingBets => betting?.open == true;
+
+  /// Whether the bets are on the big screen and the question is yet to start.
+  bool get betsShown => betting?.shown == true;
+
+  /// Whether the open question waits for its bets: being placed, or shown.
+  bool get waitingForBets => placingBets || betsShown;
+
   /// The card currently shown on top of the screen, if any.
   final OverlayCard? overlay;
+
+  /// How the teams did on the open question; see [Results].
+  final Results results;
+
+  /// The latest changes to the scores, oldest first; at most [kScoreLogLength].
+  final List<ScoreChange> scoreLog;
 
   Team? team(String id) {
     for (final team in teams) {
@@ -241,88 +341,102 @@ class SessionState {
     int? ambienceVolume,
     Object? boardFocus = _unset,
     Object? answerRound = _unset,
+    Object? betting = _unset,
+    Object? timer = _unset,
     Object? overlay = _unset,
-  }) =>
-      SessionState(
-        seq: seq ?? this.seq,
-        gameId: identical(gameId, _unset) ? this.gameId : gameId as String?,
-        teams: teams ?? this.teams,
-        phase: phase ?? this.phase,
-        groupId: identical(groupId, _unset) ? this.groupId : groupId as String?,
-        current: identical(current, _unset) ? this.current : current as QuestionRef?,
-        played: played ?? this.played,
-        queueBuzzers: queueBuzzers ?? this.queueBuzzers,
-        cardAnimation: cardAnimation ?? this.cardAnimation,
-        buzzQueue: buzzQueue ?? this.buzzQueue,
-        revealed: revealed ?? this.revealed,
-        imageFocus: imageFocus ?? this.imageFocus,
-        feudRevealed: feudRevealed ?? this.feudRevealed,
-        foundBy: foundBy ?? this.foundBy,
-        wrongAttempts: wrongAttempts ?? this.wrongAttempts,
-        media: media ?? this.media,
-        music: music is String? ? music : this.music,
-        ambience: identical(ambience, _unset) ? this.ambience : ambience as String?,
-        musicVolume: musicVolume ?? this.musicVolume,
-        ambienceVolume: ambienceVolume ?? this.ambienceVolume,
-        boardFocus: identical(boardFocus, _unset) ? this.boardFocus : boardFocus as String?,
-        answerRound: identical(answerRound, _unset) ? this.answerRound : answerRound as AnswerRound?,
-        overlay: identical(overlay, _unset) ? this.overlay : overlay as OverlayCard?,
-      );
+    Results? results,
+    List<ScoreChange>? scoreLog,
+  }) => SessionState(
+    seq: seq ?? this.seq,
+    gameId: identical(gameId, _unset) ? this.gameId : gameId as String?,
+    teams: teams ?? this.teams,
+    phase: phase ?? this.phase,
+    groupId: identical(groupId, _unset) ? this.groupId : groupId as String?,
+    current: identical(current, _unset) ? this.current : current as QuestionRef?,
+    played: played ?? this.played,
+    queueBuzzers: queueBuzzers ?? this.queueBuzzers,
+    cardAnimation: cardAnimation ?? this.cardAnimation,
+    buzzQueue: buzzQueue ?? this.buzzQueue,
+    revealed: revealed ?? this.revealed,
+    imageFocus: imageFocus ?? this.imageFocus,
+    feudRevealed: feudRevealed ?? this.feudRevealed,
+    foundBy: foundBy ?? this.foundBy,
+    wrongAttempts: wrongAttempts ?? this.wrongAttempts,
+    media: media ?? this.media,
+    music: music is String? ? music : this.music,
+    ambience: identical(ambience, _unset) ? this.ambience : ambience as String?,
+    musicVolume: musicVolume ?? this.musicVolume,
+    ambienceVolume: ambienceVolume ?? this.ambienceVolume,
+    boardFocus: identical(boardFocus, _unset) ? this.boardFocus : boardFocus as String?,
+    answerRound: identical(answerRound, _unset) ? this.answerRound : answerRound as AnswerRound?,
+    betting: identical(betting, _unset) ? this.betting : betting as Betting?,
+    timer: identical(timer, _unset) ? this.timer : timer as QuestionTimer?,
+    overlay: identical(overlay, _unset) ? this.overlay : overlay as OverlayCard?,
+    results: results ?? this.results,
+    scoreLog: scoreLog ?? this.scoreLog,
+  );
 
   Map<String, dynamic> toJson() => {
-        'seq': seq,
-        'gameId': gameId,
-        'teams': [for (final team in teams) team.toJson()],
-        'phase': phase.name,
-        'groupId': groupId,
-        'current': current?.key,
-        'played': played.toList()..sort(),
-        'queueBuzzers': queueBuzzers,
-        'cardAnimation': cardAnimation.name,
-        'buzzQueue': buzzQueue,
-        'revealed': revealed,
-        'imageFocus': imageFocus,
-        'feudRevealed': feudRevealed,
-        if (foundBy.isNotEmpty) 'foundBy': {for (final entry in foundBy.entries) '${entry.key}': entry.value},
-        'wrongAttempts': wrongAttempts,
-        'media': media.name,
-        'music': music,
-        'ambience': ambience,
-        'musicVolume': musicVolume,
-        'ambienceVolume': ambienceVolume,
-        'boardFocus': boardFocus,
-        'answerRound': answerRound?.toJson(),
-        'overlay': overlay?.toJson(),
-      };
+    'seq': seq,
+    'gameId': gameId,
+    'teams': [for (final team in teams) team.toJson()],
+    'phase': phase.name,
+    'groupId': groupId,
+    'current': current?.key,
+    'played': played.toList()..sort(),
+    'queueBuzzers': queueBuzzers,
+    'cardAnimation': cardAnimation.name,
+    'buzzQueue': buzzQueue,
+    'revealed': revealed,
+    'imageFocus': imageFocus,
+    'feudRevealed': feudRevealed,
+    if (foundBy.isNotEmpty) 'foundBy': {for (final entry in foundBy.entries) '${entry.key}': entry.value},
+    'wrongAttempts': wrongAttempts,
+    'media': media.name,
+    'music': music,
+    'ambience': ambience,
+    'musicVolume': musicVolume,
+    'ambienceVolume': ambienceVolume,
+    'boardFocus': boardFocus,
+    'answerRound': answerRound?.toJson(),
+    if (betting != null) 'betting': betting!.toJson(),
+    if (timer != null) 'timer': timer!.toJson(),
+    'overlay': overlay?.toJson(),
+    if (!results.isEmpty) 'results': results.toJson(),
+    if (scoreLog.isNotEmpty) 'scoreLog': [for (final change in scoreLog) change.toJson()],
+  };
 
   factory SessionState.fromJson(Map<String, dynamic> json) => SessionState(
-        seq: (json['seq'] as num?)?.toInt() ?? 0,
-        gameId: json['gameId'] as String?,
-        teams: [for (final team in json['teams'] as List? ?? const []) Team.fromJson(Map<String, dynamic>.from(team as Map))],
-        phase: Phase.values.byName(json['phase'] as String? ?? Phase.overview.name),
-        groupId: json['groupId'] as String?,
-        current: QuestionRef.tryParse(json['current']),
-        played: {...(json['played'] as List? ?? const []).cast<String>()},
-        queueBuzzers: json['queueBuzzers'] == true,
-        cardAnimation: CardAnimation.fromName(json['cardAnimation']),
-        buzzQueue: (json['buzzQueue'] as List? ?? const []).cast<String>().toList(),
-        revealed: (json['revealed'] as num?)?.toInt() ?? 0,
-        imageFocus: (json['imageFocus'] as num?)?.toInt() ?? 0,
-        feudRevealed: [for (final index in json['feudRevealed'] as List? ?? const []) (index as num).toInt()],
-        foundBy: {
-          for (final entry in (json['foundBy'] as Map? ?? const {}).entries)
-            if (int.tryParse('${entry.key}') != null) int.parse('${entry.key}'): '${entry.value}',
-        },
-        wrongAttempts: (json['wrongAttempts'] as num?)?.toInt() ?? 0,
-        media: MediaPlayback.values.byName(json['media'] as String? ?? MediaPlayback.stopped.name),
-        music: json['music'] as String?,
-        // Sessions from before the switch get it on, like new ones.
-        ambience: json.containsKey('ambience') ? json['ambience'] as String? : ambienceSoftNoise,
-        musicVolume: (json['musicVolume'] as num?)?.toInt().clamp(0, 100) ?? 100,
-        ambienceVolume: (json['ambienceVolume'] as num?)?.toInt().clamp(0, 100) ?? 30,
-        boardFocus: json['boardFocus'] as String?,
-        answerRound:
-            json['answerRound'] == null ? null : AnswerRound.fromJson(Map<String, dynamic>.from(json['answerRound'] as Map)),
-        overlay: json['overlay'] == null ? null : OverlayCard.fromJson(Map<String, dynamic>.from(json['overlay'] as Map)),
-      );
+    seq: (json['seq'] as num?)?.toInt() ?? 0,
+    gameId: json['gameId'] as String?,
+    teams: [for (final team in json['teams'] as List? ?? const []) Team.fromJson(Map<String, dynamic>.from(team as Map))],
+    phase: Phase.values.byName(json['phase'] as String? ?? Phase.overview.name),
+    groupId: json['groupId'] as String?,
+    current: QuestionRef.tryParse(json['current']),
+    played: {...(json['played'] as List? ?? const []).cast<String>()},
+    queueBuzzers: json['queueBuzzers'] == true,
+    cardAnimation: CardAnimation.fromName(json['cardAnimation']),
+    buzzQueue: (json['buzzQueue'] as List? ?? const []).cast<String>().toList(),
+    revealed: (json['revealed'] as num?)?.toInt() ?? 0,
+    imageFocus: (json['imageFocus'] as num?)?.toInt() ?? 0,
+    feudRevealed: [for (final index in json['feudRevealed'] as List? ?? const []) (index as num).toInt()],
+    foundBy: {
+      for (final entry in (json['foundBy'] as Map? ?? const {}).entries)
+        if (int.tryParse('${entry.key}') != null) int.parse('${entry.key}'): '${entry.value}',
+    },
+    wrongAttempts: (json['wrongAttempts'] as num?)?.toInt() ?? 0,
+    media: MediaPlayback.values.byName(json['media'] as String? ?? MediaPlayback.stopped.name),
+    music: json['music'] as String?,
+    // Sessions from before the switch get it on, like new ones.
+    ambience: json.containsKey('ambience') ? json['ambience'] as String? : ambienceSoftNoise,
+    musicVolume: (json['musicVolume'] as num?)?.toInt().clamp(0, 100) ?? 100,
+    ambienceVolume: (json['ambienceVolume'] as num?)?.toInt().clamp(0, 100) ?? 30,
+    boardFocus: json['boardFocus'] as String?,
+    answerRound: json['answerRound'] == null ? null : AnswerRound.fromJson(Map<String, dynamic>.from(json['answerRound'] as Map)),
+    betting: json['betting'] is Map ? Betting.fromJson(Map<String, dynamic>.from(json['betting'] as Map)) : null,
+    timer: QuestionTimer.fromJson(json['timer']),
+    overlay: json['overlay'] == null ? null : OverlayCard.fromJson(Map<String, dynamic>.from(json['overlay'] as Map)),
+    results: Results.fromJson(json['results']),
+    scoreLog: [for (final change in json['scoreLog'] as List? ?? const []) ?ScoreChange.fromJson(change)],
+  );
 }

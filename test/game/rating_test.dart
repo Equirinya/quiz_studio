@@ -12,8 +12,9 @@ SessionState withRound(CompanionSpec spec, Map<String, PlayerAnswer> answers) {
   return reduce(state, const LockAnswers(), fixtureGame()).state;
 }
 
+/// [state] after [commands] and "Give points".
 SessionState rated(SessionState state, List<Command> commands) {
-  for (final command in commands) {
+  for (final command in [...commands, const GivePoints()]) {
     state = reduce(state, command, fixtureGame()).state;
   }
   return state;
@@ -41,14 +42,14 @@ void main() {
         'blue': PlayerAnswer(pairs: [0, 1, 2, 3]),
       });
       final after = rated(state, autoRating(state, state.answerRound!, question));
-      expect(after.answerRound!.awarded, {'red': 150, 'blue': 200});
-      expect(after.answerRound!.verdicts, {'red': true, 'blue': true});
+      expect(after.results.given, {'red': 150, 'blue': 200});
+      expect(after.results.verdicts, {'red': true, 'blue': true});
 
       final none = withRound(order, const {
         'red': PlayerAnswer(order: [1, 0, 3, 2]),
       });
       final wrong = rated(none, autoRating(none, none.answerRound!, question));
-      expect(wrong.answerRound!.verdicts['red'], isFalse);
+      expect(wrong.results.verdicts['red'], isFalse);
     });
   });
 
@@ -85,8 +86,9 @@ void main() {
 
     test('the scoring buttons rate the round without taking points away', () {
       final state = withRound(spec, const {'red': PlayerAnswer(number: 90), 'blue': PlayerAnswer(number: 130)});
-      final after = rated(state, estimateRating(state.answerRound!, question, EstimateScoring.distance));
-      expect(after.answerRound!.awarded, {'red': 200, 'blue': 0});
+      final after = rated(state, estimateRating(state, state.answerRound!, question, EstimateScoring.distance));
+      expect(after.results.verdicts, {'red': true, 'blue': false});
+      expect(after.results.given, {'red': 200});
       expect(after.team('blue')!.points, 0);
     });
 

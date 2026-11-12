@@ -35,7 +35,24 @@ Map<String, dynamic> publicView(SessionState state, GameContent? game, {String? 
     'buzzersOpen': buzzersOpen(state, game),
     // A question can leave the buzzing to the buzzer box.
     if (question != null && question.noPhoneBuzzer && state.phase != Phase.buzzerTest) 'phoneBuzzer': false,
-    'question': question == null ? null : _visibleQuestion(state, question),
+    'question': question == null ? null : _visibleQuestion(state, question, game),
+    // Bets: who has placed one, and only once they are closed how much.
+    if (state.betting case final betting?)
+      'betting': {
+        'kind': question?.amountBet != null ? 'amount' : 'points',
+        'open': betting.open,
+        'shown': betting.shown,
+        'placed': [
+          for (final team in state.teams)
+            if (betting.bets.containsKey(team.id)) team.id,
+        ],
+        if (!betting.open) 'bets': betting.bets,
+        if (!betting.open && question?.amountBet != null && state.results.verdicts.isNotEmpty) 'verdicts': state.results.verdicts,
+      },
+    // The latest changes to the scores, for the "+100" that pops up.
+    if (state.scoreLog.isNotEmpty) 'scoreLog': [for (final change in state.scoreLog) change.toJson()],
+    // The question's own clock, on the host's time.
+    if (state.timer case final timer?) 'timer': timer.toJson(),
     'answerRound': round == null
         ? null
         : {
@@ -64,17 +81,21 @@ Map<String, dynamic> publicView(SessionState state, GameContent? game, {String? 
               'progress': {
                 for (final entry in round.answers.entries)
                   if (entry.value.connections != null)
-                    entry.key: {
-                      'solved': entry.value.connections!.solved,
-                      'mistakes': entry.value.connections!.mistakes,
-                    },
+                    entry.key: {'solved': entry.value.connections!.solved, 'mistakes': entry.value.connections!.mistakes},
               },
             'verdicts': {
               for (final teamId in round.revealed)
-                if (round.verdicts.containsKey(teamId)) teamId: round.verdicts[teamId],
+                if (state.results.verdicts.containsKey(teamId)) teamId: state.results.verdicts[teamId],
             },
           },
-    if (teamId != null && state.team(teamId) != null) 'own': _own(state, round, teamId, seed),
+    if (teamId != null && state.team(teamId) != null)
+      'own': {
+        ..._own(state, round, teamId, seed),
+        if (state.betting != null && question != null) ...{
+          'bet': state.betting!.bets[teamId],
+          'maxBet': maxBet(state.team(teamId)!, question),
+        },
+      },
   };
 }
 
@@ -124,7 +145,19 @@ Map<String, dynamic> _groupView(CompanionSpec spec, int level, Map<int, int> pos
   };
 }
 
-Map<String, dynamic> _visibleQuestion(SessionState state, Question question) {
+Map<String, dynamic> _visibleQuestion(SessionState state, Question question, GameContent? game) {
+  // While bets are placed only the category and the points are known.
+  if (state.waitingForBets) {
+    return {
+      'type': question.type.name,
+      'text': '',
+      'betting': true,
+      'category': ?game?.category(state.current!.categoryId)?.name,
+      if (question.amountBet != null) 'prompt': question.amountBet!.prompt,
+      if (question.amountBet != null) 'pointsMinus': question.pointsMinus,
+      'pointsPlus': question.pointsPlus,
+    };
+  }
   final view = <String, dynamic>{
     'type': question.type.name,
     'text': question.text,
@@ -196,14 +229,12 @@ class PublicView {
 
   Phase get phase => Phase.values.firstWhere((p) => p.name == json['phase'], orElse: () => Phase.overview);
 
-  List<Team> get teams =>
-      [for (final team in json['teams'] as List? ?? const []) Team.fromJson(Map<String, dynamic>.from(team as Map))];
+  List<Team> get teams => [for (final team in json['teams'] as List? ?? const []) Team.fromJson(Map<String, dynamic>.from(team as Map))];
 
   List<String> get buzzQueue => (json['buzzQueue'] as List? ?? const []).cast<String>();
 
   /// The open question as far as it is revealed, or null on the board.
-  Map<String, dynamic>? get question =>
-      json['question'] == null ? null : Map<String, dynamic>.from(json['question'] as Map);
+  Map<String, dynamic>? get question => json['question'] == null ? null : Map<String, dynamic>.from(json['question'] as Map);
 
   Map<String, dynamic>? get _round => json['answerRound'] == null ? null : Map<String, dynamic>.from(json['answerRound'] as Map);
 
@@ -227,6 +258,9 @@ class PublicView {
   bool isRevealed(String teamId) => (_round?['revealed'] as List? ?? const []).contains(teamId);
 
   bool? verdictOf(String teamId) => (_round?['verdicts'] as Map?)?[teamId] as bool?;
+
+  /// The latest changes to the scores, oldest first.
+  List<ScoreChange> get scoreLog => [for (final change in json['scoreLog'] as List? ?? const []) ?ScoreChange.fromJson(change)];
 
   /// The oldest app version that may play along; see [kMinCompanionVersion].
   String? get minAppVersion => json['minAppVersion'] as String?;
@@ -274,8 +308,8 @@ class PublicView {
 
   /// Connections: groups on the big screen.
   List<GroupView> get revealedGroups => [
-        for (final group in question?['revealedGroups'] as List? ?? const []) GroupView(Map<String, dynamic>.from(group as Map)),
-      ];
+    for (final group in question?['revealedGroups'] as List? ?? const []) GroupView(Map<String, dynamic>.from(group as Map)),
+  ];
 
   /// Connections: how far a team got, as (levels found, mistakes).
   ({List<int> solved, int mistakes})? progressOf(String teamId) {
@@ -286,6 +320,51 @@ class PublicView {
       mistakes: (entry['mistakes'] as num?)?.toInt() ?? 0,
     );
   }
+
+  /// Whether a question played with bets is open.
+  bool get hasBets => json['betting'] is Map;
+
+  Map<String, dynamic> get _betting => json['betting'] is Map ? Map<String, dynamic>.from(json['betting'] as Map) : const {};
+
+  /// Whether teams are still placing their bets.
+  bool get placingBets => _betting['open'] == true;
+
+  /// Whether the bets are on the big screen and the question is yet to start.
+  bool get betsShown => _betting['shown'] == true;
+
+  /// Whether [teamId] has placed a bet.
+  bool hasBet(String teamId) => (_betting['placed'] as List? ?? const []).contains(teamId);
+
+  /// Every team's bet, once the betting is closed.
+  Map<String, int> get bets => {
+    for (final entry in (_betting['bets'] as Map? ?? const {}).entries)
+      if (entry.value is num) '${entry.key}': (entry.value as num).toInt(),
+  };
+
+  /// Whether teams bet how many they can do rather than points.
+  bool get betsOnAmount => _betting['kind'] == 'amount';
+
+  /// Amount bets: what the teams bet on, e.g. "How many films can you name?".
+  String? get betPrompt => question?['prompt'] as String?;
+
+  /// Amount bets: whether [teamId] reached its number, once judged.
+  bool? betVerdict(String teamId) => (_betting['verdicts'] as Map?)?[teamId] as bool?;
+
+  /// The question's own clock, when it has one: host times, and whether it
+  /// still runs.
+  ({int? openedAt, int endsAt, bool running})? get questionTimer {
+    final timer = QuestionTimer.fromJson(json['timer']);
+    return timer == null ? null : (openedAt: timer.openedAtMillis, endsAt: timer.endsAtMillis, running: timer.running);
+  }
+
+  /// This team's own bet; null before it placed one.
+  int? get ownBet => (own['bet'] as num?)?.toInt();
+
+  /// The most this team may bet.
+  int get ownMaxBet => (own['maxBet'] as num?)?.toInt() ?? kMinBetLimit;
+
+  /// The category of a question whose bets are being placed.
+  String? get betCategory => question?['category'] as String?;
 
   /// Whether this device shows its buzzer; false while a question is buzzed
   /// on the buzzer box only.
@@ -324,8 +403,8 @@ class ConnectionsView {
 
   /// Wrong guesses, as places in the shown order.
   List<List<int>> get wrong => [
-        for (final guess in json['wrong'] as List? ?? const []) [for (final p in guess as List) (p as num).toInt()],
-      ];
+    for (final guess in json['wrong'] as List? ?? const []) [for (final p in guess as List) (p as num).toInt()],
+  ];
 
   List<bool> get oneAway => [for (final e in json['oneAway'] as List? ?? const []) e == true];
 

@@ -9,6 +9,7 @@ import 'package:quiz_show/features/session/pages/session_setup_page.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
+import 'package:quiz_show/features/session/widgets/score_pop.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// The gamemaster's remote.
@@ -116,14 +117,14 @@ class _ControllerViewState extends State<ControllerView> {
       if (team == null) return const SizedBox(height: 80, child: Center(child: Text("This team was removed.")));
       final theme = Theme.of(context);
       Widget step(int delta) => Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: FilledButton.tonal(
-                onPressed: () => _send(AdjustPoints(team.id, delta)),
-                child: Text(delta > 0 ? "+$delta" : "−${-delta}"),
-              ),
-            ),
-          );
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: FilledButton.tonal(
+            onPressed: () => _send(AdjustPoints(team.id, delta)),
+            child: Text(delta > 0 ? "+$delta" : "−${-delta}"),
+          ),
+        ),
+      );
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: Column(
@@ -194,9 +195,11 @@ class _ControllerViewState extends State<ControllerView> {
 
   // ── sheets ─────────────────────────────────────────────────────────────────
 
-  void _openBoard() => _sheet((context, state, game) => game == null
-      ? const SizedBox(height: 120, child: Center(child: Text("This session has no game yet.")))
-      : _BoardSheet(state: state, game: game, send: _send));
+  void _openBoard() => _sheet(
+    (context, state, game) => game == null
+        ? const SizedBox(height: 120, child: Center(child: Text("This session has no game yet.")))
+        : _BoardSheet(state: state, game: game, send: _send),
+  );
 
   void _openEffects() => _sheet((context, state, game) => _EffectsSheet(state: state, game: game, send: _send));
 
@@ -204,29 +207,29 @@ class _ControllerViewState extends State<ControllerView> {
 
   // The same setup as before the show, from the session list.
   void _openSetup() => _sheet((context, state, game) {
-        return ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: SessionSetupView(
-              state: _c.state,
-              send: _send,
-              onConnectDevices: widget.onConnectDevices == null
-                  ? null
-                  : () {
-                      Navigator.of(context).pop();
-                      widget.onConnectDevices!();
-                    },
-              onBuzzerSetup: widget.onBuzzerSetup == null
-                  ? null
-                  : () {
-                      Navigator.of(context).pop();
-                      widget.onBuzzerSetup!();
-                    },
-            ),
-          ),
-        );
-      });
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: SessionSetupView(
+          state: _c.state,
+          send: _send,
+          onConnectDevices: widget.onConnectDevices == null
+              ? null
+              : () {
+                  Navigator.of(context).pop();
+                  widget.onConnectDevices!();
+                },
+          onBuzzerSetup: widget.onBuzzerSetup == null
+              ? null
+              : () {
+                  Navigator.of(context).pop();
+                  widget.onBuzzerSetup!();
+                },
+        ),
+      ),
+    );
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -252,50 +255,54 @@ class _TeamStrip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         children: [
           for (final team in state.teams)
-            Builder(builder: (context) {
-              final position = state.buzzQueue.indexOf(team.id);
-              final answering = position == 0;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Material(
-                  color: answering
-                      ? scheme.primary
-                      : position > 0
-                          ? scheme.secondaryContainer
-                          : scheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(14),
-                  child: InkWell(
+            Builder(
+              builder: (context) {
+                final position = state.buzzQueue.indexOf(team.id);
+                final answering = position == 0;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Material(
+                    color: answering
+                        ? scheme.primary
+                        : position > 0
+                        ? scheme.secondaryContainer
+                        : scheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(14),
-                    onTap: () => onTeam(team.id),
-                    child: Container(
-                      constraints: const BoxConstraints(minWidth: 84),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      // The team's own colour as a stripe along the bottom.
-                      decoration: teamColor(team) == null
-                          ? null
-                          : BoxDecoration(border: Border(bottom: BorderSide(color: teamColor(team)!, width: 5))),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            position > 0 ? "${position + 1}. ${team.name}" : team.name,
-                            style: theme.textTheme.labelMedium?.copyWith(color: answering ? scheme.onPrimary : null),
-                          ),
-                          Text(
-                            team.points.toString(),
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: answering ? scheme.onPrimary : null,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => onTeam(team.id),
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 84),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        // The team's own colour as a stripe along the bottom.
+                        decoration: teamColor(team) == null
+                            ? null
+                            : BoxDecoration(
+                                border: Border(bottom: BorderSide(color: teamColor(team)!, width: 5)),
+                              ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              position > 0 ? "${position + 1}. ${team.name}" : team.name,
+                              style: theme.textTheme.labelMedium?.copyWith(color: answering ? scheme.onPrimary : null),
                             ),
-                          ),
-                        ],
+                            Text(
+                              team.points.toString(),
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: answering ? scheme.onPrimary : null,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              );
-            }),
+                );
+              },
+            ),
           IconButton.outlined(onPressed: onAdd, icon: const Icon(Icons.add), tooltip: "Add team"),
         ],
       ),
@@ -315,7 +322,13 @@ String _status(SessionState state, Question? question) {
     case Phase.overview:
       return "Board";
     case Phase.question:
+      if (state.betsShown) return "The bets are on the big screen · start the question when ready";
+      if (state.placingBets) {
+        final placed = state.teams.where((team) => state.betting!.bets.containsKey(team.id)).length;
+        return "Teams are betting · $placed of ${state.teams.length} bets in";
+      }
       if (question?.rapidFire?.mode == RapidMode.devices) return "Teams pick right or wrong on their devices";
+      if (question?.amountBet != null) return "Teams go for the number they bet";
       return question?.buzzerable == false ? "Question open · no buzzers" : "Question open · waiting for a buzz";
     case Phase.buzzered:
       final next = state.buzzQueue.skip(1).map(name).join(", ");
@@ -351,19 +364,23 @@ class _NowPanel extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final q = question;
-    final status = Text(
-      _status(state, q),
-      style: theme.textTheme.titleSmall?.copyWith(color: scheme.primary),
-    );
+    final status = Text(_status(state, q), style: theme.textTheme.titleSmall?.copyWith(color: scheme.primary));
     if (game == null) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [status, const SizedBox(height: 24), const Center(child: Text("No game picked yet. Choose one for this session in the sessions list.", textAlign: TextAlign.center))],
+        children: [
+          status,
+          const SizedBox(height: 24),
+          const Center(child: Text("No game picked yet. Choose one for this session in the sessions list.", textAlign: TextAlign.center)),
+        ],
       );
     }
     if (q == null) {
       final group = game!.group(state.groupId) ?? game!.groups.firstOrNull;
-      final all = [for (final c in group?.categories ?? const <Category>[]) for (final q in c.questions) QuestionRef(c.id, q.id)];
+      final all = [
+        for (final c in group?.categories ?? const <Category>[])
+          for (final q in c.questions) QuestionRef(c.id, q.id),
+      ];
       final played = all.where((ref) => state.played.contains(ref.key)).length;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,7 +404,26 @@ class _NowPanel extends StatelessWidget {
       children: [
         status,
         const SizedBox(height: 4),
-        Text("${q.type.uiString} · +${q.pointsPlus} / −${q.pointsMinus}", style: theme.textTheme.labelMedium),
+        Text(
+          q.betting
+              ? "${q.type.uiString} · teams bet their points"
+              : q.amountBet != null
+              ? "${q.type.uiString} · teams bet how many · +${q.pointsPlus} / −${q.pointsMinus} each"
+              : "${q.type.uiString} · +${q.pointsPlus} / −${q.pointsMinus}",
+          style: theme.textTheme.labelMedium,
+        ),
+        if (q.amountBet != null && q.amountBet!.prompt.trim().isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text("Bet question: ${q.amountBet!.prompt}", style: theme.textTheme.bodyMedium),
+          ),
+        if (state.betting != null) _BetsPanel(state: state, question: q, send: send),
+        // The question's own clock, when the devices have none.
+        if (state.timer case final timer? when timer.running && round == null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: RoundCountdown(openedAt: timer.openedAtMillis, endsAt: timer.endsAtMillis, hostClock: hostClock),
+          ),
         const SizedBox(height: 8),
         Text(q.text, style: theme.textTheme.titleMedium),
         if (q.answerHint != null)
@@ -402,21 +438,26 @@ class _NowPanel extends StatelessWidget {
         if (q.type == QuestionType.rapidFire) _RapidPanel(state: state, question: q),
         // Matching: the solution, as the big screen names the pieces.
         if (q.type == QuestionType.matching)
-          Builder(builder: (context) {
-            final matching = q.matching ?? const Matching();
-            final numbers = matching.rightNumbers(q.id);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var i = 0; i < matching.pairs.length; i++)
-                    Text("${matching.leftLabel(i)}  →  ${matching.rightLabel(i, numbers)}", style: theme.textTheme.bodyMedium),
-                ],
-              ),
-            );
-          }),
+          Builder(
+            builder: (context) {
+              final matching = q.matching ?? const Matching();
+              final numbers = matching.rightNumbers(q.id);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < matching.pairs.length; i++)
+                      Text("${matching.leftLabel(i)}  →  ${matching.rightLabel(i, numbers)}", style: theme.textTheme.bodyMedium),
+                  ],
+                ),
+              );
+            },
+          ),
         if (q.type == QuestionType.topAnswers) _TopAnswersPanel(state: state, question: q, send: send),
+        // Nothing on the devices: the gamemaster rates each team here.
+        if (round == null && !state.waitingForBets && (q.ranked || q.amountBet != null || (q.noBuzzer && q.companion == null)))
+          _ResultsPanel(state: state, question: q, send: send),
         if (round != null && q.type != QuestionType.rapidFire)
           _AnswersPanel(state: state, round: round, question: q, send: send, hostClock: hostClock, backgroundImage: backgroundImage),
         if (q.type == QuestionType.abcd)
@@ -432,10 +473,7 @@ class _NowPanel extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      "${String.fromCharCode(0x41 + i)}  $answer",
-                      style: i < state.revealed ? theme.textTheme.bodyLarge : muted,
-                    ),
+                    child: Text("${String.fromCharCode(0x41 + i)}  $answer", style: i < state.revealed ? theme.textTheme.bodyLarge : muted),
                   ),
                   if (i < state.revealed) Icon(Icons.visibility, size: 16, color: scheme.outline),
                 ],
@@ -447,9 +485,7 @@ class _NowPanel extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 3),
               child: Row(
                 children: [
-                  Expanded(
-                    child: Text("${i + 1}. $information", style: i < state.revealed ? theme.textTheme.bodyLarge : muted),
-                  ),
+                  Expanded(child: Text("${i + 1}. $information", style: i < state.revealed ? theme.textTheme.bodyLarge : muted)),
                   if (state.imageFocus == i + 1) Icon(Icons.zoom_in, size: 18, color: scheme.primary),
                   if (i < state.revealed) Icon(Icons.visibility, size: 16, color: scheme.outline),
                 ],
@@ -459,10 +495,7 @@ class _NowPanel extends StatelessWidget {
             Row(
               children: [
                 const Text("Enlarged image"),
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: state.imageFocus > 0 ? () => send(const ImageFocus(-1)) : null,
-                ),
+                IconButton(icon: const Icon(Icons.chevron_left), onPressed: state.imageFocus > 0 ? () => send(const ImageFocus(-1)) : null),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
                   onPressed: state.imageFocus < state.revealed ? () => send(const ImageFocus(1)) : null,
@@ -507,6 +540,294 @@ class _NowPanel extends StatelessWidget {
             ),
         ],
       ],
+    );
+  }
+}
+
+/// The bets of a question played with bets. While they are open the
+/// gamemaster can enter or change any team's bet, for teams without a
+/// device; afterwards they are only shown.
+class _BetsPanel extends StatelessWidget {
+  const _BetsPanel({required this.state, required this.question, required this.send});
+
+  final SessionState state;
+  final Question question;
+  final void Function(Command) send;
+
+  Future<void> _enter(BuildContext context, Team team) async {
+    final limit = maxBet(team, question);
+    final text = await promptText(
+      context,
+      title: "Bet for ${team.name}",
+      initial: state.betting!.bets[team.id]?.toString() ?? '',
+      label: "0 to $limit points",
+    );
+    final amount = text == null ? null : int.tryParse(text);
+    if (amount != null) send(PlaceBet(team.id, amount));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final betting = state.betting!;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(betting.open ? "Bets · tap a team to enter its bet" : "Bets", style: theme.textTheme.labelLarge),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final team in state.teams)
+                if (betting.open)
+                  ActionChip(
+                    avatar: Icon(betting.bets.containsKey(team.id) ? Icons.check_circle : Icons.hourglass_empty, size: 18),
+                    label: Text(
+                      betting.bets.containsKey(team.id)
+                          ? "${team.name} · ${betting.bets[team.id]}"
+                          : "${team.name} · up to ${maxBet(team, question)}",
+                    ),
+                    onPressed: () => _enter(context, team),
+                  )
+                else
+                  Chip(label: Text("${team.name} · ${betting.bets.containsKey(team.id) ? betting.bets[team.id] : "no bet"}")),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _ordinal(int place) => switch (place) {
+  1 => "1st",
+  2 => "2nd",
+  3 => "3rd",
+  _ => "${place}th",
+};
+
+/// What the ratings so far are worth and the button that puts them on the
+/// scoreboard. The same for every kind of question rated team by team.
+class _GiveBar extends StatelessWidget {
+  const _GiveBar({required this.state, required this.question, required this.send});
+
+  final SessionState state;
+  final Question question;
+  final void Function(Command) send;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final pending = pointsToGive(state, question);
+    final rated = state.results.verdicts.isNotEmpty || state.results.points.isNotEmpty || state.results.order.isNotEmpty;
+    if (!rated && state.results.given.isEmpty) return const SizedBox.shrink();
+    final summary = [
+      for (final team in state.teams)
+        if (pending[team.id] case final delta?) "${team.name} ${signedPoints(delta)}",
+    ].join(" · ");
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: SizedBox(
+        width: double.infinity,
+        child: pending.isEmpty
+            ? OutlinedButton.icon(
+                onPressed: null,
+                icon: const Icon(Icons.check),
+                label: Text("All points given", style: theme.textTheme.labelLarge),
+              )
+            : FilledButton.icon(
+                onPressed: () => send(const GivePoints()),
+                icon: const Icon(Icons.emoji_events_outlined),
+                label: Text("Give points · $summary", maxLines: 2, overflow: TextOverflow.ellipsis),
+              ),
+      ),
+    );
+  }
+}
+
+/// What a team is due for the open question: outlined while it still has to
+/// be given, filled once it is on the scoreboard.
+class _PointsChip extends StatelessWidget {
+  const _PointsChip({required this.state, required this.question, required this.teamId});
+
+  final SessionState state;
+  final Question question;
+  final String teamId;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final due = pointsDue(state, question, teamId);
+    final given = state.results.given[teamId] ?? 0;
+    if (due == null && given == 0) return const SizedBox.shrink();
+    final value = due ?? 0;
+    final done = value == given;
+    final color = value < 0 ? scheme.error : (value > 0 ? Colors.green.shade700 : scheme.outline);
+    return Tooltip(
+      message: done ? "Given" : (given == 0 ? "Not given yet" : "Given ${signedPoints(given)} so far"),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: done ? color.withValues(alpha: 0.14) : null,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color, width: done ? 1 : 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (done) ...[Icon(Icons.check, size: 14, color: color), const SizedBox(width: 2)],
+            Text(
+              signedPoints(value),
+              style: theme.textTheme.labelLarge?.copyWith(color: color, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "By order": the team's place; tapping puts it next in order, or takes it
+/// out again.
+class _PlaceButton extends StatelessWidget {
+  const _PlaceButton({required this.state, required this.question, required this.teamId, required this.send});
+
+  final SessionState state;
+  final Question question;
+  final String teamId;
+  final void Function(Command) send;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final set = state.results.order.contains(teamId);
+    final place = rightInOrder(state).indexOf(teamId);
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: Tooltip(
+        message: set ? "Take out of the order" : "Put next in order",
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => send(PlaceTeam(teamId)),
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 28),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: set ? scheme.primary : null,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: place >= 0 ? scheme.primary : scheme.outlineVariant, width: 1.5),
+            ),
+            child: place >= 0
+                ? Text(
+                    _ordinal(place + 1),
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: set ? scheme.onPrimary : scheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                : Icon(Icons.format_list_numbered, size: 16, color: scheme.outline),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Rating team by team when nothing is on the devices: charades on stage,
+/// push-ups for a bet, an answer called out. Each team has its place ("by
+/// order"), right and wrong, and what that is worth; "Give points" puts it
+/// on the scoreboard.
+class _ResultsPanel extends StatelessWidget {
+  const _ResultsPanel({required this.state, required this.question, required this.send});
+
+  final SessionState state;
+  final Question question;
+  final void Function(Command) send;
+
+  Future<void> _otherPoints(BuildContext context, Team team) async {
+    final text = await promptText(
+      context,
+      title: "Points for ${team.name}",
+      initial: (pointsDue(state, question, team.id) ?? pointsIfRight(state, question, team.id)).toString(),
+      label: "Points for this question",
+    );
+    final points = text == null ? null : int.tryParse(text);
+    if (points != null) send(AwardAnswer(team.id, points));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final amount = question.amountBet != null;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            amount
+                ? "Did each team reach its number?"
+                : question.ranked
+                ? "Tap the teams in order as they finish · ${signedPoints(question.pointsPlus)}, then ${question.rankStep} less each"
+                : "Rate each team",
+            style: theme.textTheme.labelLarge,
+          ),
+          const SizedBox(height: 6),
+          _GiveBar(state: state, question: question, send: send),
+          for (final team in state.teams)
+            Builder(
+              builder: (context) {
+                final verdict = state.results.verdicts[team.id];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  color: scheme.surfaceContainerHigh,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 2, 2, 2),
+                    child: Row(
+                      children: [
+                        if (question.ranked && state.results.verdicts[team.id] != false) _PlaceButton(state: state, question: question, teamId: team.id, send: send),
+                        Expanded(
+                          child: Text(
+                            amount ? "${team.name} · goal ${state.betting?.betOf(team.id) ?? 0}" : team.name,
+                            style: theme.textTheme.titleSmall,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        _PointsChip(state: state, question: question, teamId: team.id),
+                        PopupMenuButton<String>(
+                          tooltip: "Other points",
+                          icon: const Icon(Icons.exposure_outlined),
+                          onSelected: (_) => _otherPoints(context, team),
+                          itemBuilder: (context) => const [PopupMenuItem(value: 'other', child: Text("Other points…"))],
+                        ),
+                        // Tapping the chosen rating again takes it back.
+                        IconButton(
+                          tooltip: amount ? "Reached" : "Right",
+                          icon: Icon(verdict == true ? Icons.check_circle : Icons.check_circle_outline),
+                          color: verdict == true ? Colors.green.shade700 : null,
+                          onPressed: () => send(RateAnswer(team.id, correct: verdict == true ? null : true)),
+                        ),
+                        IconButton(
+                          tooltip: amount ? "Missed" : "Wrong",
+                          icon: Icon(verdict == false ? Icons.cancel : Icons.cancel_outlined),
+                          color: verdict == false ? scheme.error : null,
+                          onPressed: () => send(RateAnswer(team.id, correct: verdict == false ? null : false)),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 }
@@ -605,17 +926,17 @@ class _RapidPanel extends StatelessWidget {
                       runSpacing: 4,
                       children: [
                         for (final team in state.teams)
-                          Builder(builder: (context) {
-                            final answer = round.answers[team.id];
-                            final choice = answer?.choice;
-                            return Chip(
-                              visualDensity: VisualDensity.compact,
-                              avatar: Icon(answer?.locked == true ? Icons.lock : Icons.lock_open, size: 16),
-                              label: Text(
-                                "${team.name}: ${choice == null ? "–" : rapidChoices.elementAtOrNull(choice) ?? "?"}",
-                              ),
-                            );
-                          }),
+                          Builder(
+                            builder: (context) {
+                              final answer = round.answers[team.id];
+                              final choice = answer?.choice;
+                              return Chip(
+                                visualDensity: VisualDensity.compact,
+                                avatar: Icon(answer?.locked == true ? Icons.lock : Icons.lock_open, size: 16),
+                                label: Text("${team.name}: ${choice == null ? "–" : rapidChoices.elementAtOrNull(choice) ?? "?"}"),
+                              );
+                            },
+                          ),
                       ],
                     ),
                   ),
@@ -643,13 +964,15 @@ class _TopAnswersPanel extends StatelessWidget {
     final scheme = theme.colorScheme;
     final top = question.topAnswers ?? const TopAnswers();
     if (top.items.isEmpty) return Text("This question has no answers on its list yet.", style: TextStyle(color: scheme.outline));
-    final answering = !top.onDevices && state.phase == Phase.buzzered && state.buzzQueue.isNotEmpty ? state.team(state.buzzQueue.first) : null;
+    final answering = !top.onDevices && state.phase == Phase.buzzered && state.buzzQueue.isNotEmpty
+        ? state.team(state.buzzQueue.first)
+        : null;
     final round = state.answerRound;
     final hint = top.onDevices
         ? "Tap an answer to uncover it on the big screen."
         : answering != null
-            ? "Tap the answer ${answering.name} named. Wrong if it is not on the list."
-            : "When a team buzzes, tap the answer it names.";
+        ? "Tap the answer ${answering.name} named. Wrong if it is not on the list."
+        : "When a team buzzes, tap the answer it names.";
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -658,46 +981,48 @@ class _TopAnswersPanel extends StatelessWidget {
           Text(hint, style: theme.textTheme.bodyMedium?.copyWith(color: answering != null ? scheme.primary : scheme.outline)),
           const SizedBox(height: 4),
           for (final (i, item) in top.items.indexed)
-            Builder(builder: (context) {
-              final shown = state.feudRevealed.contains(i);
-              final finder = state.foundBy[i] == null ? null : state.team(state.foundBy[i]!);
-              final finders = [
-                for (final team in state.teams)
-                  if (round?.found[team.id]?.contains(i) == true) team.name,
-              ];
-              final who = finder?.name ?? (finders.isEmpty ? null : finders.join(", "));
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Material(
-                  color: shown ? scheme.primaryContainer : scheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(12),
-                  child: InkWell(
+            Builder(
+              builder: (context) {
+                final shown = state.feudRevealed.contains(i);
+                final finder = state.foundBy[i] == null ? null : state.team(state.foundBy[i]!);
+                final finders = [
+                  for (final team in state.teams)
+                    if (round?.found[team.id]?.contains(i) == true) team.name,
+                ];
+                final who = finder?.name ?? (finders.isEmpty ? null : finders.join(", "));
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Material(
+                    color: shown ? scheme.primaryContainer : scheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(12),
-                    onTap: () => send(TopAnswerToggle(i)),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      child: Row(
-                        children: [
-                          SizedBox(width: 28, child: Text("${i + 1}.", style: theme.textTheme.labelLarge)),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(item.answer, style: theme.textTheme.bodyLarge),
-                                if (who != null) Text(who, style: theme.textTheme.bodySmall?.copyWith(color: scheme.primary)),
-                              ],
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => send(TopAnswerToggle(i)),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        child: Row(
+                          children: [
+                            SizedBox(width: 28, child: Text("${i + 1}.", style: theme.textTheme.labelLarge)),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item.answer, style: theme.textTheme.bodyLarge),
+                                  if (who != null) Text(who, style: theme.textTheme.bodySmall?.copyWith(color: scheme.primary)),
+                                ],
+                              ),
                             ),
-                          ),
-                          Text("+${top.pointsOf(i, question.pointsPlus)}", style: theme.textTheme.labelLarge),
-                          const SizedBox(width: 8),
-                          Icon(shown ? Icons.visibility : Icons.visibility_off_outlined, size: 18),
-                        ],
+                            Text("+${top.pointsOf(i, question.pointsPlus)}", style: theme.textTheme.labelLarge),
+                            const SizedBox(width: 8),
+                            Icon(shown ? Icons.visibility : Icons.visibility_off_outlined, size: 18),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              );
-            }),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -736,13 +1061,13 @@ class _ActionPad extends StatelessWidget {
     final Command? right = !answering || q == null || q.type == QuestionType.topAnswers
         ? null
         : feud
-            ? (steal ? const FeudSteal(success: true) : null)
-            : const Judge(correct: true);
+        ? (steal ? const FeudSteal(success: true) : null)
+        : const Judge(correct: true);
     final Command? wrong = !answering || q == null
         ? null
         : feud
-            ? (steal ? const FeudSteal(success: false) : const FeudWrong())
-            : const Judge(correct: false);
+        ? (steal ? const FeudSteal(success: false) : const FeudWrong())
+        : const Judge(correct: false);
     final Command? close = state.current == null ? null : const CloseQuestion();
 
     // Second row: stepping through the question.
@@ -757,13 +1082,18 @@ class _ActionPad extends StatelessWidget {
     final Command? back = answerSteps
         ? (round.revealed.isEmpty ? null : RevealAnswer(round.revealed.last, show: false))
         : canReveal && state.revealed > 0 && !rapidBackLocked
-            ? const Reveal(-1)
-            : null;
-    final Command? next = answerSteps
+        ? const Reveal(-1)
+        : null;
+    // While bets are placed this button ends the betting, then starts the
+    // question once the bets have been shown.
+    final betting = state.waitingForBets;
+    final Command? next = betting
+        ? (state.placingBets ? const CloseBets() : const StartQuestion())
+        : answerSteps
         ? (state.teams.any((team) => !round.revealed.contains(team.id)) ? const RevealNextAnswer() : null)
         : canReveal && state.revealed < q.maxReveal
-            ? const Reveal(1)
-            : null;
+        ? const Reveal(1)
+        : null;
     final playing = state.media == MediaPlayback.playing;
     final Command? sound = q != null && q.musicAt(state.revealed) != null && listening
         ? SetMedia(playing ? MediaPlayback.paused : MediaPlayback.playing)
@@ -772,62 +1102,65 @@ class _ActionPad extends StatelessWidget {
     final Command? pass = !answering ? null : (queued ? const SkipBuzzer() : const ReopenQuestion());
 
     Widget big(String label, IconData icon, Command? command, Color color, Color onColor) => Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: SizedBox(
-              height: 60,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: color,
-                  foregroundColor: onColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: command == null ? null : () => send(command),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [Icon(icon), Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)],
-                ),
-              ),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: SizedBox(
+          height: 60,
+          child: FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: color,
+              foregroundColor: onColor,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            onPressed: command == null ? null : () => send(command),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
             ),
           ),
-        );
+        ),
+      ),
+    );
     // Revealing a Connections group while teams still play gives it away to
     // them, so that one asks first.
     final revealEarly = q?.type == QuestionType.connections && next is Reveal && round != null && round.open;
     Future<bool> askReveal() => confirm(
-          context,
-          title: "Reveal a group now?",
-          message: "The teams are still playing and will see this group on their devices too. Their time keeps running.",
-          action: "Reveal",
-        );
+      context,
+      title: "Reveal a group now?",
+      message: "The teams are still playing and will see this group on their devices too. Their time keeps running.",
+      action: "Reveal",
+    );
     Widget small(String label, IconData icon, Command? command, {Future<bool> Function()? ask}) => Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: SizedBox(
-              height: 52,
-              child: FilledButton.tonal(
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                onPressed: command == null
-                    ? null
-                    : () async {
-                        if (ask != null && !await ask()) return;
-                        send(command);
-                      },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, size: 20),
-                    Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: SizedBox(
+          height: 52,
+          child: FilledButton.tonal(
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            onPressed: command == null
+                ? null
+                : () async {
+                    if (ask != null && !await ask()) return;
+                    send(command);
+                  },
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 20),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+              ],
             ),
           ),
-        );
+        ),
+      ),
+    );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
@@ -837,13 +1170,7 @@ class _ActionPad extends StatelessWidget {
           Row(
             children: [
               big(steal ? "Steal worked" : "Right", Icons.check, right, Colors.green.shade700, Colors.white),
-              big(
-                steal ? "Steal failed" : (feud ? "Strike" : "Wrong"),
-                Icons.close,
-                wrong,
-                scheme.error,
-                scheme.onError,
-              ),
+              big(steal ? "Steal failed" : (feud ? "Strike" : "Wrong"), Icons.close, wrong, scheme.error, scheme.onError),
               big("Close", Icons.close_fullscreen, close, scheme.secondaryContainer, scheme.onSecondaryContainer),
             ],
           ),
@@ -851,15 +1178,17 @@ class _ActionPad extends StatelessWidget {
             children: [
               small("Hide", Icons.navigate_before, back),
               small(
-                answerSteps
+                betting
+                    ? (state.placingBets ? "Bets are in" : "Start question")
+                    : answerSteps
                     ? "Show answer"
                     : rapid
-                        ? (state.revealed >= q!.maxReveal - 1 ? "Finish" : "Next item")
-                        : q?.type == QuestionType.abcd && state.revealed == q!.answers.length
-                            ? "Solution"
-                            : q?.type == QuestionType.connections
-                                ? "Reveal group"
-                                : "Reveal",
+                    ? (state.revealed >= q!.maxReveal - 1 ? "Finish" : "Next item")
+                    : q?.type == QuestionType.abcd && state.revealed == q!.answers.length
+                    ? "Solution"
+                    : q?.type == QuestionType.connections
+                    ? "Reveal group"
+                    : "Reveal",
                 Icons.navigate_next,
                 next,
                 ask: revealEarly ? askReveal : null,
@@ -900,28 +1229,28 @@ class _SheetRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     Widget tab(String label, IconData icon, VoidCallback onTap, {bool highlight = false, bool dot = false}) => Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: SizedBox(
-              height: 48,
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  backgroundColor: highlight ? scheme.primary : null,
-                  foregroundColor: highlight ? scheme.onPrimary : null,
-                  padding: EdgeInsets.zero,
-                ),
-                onPressed: onTap,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Badge(isLabelVisible: dot, smallSize: 8, child: Icon(icon, size: 20)),
-                    Text(label, style: const TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: SizedBox(
+          height: 48,
+          child: TextButton(
+            style: TextButton.styleFrom(
+              backgroundColor: highlight ? scheme.primary : null,
+              foregroundColor: highlight ? scheme.onPrimary : null,
+              padding: EdgeInsets.zero,
+            ),
+            onPressed: onTap,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Badge(isLabelVisible: dot, smallSize: 8, child: Icon(icon, size: 20)),
+                Text(label, style: const TextStyle(fontSize: 12)),
+              ],
             ),
           ),
-        );
+        ),
+      ),
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
       child: Row(
@@ -994,7 +1323,10 @@ class _BoardSheetState extends State<_BoardSheet> {
             ),
           const SizedBox(height: 8),
           if (group == null || group.categories.isEmpty)
-            const Padding(padding: EdgeInsets.all(24), child: Center(child: Text("This group has no categories.")))
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: Text("This group has no categories.")),
+            )
           else
             ConstrainedBox(
               constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.42),
@@ -1012,61 +1344,65 @@ class _BoardSheetState extends State<_BoardSheet> {
                               // On a map wider than the screen a tap brings the
                               // category to the middle; a question in play
                               // keeps its own there.
-                              Builder(builder: (context) {
-                                final turnable = group.type == BoardType.map && state.current == null;
-                                final focused = group.type == BoardType.map && state.boardFocus == category.id;
-                                final label = Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                                  child: Text(
-                                    category.name,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                    style: theme.textTheme.labelMedium?.copyWith(
-                                      color: focused ? scheme.primary : null,
-                                      fontWeight: focused ? FontWeight.w700 : null,
-                                    ),
-                                  ),
-                                );
-                                if (!turnable) return label;
-                                return Tooltip(
-                                  message: "Show this category in the middle",
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(8),
-                                    onTap: () => widget.send(FocusCategory(category.id)),
-                                    child: label,
-                                  ),
-                                );
-                              }),
-                              for (final q in category.questions)
-                                Builder(builder: (context) {
-                                  final ref = QuestionRef(category.id, q.id);
-                                  final isOpen = state.current == ref;
-                                  final isPlayed = state.played.contains(ref.key);
-                                  final isSelected = _selected == ref;
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 2),
-                                    child: FilledButton(
-                                      style: FilledButton.styleFrom(
-                                        padding: const EdgeInsets.all(4),
-                                        minimumSize: const Size(0, 40),
-                                        side: isSelected ? BorderSide(color: scheme.primary, width: 2) : null,
-                                        backgroundColor: isOpen
-                                            ? scheme.primary
-                                            : isPlayed
-                                                ? scheme.surfaceContainerLow
-                                                : scheme.surfaceContainerHighest,
-                                        foregroundColor: isOpen
-                                            ? scheme.onPrimary
-                                            : isPlayed
-                                                ? scheme.outline
-                                                : scheme.onSurface,
+                              Builder(
+                                builder: (context) {
+                                  final turnable = group.type == BoardType.map && state.current == null;
+                                  final focused = group.type == BoardType.map && state.boardFocus == category.id;
+                                  final label = Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                                    child: Text(
+                                      category.name,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: theme.textTheme.labelMedium?.copyWith(
+                                        color: focused ? scheme.primary : null,
+                                        fontWeight: focused ? FontWeight.w700 : null,
                                       ),
-                                      onPressed: () => setState(() => _selected = ref),
-                                      child: Text(q.pointsPlus.toString()),
                                     ),
                                   );
-                                }),
+                                  if (!turnable) return label;
+                                  return Tooltip(
+                                    message: "Show this category in the middle",
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(8),
+                                      onTap: () => widget.send(FocusCategory(category.id)),
+                                      child: label,
+                                    ),
+                                  );
+                                },
+                              ),
+                              for (final q in category.questions)
+                                Builder(
+                                  builder: (context) {
+                                    final ref = QuestionRef(category.id, q.id);
+                                    final isOpen = state.current == ref;
+                                    final isPlayed = state.played.contains(ref.key);
+                                    final isSelected = _selected == ref;
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 2),
+                                      child: FilledButton(
+                                        style: FilledButton.styleFrom(
+                                          padding: const EdgeInsets.all(4),
+                                          minimumSize: const Size(0, 40),
+                                          side: isSelected ? BorderSide(color: scheme.primary, width: 2) : null,
+                                          backgroundColor: isOpen
+                                              ? scheme.primary
+                                              : isPlayed
+                                              ? scheme.surfaceContainerLow
+                                              : scheme.surfaceContainerHighest,
+                                          foregroundColor: isOpen
+                                              ? scheme.onPrimary
+                                              : isPlayed
+                                              ? scheme.outline
+                                              : scheme.onSurface,
+                                        ),
+                                        onPressed: () => setState(() => _selected = ref),
+                                        child: Text(q.pointsPlus.toString()),
+                                      ),
+                                    );
+                                  },
+                                ),
                             ],
                           ),
                         ),
@@ -1083,14 +1419,20 @@ class _BoardSheetState extends State<_BoardSheet> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(16)),
             child: question == null
-                ? Center(child: Text("Tap a field to read its question.", style: TextStyle(color: scheme.outline)))
+                ? Center(
+                    child: Text("Tap a field to read its question.", style: TextStyle(color: scheme.outline)),
+                  )
                 : SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           "${question.type.uiString} · +${question.pointsPlus} / −${question.pointsMinus}"
-                          "${open ? " · on screen" : played ? " · played" : ""}",
+                          "${open
+                              ? " · on screen"
+                              : played
+                              ? " · played"
+                              : ""}",
                           style: theme.textTheme.labelMedium?.copyWith(color: scheme.primary),
                         ),
                         const SizedBox(height: 4),
@@ -1118,12 +1460,20 @@ class _BoardSheetState extends State<_BoardSheet> {
                         Navigator.of(context).pop();
                       }
                     },
-              icon: Icon(open ? Icons.undo : played ? Icons.replay : Icons.play_arrow),
-              label: Text(open
-                  ? "Take off screen, keep playable"
-                  : played
-                      ? "Mark as not played"
-                      : "Open question"),
+              icon: Icon(
+                open
+                    ? Icons.undo
+                    : played
+                    ? Icons.replay
+                    : Icons.play_arrow,
+              ),
+              label: Text(
+                open
+                    ? "Take off screen, keep playable"
+                    : played
+                    ? "Mark as not played"
+                    : "Open question",
+              ),
             ),
           ),
         ],
@@ -1192,9 +1542,9 @@ class _EffectsSheetState extends State<_EffectsSheet> {
     final listening = state.phase == Phase.question || state.phase == Phase.buzzered;
     final cards = game?.cardsFor(ref: state.current, groupId: state.groupId) ?? const <CueCard>[];
     Widget header(String text) => Padding(
-          padding: const EdgeInsets.only(top: 12, bottom: 8),
-          child: Text(text, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
-        );
+      padding: const EdgeInsets.only(top: 12, bottom: 8),
+      child: Text(text, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
+    );
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
@@ -1213,8 +1563,7 @@ class _EffectsSheetState extends State<_EffectsSheet> {
                   width: 210,
                   initialSelection: state.cardAnimation,
                   dropdownMenuEntries: [
-                    for (final animation in CardAnimation.values)
-                      DropdownMenuEntry(value: animation, label: animation.uiString),
+                    for (final animation in CardAnimation.values) DropdownMenuEntry(value: animation, label: animation.uiString),
                   ],
                   onSelected: (animation) {
                     if (animation != null) send(SetCardAnimation(animation));
@@ -1241,13 +1590,17 @@ class _EffectsSheetState extends State<_EffectsSheet> {
                         gameId: game!.id,
                         card: card,
                         onScreen: _isOnScreen(state.overlay, card),
-                        onTap: () => send(ShowCard(OverlayCard(
-                          title: card.title.isEmpty ? null : card.title,
-                          text: card.text.isEmpty ? null : card.text,
-                          image: card.image,
-                          video: card.video,
-                          style: card.style,
-                        ))),
+                        onTap: () => send(
+                          ShowCard(
+                            OverlayCard(
+                              title: card.title.isEmpty ? null : card.title,
+                              text: card.text.isEmpty ? null : card.text,
+                              image: card.image,
+                              video: card.video,
+                              style: card.style,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                 ],
@@ -1322,11 +1675,11 @@ class _EffectsSheetState extends State<_EffectsSheet> {
             spacing: 8,
             children: [
               for (final slot in musicSlots)
-                  FilterChip(
-                    label: Text(_slotNames[slot]!),
-                    selected: state.music == slot,
-                    onSelected: (on) => send(SetMusic(on ? slot : null)),
-                  ),
+                FilterChip(
+                  label: Text(_slotNames[slot]!),
+                  selected: state.music == slot,
+                  onSelected: (on) => send(SetMusic(on ? slot : null)),
+                ),
             ],
           ),
           Row(
@@ -1551,18 +1904,16 @@ class _AnswersSheetState extends State<_AnswersSheet> {
     final round = state.answerRound;
     final question = state.current == null ? null : widget.game?.question(state.current!);
     Widget action(String label, IconData icon, VoidCallback? onPressed) => Padding(
-          padding: const EdgeInsets.only(right: 8, top: 8),
-          child: FilledButton.tonalIcon(onPressed: onPressed, icon: Icon(icon), label: Text(label)),
-        );
+      padding: const EdgeInsets.only(right: 8, top: 8),
+      child: FilledButton.tonalIcon(onPressed: onPressed, icon: Icon(icon), label: Text(label)),
+    );
     void open(CompanionKind kind) {
       send(OpenAnswers(CompanionSpec(kind: kind, timerSeconds: _timer)));
       Navigator.of(context).pop();
     }
 
     final automatic = round == null || question == null ? const <Command>[] : autoRating(state, round, question);
-    final estimates = round == null || question == null || round.spec.solution == null
-        ? const <EstimateScoring>[]
-        : EstimateScoring.values;
+    final estimates = round == null || question == null || round.spec.solution == null ? const <EstimateScoring>[] : EstimateScoring.values;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -1620,7 +1971,7 @@ class _AnswersSheetState extends State<_AnswersSheet> {
                 ),
                 if (automatic.isNotEmpty) action("Rate automatically", Icons.auto_fix_high, () => automatic.forEach(send)),
                 for (final scoring in estimates)
-                  action(scoring.uiString, Icons.adjust, () => estimateRating(round, question!, scoring).forEach(send)),
+                  action(scoring.uiString, Icons.adjust, () => estimateRating(state, round, question!, scoring).forEach(send)),
                 if (round.kind == CompanionKind.connections)
                   action("Give points for groups", Icons.emoji_events_outlined, () => send(const AwardConnections())),
                 action("Discard", Icons.delete_outline, () => send(const ClearAnswers())),
@@ -1657,7 +2008,7 @@ class _AnswersPanel extends StatelessWidget {
     final text = await promptText(
       context,
       title: "Points for ${team.name}",
-      initial: (round.awarded[team.id] ?? question.pointsPlus).toString(),
+      initial: (pointsDue(state, question, team.id) ?? pointsIfRight(state, question, team.id)).toString(),
       label: "Points for this answer",
     );
     final points = text == null ? null : int.tryParse(text);
@@ -1673,14 +2024,15 @@ class _AnswersPanel extends StatelessWidget {
     final solution = switch (spec.kind) {
       CompanionKind.number || CompanionKind.slider => spec.solution == null ? null : formatNumber(spec.solution!, unit: spec.unit),
       CompanionKind.order => spec.options.join("  →  "),
-      CompanionKind.match => [for (final (i, left) in spec.options.indexed) "$left → ${spec.targets.elementAtOrNull(i) ?? "?"}"].join(" · "),
+      CompanionKind.match => [
+        for (final (i, left) in spec.options.indexed) "$left → ${spec.targets.elementAtOrNull(i) ?? "?"}",
+      ].join(" · "),
       CompanionKind.connections => [for (final group in spec.groups) group.name].join(" · "),
       _ => null,
     };
     final connections = spec.kind == CompanionKind.connections;
     final top = question.type == QuestionType.topAnswers ? question.topAnswers : null;
     final automatic = autoRating(state, round, question);
-    final half = (question.pointsPlus / 2).round();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1702,11 +2054,12 @@ class _AnswersPanel extends StatelessWidget {
                     ActionChip(
                       avatar: const Icon(Icons.adjust, size: 18),
                       label: Text(scoring.uiString),
-                      onPressed: () => estimateRating(round, question, scoring).forEach(send),
+                      onPressed: () => estimateRating(state, round, question, scoring).forEach(send),
                     ),
               ],
             ),
           ),
+        if (!connections) _GiveBar(state: state, question: question, send: send),
         if (round.open && round.endsAtMillis != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -1718,130 +2071,134 @@ class _AnswersPanel extends StatelessWidget {
             child: Text("Solution: $solution", style: theme.textTheme.labelLarge),
           ),
         for (final team in state.teams)
-          Builder(builder: (context) {
-            final answer = round.answers[team.id];
-            final shown = round.revealed.contains(team.id);
-            final verdict = round.verdicts[team.id];
-            final partial = partialScore(spec, answer);
-            final suggestion = connections || top != null || partial != null
-                ? null
-                : autoVerdict(spec, answer, choiceCorrect: question.answersCorrect) ?? (closest.contains(team.id) ? true : null);
-            final found = foundBy(round, team.id);
-            final suggested = top == null ? const <int?>[] : suggestionsFor(question, answer);
-            final awarded = round.awarded[team.id];
-            final took = answer?.secondsTaken(round);
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              color: shown ? scheme.primaryContainer : scheme.surfaceContainerHigh,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          answer?.locked == true
-                              ? Icons.lock
-                              : (answer == null || answer.isEmpty)
-                                  ? Icons.hourglass_empty
-                                  : Icons.edit_outlined,
-                          size: 16,
-                          color: scheme.outline,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            "${team.name}${shown ? " · on screen" : ""}"
-                            "${took == null ? "" : " · ${took.toStringAsFixed(1)} s"}"
-                            "${awarded == null ? "" : " · ${awarded >= 0 ? "+" : ""}$awarded"}",
-                            style: theme.textTheme.labelLarge,
+          Builder(
+            builder: (context) {
+              final answer = round.answers[team.id];
+              final shown = round.revealed.contains(team.id);
+              final verdict = state.results.verdicts[team.id];
+              final partial = partialScore(spec, answer);
+              final suggestion = connections || top != null || partial != null
+                  ? null
+                  : autoVerdict(spec, answer, choiceCorrect: question.answersCorrect) ?? (closest.contains(team.id) ? true : null);
+              final found = foundBy(round, team.id);
+              final suggested = top == null ? const <int?>[] : suggestionsFor(question, answer);
+              final took = answer?.secondsTaken(round);
+              final half = (pointsIfRight(state, question, team.id) / 2).round();
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                color: shown ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            answer?.locked == true
+                                ? Icons.lock
+                                : (answer == null || answer.isEmpty)
+                                ? Icons.hourglass_empty
+                                : Icons.edit_outlined,
+                            size: 16,
+                            color: scheme.outline,
                           ),
-                        ),
-                        // What rating automatically would make of it.
-                        if (verdict == null && (partial != null || suggestion != null))
-                          Text(
-                            partial != null ? "${partial.right} of ${partial.of} right" : (suggestion! ? "Looks right" : "Looks wrong"),
-                            style: theme.textTheme.labelMedium?.copyWith(color: scheme.outline),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    // The answer on the left, and always the same four
-                    // buttons in the same square on the right.
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxHeight: 132),
-                              child: AnswerView(spec: spec, answer: answer, fontSize: 16, backgroundImage: backgroundImage),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              "${team.name}${shown ? " · on screen" : ""}"
+                              "${took == null ? "" : " · ${took.toStringAsFixed(1)} s"}",
+                              style: theme.textTheme.labelLarge,
                             ),
                           ),
-                        ),
-                        SizedBox(
-                          width: 96,
+                          if (question.ranked && state.results.verdicts[team.id] != false) _PlaceButton(state: state, question: question, teamId: team.id, send: send),
+                          _PointsChip(state: state, question: question, teamId: team.id),
+                          const SizedBox(width: 8),
+                          // What rating automatically would make of it.
+                          if (verdict == null && (partial != null || suggestion != null))
+                            Text(
+                              partial != null ? "${partial.right} of ${partial.of} right" : (suggestion! ? "Looks right" : "Looks wrong"),
+                              style: theme.textTheme.labelMedium?.copyWith(color: scheme.outline),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      // The answer on the left, and always the same four
+                      // buttons in the same square on the right.
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxHeight: 132),
+                                child: AnswerView(spec: spec, answer: answer, fontSize: 16, backgroundImage: backgroundImage),
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 96,
+                            child: Wrap(
+                              children: [
+                                IconButton(
+                                  tooltip: shown ? "Take off screen" : "Show on screen",
+                                  icon: Icon(shown ? Icons.visibility : Icons.visibility_outlined),
+                                  color: shown ? scheme.primary : null,
+                                  onPressed: () => send(RevealAnswer(team.id, show: !shown)),
+                                ),
+                                PopupMenuButton<String>(
+                                  tooltip: "Other points",
+                                  icon: const Icon(Icons.exposure_outlined),
+                                  onSelected: (choice) =>
+                                      choice == 'half' ? send(AwardAnswer(team.id, half)) : _customPoints(context, team),
+                                  itemBuilder: (context) => [
+                                    PopupMenuItem(value: 'half', child: Text("Half points (+$half)")),
+                                    const PopupMenuItem(value: 'other', child: Text("Other points…")),
+                                  ],
+                                ),
+                                IconButton(
+                                  tooltip: "Right",
+                                  icon: Icon(verdict == true ? Icons.check_circle : Icons.check_circle_outline),
+                                  color: verdict == true ? Colors.green : null,
+                                  onPressed: () => send(RateAnswer(team.id, correct: verdict == true ? null : true)),
+                                ),
+                                IconButton(
+                                  tooltip: "Wrong",
+                                  icon: Icon(verdict == false ? Icons.cancel : Icons.cancel_outlined),
+                                  color: verdict == false ? scheme.error : null,
+                                  onPressed: () => send(RateAnswer(team.id, correct: verdict == false ? null : false)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Top answers: tick what the team found; its points
+                      // follow. Lines it typed that look like one are marked.
+                      if (top != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6, right: 8),
                           child: Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
                             children: [
-                              IconButton(
-                                tooltip: shown ? "Take off screen" : "Show on screen",
-                                icon: Icon(shown ? Icons.visibility : Icons.visibility_outlined),
-                                color: shown ? scheme.primary : null,
-                                onPressed: () => send(RevealAnswer(team.id, show: !shown)),
-                              ),
-                              PopupMenuButton<String>(
-                                tooltip: "Other points",
-                                icon: const Icon(Icons.exposure_outlined),
-                                onSelected: (choice) =>
-                                    choice == 'half' ? send(AwardAnswer(team.id, half)) : _customPoints(context, team),
-                                itemBuilder: (context) => [
-                                  PopupMenuItem(value: 'half', child: Text("Half points (+$half)")),
-                                  const PopupMenuItem(value: 'other', child: Text("Other points…")),
-                                ],
-                              ),
-                              IconButton(
-                                tooltip: "Right",
-                                icon: Icon(verdict == true ? Icons.check_circle : Icons.check_circle_outline),
-                                color: verdict == true ? Colors.green : null,
-                                onPressed: () => send(RateAnswer(team.id, correct: verdict == true ? null : true)),
-                              ),
-                              IconButton(
-                                tooltip: "Wrong",
-                                icon: Icon(verdict == false ? Icons.cancel : Icons.cancel_outlined),
-                                color: verdict == false ? scheme.error : null,
-                                onPressed: () => send(RateAnswer(team.id, correct: verdict == false ? null : false)),
-                              ),
+                              for (final (i, item) in top.items.indexed)
+                                FilterChip(
+                                  visualDensity: VisualDensity.compact,
+                                  avatar: !found.contains(i) && suggested.contains(i) ? const Icon(Icons.auto_awesome, size: 16) : null,
+                                  label: Text("${i + 1}. ${item.answer}"),
+                                  selected: found.contains(i),
+                                  onSelected: (_) => send(MarkTopAnswers(team.id, toggled(found, i))),
+                                ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                    // Top answers: tick what the team found; its points
-                    // follow. Lines it typed that look like one are marked.
-                    if (top != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6, right: 8),
-                        child: Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
-                            for (final (i, item) in top.items.indexed)
-                              FilterChip(
-                                visualDensity: VisualDensity.compact,
-                                avatar: !found.contains(i) && suggested.contains(i) ? const Icon(Icons.auto_awesome, size: 16) : null,
-                                label: Text("${i + 1}. ${item.answer}"),
-                                selected: found.contains(i),
-                                onSelected: (_) => send(MarkTopAnswers(team.id, toggled(found, i))),
-                              ),
-                          ],
-                        ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            },
+          ),
         if (connections)
           Padding(
             padding: const EdgeInsets.only(top: 4),

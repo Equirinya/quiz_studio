@@ -13,6 +13,7 @@ import 'package:quiz_show/features/player/widgets/buzzer_button.dart';
 import 'package:quiz_show/features/session/session_client.dart';
 import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
+import 'package:quiz_show/features/session/widgets/score_pop.dart';
 import 'package:quiz_show/game/game.dart';
 
 /// A player's phone during the show: a buzzer, and a place to answer when the
@@ -98,15 +99,15 @@ class _Message extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(text, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            TextButton(onPressed: onLeave, child: const Text("Leave")),
-          ],
-        ),
-      );
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(text, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
+        const SizedBox(height: 16),
+        TextButton(onPressed: onLeave, child: const Text("Leave")),
+      ],
+    ),
+  );
 }
 
 /// What the player sees, given the public state. Separate from the page so
@@ -155,9 +156,11 @@ class _PlayerViewState extends State<PlayerView> {
 
   void _buzz() {
     widget.send(Buzz(widget.teamId));
-    setState(() => _justBuzzed = Timer(const Duration(seconds: 2), () {
-          if (mounted) setState(() => _justBuzzed = null);
-        }));
+    setState(
+      () => _justBuzzed = Timer(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _justBuzzed = null);
+      }),
+    );
   }
 
   @override
@@ -174,22 +177,33 @@ class _PlayerViewState extends State<PlayerView> {
       // Rather than show half a screen it does not understand.
       return UpdateRequiredPage(installedVersion: widget.appVersion, requiredVersion: needed);
     }
+    if (view.placingBets || view.betsShown) {
+      return BetScreen(view: view, team: team, send: widget.send, link: widget.link, onLeave: widget.onLeave);
+    }
     final position = view.buzzQueue.indexOf(team.id);
     final answeringTeam = view.buzzQueue.isEmpty ? null : view.teams.where((t) => t.id == view.buzzQueue.first).firstOrNull;
     final status = switch (view.phase) {
       Phase.buzzerTest => "Buzzer test: press to check",
       Phase.overview => "Waiting for the next question",
       Phase.answerRevealed => "Answer revealed",
-      Phase.question => !view.phoneBuzzer
-          ? "Buzz on the buzzer box"
-          : view.canBuzz(team.id)
-          ? "Buzz when you know it!"
-          : "No buzzers for this question",
-      Phase.buzzered => position == 0
-          ? "Your turn!"
-          : position > 0
-              ? "You are number ${position + 1} in line"
-              : "${answeringTeam?.name ?? "Another team"} is answering",
+      Phase.question =>
+        view.betsOnAmount
+            ? (view.betVerdict(team.id) == null
+                  ? "Your goal: ${view.bets[team.id] ?? 0}"
+                  : view.betVerdict(team.id)!
+                  ? "Goal reached!"
+                  : "Goal missed")
+            : !view.phoneBuzzer
+            ? "Buzz on the buzzer box"
+            : view.canBuzz(team.id)
+            ? "Buzz when you know it!"
+            : "No buzzers for this question",
+      Phase.buzzered =>
+        position == 0
+            ? "Your turn!"
+            : position > 0
+            ? "You are number ${position + 1} in line"
+            : "${answeringTeam?.name ?? "Another team"} is answering",
     };
     final canBuzz = view.canBuzz(team.id) && view.phoneBuzzer && _justBuzzed == null;
     final kind = view.answerKind;
@@ -201,12 +215,12 @@ class _PlayerViewState extends State<PlayerView> {
     final headline = kind == null
         ? status
         : view.answersOpen && !view.hasLocked(team.id)
-            ? (kind == CompanionKind.connections ? "Find four groups of four" : "Answer here")
-            : view.isRevealed(team.id)
-                ? "Your answer is being shown"
-                : view.answersOpen
-                    ? "Locked in, waiting for the others"
-                    : "Answers are in";
+        ? (kind == CompanionKind.connections ? "Find four groups of four" : "Answer here")
+        : view.isRevealed(team.id)
+        ? "Your answer is being shown"
+        : view.answersOpen
+        ? "Locked in, waiting for the others"
+        : "Answers are in";
     // While answering, the question stays the big line and where the team
     // stands goes under it.
     final question = view.question?['text'] as String? ?? '';
@@ -219,10 +233,19 @@ class _PlayerViewState extends State<PlayerView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(team.name, style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-              Text("${team.points} points", style: theme.textTheme.bodyMedium),
+              Text(
+                !view.hasBets
+                    ? "${team.points} points"
+                    : view.betsOnAmount
+                    ? "${team.points} points · goal ${view.bets[team.id] ?? 0}"
+                    : "${team.points} points · bet ${view.bets[team.id] ?? 0}",
+                style: theme.textTheme.bodyMedium,
+              ),
             ],
           ),
         ),
+        // What the team just got, for a moment.
+        ScorePop(teamId: team.id, log: view.scoreLog, size: 20),
         if (widget.link != null) LinkStatusIcon(widget.link!),
         if (widget.onLeave != null) IconButton(icon: const Icon(Icons.logout), tooltip: "Leave", onPressed: widget.onLeave),
       ],
@@ -232,10 +255,7 @@ class _PlayerViewState extends State<PlayerView> {
       duration: const Duration(milliseconds: 200),
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: highlighted ? scheme.primary : scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(16),
-      ),
+      decoration: BoxDecoration(color: highlighted ? scheme.primary : scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(16)),
       child: Text(
         questionFirst ? question : headline,
         textAlign: TextAlign.center,
@@ -245,16 +265,14 @@ class _PlayerViewState extends State<PlayerView> {
       ),
     );
     final questionText = questionFirst
-        ? Text(headline, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline))
+        ? Text(
+            headline,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline),
+          )
         : view.question == null
-            ? null
-            : Text(
-                question,
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyLarge,
-              );
+        ? null
+        : Text(question, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyLarge);
 
     if (kind == CompanionKind.connections) {
       return Padding(
@@ -267,12 +285,7 @@ class _PlayerViewState extends State<PlayerView> {
             ?_countdown(top: 10),
             const SizedBox(height: 8),
             Expanded(
-              child: ConnectionsPlay(
-                key: ValueKey('connections-${view.answersOpenedAt}'),
-                view: view,
-                teamId: team.id,
-                send: widget.send,
-              ),
+              child: ConnectionsPlay(key: ValueKey('connections-${view.answersOpenedAt}'), view: view, teamId: team.id, send: widget.send),
             ),
           ],
         ),
@@ -321,7 +334,13 @@ class _PlayerViewState extends State<PlayerView> {
               children: [
                 teamLine,
                 if (questionFirst)
-                  Text(question, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyLarge),
+                  Text(
+                    question,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyLarge,
+                  ),
                 ?questionText,
                 ?_countdown(top: 6),
                 const SizedBox(height: 6),
@@ -378,17 +397,16 @@ class _PlayerViewState extends State<PlayerView> {
                 child: Text(question, textAlign: TextAlign.center, maxLines: 6, overflow: TextOverflow.ellipsis, style: questionStyle),
               ),
             ),
-            if (!view.phoneBuzzer)
+            ?_countdown(top: 0),
+            // Teams that bet on an amount show it rather than buzz.
+            if (!view.phoneBuzzer || view.betsOnAmount)
               const Spacer()
             else
               Expanded(
                 child: Center(
                   child: LayoutBuilder(
-                    builder: (context, box) => BuzzerButton(
-                      size: box.biggest.shortestSide * 0.8,
-                      onPressed: canBuzz ? _buzz : null,
-                      color: teamColor(team),
-                    ),
+                    builder: (context, box) =>
+                        BuzzerButton(size: box.biggest.shortestSide * 0.8, onPressed: canBuzz ? _buzz : null, color: teamColor(team)),
                   ),
                 ),
               ),
@@ -407,7 +425,10 @@ class _PlayerViewState extends State<PlayerView> {
           if (questionText != null) Padding(padding: const EdgeInsets.only(top: 12), child: questionText),
           ?_countdown(top: 12),
           Expanded(
-            child: Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Center(child: _input(team))),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: _input(team)),
+            ),
           ),
           _lockButton(team),
           const SizedBox(height: 4),
@@ -421,6 +442,13 @@ class _PlayerViewState extends State<PlayerView> {
 
   Widget? _countdown({required double top}) {
     final view = widget.view;
+    final clock = view.questionTimer;
+    if (view.answerKind == null && clock != null && clock.running) {
+      return Padding(
+        padding: EdgeInsets.only(top: top),
+        child: RoundCountdown(openedAt: clock.openedAt, endsAt: clock.endsAt),
+      );
+    }
     final endsAt = view.answersEndAt;
     if (!view.answersOpen || endsAt == null) return null;
     return Padding(
@@ -501,20 +529,20 @@ class _PlayerViewState extends State<PlayerView> {
           view.hasLocked(team.id)
               ? (took == null ? "Locked in" : "Locked in after ${took.toStringAsFixed(1)} s")
               : !view.answersOpen
-                  ? "Time is up"
-                  : view.hasSubmitted(team.id)
-                      ? "Lock in answer"
-                      : "Answer first",
+              ? "Time is up"
+              : view.hasSubmitted(team.id)
+              ? "Lock in answer"
+              : "Answer first",
         ),
       ),
     );
   }
 
   Widget _note(Team team) => Text(
-        widget.view.isRevealed(team.id) ? "Your answer is on the big screen." : "Only the gamemaster sees this until it is shown.",
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodySmall,
-      );
+    widget.view.isRevealed(team.id) ? "Your answer is on the big screen." : "Only the gamemaster sees this until it is shown.",
+    textAlign: TextAlign.center,
+    style: Theme.of(context).textTheme.bodySmall,
+  );
 }
 
 /// Holds a whiteboard back until its picture is here and its proportions
@@ -533,14 +561,11 @@ class _PictureBoard extends StatefulWidget {
 class _PictureBoardState extends State<_PictureBoard> {
   double? _aspect;
   ImageStream? _stream;
-  late final ImageStreamListener _listener = ImageStreamListener(
-    (info, _) {
-      if (!mounted || _aspect != null) return;
-      // Kept within what still fits a tile on the big screen.
-      setState(() => _aspect = (info.image.width / info.image.height).clamp(0.5, 2.0).toDouble());
-    },
-    onError: (_, _) => _giveUp(),
-  );
+  late final ImageStreamListener _listener = ImageStreamListener((info, _) {
+    if (!mounted || _aspect != null) return;
+    // Kept within what still fits a tile on the big screen.
+    setState(() => _aspect = (info.image.width / info.image.height).clamp(0.5, 2.0).toDouble());
+  }, onError: (_, _) => _giveUp());
   Timer? _patience;
 
   @override
@@ -610,6 +635,187 @@ class LinkStatusIcon extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         child: Icon(lan ? Icons.wifi : Icons.cloud_outlined, size: 20, color: Theme.of(context).colorScheme.outline),
       ),
+    );
+  }
+}
+
+/// Placing a bet before a question played with bets. The bet can be changed
+/// until the gamemaster starts the question; nobody else sees it until then.
+class BetScreen extends StatefulWidget {
+  const BetScreen({super.key, required this.view, required this.team, required this.send, this.link, this.onLeave});
+
+  final PublicView view;
+  final Team team;
+  final void Function(Command) send;
+  final LinkStatus? link;
+  final VoidCallback? onLeave;
+
+  @override
+  State<BetScreen> createState() => _BetScreenState();
+}
+
+class _BetScreenState extends State<BetScreen> {
+  /// What the team is about to bet; null until it touches anything.
+  int? _amount;
+
+  int get _max => widget.view.ownMaxBet;
+
+  int get _value => (_amount ?? widget.view.ownBet ?? 0).clamp(0, _max);
+
+  /// Slider steps: tens, or single points for small limits and amounts.
+  int get _step => _max >= 100 && !widget.view.betsOnAmount ? 10 : 1;
+
+  void _set(int amount) => setState(() => _amount = amount.clamp(0, _max));
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final view = widget.view;
+    final team = widget.team;
+    final placed = view.ownBet;
+    final category = view.betCategory;
+    final points = (view.question?['pointsPlus'] as num?)?.toInt();
+    final minus = (view.question?['pointsMinus'] as num?)?.toInt() ?? 0;
+    final amount = view.betsOnAmount;
+    final prompt = view.betPrompt?.trim() ?? '';
+    final value = _value;
+    final divisions = (_max / _step).floor();
+    final title = amount && prompt.isNotEmpty
+        ? prompt
+        : category != null
+        ? "Your bet on $category"
+        : "Place your bet";
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(team.name, style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text("${team.points} points", style: theme.textTheme.bodyMedium),
+                  ],
+                ),
+              ),
+              if (widget.link != null) LinkStatusIcon(widget.link!),
+              if (widget.onLeave != null) IconButton(icon: const Icon(Icons.logout), tooltip: "Leave", onPressed: widget.onLeave),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(16)),
+            child: Text(
+              view.betsShown ? (amount ? "The goals" : "The bets") : title,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium,
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: SingleChildScrollView(
+                  child: view.betsShown
+                      ? _allBets(context)
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "$value",
+                              style: theme.textTheme.displayLarge?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary),
+                            ),
+                            Text(
+                              !amount
+                                  ? "Right: +$value · Wrong: −$value"
+                                  : minus > 0
+                                  ? "Reached: +${(points ?? 0) * value} · Missed: −${minus * value}"
+                                  : "Reached: +${(points ?? 0) * value}",
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: 12),
+                            Slider(
+                              value: value.toDouble(),
+                              max: _max.toDouble(),
+                              divisions: divisions > 0 ? divisions : null,
+                              label: "$value",
+                              onChanged: (v) => _set(v == _max ? _max : (v / _step).round() * _step),
+                            ),
+                            Row(
+                              children: [
+                                for (final (label, to)
+                                    in amount
+                                        ? [("− 1", value - 1), ("+ 1", value + 1)]
+                                        : [("Nothing", 0), ("Half", (_max / 2).round()), ("All in", _max)])
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                                      child: OutlinedButton(onPressed: () => _set(to), child: Text(label)),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          ),
+          if (view.betsShown)
+            Text("The question starts in a moment", style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline))
+          else
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              // Saying "Change" shows the bet can still be changed.
+              child: FilledButton.icon(
+                icon: Icon(placed == value ? Icons.check : Icons.casino_outlined),
+                label: Text(
+                  placed == value
+                      ? "Bet placed"
+                      : placed == null
+                      ? "Bet $value"
+                      : "Change to $value",
+                ),
+                onPressed: placed == value ? null : () => widget.send(PlaceBet(team.id, value)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Once the bets are closed: every team's, this team's first.
+  Widget _allBets(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final view = widget.view;
+    final bets = view.bets;
+    final teams = [widget.team, ...view.teams.where((t) => t.id != widget.team.id)];
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final team in teams)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: team.id == widget.team.id ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Expanded(child: Text(team.name, style: theme.textTheme.titleMedium)),
+                Text("${bets[team.id] ?? 0}", style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

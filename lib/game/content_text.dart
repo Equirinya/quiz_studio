@@ -53,7 +53,9 @@ String questionAsText(Question q) {
       for (final (i, item) in rapid.items.indexed) {
         final media = [if (item.image != null) 'picture', if (item.music != null) 'sound'];
         final solution = devices ? (item.isTrue ? 'right' : 'wrong') : item.answer;
-        out.writeln('  ${i + 1}. ${item.question}${solution.isEmpty ? '' : ' – $solution'}${media.isEmpty ? '' : ' [${media.join(', ')}]'}');
+        out.writeln(
+          '  ${i + 1}. ${item.question}${solution.isEmpty ? '' : ' – $solution'}${media.isEmpty ? '' : ' [${media.join(', ')}]'}',
+        );
       }
     case QuestionType.matching:
       final pairs = q.matching ?? const Matching();
@@ -66,7 +68,9 @@ String questionAsText(Question q) {
     case QuestionType.unsupported:
       break;
   }
-  final companion = q.type == QuestionType.rapidFire || q.type == QuestionType.matching || q.type == QuestionType.topAnswers ? null : q.companion;
+  final companion = q.type == QuestionType.rapidFire || q.type == QuestionType.matching || q.type == QuestionType.topAnswers
+      ? null
+      : q.companion;
   if (companion != null && q.type == QuestionType.connections) {
     final timer = companion.timerSeconds == null ? '' : ', ${companion.timerSeconds} s';
     out.writeln('  ${companion.mistakes} mistakes allowed$timer');

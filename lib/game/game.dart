@@ -14,6 +14,7 @@ export 'public_view.dart';
 export 'rapid_fire.dart';
 export 'rating.dart';
 export 'reducer.dart';
+export 'scoring.dart';
 export 'session_host.dart';
 export 'session_state.dart';
 export 'top_answers.dart';
