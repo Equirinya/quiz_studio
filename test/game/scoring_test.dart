@@ -17,6 +17,33 @@ SessionState play(List<Command> commands, {SessionState? from, int? now}) {
 }
 
 void main() {
+  group('by closeness', () {
+    test('places go by how near the number is, once the answering is closed; equally near share a place', () {
+      final question = scoringGame().question(nearest)!;
+      expect((question.byCloseness, question.ranked), (true, false));
+      var s = play(const [
+        OpenQuestion(nearest),
+        SubmitAnswer('red', PlayerAnswer(number: 300)),
+        SubmitAnswer('blue', PlayerAnswer(number: 360)),
+        SubmitAnswer('green', PlayerAnswer(number: 100)),
+      ]);
+      expect(closenessPlaces(s), isEmpty, reason: 'still answering');
+      expect(pointsDue(s, question, 'red'), isNull);
+      s = play(const [LockAnswers()], from: s);
+      expect(closenessPlaces(s), {'red': 0, 'blue': 0, 'green': 2});
+      expect({for (final team in s.teams) team.id: pointsDue(s, question, team.id)}, {'red': 600, 'blue': 600, 'green': 200});
+      // The automatic right-or-wrong has nothing to say here.
+      expect(autoRating(s, s.answerRound!, question), isEmpty);
+      s = play(const [GivePoints()], from: s);
+      expect([for (final team in s.teams) team.points], [600, 600, 200]);
+    });
+
+    test('without closest it stays by order, and the flag alone does nothing on other questions', () {
+      expect(scoringGame().question(raced)!.byCloseness, isFalse);
+      expect(Question.fromMap('q', const {'type': 'free', 'closest': true, 'rankStep': 100}).byCloseness, isFalse);
+    });
+  });
+
   group('by order', () {
     test('right answers rank by when they locked in: first the points, each after 100 less', () {
       var s = play(const [OpenQuestion(raced)], now: 0);

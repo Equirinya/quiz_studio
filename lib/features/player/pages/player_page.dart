@@ -16,6 +16,7 @@ import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/features/session/widgets/score_pop.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// A player's phone during the show: a buzzer, and a place to answer when the
 /// gamemaster asks every team for one.
@@ -37,7 +38,7 @@ class _PlayerPageState extends State<PlayerPage> {
     token: widget.link.token,
     endpoints: widget.link.lan,
     onSendError: (_) {
-      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text("That did not get through.")));
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(context.l10n.didNotGetThrough)));
     },
   );
 
@@ -74,8 +75,8 @@ class _PlayerPageState extends State<PlayerPage> {
             final onLan = _client.link.value == LinkStatus.lan;
             if (view == null) {
               // Refused by the cloud and not on the presenter's network either.
-              if (!_client.cloudOk.value && !onLan) return _Message("Could not reach this session.", onLeave: leave);
-              return _Message("Waiting for the show to start…", onLeave: leave);
+              if (!_client.cloudOk.value && !onLan) return _Message(context.l10n.couldNotReachSession, onLeave: leave);
+              return _Message(context.l10n.waitingForShow, onLeave: leave);
             }
             // The picture to draw on, once it is here and if it is this round's.
             final picture = _client.background.value;
@@ -111,7 +112,7 @@ class _Message extends StatelessWidget {
           children: [
             Text(text, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            TextButton(onPressed: onLeave, child: const Text("Leave")),
+            TextButton(onPressed: onLeave, child: Text(context.l10n.leave)),
           ],
         ),
       );
@@ -179,7 +180,7 @@ class _PlayerViewState extends State<PlayerView> {
     final view = widget.view;
     final team = view.teams.where((t) => t.id == widget.teamId).firstOrNull;
     if (team == null) {
-      return _Message("Your team was removed from the session.", onLeave: widget.onLeave ?? () {});
+      return _Message(context.l10n.teamRemovedFromSession, onLeave: widget.onLeave ?? () {});
     }
     final needed = view.minAppVersion;
     if (needed != null && widget.appVersion != null && compareVersions(widget.appVersion!, needed) < 0) {
@@ -192,61 +193,73 @@ class _PlayerViewState extends State<PlayerView> {
     final position = view.buzzQueue.indexOf(team.id);
     final answeringTeam = view.buzzQueue.isEmpty ? null : view.teams.where((t) => t.id == view.buzzQueue.first).firstOrNull;
     final standing = view.standing;
+    final l10n = context.l10n;
     String nameOf(String? id) => view.teams.where((t) => t.id == id).firstOrNull?.name ?? "";
     final status = standing != null && view.phase == Phase.question
         // Last team standing: no buzzing, only whose turn it is.
         ? (standing.winner == team.id
-              ? "You are the last team standing!"
+              ? l10n.youAreLastTeam
               : standing.winner != null
-              ? "${nameOf(standing.winner)} wins"
+              ? l10n.teamWinsShort(nameOf(standing.winner))
               : standing.out.contains(team.id)
-              ? "You are out"
+              ? l10n.youAreOut
               : standing.current == team.id
-              ? "Your turn!${standing.prompt == null ? "" : "\n${standing.prompt}"}"
-              : "${nameOf(standing.current)}'s turn")
+              ? "${l10n.yourTurn}${standing.prompt == null ? "" : "\n${standing.prompt}"}"
+              : l10n.teamsTurn(nameOf(standing.current)))
         : switch (view.phase) {
-      Phase.buzzerTest => "Buzzer test: press to check",
-      Phase.overview => "Waiting for the next question",
-      Phase.answerRevealed => "Answer revealed",
+      Phase.buzzerTest => l10n.buzzerTestPress,
+      Phase.overview => l10n.waitingForNextQuestion,
+      Phase.answerRevealed => l10n.statusAnswerRevealed,
       Phase.question =>
         view.betsOnAmount
             ? (view.betVerdict(team.id) == null
-                  ? "Your goal: ${view.bets[team.id] ?? 0}"
+                  ? l10n.yourGoal(view.bets[team.id] ?? 0)
                   : view.betVerdict(team.id)!
-                  ? "Goal reached!"
-                  : "Goal missed")
+                  ? l10n.goalReached
+                  : l10n.goalMissed)
             : !view.phoneBuzzer
-            ? "Buzz on the buzzer box"
+            ? l10n.buzzOnBox
             : view.canBuzz(team.id)
-            ? "Buzz when you know it!"
-            : "No buzzers for this question",
+            ? l10n.buzzWhenYouKnow
+            : l10n.noBuzzersForQuestion,
       Phase.buzzered =>
         position == 0
-            ? "Your turn!"
+            ? l10n.yourTurn
             : position > 0
-            ? "You are number ${position + 1} in line"
-            : "${answeringTeam?.name ?? "Another team"} is answering",
+            ? l10n.numberInLine(position + 1)
+            : l10n.statusAnswering(answeringTeam?.name ?? l10n.anotherTeam),
     };
     final canBuzz = view.canBuzz(team.id) && view.phoneBuzzer && _justBuzzed == null;
     final kind = view.answerKind;
     if (view.companion != null && kind == null) {
       // A screen from a newer app than this one.
-      return _Message("This question needs a newer version of Quiz Studio. Please update the app.", onLeave: widget.onLeave ?? () {});
+      return _Message(l10n.needsNewerVersion, onLeave: widget.onLeave ?? () {});
     }
     // While answers are collected the buzzer is replaced by the answer area.
     final headline = kind == null
         ? status
         : view.answersOpen && !view.hasLocked(team.id)
-            ? (kind == CompanionKind.connections ? "Find four groups of four" : "Answer here")
+            ? (kind == CompanionKind.connections ? l10n.findFourGroups : l10n.answerHere)
             : view.isRevealed(team.id)
-                ? "Your answer is being shown"
+                ? l10n.answerBeingShown
                 : view.answersOpen
-                    ? "Locked in, waiting for the others"
-                    : "Answers are in";
+                    ? l10n.lockedInWaiting
+                    : l10n.answersAreIn;
     // While answering, the question stays the big line and where the team
     // stands goes under it.
     final question = view.question?['text'] as String? ?? '';
     final questionFirst = kind != null && kind != CompanionKind.connections && question.trim().isNotEmpty;
+    // A Fragenhagel's own question, above the item being asked.
+    final lead = view.question?['lead'] as String?;
+    final leadText = lead == null
+        ? null
+        : Text(
+            lead,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelLarge?.copyWith(color: scheme.outline),
+          );
 
     final teamLine = Row(
       children: [
@@ -257,10 +270,10 @@ class _PlayerViewState extends State<PlayerView> {
               Text(team.name, style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
               Text(
                 !view.hasBets
-                    ? "${team.points} points"
+                    ? l10n.pointsCount(team.points)
                     : view.betsOnAmount
-                    ? "${team.points} points · goal ${view.bets[team.id] ?? 0}"
-                    : "${team.points} points · bet ${view.bets[team.id] ?? 0}",
+                    ? "${l10n.pointsCount(team.points)} · ${l10n.goal(view.bets[team.id] ?? 0)}"
+                    : "${l10n.pointsCount(team.points)} · ${l10n.betShort(view.bets[team.id] ?? 0)}",
                 style: theme.textTheme.bodyMedium,
               ),
             ],
@@ -280,12 +293,17 @@ class _PlayerViewState extends State<PlayerView> {
         color: highlighted ? scheme.primary : scheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Text(
-        questionFirst ? question : headline,
-        textAlign: TextAlign.center,
-        maxLines: questionFirst ? 4 : null,
-        overflow: questionFirst ? TextOverflow.ellipsis : null,
-        style: theme.textTheme.titleMedium?.copyWith(color: highlighted ? scheme.onPrimary : null),
+      child: Column(
+        children: [
+          if (questionFirst && leadText != null) Padding(padding: const EdgeInsets.only(bottom: 4), child: leadText),
+          Text(
+            questionFirst ? question : headline,
+            textAlign: TextAlign.center,
+            maxLines: questionFirst ? 4 : null,
+            overflow: questionFirst ? TextOverflow.ellipsis : null,
+            style: theme.textTheme.titleMedium?.copyWith(color: highlighted ? scheme.onPrimary : null),
+          ),
+        ],
       ),
     );
     // While answering the question says it all; afterwards a word on where things stand.
@@ -398,7 +416,11 @@ class _PlayerViewState extends State<PlayerView> {
           children: [
             teamLine,
             const SizedBox(height: 12),
+            // Its own key: the status box of an answer screen sits in the
+            // same place, and animating from this fixed height to that one's
+            // free height would fail when the question changes.
             AnimatedContainer(
+              key: const ValueKey('buzzer-status'),
               duration: const Duration(milliseconds: 200),
               width: double.infinity,
               height: lines(statusStyle, 2) + 24,
@@ -419,9 +441,13 @@ class _PlayerViewState extends State<PlayerView> {
             const SizedBox(height: 12),
             SizedBox(
               height: lines(questionStyle, 6),
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: Text(question, textAlign: TextAlign.center, maxLines: 6, overflow: TextOverflow.ellipsis, style: questionStyle),
+              child: Column(
+                children: [
+                  ?leadText,
+                  Flexible(
+                    child: Text(question, textAlign: TextAlign.center, maxLines: 6, overflow: TextOverflow.ellipsis, style: questionStyle),
+                  ),
+                ],
               ),
             ),
             ?_countdown(top: 0),
@@ -531,15 +557,15 @@ class _PlayerViewState extends State<PlayerView> {
     if (verdict != null) {
       return Chip(
         avatar: Icon(verdict ? Icons.check_circle : Icons.cancel, color: verdict ? Colors.green : Theme.of(context).colorScheme.error),
-        label: Text(verdict ? "Right!" : "Not this time"),
+        label: Text(verdict ? context.l10n.rightExclaim : context.l10n.notThisTime),
       );
     }
     final editable = _editable(team);
     if (!view.lockable && editable) {
       return Text(
         view.answersEndAt == null
-            ? "Your answer counts as it stands when the gamemaster ends the round."
-            : "Your answer counts as it stands when the time is up.",
+            ? context.l10n.answerCountsWhenEnded
+            : context.l10n.answerCountsWhenTimeUp,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodyMedium,
       );
@@ -555,12 +581,12 @@ class _PlayerViewState extends State<PlayerView> {
         icon: Icon(editable ? Icons.lock_open : Icons.lock),
         label: Text(
           view.hasLocked(team.id)
-              ? (took == null ? "Locked in" : "Locked in after ${took.toStringAsFixed(1)} s")
+              ? (took == null ? context.l10n.lockedIn : context.l10n.lockedInAfter(took.toStringAsFixed(1)))
               : !view.answersOpen
-                  ? "Time is up"
+                  ? context.l10n.timeIsUp
                   : view.hasSubmitted(team.id)
-                      ? "Lock in answer"
-                      : "Answer first",
+                      ? context.l10n.lockInAnswer
+                      : context.l10n.answerFirst,
         ),
       ),
     );
@@ -569,7 +595,7 @@ class _PlayerViewState extends State<PlayerView> {
   /// Only once the answer is on the big screen; until then nothing needs saying.
   Widget? _note(Team team) => !widget.view.isRevealed(team.id)
       ? null
-      : Text("Your answer is on the big screen.", textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall);
+      : Text(context.l10n.answerOnBigScreen, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall);
 }
 
 /// Holds a whiteboard back until its picture is here and its proportions
@@ -643,7 +669,7 @@ class _PictureBoardState extends State<_PictureBoard> {
         children: [
           const CupertinoActivityIndicator(),
           const SizedBox(height: 12),
-          Text("Getting the picture…", style: Theme.of(context).textTheme.bodyMedium),
+          Text(context.l10n.gettingPicture, style: Theme.of(context).textTheme.bodyMedium),
         ],
       ),
     );
@@ -660,7 +686,7 @@ class LinkStatusIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final lan = status == LinkStatus.lan;
     return Tooltip(
-      message: lan ? "Connected over the local network" : "Connected through the internet",
+      message: lan ? context.l10n.connectedLan : context.l10n.connectedInternet,
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: Icon(lan ? Icons.wifi : Icons.cloud_outlined, size: 20, color: Theme.of(context).colorScheme.outline),
@@ -714,8 +740,8 @@ class _BetScreenState extends State<BetScreen> {
     final title = amount && prompt.isNotEmpty
         ? prompt
         : category != null
-        ? "Your bet on $category"
-        : "Place your bet";
+        ? context.l10n.yourBetOn(category)
+        : context.l10n.placeYourBet;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -727,7 +753,7 @@ class _BetScreenState extends State<BetScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(team.name, style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text("${team.points} points", style: theme.textTheme.bodyMedium),
+                    Text(context.l10n.pointsCount(team.points), style: theme.textTheme.bodyMedium),
                   ],
                 ),
               ),
@@ -741,7 +767,7 @@ class _BetScreenState extends State<BetScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(16)),
             child: Text(
-              view.betsShown ? (amount ? "The goals" : "The bets") : title,
+              view.betsShown ? (amount ? context.l10n.theGoals : context.l10n.theBets) : title,
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium,
             ),
@@ -762,10 +788,10 @@ class _BetScreenState extends State<BetScreen> {
                             ),
                             Text(
                               !amount
-                                  ? "Right: +$value · Wrong: −$value"
+                                  ? context.l10n.betOutcome(value)
                                   : minus > 0
-                                  ? "If successful: +${(points ?? 0) * value} · Missed: −${minus * value}"
-                                  : "If successful: +${(points ?? 0) * value}",
+                                  ? context.l10n.amountOutcomeWithMinus((points ?? 0) * value, minus * value)
+                                  : context.l10n.amountOutcome((points ?? 0) * value),
                               style: theme.textTheme.bodyMedium,
                             ),
                             const SizedBox(height: 12),
@@ -781,7 +807,7 @@ class _BetScreenState extends State<BetScreen> {
                                 for (final (label, to)
                                     in amount
                                         ? [("− 1", value - 1), ("+ 1", value + 1)]
-                                        : [("Nothing", 0), ("Half", (_max / 2).round()), ("All in", _max)])
+                                        : [(context.l10n.betNothing, 0), (context.l10n.betHalf, (_max / 2).round()), (context.l10n.allIn, _max)])
                                   Expanded(
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -797,7 +823,7 @@ class _BetScreenState extends State<BetScreen> {
             ),
           ),
           if (view.betsShown)
-            Text("The question starts in a moment", style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline))
+            Text(context.l10n.questionStartsSoon, style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline))
           else
             SizedBox(
               width: double.infinity,
@@ -807,10 +833,10 @@ class _BetScreenState extends State<BetScreen> {
                 icon: Icon(placed == value ? Icons.check : Icons.casino_outlined),
                 label: Text(
                   placed == value
-                      ? "Bet placed"
+                      ? context.l10n.betPlaced
                       : placed == null
-                      ? "Bet $value"
-                      : "Change to $value",
+                      ? context.l10n.betAction(value)
+                      : context.l10n.changeTo(value),
                 ),
                 onPressed: placed == value ? null : () => widget.send(PlaceBet(team.id, value)),
               ),

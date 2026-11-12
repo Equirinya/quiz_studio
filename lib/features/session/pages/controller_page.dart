@@ -11,6 +11,7 @@ import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/features/session/widgets/score_pop.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The gamemaster's remote.
 ///
@@ -107,14 +108,14 @@ class _ControllerViewState extends State<ControllerView> {
   // ── teams ──────────────────────────────────────────────────────────────────
 
   Future<void> _addTeam() async {
-    final name = await promptText(context, title: "New team", label: "Name");
+    final name = await promptText(context, title: context.l10n.newTeam, label: context.l10n.name);
     if (name != null) _send(AddTeam(newTeamId(), name));
   }
 
   void _openTeam(String teamId) {
     _sheet((context, state, game) {
       final team = state.team(teamId);
-      if (team == null) return const SizedBox(height: 80, child: Center(child: Text("This team was removed.")));
+      if (team == null) return SizedBox(height: 80, child: Center(child: Text(context.l10n.teamRemoved)));
       final theme = Theme.of(context);
       Widget step(int delta) => Expanded(
         child: Padding(
@@ -148,7 +149,7 @@ class _ControllerViewState extends State<ControllerView> {
                       }
                     : null,
                 icon: const Icon(Icons.touch_app_outlined),
-                label: const Text("Buzz for this team"),
+                label: Text(context.l10n.buzzForTeam),
               ),
             ),
             const SizedBox(height: 4),
@@ -157,33 +158,33 @@ class _ControllerViewState extends State<ControllerView> {
               children: [
                 TextButton(
                   onPressed: () async {
-                    final name = await promptText(context, title: "Rename team", initial: team.name, label: "Name");
+                    final name = await promptText(context, title: context.l10n.renameTeam, initial: team.name, label: context.l10n.name);
                     if (name != null) _send(RenameTeam(team.id, name));
                   },
-                  child: const Text("Rename"),
+                  child: Text(context.l10n.rename),
                 ),
                 TextButton(
                   onPressed: () async {
-                    final text = await promptText(context, title: "Set points", initial: team.points.toString(), label: "Points");
+                    final text = await promptText(context, title: context.l10n.setPoints, initial: team.points.toString(), label: context.l10n.points);
                     final points = text == null ? null : int.tryParse(text);
                     if (points != null) _send(SetPoints(team.id, points));
                   },
-                  child: const Text("Set points"),
+                  child: Text(context.l10n.setPoints),
                 ),
                 TextButton(
                   onPressed: () async {
                     final navigator = Navigator.of(context);
                     final sure = await confirm(
                       context,
-                      title: "Remove team",
-                      message: "${team.name} and its points are removed.",
-                      action: "Remove",
+                      title: context.l10n.removeTeam,
+                      message: context.l10n.removeTeamText(team.name),
+                      action: context.l10n.remove,
                     );
                     if (!sure) return;
                     _send(RemoveTeam(team.id));
                     navigator.pop();
                   },
-                  child: const Text("Remove"),
+                  child: Text(context.l10n.remove),
                 ),
               ],
             ),
@@ -197,7 +198,7 @@ class _ControllerViewState extends State<ControllerView> {
 
   void _openBoard() => _sheet(
     (context, state, game) => game == null
-        ? const SizedBox(height: 120, child: Center(child: Text("This session has no game yet.")))
+        ? SizedBox(height: 120, child: Center(child: Text(context.l10n.sessionHasNoGame)))
         : _BoardSheet(state: state, game: game, send: _send),
   );
 
@@ -303,7 +304,7 @@ class _TeamStrip extends StatelessWidget {
                 );
               },
             ),
-          IconButton.outlined(onPressed: onAdd, icon: const Icon(Icons.add), tooltip: "Add team"),
+          IconButton.outlined(onPressed: onAdd, icon: const Icon(Icons.add), tooltip: context.l10n.addTeam),
         ],
       ),
     );
@@ -314,27 +315,28 @@ class _TeamStrip extends StatelessWidget {
 // Middle: what is happening now
 // ─────────────────────────────────────────────────────────────────────────────
 
-String _status(SessionState state, Question? question) {
+String _status(AppLocalizations l10n, SessionState state, Question? question) {
   String name(String id) => state.team(id)?.name ?? "?";
   switch (state.phase) {
     case Phase.buzzerTest:
-      return state.buzzQueue.isEmpty ? "Buzzer test" : "Buzzer test · ${name(state.buzzQueue.first)}";
+      return state.buzzQueue.isEmpty ? l10n.buzzerTest : "${l10n.buzzerTest} · ${name(state.buzzQueue.first)}";
     case Phase.overview:
-      return "Board";
+      return l10n.statusBoard;
     case Phase.question:
-      if (state.betsShown) return "The bets are on the big screen · start the question when ready";
+      if (state.betsShown) return l10n.statusBetsShown;
       if (state.placingBets) {
         final placed = state.teams.where((team) => state.betting!.bets.containsKey(team.id)).length;
-        return "Teams are betting · $placed of ${state.teams.length} bets in";
+        return l10n.statusBetting(placed, state.teams.length);
       }
-      if (question?.rapidFire?.mode == RapidMode.devices) return "Teams pick right or wrong on their devices";
-      if (question?.amountBet != null) return "Teams go for the number they bet";
-      return question?.buzzerable == false ? "Question open · no buzzers" : "Question open · waiting for a buzz";
+      if (question?.type == QuestionType.rapidFire && state.revealed < 0) return l10n.statusRapidIntro;
+      if (question?.rapidFire?.mode == RapidMode.devices) return l10n.statusRapidDevices;
+      if (question?.amountBet != null) return l10n.statusAmountBet;
+      return question?.buzzerable == false ? l10n.statusOpenNoBuzzers : l10n.statusOpenWaiting;
     case Phase.buzzered:
       final next = state.buzzQueue.skip(1).map(name).join(", ");
-      return "${name(state.buzzQueue.first)} is answering${next.isEmpty ? "" : " · then $next"}";
+      return next.isEmpty ? l10n.statusAnswering(name(state.buzzQueue.first)) : l10n.statusAnsweringThen(name(state.buzzQueue.first), next);
     case Phase.answerRevealed:
-      return "Answer revealed";
+      return l10n.statusAnswerRevealed;
   }
 }
 
@@ -364,14 +366,15 @@ class _NowPanel extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final q = question;
-    final status = Text(_status(state, q), style: theme.textTheme.titleSmall?.copyWith(color: scheme.primary));
+    final l10n = context.l10n;
+    final status = Text(_status(l10n, state, q), style: theme.textTheme.titleSmall?.copyWith(color: scheme.primary));
     if (game == null) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           status,
           const SizedBox(height: 24),
-          const Center(child: Text("No game picked yet. Choose one for this session in the sessions list.", textAlign: TextAlign.center)),
+          Center(child: Text(l10n.noGamePicked, textAlign: TextAlign.center)),
         ],
       );
     }
@@ -389,7 +392,7 @@ class _NowPanel extends StatelessWidget {
           const SizedBox(height: 24),
           Center(
             child: Text(
-              all.isEmpty ? "This group has no questions." : "$played of ${all.length} questions played",
+              all.isEmpty ? l10n.groupHasNoQuestions : l10n.questionsPlayed(played, all.length),
               style: theme.textTheme.bodyLarge,
             ),
           ),
@@ -406,16 +409,16 @@ class _NowPanel extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           q.betting
-              ? "${q.type.uiString} · teams bet their points"
+              ? "${l10n.questionType(q.type)} · ${l10n.teamsBetTheirPoints}"
               : q.amountBet != null
-              ? "${q.type.uiString} · teams bet how many · +${q.pointsPlus} / −${q.pointsMinus} each"
-              : "${q.type.uiString} · +${q.pointsPlus} / −${q.pointsMinus}",
+              ? "${l10n.questionType(q.type)} · ${l10n.teamsBetHowManyShort} · ${l10n.plusMinusEach(q.pointsPlus, q.pointsMinus)}"
+              : "${l10n.questionType(q.type)} · +${q.pointsPlus} / −${q.pointsMinus}",
           style: theme.textTheme.labelMedium,
         ),
         if (q.amountBet != null && q.amountBet!.prompt.trim().isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text("Bet question: ${q.amountBet!.prompt}", style: theme.textTheme.bodyMedium),
+            child: Text(l10n.betQuestionShown(q.amountBet!.prompt), style: theme.textTheme.bodyMedium),
           ),
         if (state.betting != null) _BetsPanel(state: state, question: q, send: send),
         // The question's own clock, when the devices have none.
@@ -449,7 +452,7 @@ class _NowPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     for (var i = 0; i < matching.pairs.length; i++)
-                      Text("${matching.leftLabel(i)}  →  ${matching.rightLabel(i, numbers)}", style: theme.textTheme.bodyMedium),
+                      Text("${l10n.deviceLabel(matching.leftLabel(i))}  →  ${l10n.deviceLabel(matching.rightLabel(i, numbers))}", style: theme.textTheme.bodyMedium),
                   ],
                 ),
               );
@@ -495,7 +498,7 @@ class _NowPanel extends StatelessWidget {
           if (q.hasInformationImages)
             Row(
               children: [
-                const Text("Enlarged image"),
+                Text(l10n.enlargedImage),
                 IconButton(icon: const Icon(Icons.chevron_left), onPressed: state.imageFocus > 0 ? () => send(const ImageFocus(-1)) : null),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
@@ -507,16 +510,16 @@ class _NowPanel extends StatelessWidget {
         if (q.type == QuestionType.feud) ...[
           Row(
             children: [
-              Text(state.wrongAttempts == 0 ? "No strikes" : "Strikes", style: theme.textTheme.labelLarge),
+              Text(state.wrongAttempts == 0 ? l10n.noStrikes : l10n.strikes, style: theme.textTheme.labelLarge),
               for (var i = 0; i < state.wrongAttempts; i++) Icon(Icons.close, color: scheme.error, size: 22),
               const Spacer(),
               TextButton(
                 onPressed: state.phase == Phase.buzzered && state.wrongAttempts > 0 ? () => send(const FeudResetWrong()) : null,
-                child: const Text("Reset strikes"),
+                child: Text(l10n.resetStrikes),
               ),
             ],
           ),
-          if (state.phase == Phase.question) Text("A team has to buzz before answers can be uncovered.", style: muted),
+          if (state.phase == Phase.question) Text(l10n.buzzBeforeUncover, style: muted),
           for (final (i, answer) in q.information.indexed)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
@@ -559,9 +562,9 @@ class _BetsPanel extends StatelessWidget {
     final limit = maxBet(team, question);
     final text = await promptText(
       context,
-      title: "Bet for ${team.name}",
+      title: context.l10n.betFor(team.name),
       initial: state.betting!.bets[team.id]?.toString() ?? '',
-      label: "0 to $limit points",
+      label: context.l10n.betRange(limit),
     );
     final amount = text == null ? null : int.tryParse(text);
     if (amount != null) send(PlaceBet(team.id, amount));
@@ -576,7 +579,7 @@ class _BetsPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(betting.open ? "Bets · tap a team to enter its bet" : "Bets", style: theme.textTheme.labelLarge),
+          Text(betting.open ? context.l10n.betsTapTeam : context.l10n.bets, style: theme.textTheme.labelLarge),
           const SizedBox(height: 4),
           Wrap(
             spacing: 8,
@@ -589,12 +592,12 @@ class _BetsPanel extends StatelessWidget {
                     label: Text(
                       betting.bets.containsKey(team.id)
                           ? "${team.name} · ${betting.bets[team.id]}"
-                          : "${team.name} · up to ${maxBet(team, question)}",
+                          : "${team.name} · ${context.l10n.upTo(maxBet(team, question))}",
                     ),
                     onPressed: () => _enter(context, team),
                   )
                 else
-                  Chip(label: Text("${team.name} · ${betting.bets.containsKey(team.id) ? betting.bets[team.id] : "no bet"}")),
+                  Chip(label: Text("${team.name} · ${betting.bets.containsKey(team.id) ? betting.bets[team.id] : context.l10n.noBet}")),
             ],
           ),
         ],
@@ -603,12 +606,7 @@ class _BetsPanel extends StatelessWidget {
   }
 }
 
-String _ordinal(int place) => switch (place) {
-  1 => "1st",
-  2 => "2nd",
-  3 => "3rd",
-  _ => "${place}th",
-};
+
 
 /// What the ratings so far are worth and the button that puts them on the
 /// scoreboard. The same for every kind of question rated team by team.
@@ -623,7 +621,11 @@ class _GiveBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final pending = pointsToGive(state, question);
-    final rated = state.results.verdicts.isNotEmpty || state.results.points.isNotEmpty || state.results.order.isNotEmpty;
+    final rated =
+        state.results.verdicts.isNotEmpty ||
+        state.results.points.isNotEmpty ||
+        state.results.order.isNotEmpty ||
+        (question.byCloseness && closenessPlaces(state).isNotEmpty);
     if (!rated && state.results.given.isEmpty) return const SizedBox.shrink();
     final summary = [
       for (final team in state.teams)
@@ -637,14 +639,14 @@ class _GiveBar extends StatelessWidget {
             ? OutlinedButton.icon(
                 onPressed: null,
                 icon: const Icon(Icons.check),
-                label: Text("All points given", style: theme.textTheme.labelLarge),
+                label: Text(context.l10n.allPointsGiven, style: theme.textTheme.labelLarge),
               )
             : FilledButton.icon(
                 onPressed: () => send(const GivePoints()),
                 icon: const Icon(Icons.emoji_events_outlined),
                 // Named while it fits; with many teams the cards show who gets what.
                 label: Text(
-                  pending.length <= 4 ? "Give points · $summary" : "Give points to ${pending.length} teams",
+                  pending.length <= 4 ? "${context.l10n.givePoints} · $summary" : context.l10n.givePointsToTeams(pending.length),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -674,7 +676,7 @@ class _PointsChip extends StatelessWidget {
     final done = value == given;
     final color = value < 0 ? scheme.error : (value > 0 ? Colors.green.shade700 : scheme.outline);
     return Tooltip(
-      message: done ? "Given" : (given == 0 ? "Not given yet" : "Given ${signedPoints(given)} so far"),
+      message: done ? context.l10n.given : (given == 0 ? context.l10n.notGivenYet : context.l10n.givenSoFar(signedPoints(given))),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(
@@ -716,7 +718,7 @@ class _PlaceButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 6),
       child: Tooltip(
-        message: set ? "Take out of the order" : "Put next in order",
+        message: set ? context.l10n.takeOutOfOrder : context.l10n.putNextInOrder,
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () => send(PlaceTeam(teamId)),
@@ -731,7 +733,7 @@ class _PlaceButton extends StatelessWidget {
             ),
             child: place >= 0
                 ? Text(
-                    _ordinal(place + 1),
+                    context.l10n.ordinal(place + 1),
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: set ? scheme.onPrimary : scheme.primary,
                       fontWeight: FontWeight.w700,
@@ -759,9 +761,9 @@ class _ResultsPanel extends StatelessWidget {
   Future<void> _otherPoints(BuildContext context, Team team) async {
     final text = await promptText(
       context,
-      title: "Points for ${team.name}",
+      title: context.l10n.pointsFor(team.name),
       initial: (pointsDue(state, question, team.id) ?? pointsIfRight(state, question, team.id)).toString(),
-      label: "Points for this question",
+      label: context.l10n.pointsForQuestion,
     );
     final points = text == null ? null : int.tryParse(text);
     if (points != null) send(AwardAnswer(team.id, points));
@@ -779,10 +781,10 @@ class _ResultsPanel extends StatelessWidget {
         children: [
           Text(
             amount
-                ? "Did each team reach its number?"
+                ? context.l10n.didTeamsReach
                 : question.ranked
-                ? "Tap the teams in order as they finish · ${signedPoints(question.pointsPlus)}, then ${question.rankStep} less each"
-                : "Rate each team",
+                ? context.l10n.tapInOrder(signedPoints(question.pointsPlus), question.rankStep ?? 0)
+                : context.l10n.rateEachTeam,
             style: theme.textTheme.labelLarge,
           ),
           const SizedBox(height: 6),
@@ -802,27 +804,27 @@ class _ResultsPanel extends StatelessWidget {
                           _PlaceButton(state: state, question: question, teamId: team.id, send: send),
                         Expanded(
                           child: Text(
-                            amount ? "${team.name} · goal ${state.betting?.betOf(team.id) ?? 0}" : team.name,
+                            amount ? "${team.name} · ${context.l10n.goal(state.betting?.betOf(team.id) ?? 0)}" : team.name,
                             style: theme.textTheme.titleSmall,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         _PointsChip(state: state, question: question, teamId: team.id),
                         PopupMenuButton<String>(
-                          tooltip: "Other points",
+                          tooltip: context.l10n.otherPoints,
                           icon: const Icon(Icons.exposure_outlined),
                           onSelected: (_) => _otherPoints(context, team),
-                          itemBuilder: (context) => const [PopupMenuItem(value: 'other', child: Text("Other points…"))],
+                          itemBuilder: (context) => [PopupMenuItem(value: 'other', child: Text(context.l10n.otherPointsMenu))],
                         ),
                         // Tapping the chosen rating again takes it back.
                         IconButton(
-                          tooltip: amount ? "Reached" : "Right",
+                          tooltip: amount ? context.l10n.reached : context.l10n.rapidRight,
                           icon: Icon(verdict == true ? Icons.check_circle : Icons.check_circle_outline),
                           color: verdict == true ? Colors.green.shade700 : null,
                           onPressed: () => send(RateAnswer(team.id, correct: verdict == true ? null : true)),
                         ),
                         IconButton(
-                          tooltip: amount ? "Missed" : "Wrong",
+                          tooltip: amount ? context.l10n.missed : context.l10n.rapidWrong,
                           icon: Icon(verdict == false ? Icons.cancel : Icons.cancel_outlined),
                           color: verdict == false ? scheme.error : null,
                           onPressed: () => send(RateAnswer(team.id, correct: verdict == false ? null : false)),
@@ -873,7 +875,7 @@ class _StandingPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                winner != null ? "${winner.name} wins · +${question.pointsPlus}" : current != null ? "${current.name}'s turn" : "Nobody left",
+                winner != null ? context.l10n.teamWins(winner.name, question.pointsPlus) : current != null ? context.l10n.teamsTurn(current.name) : context.l10n.nobodyLeft,
                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
               if (winner == null && item != null) ...[
@@ -881,7 +883,7 @@ class _StandingPanel extends StatelessWidget {
                 Text("${play.item + 1}. ${item.question}", style: theme.textTheme.titleMedium),
                 if (item.answer.isNotEmpty) Text(item.answer, style: theme.textTheme.bodyLarge?.copyWith(color: scheme.primary)),
               ] else if (winner == null && setup.items.isNotEmpty)
-                Text("No prompts left", style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline)),
+                Text(context.l10n.noPromptsLeft, style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline)),
             ],
           ),
         ),
@@ -892,14 +894,14 @@ class _StandingPanel extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: play.current == null ? null : () => send(const TakeTurn(StandingResult.miss)),
                 icon: const Icon(Icons.replay),
-                label: const Text("Wrong, stays in"),
+                label: Text(context.l10n.standingResult(StandingResult.miss)),
               ),
             ),
             const SizedBox(width: 8),
             OutlinedButton.icon(
               onPressed: play.turns.isEmpty ? null : () => send(const UndoTurn()),
               icon: const Icon(Icons.undo),
-              label: const Text("Undo"),
+              label: Text(context.l10n.undo),
             ),
           ],
         ),
@@ -918,7 +920,7 @@ class _StandingPanel extends StatelessWidget {
                     color: out.contains(id) ? scheme.error : scheme.primary,
                   ),
                   label: Text(
-                    out.contains(id) ? "${team.name} · ${out.indexOf(id) + 1}. out" : team.name,
+                    out.contains(id) ? "${team.name} · ${context.l10n.outPlace(out.indexOf(id) + 1)}" : team.name,
                     style: out.contains(id) ? TextStyle(color: scheme.outline, decoration: TextDecoration.lineThrough) : null,
                   ),
                   backgroundColor: id == play.current ? scheme.primaryContainer : null,
@@ -946,7 +948,7 @@ class _RapidPanel extends StatelessWidget {
     final rapid = question.rapidFire ?? const RapidFire();
     final devices = rapid.mode == RapidMode.devices;
     final round = state.answerRound;
-    if (rapid.items.isEmpty) return Text("This Fragenhagel has no items yet.", style: TextStyle(color: scheme.outline));
+    if (rapid.items.isEmpty) return Text(context.l10n.rapidNoItems, style: TextStyle(color: scheme.outline));
     final answering = state.phase == Phase.buzzered && state.buzzQueue.isNotEmpty ? state.team(state.buzzQueue.first) : null;
     final current = rapid.itemAt(state.revealed);
     return Column(
@@ -971,7 +973,9 @@ class _RapidPanel extends StatelessWidget {
                         style: theme.textTheme.headlineSmall?.copyWith(color: scheme.onPrimary, fontWeight: FontWeight.w800),
                       ),
                       if (current != null && current.answer.isNotEmpty)
-                        Text("Answer: ${current.answer}", style: theme.textTheme.bodyLarge?.copyWith(color: scheme.onPrimary)),
+                        Text(context.l10n.answerShown(current.answer), style: theme.textTheme.bodyLarge?.copyWith(color: scheme.onPrimary)),
+                      if (current != null && current.hint.isNotEmpty)
+                        Text(context.l10n.hintShown(current.hint), style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onPrimary)),
                     ],
                   ),
                 ),
@@ -979,7 +983,11 @@ class _RapidPanel extends StatelessWidget {
             ),
           ),
         Text(
-          state.revealed >= rapid.items.length ? "All ${rapid.items.length} done" : "Item ${state.revealed + 1} of ${rapid.items.length}",
+          state.revealed < 0
+              ? context.l10n.rapidIntro
+              : state.revealed >= rapid.items.length
+              ? context.l10n.allDone(rapid.items.length)
+              : context.l10n.itemOf(state.revealed + 1, rapid.items.length),
           style: theme.textTheme.labelLarge,
         ),
         for (final (i, item) in rapid.items.indexed)
@@ -1010,13 +1018,21 @@ class _RapidPanel extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(left: 28),
                   child: Text(
-                    devices ? (item.isTrue ? "Right" : "Wrong") : item.answer,
+                    devices ? (item.isTrue ? context.l10n.rapidRight : context.l10n.rapidWrong) : item.answer,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontStyle: FontStyle.italic,
                       color: devices ? (item.isTrue ? Colors.green.shade700 : scheme.error) : null,
                     ),
                   ),
                 ),
+                if (item.hint.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 28),
+                    child: Text(
+                      context.l10n.hintShown(item.hint),
+                      style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
                 if (devices && i == state.revealed && round != null)
                   Padding(
                     padding: const EdgeInsets.only(left: 28, top: 4),
@@ -1032,7 +1048,7 @@ class _RapidPanel extends StatelessWidget {
                               return Chip(
                                 visualDensity: VisualDensity.compact,
                                 avatar: Icon(answer?.locked == true ? Icons.lock : Icons.lock_open, size: 16),
-                                label: Text("${team.name}: ${choice == null ? "–" : rapidChoices.elementAtOrNull(choice) ?? "?"}"),
+                                label: Text("${team.name}: ${choice == null ? "–" : context.l10n.rapidChoice(rapidChoices.elementAtOrNull(choice) ?? "?")}"),
                               );
                             },
                           ),
@@ -1062,16 +1078,16 @@ class _TopAnswersPanel extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final top = question.topAnswers ?? const TopAnswers();
-    if (top.items.isEmpty) return Text("This question has no answers on its list yet.", style: TextStyle(color: scheme.outline));
+    if (top.items.isEmpty) return Text(context.l10n.topAnswersEmpty, style: TextStyle(color: scheme.outline));
     final answering = !top.onDevices && state.phase == Phase.buzzered && state.buzzQueue.isNotEmpty
         ? state.team(state.buzzQueue.first)
         : null;
     final round = state.answerRound;
     final hint = top.onDevices
-        ? "Tap an answer to uncover it on the big screen."
+        ? context.l10n.topTapToUncover
         : answering != null
-        ? "Tap the answer ${answering.name} named. Wrong if it is not on the list."
-        : "When a team buzzes, tap the answer it names.";
+        ? context.l10n.topTapNamed(answering.name)
+        : context.l10n.topWhenBuzz;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -1182,18 +1198,23 @@ class _ActionPad extends StatelessWidget {
     final round = state.answerRound;
     final answerSteps = !canReveal && round != null;
     final rapid = q?.type == QuestionType.rapidFire;
-    // On the devices an item is scored when moving on, so there is no way back.
-    final rapidBackLocked = rapid && q!.rapidFire?.mode == RapidMode.devices;
+    // A Fragenhagel goes back as far as its question alone (-1), taking back
+    // what was scored on the way.
     final Command? back = answerSteps
         ? (round.revealed.isEmpty ? null : RevealAnswer(round.revealed.last, show: false))
-        : canReveal && state.revealed > 0 && !rapidBackLocked
+        : canReveal && state.revealed > (rapid ? -1 : 0)
         ? const Reveal(-1)
         : null;
+    // Showing answers starts by closing the answering on every device, so
+    // the gamemaster can then show them in any order.
+    final closeFirst = answerSteps && round.open && round.revealed.isEmpty;
     // While bets are placed this button ends the betting, then starts the
     // question once the bets have been shown.
     final betting = state.waitingForBets;
     final Command? next = betting
         ? (state.placingBets ? const CloseBets() : const StartQuestion())
+        : closeFirst
+        ? const LockAnswers()
         : answerSteps
         ? (state.teams.any((team) => !round.revealed.contains(team.id)) ? const RevealNextAnswer() : null)
         : canReveal && state.revealed < q.maxReveal
@@ -1235,9 +1256,9 @@ class _ActionPad extends StatelessWidget {
     final revealEarly = q?.type == QuestionType.connections && next is Reveal && round != null && round.open;
     Future<bool> askReveal() => confirm(
       context,
-      title: "Reveal a group now?",
-      message: "The teams are still playing and will see this group on their devices too. Their time keeps running.",
-      action: "Reveal",
+      title: context.l10n.revealGroupNow,
+      message: context.l10n.revealGroupNowText,
+      action: context.l10n.reveal,
     );
     Widget small(String label, IconData icon, Command? command, {Future<bool> Function()? ask}) => Expanded(
       child: Padding(
@@ -1274,32 +1295,38 @@ class _ActionPad extends StatelessWidget {
         children: [
           Row(
             children: [
-              big(steal ? "Steal worked" : "Right", Icons.check, right, Colors.green.shade700, Colors.white),
-              big(steal ? "Steal failed" : (feud ? "Strike" : "Wrong"), Icons.close, wrong, scheme.error, scheme.onError),
-              big("Close", Icons.close_fullscreen, close, scheme.secondaryContainer, scheme.onSecondaryContainer),
+              big(steal ? context.l10n.stealWorked : context.l10n.rapidRight, Icons.check, right, Colors.green.shade700, Colors.white),
+              big(steal ? context.l10n.stealFailed : (feud ? context.l10n.strike : context.l10n.rapidWrong), Icons.close, wrong, scheme.error, scheme.onError),
+              big(context.l10n.close, Icons.close_fullscreen, close, scheme.secondaryContainer, scheme.onSecondaryContainer),
             ],
           ),
           Row(
             children: [
-              small("Hide", Icons.navigate_before, back),
+              small(rapid ? context.l10n.back : context.l10n.hide, Icons.navigate_before, back),
               small(
                 betting
-                    ? (state.placingBets ? "Bets are in" : "Start question")
+                    ? (state.placingBets ? context.l10n.betsAreIn : context.l10n.startQuestion)
+                    : closeFirst
+                    ? context.l10n.closeAnswering
                     : answerSteps
-                    ? "Show answer"
+                    ? context.l10n.showAnswer
                     : rapid
-                    ? (state.revealed >= q!.maxReveal - 1 ? "Finish" : "Next item")
+                    ? (state.revealed < 0
+                          ? context.l10n.firstItem
+                          : state.revealed >= q!.maxReveal - 1
+                          ? context.l10n.finish
+                          : context.l10n.nextItem)
                     : q?.type == QuestionType.abcd && state.revealed == q!.answers.length
-                    ? "Solution"
+                    ? context.l10n.solution
                     : q?.type == QuestionType.connections
-                    ? "Reveal group"
-                    : "Reveal",
+                    ? context.l10n.revealGroup
+                    : context.l10n.reveal,
                 Icons.navigate_next,
                 next,
                 ask: revealEarly ? askReveal : null,
               ),
-              small(playing ? "Pause" : "Play", playing ? Icons.pause : Icons.play_arrow, sound),
-              small(queued ? "Next team" : "Reopen", queued ? Icons.skip_next : Icons.undo, pass),
+              small(playing ? context.l10n.pause : context.l10n.play, playing ? Icons.pause : Icons.play_arrow, sound),
+              small(queued ? context.l10n.nextTeam : context.l10n.reopen, queued ? Icons.skip_next : Icons.undo, pass),
             ],
           ),
         ],
@@ -1360,10 +1387,10 @@ class _SheetRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
       child: Row(
         children: [
-          tab("Board", Icons.grid_view_rounded, onBoard, highlight: boardSuggested),
-          tab("Effects", Icons.auto_awesome_outlined, onEffects, dot: effectsActive),
-          tab("Answers", Icons.draw_outlined, onAnswers, dot: answersActive),
-          tab("Setup", Icons.settings_outlined, onSetup),
+          tab(context.l10n.tabBoard, Icons.grid_view_rounded, onBoard, highlight: boardSuggested),
+          tab(context.l10n.tabEffects, Icons.auto_awesome_outlined, onEffects, dot: effectsActive),
+          tab(context.l10n.tabAnswers, Icons.draw_outlined, onAnswers, dot: answersActive),
+          tab(context.l10n.tabSetup, Icons.settings_outlined, onSetup),
         ],
       ),
     );
@@ -1413,7 +1440,7 @@ class _BoardSheetState extends State<_BoardSheet> {
               child: SegmentedButton<String>(
                 segments: [
                   for (final g in game.groups)
-                    ButtonSegment(value: g.id, icon: Icon(g.type.icon), label: Text(g.isUngrouped ? "Ungrouped" : g.name)),
+                    ButtonSegment(value: g.id, icon: Icon(g.type.icon), label: Text(g.isUngrouped ? context.l10n.ungrouped : g.name)),
                 ],
                 selected: {?group?.id},
                 emptySelectionAllowed: true,
@@ -1428,9 +1455,9 @@ class _BoardSheetState extends State<_BoardSheet> {
             ),
           const SizedBox(height: 8),
           if (group == null || group.categories.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(24),
-              child: Center(child: Text("This group has no categories.")),
+              child: Center(child: Text(context.l10n.groupHasNoCategories)),
             )
           else
             ConstrainedBox(
@@ -1468,7 +1495,7 @@ class _BoardSheetState extends State<_BoardSheet> {
                                   );
                                   if (!turnable) return label;
                                   return Tooltip(
-                                    message: "Show this category in the middle",
+                                    message: context.l10n.showCategoryInMiddle,
                                     child: InkWell(
                                       borderRadius: BorderRadius.circular(8),
                                       onTap: () => widget.send(FocusCategory(category.id)),
@@ -1525,18 +1552,18 @@ class _BoardSheetState extends State<_BoardSheet> {
             decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(16)),
             child: question == null
                 ? Center(
-                    child: Text("Tap a field to read its question.", style: TextStyle(color: scheme.outline)),
+                    child: Text(context.l10n.tapFieldToRead, style: TextStyle(color: scheme.outline)),
                   )
                 : SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "${question.type.uiString} · +${question.pointsPlus} / −${question.pointsMinus}"
+                          "${context.l10n.questionType(question.type)} · +${question.pointsPlus} / −${question.pointsMinus}"
                           "${open
-                              ? " · on screen"
+                              ? " · ${context.l10n.onScreen}"
                               : played
-                              ? " · played"
+                              ? " · ${context.l10n.played}"
                               : ""}",
                           style: theme.textTheme.labelMedium?.copyWith(color: scheme.primary),
                         ),
@@ -1574,10 +1601,10 @@ class _BoardSheetState extends State<_BoardSheet> {
               ),
               label: Text(
                 open
-                    ? "Take off screen, keep playable"
+                    ? context.l10n.takeOffKeepPlayable
                     : played
-                    ? "Mark as not played"
-                    : "Open question",
+                    ? context.l10n.markNotPlayed
+                    : context.l10n.openQuestion,
               ),
             ),
           ),
@@ -1587,20 +1614,25 @@ class _BoardSheetState extends State<_BoardSheet> {
   }
 }
 
-const Map<String, String> _slotNames = {musicBackground: "Board", musicCalm: "Calm", musicExciting: "Thrilling"};
+String _slotName(AppLocalizations l10n, String slot) => switch (slot) {
+  musicBackground => l10n.slotBoard,
+  musicCalm => l10n.slotCalm,
+  _ => l10n.slotThrilling,
+};
 
-const Map<String, String> _effectNames = {
-  effectAnswerCorrect: "Right",
-  effectAnswerWrong: "Wrong",
-  effectAnswerClosed: "Closed",
-  effectReveal: "Reveal",
-  effectQuestionOpen: "Question",
-  effectLockIn: "Locked in",
-  effectNextItem: "Next item",
-  effectCountdown: "Countdown",
-  effectTimesUp: "Time's up",
-  effectSteal: "Steal",
-  effectFanfare: "Fanfare",
+String? _effectName(AppLocalizations l10n, String key) => switch (key) {
+  effectAnswerCorrect => l10n.rapidRight,
+  effectAnswerWrong => l10n.rapidWrong,
+  effectAnswerClosed => l10n.effectClosed,
+  effectReveal => l10n.reveal,
+  effectQuestionOpen => l10n.question,
+  effectLockIn => l10n.effectLockedIn,
+  effectNextItem => l10n.nextItem,
+  effectCountdown => l10n.effectCountdown,
+  effectTimesUp => l10n.effectTimesUp,
+  effectSteal => l10n.effectSteal,
+  effectFanfare => l10n.effectFanfare,
+  _ => null,
 };
 
 /// Everything for the eyes and ears that is not part of a question: cards
@@ -1658,17 +1690,17 @@ class _EffectsSheetState extends State<_EffectsSheet> {
         children: [
           Row(
             children: [
-              Expanded(child: header("On screen")),
+              Expanded(child: header(context.l10n.onScreenHeader)),
               // Kept with the session: every card comes on this way until it is changed.
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: DropdownMenu<CardAnimation>(
                   key: const ValueKey('card-animation'),
-                  label: const Text("Animation"),
+                  label: Text(context.l10n.animation),
                   width: 210,
                   initialSelection: state.cardAnimation,
                   dropdownMenuEntries: [
-                    for (final animation in CardAnimation.values) DropdownMenuEntry(value: animation, label: animation.uiString),
+                    for (final animation in CardAnimation.values) DropdownMenuEntry(value: animation, label: context.l10n.cardAnimation(animation)),
                   ],
                   onSelected: (animation) {
                     if (animation != null) send(SetCardAnimation(animation));
@@ -1681,7 +1713,7 @@ class _EffectsSheetState extends State<_EffectsSheet> {
           // Every card the editor prepared, pictures that come with the app
           // included: those of the open question's category and board first.
           if (cards.isEmpty)
-            const Text("No cards. Prepare some in the editor.")
+            Text(context.l10n.noCardsPrepare)
           else
             SizedBox(
               height: 76,
@@ -1718,32 +1750,32 @@ class _EffectsSheetState extends State<_EffectsSheet> {
             children: [
               ActionChip(
                 avatar: const Icon(Icons.celebration_outlined, size: 18),
-                label: const Text("Confetti"),
+                label: Text(context.l10n.confetti),
                 onPressed: () => send(const ScreenEffect(screenEffectConfetti)),
               ),
               ActionChip(
                 avatar: const Icon(Icons.flash_on_outlined, size: 18),
-                label: const Text("Flash"),
+                label: Text(context.l10n.flash),
                 onPressed: () => send(const ScreenEffect(screenEffectFlash)),
               ),
               ActionChip(
                 avatar: const Icon(Icons.auto_awesome_outlined, size: 18),
-                label: const Text("Fireworks"),
+                label: Text(context.l10n.fireworks),
                 onPressed: () => send(const ScreenEffect(screenEffectFireworks)),
               ),
               ActionChip(
                 avatar: const Icon(Icons.bubble_chart_outlined, size: 18),
-                label: const Text("Balloons"),
+                label: Text(context.l10n.balloons),
                 onPressed: () => send(const ScreenEffect(screenEffectBalloons)),
               ),
               ActionChip(
                 avatar: const Icon(Icons.star_outline, size: 18),
-                label: const Text("Stars"),
+                label: Text(context.l10n.stars),
                 onPressed: () => send(const ScreenEffect(screenEffectStars)),
               ),
               ActionChip(
                 avatar: const Icon(Icons.highlight_outlined, size: 18),
-                label: const Text("Spotlight"),
+                label: Text(context.l10n.spotlight),
                 onPressed: () => send(const ScreenEffect(screenEffectSpotlight)),
               ),
             ],
@@ -1754,14 +1786,14 @@ class _EffectsSheetState extends State<_EffectsSheet> {
               Expanded(
                 child: TextField(
                   controller: _text,
-                  decoration: const InputDecoration(labelText: "Text to show", isDense: true),
+                  decoration: InputDecoration(labelText: context.l10n.textToShow, isDense: true),
                   onSubmitted: (text) => send(ShowCard(OverlayCard(text: text.trim()))),
                 ),
               ),
               const SizedBox(width: 8),
               FilledButton.tonal(
                 onPressed: () => send(ShowCard(OverlayCard(text: _text.text.trim()))),
-                child: const Text("Show"),
+                child: Text(context.l10n.show),
               ),
             ],
           ),
@@ -1771,17 +1803,17 @@ class _EffectsSheetState extends State<_EffectsSheet> {
             child: FilledButton.icon(
               onPressed: state.overlay == null ? null : () => send(const HideCard()),
               icon: const Icon(Icons.visibility_off_outlined),
-              label: Text(state.overlay == null ? "No card on screen" : "Take card off screen"),
+              label: Text(state.overlay == null ? context.l10n.noCardOnScreen : context.l10n.takeCardOff),
             ),
           ),
-          header("Music"),
+          header(context.l10n.music),
 
           Wrap(
             spacing: 8,
             children: [
               for (final slot in musicSlots)
                 FilterChip(
-                  label: Text(_slotNames[slot]!),
+                  label: Text(_slotName(context.l10n, slot)),
                   selected: state.music == slot,
                   onSelected: (on) => send(SetMusic(on ? slot : null)),
                 ),
@@ -1816,10 +1848,10 @@ class _EffectsSheetState extends State<_EffectsSheet> {
             child: Column(
               children: [
                 SwitchListTile(
-                  title: const Text("Keep speakers awake"),
+                  title: Text(context.l10n.keepSpeakersAwake),
                   secondary: IconButton(
                     icon: Icon(_awakeDetails ? Icons.expand_less : Icons.expand_more),
-                    tooltip: _awakeDetails ? "Fewer details" : "What is this?",
+                    tooltip: _awakeDetails ? context.l10n.fewerDetails : context.l10n.whatIsThis,
                     onPressed: () => setState(() => _awakeDetails = !_awakeDetails),
                   ),
                   value: state.ambience != null,
@@ -1832,15 +1864,14 @@ class _EffectsSheetState extends State<_EffectsSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Many speakers switch themselves off after a few minutes of silence and miss the start of the next sound. "
-                          "This plays a very quiet noise whenever nothing else plays; music and question sounds take over as they start.",
+                          context.l10n.keepSpeakersAwakeText,
                           style: theme.textTheme.bodySmall,
                         ),
                         const SizedBox(height: 8),
                         SegmentedButton<String>(
-                          segments: const [
-                            ButtonSegment(value: ambienceSoftNoise, label: Text("Soft noise")),
-                            ButtonSegment(value: ambienceWhiteNoise, label: Text("White noise")),
+                          segments: [
+                            ButtonSegment(value: ambienceSoftNoise, label: Text(context.l10n.softNoise)),
+                            ButtonSegment(value: ambienceWhiteNoise, label: Text(context.l10n.whiteNoise)),
                           ],
                           selected: {state.ambience ?? _lastAmbience ?? ambienceSoftNoise},
                           onSelectionChanged: (selected) {
@@ -1856,7 +1887,7 @@ class _EffectsSheetState extends State<_EffectsSheet> {
                                 value: (_ambienceVolume ?? state.ambienceVolume).toDouble(),
                                 max: 100,
                                 divisions: 20,
-                                label: "Noise ${(_ambienceVolume ?? state.ambienceVolume).round()} %",
+                                label: context.l10n.noiseVolume((_ambienceVolume ?? state.ambienceVolume).round()),
                                 // Follows the finger here; the big screen gets the value when let go.
                                 onChanged: (value) => setState(() => _ambienceVolume = value.round()),
                                 onChangeEnd: (value) {
@@ -1874,7 +1905,7 @@ class _EffectsSheetState extends State<_EffectsSheet> {
               ],
             ),
           ),
-          header("Sound effects"),
+          header(context.l10n.soundEffects),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -1889,29 +1920,29 @@ class _EffectsSheetState extends State<_EffectsSheet> {
               for (final key in sounds.effects.keys)
                 ActionChip(
                   avatar: const Icon(Icons.volume_up_outlined, size: 18),
-                  label: Text(_effectNames[key] ?? key),
+                  label: Text(_effectName(context.l10n, key) ?? key),
                   onPressed: () => send(PlayEffect(key)),
                 ),
             ],
           ),
           if (question != null && question.hasMusic) ...[
-            header("Question sound"),
+            header(context.l10n.questionSound),
             Wrap(
               spacing: 8,
               children: [
                 ActionChip(
                   avatar: const Icon(Icons.play_arrow, size: 18),
-                  label: const Text("Play"),
+                  label: Text(context.l10n.play),
                   onPressed: listening && state.media != MediaPlayback.playing ? () => send(const SetMedia(MediaPlayback.playing)) : null,
                 ),
                 ActionChip(
                   avatar: const Icon(Icons.pause, size: 18),
-                  label: const Text("Pause"),
+                  label: Text(context.l10n.pause),
                   onPressed: state.media == MediaPlayback.playing ? () => send(const SetMedia(MediaPlayback.paused)) : null,
                 ),
                 ActionChip(
                   avatar: const Icon(Icons.stop, size: 18),
-                  label: const Text("Stop"),
+                  label: Text(context.l10n.stop),
                   onPressed: state.media != MediaPlayback.stopped ? () => send(const SetMedia(MediaPlayback.stopped)) : null,
                 ),
               ],
@@ -1947,7 +1978,7 @@ class _CardTile extends StatelessWidget {
     final builtin = builtinImage(card.image);
     final label = card.title.isNotEmpty ? card.title : (card.text.isNotEmpty ? card.text : null);
     return Tooltip(
-      message: label ?? builtin?.label ?? (card.video != null ? "Video" : "Picture"),
+      message: label ?? (builtin == null ? null : context.l10n.builtinImage(builtin)) ?? (card.video != null ? context.l10n.video : context.l10n.picture),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
         onTap: onTap,
@@ -2026,21 +2057,21 @@ class _AnswersSheetState extends State<_AnswersSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Answers on the teams' devices", style: theme.textTheme.titleMedium),
+          Text(context.l10n.answersOnDevices, style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
           if (state.current == null)
-            const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Text("Open a question first."))
+            Padding(padding: const EdgeInsets.symmetric(vertical: 16), child: Text(context.l10n.openAQuestionFirst))
           else if (round == null) ...[
-            const Text("Every team answers on its own device. You see the answers as they come in; the audience only when you show them."),
+            Text(context.l10n.answersOnDevicesText),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const Text("Timer"),
+                Text(context.l10n.timer),
                 for (final seconds in [null, 20, 30, 60, 120])
                   ChoiceChip(
-                    label: Text(seconds == null ? "None" : "$seconds s"),
+                    label: Text(seconds == null ? context.l10n.none : "$seconds s"),
                     selected: _timer == seconds,
                     onSelected: (_) => setState(() => _timer = seconds),
                   ),
@@ -2048,38 +2079,38 @@ class _AnswersSheetState extends State<_AnswersSheet> {
             ),
             Wrap(
               children: [
-                action("Whiteboard", Icons.draw_outlined, () => open(CompanionKind.whiteboard)),
-                action("Text", Icons.short_text, () => open(CompanionKind.text)),
-                action("Number", Icons.pin_outlined, () => open(CompanionKind.number)),
+                action(context.l10n.companionKind(CompanionKind.whiteboard), Icons.draw_outlined, () => open(CompanionKind.whiteboard)),
+                action(context.l10n.companionKind(CompanionKind.text), Icons.short_text, () => open(CompanionKind.text)),
+                action(context.l10n.companionKind(CompanionKind.number), Icons.pin_outlined, () => open(CompanionKind.number)),
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              "Sliders, sorting, matching and prepared whiteboards are set up per question in the editor and start by themselves.",
+              context.l10n.preparedScreensText,
               style: theme.textTheme.bodySmall,
             ),
           ] else ...[
             Text(
-              "${round.kind.uiString} · ${round.open ? "open" : "locked"} · "
-              "${round.answers.values.where((a) => !a.isEmpty).length} of ${state.teams.length} in",
+              "${context.l10n.companionKind(round.kind)} · ${round.open ? context.l10n.roundOpen : context.l10n.roundLocked} · "
+              "${context.l10n.answersIn(round.answers.values.where((a) => !a.isEmpty).length, state.teams.length)}",
             ),
             Wrap(
               children: [
                 if (round.open)
-                  action("Lock all", Icons.lock_outline, () => send(const LockAnswers()))
+                  action(context.l10n.lockAll, Icons.lock_outline, () => send(const LockAnswers()))
                 else
-                  action("Let them edit again", Icons.lock_open, () => send(const UnlockAnswers())),
+                  action(context.l10n.letThemEditAgain, Icons.lock_open, () => send(const UnlockAnswers())),
                 action(
-                  "Show all",
+                  context.l10n.showAll,
                   Icons.tv,
                   state.teams.every((team) => round.revealed.contains(team.id)) ? null : () => send(const RevealAnswers()),
                 ),
-                if (automatic.isNotEmpty) action("Rate automatically", Icons.auto_fix_high, () => automatic.forEach(send)),
+                if (automatic.isNotEmpty) action(context.l10n.rateAutomatically, Icons.auto_fix_high, () => automatic.forEach(send)),
                 for (final scoring in estimates)
-                  action(scoring.uiString, Icons.adjust, () => estimateRating(state, round, question!, scoring).forEach(send)),
+                  action(context.l10n.estimateScoring(scoring), Icons.adjust, () => estimateRating(state, round, question!, scoring).forEach(send)),
                 if (round.kind == CompanionKind.connections)
-                  action("Give points for groups", Icons.emoji_events_outlined, () => send(const AwardConnections())),
-                action("Discard", Icons.delete_outline, () => send(const ClearAnswers())),
+                  action(context.l10n.givePointsForGroups, Icons.emoji_events_outlined, () => send(const AwardConnections())),
+                action(context.l10n.discard, Icons.delete_outline, () => send(const ClearAnswers())),
               ],
             ),
           ],
@@ -2112,9 +2143,9 @@ class _AnswersPanel extends StatelessWidget {
   Future<void> _customPoints(BuildContext context, Team team) async {
     final text = await promptText(
       context,
-      title: "Points for ${team.name}",
+      title: context.l10n.pointsFor(team.name),
       initial: (pointsDue(state, question, team.id) ?? pointsIfRight(state, question, team.id)).toString(),
-      label: "Points for this answer",
+      label: context.l10n.pointsForAnswer,
     );
     final points = text == null ? null : int.tryParse(text);
     if (points != null) send(AwardAnswer(team.id, points));
@@ -2128,9 +2159,9 @@ class _AnswersPanel extends StatelessWidget {
     final closest = closestTeams(spec, round.answers);
     final solution = switch (spec.kind) {
       CompanionKind.number || CompanionKind.slider => spec.solution == null ? null : formatNumber(spec.solution!, unit: spec.unit),
-      CompanionKind.order => spec.options.join("  →  "),
+      CompanionKind.order => spec.options.map(context.l10n.deviceLabel).join("  →  "),
       CompanionKind.match => [
-        for (final (i, left) in spec.options.indexed) "$left → ${spec.targets.elementAtOrNull(i) ?? "?"}",
+        for (final (i, left) in spec.options.indexed) "${context.l10n.deviceLabel(left)} → ${context.l10n.deviceLabel(spec.targets.elementAtOrNull(i) ?? "?")}",
       ].join(" · "),
       CompanionKind.connections => [for (final group in spec.groups) group.name].join(" · "),
       _ => null,
@@ -2141,7 +2172,7 @@ class _AnswersPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (automatic.isNotEmpty || spec.solution != null)
+        if (automatic.isNotEmpty || (spec.solution != null && !question.byCloseness))
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Wrap(
@@ -2151,14 +2182,15 @@ class _AnswersPanel extends StatelessWidget {
                 if (automatic.isNotEmpty)
                   ActionChip(
                     avatar: const Icon(Icons.auto_fix_high, size: 18),
-                    label: const Text("Rate automatically"),
+                    label: Text(context.l10n.rateAutomatically),
                     onPressed: () => automatic.forEach(send),
                   ),
-                if (spec.solution != null)
+                // By closeness the places give the points already.
+                if (spec.solution != null && !question.byCloseness)
                   for (final scoring in EstimateScoring.values)
                     ActionChip(
                       avatar: const Icon(Icons.adjust, size: 18),
-                      label: Text(scoring.uiString),
+                      label: Text(context.l10n.estimateScoring(scoring)),
                       onPressed: () => estimateRating(state, round, question, scoring).forEach(send),
                     ),
               ],
@@ -2173,7 +2205,7 @@ class _AnswersPanel extends StatelessWidget {
         if (solution != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text("Solution: $solution", style: theme.textTheme.labelLarge),
+            child: Text(context.l10n.solutionShown(solution), style: theme.textTheme.labelLarge),
           ),
         for (final team in state.teams)
           Builder(
@@ -2182,7 +2214,8 @@ class _AnswersPanel extends StatelessWidget {
               final shown = round.revealed.contains(team.id);
               final verdict = state.results.verdicts[team.id];
               final partial = partialScore(spec, answer);
-              final suggestion = connections || top != null || partial != null
+              final place = question.byCloseness ? closenessPlaces(state)[team.id] : null;
+              final suggestion = connections || top != null || partial != null || question.byCloseness
                   ? null
                   : autoVerdict(spec, answer, choiceCorrect: question.answersCorrect) ?? (closest.contains(team.id) ? true : null);
               final found = foundBy(round, team.id);
@@ -2211,7 +2244,7 @@ class _AnswersPanel extends StatelessWidget {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              "${team.name}${shown ? " · on screen" : ""}"
+                              "${team.name}${shown ? " · ${context.l10n.onScreen}" : ""}"
                               "${took == null ? "" : " · ${took.toStringAsFixed(1)} s"}",
                               style: theme.textTheme.labelLarge,
                             ),
@@ -2221,9 +2254,11 @@ class _AnswersPanel extends StatelessWidget {
                           _PointsChip(state: state, question: question, teamId: team.id),
                           const SizedBox(width: 8),
                           // What rating automatically would make of it.
+                          if (verdict == null && place != null)
+                            Text(context.l10n.placeN(context.l10n.ordinal(place + 1)), style: theme.textTheme.labelMedium?.copyWith(color: scheme.outline)),
                           if (verdict == null && (partial != null || suggestion != null))
                             Text(
-                              partial != null ? "${partial.right} of ${partial.of} right" : (suggestion! ? "Looks right" : "Looks wrong"),
+                              partial != null ? context.l10n.partialRight(partial.right, partial.of) : (suggestion! ? context.l10n.looksRight : context.l10n.looksWrong),
                               style: theme.textTheme.labelMedium?.copyWith(color: scheme.outline),
                             ),
                         ],
@@ -2247,29 +2282,29 @@ class _AnswersPanel extends StatelessWidget {
                             child: Wrap(
                               children: [
                                 IconButton(
-                                  tooltip: shown ? "Take off screen" : "Show on screen",
+                                  tooltip: shown ? context.l10n.takeOffScreen : context.l10n.showOnScreen,
                                   icon: Icon(shown ? Icons.visibility : Icons.visibility_outlined),
                                   color: shown ? scheme.primary : null,
                                   onPressed: () => send(RevealAnswer(team.id, show: !shown)),
                                 ),
                                 PopupMenuButton<String>(
-                                  tooltip: "Other points",
+                                  tooltip: context.l10n.otherPoints,
                                   icon: const Icon(Icons.exposure_outlined),
                                   onSelected: (choice) =>
                                       choice == 'half' ? send(AwardAnswer(team.id, half)) : _customPoints(context, team),
                                   itemBuilder: (context) => [
-                                    PopupMenuItem(value: 'half', child: Text("Half points (+$half)")),
-                                    const PopupMenuItem(value: 'other', child: Text("Other points…")),
+                                    PopupMenuItem(value: 'half', child: Text(context.l10n.halfPoints(half))),
+                                    PopupMenuItem(value: 'other', child: Text(context.l10n.otherPointsMenu)),
                                   ],
                                 ),
                                 IconButton(
-                                  tooltip: "Right",
+                                  tooltip: context.l10n.rapidRight,
                                   icon: Icon(verdict == true ? Icons.check_circle : Icons.check_circle_outline),
                                   color: verdict == true ? Colors.green : null,
                                   onPressed: () => send(RateAnswer(team.id, correct: verdict == true ? null : true)),
                                 ),
                                 IconButton(
-                                  tooltip: "Wrong",
+                                  tooltip: context.l10n.rapidWrong,
                                   icon: Icon(verdict == false ? Icons.cancel : Icons.cancel_outlined),
                                   color: verdict == false ? scheme.error : null,
                                   onPressed: () => send(RateAnswer(team.id, correct: verdict == false ? null : false)),
@@ -2312,7 +2347,7 @@ class _AnswersPanel extends StatelessWidget {
               onPressed: () => send(const AwardConnections()),
               icon: const Icon(Icons.emoji_events_outlined),
               label: Text(
-                "Give points: "
+                "${context.l10n.givePoints}: "
                 "${[for (final team in state.teams) "${team.name} ${connectionsPoints(question.pointsPlus, round.answers[team.id]?.connections)}"].join(", ")}",
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

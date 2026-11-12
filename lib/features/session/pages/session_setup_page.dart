@@ -11,6 +11,7 @@ import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The setup of a session before the show, from the session list.
 ///
@@ -44,7 +45,7 @@ class _SessionSetupPageState extends State<SessionSetupPage> {
         final connection = SessionConnection.local(host, sessionId: _sessionId);
         _saving = host.states.listen((state) {
           FirestoreHostLink.saveState(_sessionId, state).catchError((Object _) {
-            if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text("Could not save the change.")));
+            if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(context.l10n.couldNotSaveChange)));
           });
         });
         setState(() => _connection = connection);
@@ -66,9 +67,9 @@ class _SessionSetupPageState extends State<SessionSetupPage> {
   Widget build(BuildContext context) {
     final connection = _connection;
     return Scaffold(
-      appBar: AppBar(title: Text("Set up ${widget.title}")),
+      appBar: AppBar(title: Text(context.l10n.setUpTitle(widget.title))),
       body: _error != null
-          ? const Center(child: Text("Could not load the session."))
+          ? Center(child: Text(context.l10n.couldNotLoadSession))
           : connection == null
           ? const Center(child: CupertinoActivityIndicator())
           : ValueListenableBuilder<SessionState?>(
@@ -82,7 +83,7 @@ class _SessionSetupPageState extends State<SessionSetupPage> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Text(
-                          "If this session is on a screen right now, set it up from Control instead: the presenting device keeps its own teams.",
+                          context.l10n.setUpFromControl,
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
@@ -131,9 +132,9 @@ class SessionSetupView extends StatelessWidget {
             ListTile(
               contentPadding: padding,
               leading: const Icon(Icons.groups_outlined),
-              title: const Text("Teams"),
+              title: Text(context.l10n.teams),
               subtitle: s.teams.isEmpty
-                  ? const Text("No teams yet")
+                  ? Text(context.l10n.noTeamsYet)
                   : Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Wrap(
@@ -164,15 +165,15 @@ class SessionSetupView extends StatelessWidget {
             ),
             SwitchListTile(
               contentPadding: padding,
-              title: const Text("Queue buzzers"),
-              subtitle: const Text("Later buzzes line up behind the first"),
+              title: Text(context.l10n.queueBuzzers),
+              subtitle: Text(context.l10n.queueBuzzersText),
               value: s.queueBuzzers,
               onChanged: (value) => send(SetQueueBuzzers(value)),
             ),
             SwitchListTile(
               contentPadding: padding,
-              title: const Text("Buzzer test"),
-              subtitle: const Text("Buzzers light up their team; only from the board"),
+              title: Text(context.l10n.buzzerTest),
+              subtitle: Text(context.l10n.buzzerTestText),
               value: s.phase == Phase.buzzerTest,
               onChanged: s.phase == Phase.overview || s.phase == Phase.buzzerTest ? (value) => send(SetBuzzerTest(value)) : null,
             ),
@@ -180,8 +181,8 @@ class SessionSetupView extends StatelessWidget {
               ListTile(
                 contentPadding: padding,
                 leading: const Icon(Icons.usb),
-                title: const Text("Buzzer box and team sounds"),
-                subtitle: const Text("The USB buzzer box, and the sound each team buzzes with"),
+                title: Text(context.l10n.buzzerBoxAndSounds),
+                subtitle: Text(context.l10n.buzzerBoxAndSoundsText),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: onBuzzerSetup,
               ),
@@ -189,8 +190,8 @@ class SessionSetupView extends StatelessWidget {
               ListTile(
                 contentPadding: padding,
                 leading: const Icon(Icons.qr_code_2),
-                title: const Text("Connect devices"),
-                subtitle: const Text("Phones as buzzers, or another controller"),
+                title: Text(context.l10n.connectDevices),
+                subtitle: Text(context.l10n.connectDevicesText),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: onConnectDevices,
               ),
@@ -209,21 +210,21 @@ class TeamsPage extends StatelessWidget {
   final void Function(Command command) send;
 
   Future<void> _add(BuildContext context) async {
-    final name = await promptText(context, title: "New team", label: "Name");
+    final name = await promptText(context, title: context.l10n.newTeam, label: context.l10n.name);
     if (name != null && name.trim().isNotEmpty) send(AddTeam(newTeamId(), name.trim()));
   }
 
   Future<void> _rename(BuildContext context, Team team) async {
-    final name = await promptText(context, title: "Rename team", initial: team.name, label: "Name");
+    final name = await promptText(context, title: context.l10n.renameTeam, initial: team.name, label: context.l10n.name);
     if (name != null && name.trim().isNotEmpty) send(RenameTeam(team.id, name.trim()));
   }
 
   Future<void> _remove(BuildContext context, Team team) async {
     final sure = await confirm(
       context,
-      title: "Remove team",
-      message: "\"${team.name}\" and its points will be removed.",
-      action: "Remove",
+      title: context.l10n.removeTeam,
+      message: context.l10n.removeTeamText(team.name),
+      action: context.l10n.remove,
     );
     if (sure) send(RemoveTeam(team.id));
   }
@@ -232,11 +233,11 @@ class TeamsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text("Teams")),
+      appBar: AppBar(title: Text(context.l10n.teams)),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _add(context),
         icon: const Icon(Icons.group_add),
-        label: const Text("Add team"),
+        label: Text(context.l10n.addTeam),
       ),
       body: ValueListenableBuilder<SessionState?>(
         valueListenable: state,
@@ -246,9 +247,9 @@ class TeamsPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
             children: [
               if (teams.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text("No teams yet. Add them here, or let them join with a code."),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(context.l10n.noTeamsYetText),
                 ),
               for (final team in teams)
                 Card(
@@ -267,8 +268,8 @@ class TeamsPage extends StatelessWidget {
                             ),
                             const SizedBox(width: 10),
                             Expanded(child: Text(team.name, style: theme.textTheme.titleMedium, overflow: TextOverflow.ellipsis)),
-                            IconButton(tooltip: "Rename", icon: const Icon(Icons.edit_outlined), onPressed: () => _rename(context, team)),
-                            IconButton(tooltip: "Remove", icon: const Icon(Icons.delete_outline), onPressed: () => _remove(context, team)),
+                            IconButton(tooltip: context.l10n.rename, icon: const Icon(Icons.edit_outlined), onPressed: () => _rename(context, team)),
+                            IconButton(tooltip: context.l10n.remove, icon: const Icon(Icons.delete_outline), onPressed: () => _remove(context, team)),
                           ],
                         ),
                         TeamColorPicker(selected: team.color, onChanged: (color) => send(SetTeamColor(team.id, color))),

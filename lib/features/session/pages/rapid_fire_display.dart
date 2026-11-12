@@ -6,6 +6,7 @@ import 'package:mini_music_visualizer/mini_music_visualizer.dart';
 import 'package:quiz_show/features/session/pages/rapid_progress.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// A Fragenhagel on the big screen: the item being asked, big, with its
 /// picture and sound; which teams have picked (devices mode); and the
@@ -31,8 +32,11 @@ class RapidFireDisplay extends StatelessWidget {
     final image = file(item?.image);
     final round = state.answerRound;
     final flux = rapid.progress == ProgressStyle.flux;
+    // Before the first item only the question itself is up, to be read out.
+    final intro = state.revealed < 0;
+    final heading = question.text.trim();
 
-    final Key itemKey = item == null ? const ValueKey('done') : ValueKey('item-$done');
+    final Key itemKey = intro ? const ValueKey('intro') : item == null ? const ValueKey('done') : ValueKey('item-$done');
     final card = Container(
       width: double.infinity,
       padding: EdgeInsets.all(unit * 3),
@@ -49,14 +53,25 @@ class RapidFireDisplay extends StatelessWidget {
             child: child,
           ),
         ),
-        child: item == null
+        child: intro
+            ? Center(
+                key: itemKey,
+                child: Text(
+                  heading,
+                  textAlign: TextAlign.center,
+                  maxLines: 5,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: unit * 7, fontWeight: FontWeight.w600),
+                ),
+              )
+            : item == null
             ? Column(
                 key: itemKey,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.emoji_events, size: unit * 14, color: scheme.primary),
                   SizedBox(height: unit * 2),
-                  Text("That was the last one!", style: TextStyle(fontSize: unit * 6, fontWeight: FontWeight.w600)),
+                  Text(context.l10n.thatWasTheLastOne, style: TextStyle(fontSize: unit * 6, fontWeight: FontWeight.w600)),
                 ],
               )
             : Row(
@@ -130,7 +145,7 @@ class RapidFireDisplay extends StatelessWidget {
                 if (queued.isNotEmpty) ...[
                   SizedBox(width: unit * 4),
                   Text(
-                    "then ${queued.join(", ")}",
+                    context.l10n.thenTeams(queued.join(", ")),
                     style: TextStyle(fontSize: unit * 3.2, color: onBanner.withValues(alpha: 0.85)),
                   ),
                 ],
@@ -140,6 +155,18 @@ class RapidFireDisplay extends StatelessWidget {
 
     return Column(
       children: [
+        // The question itself stays above its items.
+        if (!intro && item != null && heading.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.only(bottom: unit * 2),
+            child: Text(
+              heading,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: unit * 4, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
+            ),
+          ),
         Expanded(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,

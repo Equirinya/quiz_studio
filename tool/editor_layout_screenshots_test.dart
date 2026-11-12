@@ -171,6 +171,9 @@ final Map<String, Map<String, dynamic>> _cases = {
   'top_answers': topAnswersGame(mode: TopAnswersMode.typed, timer: 60).question(films)!.data,
 };
 
+/// Where the pictures go; the German run (german_screenshots_test.dart) changes it.
+String shotDir = 'screenshots';
+
 void main() {
   setUpAll(_loadFonts);
 
@@ -204,7 +207,7 @@ void main() {
     final height = tester.getRect(find.byType(QuestionCard)).bottom + 16;
     tester.view.physicalSize = Size(width, height);
     await tester.pump(const Duration(milliseconds: 300));
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/editor_layout/$name.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/editor_layout/$name.png'));
   }
 
   for (final MapEntry(key: name, value: data) in _cases.entries) {

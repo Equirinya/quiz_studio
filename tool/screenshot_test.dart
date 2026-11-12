@@ -37,6 +37,7 @@ import 'package:quiz_show/features/session/presenter_window.dart';
 import 'package:quiz_show/features/session/widgets/score_pop.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 import '../test/fake_buzzer_port.dart';
 import '../test/game/betting_fixture.dart';
@@ -68,6 +69,9 @@ Future<void> _loadFonts() async {
     await (FontLoader('serif')..addFont(Future.value(ByteData.view(File(serif).readAsBytesSync().buffer)))).load();
   }
 }
+
+/// Where the pictures go; the German run (german_screenshots_test.dart) changes it.
+String shotDir = 'screenshots';
 
 void main() {
   // Real file I/O: has to happen outside the fake clock of testWidgets.
@@ -127,7 +131,7 @@ void main() {
   }
 
   Future<void> shot(String name) async {
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/$name.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/$name.png'));
     // A round with a timer leaves it running; stop it before the test ends.
     try {
       host.dispatch(const ClearAnswers());
@@ -149,7 +153,7 @@ void main() {
 
   testWidgets('controller: board sheet', (tester) async {
     await phone(tester, const [OpenQuestion(free), CloseQuestion()]);
-    await tapText(tester, find.widgetWithText(TextButton, 'Board'));
+    await tapText(tester, find.widgetWithText(TextButton, fallbackL10n.tabBoard));
     await tapText(tester, find.widgetWithText(FilledButton, '200').first);
     await shot('controller_board_sheet');
   });
@@ -157,10 +161,15 @@ void main() {
   testWidgets('controller: fragenhagel on the devices', (tester) async {
     await phone(
       tester,
-      const [OpenQuestion(devicesRound), SubmitAnswer('red', PlayerAnswer(choice: 0)), LockAnswer('red'), SubmitAnswer('blue', PlayerAnswer(choice: 1))],
+      const [OpenQuestion(devicesRound), Reveal(1), SubmitAnswer('red', PlayerAnswer(choice: 0)), LockAnswer('red'), SubmitAnswer('blue', PlayerAnswer(choice: 1))],
       game: rapidGame(),
     );
     await shot('controller_fragenhagel');
+  });
+
+  testWidgets('controller: fragenhagel, only the question so far', (tester) async {
+    await phone(tester, const [OpenQuestion(buzzerRound)], game: rapidGame());
+    await shot('controller_fragenhagel_intro');
   });
 
   testWidgets('controller: fragenhagel, a team buzzed', (tester) async {
@@ -190,7 +199,7 @@ void main() {
 
   testWidgets('controller: setup sheet', (tester) async {
     await phone(tester, const []);
-    await tapText(tester, find.widgetWithText(TextButton, 'Setup'));
+    await tapText(tester, find.widgetWithText(TextButton, fallbackL10n.tabSetup));
     await shot('controller_setup_sheet');
   });
 
@@ -230,10 +239,10 @@ void main() {
       ),
     ));
     await tester.pump();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/session_setup.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/session_setup.png'));
     await tester.tap(find.text('Teams'));
     await tester.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/session_setup_teams.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/session_setup_teams.png'));
   });
 
   testWidgets('presenter: board', (tester) async {
@@ -275,6 +284,12 @@ void main() {
     );
   }
 
+  testWidgets('fragenhagel: big screen, only the question so far', (tester) async {
+    await screen(tester, const [OpenQuestion(buzzerRound)], game: rapidGame());
+    await tester.pump(const Duration(milliseconds: 900));
+    await shot('fragenhagel_presenter_intro');
+  });
+
   testWidgets('fragenhagel: big screen with the flux capacitor charging', (tester) async {
     await screen(tester, const [OpenQuestion(buzzerRound), Reveal(1)], game: rapidGame());
     await tester.pump(const Duration(milliseconds: 900));
@@ -282,7 +297,7 @@ void main() {
   });
 
   testWidgets('fragenhagel: the flux capacitor lets go at the end', (tester) async {
-    await screen(tester, const [OpenQuestion(buzzerRound), Reveal(1), Reveal(1)], game: rapidGame());
+    await screen(tester, const [OpenQuestion(buzzerRound), Reveal(1), Reveal(1), Reveal(1)], game: rapidGame());
     await tester.pump(const Duration(milliseconds: 900));
     host.dispatch(const Reveal(1));
     await tester.pump();
@@ -293,7 +308,7 @@ void main() {
   testWidgets('fragenhagel: devices with a battery', (tester) async {
     await screen(
       tester,
-      const [OpenQuestion(devicesRound), SubmitAnswer('red', PlayerAnswer(choice: 0)), LockAnswer('red')],
+      const [OpenQuestion(devicesRound), Reveal(1), SubmitAnswer('red', PlayerAnswer(choice: 0)), LockAnswer('red')],
       game: rapidWith(ProgressStyle.battery, mode: 'devices'),
     );
     await tester.pump(const Duration(milliseconds: 900));
@@ -346,11 +361,11 @@ void main() {
     await shot('presenter_feud');
   });
 
-  Future<void> player(WidgetTester tester, List<Command> commands) async {
+  Future<void> player(WidgetTester tester, List<Command> commands, {GameContent? game}) async {
     tester.view.physicalSize = const Size(412, 892);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    host = SessionHost(initial: fixtureState(), game: fixtureGame());
+    host = SessionHost(initial: fixtureState(), game: game ?? fixtureGame());
     addTearDown(host.dispose);
     for (final command in commands) {
       host.dispatch(command);
@@ -368,6 +383,11 @@ void main() {
   testWidgets('player: buzzer', (tester) async {
     await player(tester, const [AdjustPoints('red', 300), OpenQuestion(free)]);
     await shot('player_buzzer');
+  });
+
+  testWidgets('fragenhagel: the question stays above the item on a phone', (tester) async {
+    await player(tester, const [OpenQuestion(devicesRound), Reveal(1)], game: rapidGame());
+    await shot('fragenhagel_player_lead');
   });
 
   testWidgets('player: waiting', (tester) async {
@@ -516,7 +536,7 @@ void main() {
 
   testWidgets('controller: effects sheet', (tester) async {
     await phone(tester, const [SetMusic(musicBackground), ShowCard(OverlayCard(text: 'Back in ten'))]);
-    await tapText(tester, find.widgetWithText(TextButton, 'Effects'));
+    await tapText(tester, find.widgetWithText(TextButton, fallbackL10n.tabEffects));
     await shot('controller_effects_sheet');
   });
 
@@ -863,7 +883,7 @@ void main() {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
       await tester.pump(const Duration(milliseconds: 300));
       // Picture 1 onto the first slot, by tapping.
-      await tester.tap(find.text('Picture 1').last);
+      await tester.tap(find.text(fallbackL10n.deviceLabel('Picture 1')).last);
       await tester.pump();
       await tester.tap(find.byIcon(Icons.add_rounded).first);
       await tester.pumpAndSettle();
@@ -902,7 +922,7 @@ void main() {
     // Select the title, as after tapping it.
     await tester.tap(find.byKey(const ValueKey('decoration-0')));
     await tester.pump(const Duration(milliseconds: 300));
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/map_editor.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/map_editor.png'));
   });
 
   Future<void> questionCard(WidgetTester tester, String name, Map<String, dynamic> data) async {
@@ -923,7 +943,7 @@ void main() {
       ),
     ));
     await tester.pump(const Duration(milliseconds: 500));
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/$name.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/$name.png'));
   }
 
   testWidgets('editor: question with a whiteboard', (tester) async {
@@ -1034,7 +1054,7 @@ void main() {
 
   testWidgets('editor: board settings', (tester) async {
     await gameEditor(tester);
-    await tapText(tester, find.text('Board settings').first);
+    await tapText(tester, find.text(fallbackL10n.boardSettings).first);
     await tester.pump(const Duration(milliseconds: 400));
     await shot('editor_board_settings');
   });
@@ -1170,13 +1190,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.byKey(const ValueKey('bubble-c1')));
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.byTooltip('Larger'));
+    await tester.tap(find.byTooltip(fallbackL10n.larger));
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.byTooltip('Larger'));
+    await tester.tap(find.byTooltip(fallbackL10n.larger));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 100));
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/map_editor_wide.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/map_editor_wide.png'));
   });
 
   testWidgets('buzzers: test and teams', (tester) async {
@@ -1225,7 +1245,7 @@ void main() {
     await send('0:12,1:20,2:8,3:910,4:10');
     await send('0:12,1:20,2:8,3:15,4:10');
     await send('0:640,1:20,2:260,3:15,4:10', millis: 300);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/buzzers_page.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/buzzers_page.png'));
     await tester.pumpWidget(const SizedBox());
     link.dispose();
   });
@@ -1257,9 +1277,9 @@ void main() {
       now += 10;
       await tester.pump(const Duration(milliseconds: 10));
     }
-    await tester.tap(find.text('Assign all by pressing'));
+    await tester.tap(find.text(fallbackL10n.assignAllByPressing));
     await tester.pump(const Duration(milliseconds: 300));
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/buzzers_assigning.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/buzzers_assigning.png'));
     await tester.pumpWidget(const SizedBox());
     link.dispose();
   });
@@ -1466,9 +1486,9 @@ void main() {
     ));
     await loadPictures(tester, game);
     await tapText(tester, find.text('open'));
-    await tester.tap(find.byTooltip('Reveal next'));
+    await tester.tap(find.byTooltip(fallbackL10n.revealNext));
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.byTooltip('Reveal next'));
+    await tester.tap(find.byTooltip(fallbackL10n.revealNext));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 400));
     await shot('editor_question_preview');
@@ -1506,7 +1526,7 @@ void main() {
     await tester.tap(find.byType(Switch));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 400));
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/buzzers_raw_and_sounds.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/buzzers_raw_and_sounds.png'));
     await tester.pumpWidget(const SizedBox());
     link.dispose();
   });
@@ -1514,7 +1534,7 @@ void main() {
   // ── Connections ────────────────────────────────────────────────────────────
 
   /// A picture without ending the round; [shot] clears it afterwards.
-  Future<void> snap(String name) => expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/$name.png'));
+  Future<void> snap(String name) => expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/$name.png'));
 
   const connectionTeams = [Team(id: 'red', name: 'Red', points: 300), Team(id: 'blue', name: 'Blue', points: 150), Team(id: 'green', name: 'Green')];
 
@@ -1580,7 +1600,7 @@ void main() {
     for (final place in placesOf(0)) {
       await tapWord(tester, h, place);
     }
-    await tester.tap(find.widgetWithText(FilledButton, 'Submit'));
+    await tester.tap(find.widgetWithText(FilledButton, fallbackL10n.submit));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 260));
     await snap('connections_tablet_sliding');
@@ -1595,7 +1615,7 @@ void main() {
     for (final place in [...placesOf(1).take(3), placesOf(3)[0]]) {
       await tapWord(tester, h, place);
     }
-    await tester.tap(find.widgetWithText(FilledButton, 'Submit'));
+    await tester.tap(find.widgetWithText(FilledButton, fallbackL10n.submit));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 90));
     await shot('connections_phone_one_away');
@@ -1661,7 +1681,7 @@ void main() {
     ));
     await tester.pump(const Duration(milliseconds: 400));
     await snap('connections_controller');
-    await tester.tap(find.widgetWithText(FilledButton, 'Reveal group'));
+    await tester.tap(find.widgetWithText(FilledButton, fallbackL10n.revealGroup));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await shot('connections_controller_confirm');
@@ -1708,7 +1728,7 @@ void main() {
       ],
     });
     await phone(tester, const [SetCardAnimation(CardAnimation.bounce)], game: game);
-    await tapText(tester, find.text('Effects'));
+    await tapText(tester, find.text(fallbackL10n.tabEffects));
     await tester.pump(const Duration(milliseconds: 400));
     await shot('cards_effects_sheet');
   });
@@ -1902,6 +1922,33 @@ void main() {
       await shot('scoring_controller_tablet');
     });
 
+    const guessed = <Command>[
+      OpenQuestion(nearest),
+      SubmitAnswer('red', PlayerAnswer(number: 300)),
+      SubmitAnswer('blue', PlayerAnswer(number: 345)),
+      SubmitAnswer('green', PlayerAnswer(number: 120)),
+      LockAnswers(),
+      RevealAnswers(),
+    ];
+
+    testWidgets('controller: by closeness', (tester) async {
+      await controller(tester, guessed, const Size(412, 892));
+      await shot('scoring_controller_closeness');
+    });
+
+    testWidgets('presenter: by closeness, the places with the answers', (tester) async {
+      final connection = await start(tester, guessed, const Size(1600, 900));
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme(Brightness.dark),
+          home: Scaffold(body: PresenterView(connection: connection)),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await shot('scoring_presenter_closeness');
+    });
+
     testWidgets('controller: charades, teams tapped in as they finish', (tester) async {
       await controller(tester, const [OpenQuestion(mime), PlaceTeam('green'), PlaceTeam('red')], const Size(412, 892));
       await shot('scoring_controller_charades');
@@ -1963,6 +2010,10 @@ void main() {
         'rankStep': 100,
         'companion': {'kind': 'text', 'timer': 60},
       });
+    });
+
+    testWidgets('editor: by closeness', (tester) async {
+      await questionCard(tester, 'scoring_editor_closeness', scoringGame().question(nearest)!.data);
     });
   });
 
@@ -2056,7 +2107,7 @@ void main() {
 
     testWidgets('controller: entering a bet for a team', (tester) async {
       await controller(tester, placed, const Size(412, 892));
-      await tapText(tester, find.textContaining('Blue · up to'));
+      await tapText(tester, find.textContaining('Blue · ${fallbackL10n.upTo(0).replaceAll('0', '').trim()}'));
       await shot('bets_controller_enter');
     });
 
@@ -2077,7 +2128,7 @@ void main() {
 
     testWidgets('phone placing a bet', (tester) async {
       await device(tester, const [OpenQuestion(buzzed)], const Size(412, 892), 'red');
-      await tester.tap(find.text('Half'));
+      await tester.tap(find.text(fallbackL10n.betHalf));
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(seconds: 1));
       await shot('bets_player_phone');
@@ -2090,7 +2141,7 @@ void main() {
 
     testWidgets('tablet held sideways placing a bet', (tester) async {
       await device(tester, const [OpenQuestion(picked)], const Size(1180, 820), 'red');
-      await tester.tap(find.text('All in'));
+      await tester.tap(find.text(fallbackL10n.allIn));
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(seconds: 1));
       await shot('bets_player_tablet');

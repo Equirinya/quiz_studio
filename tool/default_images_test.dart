@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/game/cards.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 const _fonts = '/home/jacob/development/flutter/bin/cache/artifacts/material_fonts';
 
@@ -70,9 +71,10 @@ class _Rays extends CustomPainter {
 }
 
 class _Picture extends StatelessWidget {
-  const _Picture(this.image);
+  const _Picture(this.image, this.label);
 
   final BuiltinImage image;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +102,7 @@ class _Picture extends StatelessWidget {
               ),
               const SizedBox(height: 44),
               Text(
-                image.label.toUpperCase(),
+                label.toUpperCase(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Roboto',
@@ -127,11 +129,23 @@ void main() {
       tester.view.physicalSize = const Size(1600, 900);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(Directionality(textDirection: TextDirection.ltr, child: _Picture(image)));
+      await tester.pumpWidget(Directionality(textDirection: TextDirection.ltr, child: _Picture(image, image.label)));
       await expectLater(find.byType(_Picture), matchesGoldenFile('../assets/cards/${image.id}.png'));
+    });
+  }
+
+  // The German ones, into assets/cards/de/; only these with --name "^de ".
+  final german = lookupAppLocalizations(const Locale('de'));
+  for (final image in builtinImages) {
+    testWidgets('de ${image.id}', (tester) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(Directionality(textDirection: TextDirection.ltr, child: _Picture(image, german.builtinImage(image))));
+      await expectLater(find.byType(_Picture), matchesGoldenFile('../assets/cards/de/${image.id}.png'));
     });
   }
 }
 
 // After rendering:
-//   cd assets/cards && for f in *.png; do convert "$f" -quality 86 "${f%.png}.jpg" && rm "$f"; done
+//   cd assets/cards && for f in *.png de/*.png; do convert "$f" -quality 86 "${f%.png}.jpg" && rm "$f"; done

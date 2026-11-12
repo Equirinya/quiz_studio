@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// Shortest and longest display name the app accepts. The Firestore rules
 /// enforce their own (wider) bounds; see `validUsername` in firestore.rules.
@@ -74,16 +75,16 @@ class UserService {
   /// password. The account stays the same one, with all its games; from then
   /// on it can be signed in to on other devices. Returns null on success, or
   /// a message to show.
-  Future<String?> addEmailAndPassword(String email, String password) async {
+  Future<String?> addEmailAndPassword(String email, String password, [AppLocalizations? l10n]) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return 'You are not signed in.';
+    if (user == null) return (l10n ?? englishL10n).notSignedIn;
     try {
       await user.linkWithCredential(EmailAuthProvider.credential(email: email, password: password));
       return null;
     } on FirebaseAuthException catch (e) {
-      return upgradeErrorMessage(e.code);
+      return upgradeErrorMessage(e.code, l10n);
     } catch (_) {
-      return upgradeErrorMessage('');
+      return upgradeErrorMessage('', l10n);
     }
   }
 
@@ -105,14 +106,16 @@ class UserService {
 }
 
 /// What to tell the user when adding an email address and password fails.
-String upgradeErrorMessage(String code) => switch (code) {
-      'email-already-in-use' || 'credential-already-in-use' =>
-        'There is already an account with this email address. Sign in to that one instead.',
-      'invalid-email' => 'That is not a valid email address.',
-      'weak-password' => 'Please choose a stronger password.',
-      'provider-already-linked' => 'This account already has an email address.',
-      'requires-recent-login' => 'For safety, please restart the app and try again.',
-      'network-request-failed' => "You're not connected to the internet.",
-      'operation-not-allowed' => 'Email sign-in is switched off for this app.',
-      _ => 'That did not work. Please try again.',
-    };
+String upgradeErrorMessage(String code, [AppLocalizations? l10n]) {
+  final t = l10n ?? englishL10n;
+  return switch (code) {
+    'email-already-in-use' || 'credential-already-in-use' => t.emailInUse,
+    'invalid-email' => t.invalidEmail,
+    'weak-password' => t.weakPassword,
+    'provider-already-linked' => t.alreadyHasEmail,
+    'requires-recent-login' => t.restartAndRetry,
+    'network-request-failed' => t.notConnected,
+    'operation-not-allowed' => t.emailSignInOff,
+    _ => t.didNotWorkTryAgain,
+  };
+}

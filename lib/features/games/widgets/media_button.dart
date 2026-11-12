@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/session/pages/video_card.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 const XTypeGroup _audioByExtension = XTypeGroup(label: 'Audio', extensions: <String>['mp3', 'wav', 'm4a', 'aac', 'flac']);
 const XTypeGroup _audioByUniformType = XTypeGroup(label: 'Audio', uniformTypeIdentifiers: <String>['public.audio']);
@@ -88,6 +89,7 @@ class _MediaButtonState extends State<MediaButton> {
 
   Future<void> _add() async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     final path = await widget.kind.pick();
     if (path == null || !mounted) return;
     setState(() => _busy = true);
@@ -97,9 +99,9 @@ class _MediaButtonState extends State<MediaButton> {
       // A replaced file is referred to by nothing any more.
       if (old != null && old.isNotEmpty) MediaService.instance.delete(widget.gameId, old);
     } on UnsupportedError catch (error) {
-      messenger.showSnackBar(SnackBar(content: Text(error.message ?? "This file type is not supported.")));
+      messenger.showSnackBar(SnackBar(content: Text((error.message ?? '').startsWith('Ogg') ? l10n.oggNotSupported : l10n.fileTypeNotSupported)));
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text("Could not upload the ${widget.kind.noun}.")));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.couldNotUploadMedia(widget.kind.name))));
     }
     if (mounted) setState(() => _busy = false);
   }
@@ -128,12 +130,12 @@ class _MediaButtonState extends State<MediaButton> {
       return const SizedBox(width: 48, height: 48, child: Center(child: CupertinoActivityIndicator()));
     }
     if (!_attached) {
-      return IconButton(tooltip: "Add ${widget.kind.noun}", icon: Icon(widget.kind.addIcon), onPressed: _add);
+      return IconButton(tooltip: context.l10n.addMedia(widget.kind.name), icon: Icon(widget.kind.addIcon), onPressed: _add);
     }
     switch (widget.kind) {
       case MediaKind.image:
         return Tooltip(
-          message: "Picture: tap to see it large, replace or remove it",
+          message: context.l10n.pictureTooltip,
           child: InkWell(
             borderRadius: BorderRadius.circular(8),
             onTap: _open,
@@ -153,13 +155,13 @@ class _MediaButtonState extends State<MediaButton> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  tooltip: on ? "Stop" : "Listen",
+                  tooltip: on ? context.l10n.stop : context.l10n.listen,
                   color: scheme.primary,
                   icon: Icon(on ? Icons.stop_circle_outlined : Icons.play_circle_outline),
                   onPressed: () => _toggleSound(widget.gameId, widget.name!),
                 ),
                 IconButton(
-                  tooltip: "Replace or remove the sound",
+                  tooltip: context.l10n.replaceOrRemoveSound,
                   visualDensity: VisualDensity.compact,
                   iconSize: 18,
                   icon: const Icon(Icons.edit_outlined),
@@ -171,7 +173,7 @@ class _MediaButtonState extends State<MediaButton> {
         );
       case MediaKind.video:
         return IconButton(
-          tooltip: "Video: tap to watch, replace or remove it",
+          tooltip: context.l10n.videoTooltip,
           color: scheme.primary,
           icon: Icon(widget.kind.presentIcon),
           onPressed: _open,
@@ -258,7 +260,7 @@ class _MediaDialog extends StatelessWidget {
             return FilledButton.tonalIcon(
               onPressed: () => _toggleSound(gameId, name),
               icon: Icon(on ? Icons.stop : Icons.play_arrow),
-              label: Text(on ? "Stop" : "Listen"),
+              label: Text(on ? context.l10n.stop : context.l10n.listen),
             );
           },
         ),
@@ -285,9 +287,9 @@ class _MediaDialog extends StatelessWidget {
     };
     return AlertDialog(
       title: Text(switch (kind) {
-        MediaKind.image => "Picture",
-        MediaKind.audio => "Sound",
-        MediaKind.video => "Video",
+        MediaKind.image => context.l10n.picture,
+        MediaKind.audio => context.l10n.sound,
+        MediaKind.video => context.l10n.video,
       }),
       content: Column(mainAxisSize: MainAxisSize.min, children: [Center(child: preview)]),
       actions: [
@@ -295,14 +297,14 @@ class _MediaDialog extends StatelessWidget {
           style: TextButton.styleFrom(foregroundColor: scheme.error),
           onPressed: () => Navigator.of(context).pop('remove'),
           icon: const Icon(Icons.delete_outline),
-          label: const Text("Remove"),
+          label: Text(context.l10n.remove),
         ),
         TextButton.icon(
           onPressed: () => Navigator.of(context).pop('replace'),
           icon: Icon(kind.addIcon),
-          label: const Text("Replace"),
+          label: Text(context.l10n.replace),
         ),
-        FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Done")),
+        FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.done)),
       ],
     );
   }

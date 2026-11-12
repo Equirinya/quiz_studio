@@ -12,6 +12,7 @@ import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 import '../test/game/fixture.dart';
 import '../test/game/top_answers_fixture.dart';
@@ -27,6 +28,9 @@ Future<void> _loadFonts() async {
   await roboto.load();
   await (FontLoader('MaterialIcons')..addFont(read('MaterialIcons-Regular.otf'))).load();
 }
+
+/// Where the pictures go; the German run (german_screenshots_test.dart) changes it.
+String shotDir = 'screenshots';
 
 void main() {
   setUpAll(_loadFonts);
@@ -59,7 +63,7 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(seconds: 1));
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/$name.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/$name.png'));
     for (final h in hosts) {
       h.dispatch(const ClearAnswers());
       if (!owned.contains(h)) h.dispose();
@@ -193,10 +197,10 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(MaterialApp(debugShowCheckedModeBanner: false, theme: buildAppTheme(Brightness.light), home: controller(h)));
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.byTooltip("Other points").first);
+    await tester.tap(find.byTooltip(fallbackL10n.otherPoints).first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/rating_half_points.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/rating_half_points.png'));
     h.dispatch(const ClearAnswers());
   });
 }

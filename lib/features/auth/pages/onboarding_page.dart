@@ -13,6 +13,7 @@ import 'package:quiz_show/features/auth/user_service.dart';
 import 'package:quiz_show/features/auth/widgets/auth_form.dart';
 import 'package:quiz_show/features/player/pages/join_session_page.dart';
 import 'package:quiz_show/features/session/session_links.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 // Hosted on GitHub Pages (see /docs). jekyll-relative-links serves these as .html.
 const String _termsUrl = 'https://equirinya.github.io/quiz_studio/terms.html';
@@ -26,11 +27,11 @@ class FeatureSpec {
   final String blurb;
 }
 
-const List<FeatureSpec> kOnboardingFeatures = [
-  FeatureSpec(Icons.quiz, 'Build quizzes together', 'Write categories and questions with friends, without spoiling each other.'),
-  FeatureSpec(Icons.tv, 'Present on the big screen', 'Run the show on a TV or projector and control it from your phone.'),
-  FeatureSpec(Icons.touch_app, 'Phones as buzzers', 'Players join by scanning a code. Arduino buzzers work too.'),
-  FeatureSpec(Icons.music_note, 'Music and sound effects', 'Background music, reveal sounds and a buzzer sound per team.'),
+List<FeatureSpec> onboardingFeatures(AppLocalizations l10n) => [
+  FeatureSpec(Icons.quiz, l10n.featureBuildTitle, l10n.featureBuildText),
+  FeatureSpec(Icons.tv, l10n.featurePresentTitle, l10n.featurePresentText),
+  FeatureSpec(Icons.touch_app, l10n.featureBuzzersTitle, l10n.featureBuzzersText),
+  FeatureSpec(Icons.music_note, l10n.featureMusicTitle, l10n.featureMusicText),
 ];
 
 enum _Step { showcase, login, name }
@@ -136,34 +137,35 @@ class _WelcomePageState extends State<WelcomePage> {
   /// Signs in an existing account from the login step. Returns `null` on
   /// success or a user-facing error message.
   Future<String?> _signIn(String email, String password) async {
+    final l10n = context.l10n;
     if (email.isEmpty || !email.contains('@')) {
-      return 'Please enter a valid email address.';
+      return l10n.enterValidEmail;
     }
     if (password.isEmpty) {
-      return 'Please enter your password.';
+      return l10n.enterPassword;
     }
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'user-not-found':
-          return 'No account found with this email address.';
+          return l10n.noAccountForEmail;
         case 'wrong-password':
         case 'invalid-credential':
-          return 'Wrong email address or password.';
+          return l10n.wrongEmailOrPassword;
         case 'invalid-email':
-          return 'Invalid email address.';
+          return l10n.invalidEmailShort;
         case 'user-disabled':
-          return 'This account has been disabled.';
+          return l10n.accountDisabled;
         case 'too-many-requests':
-          return 'Too many attempts. Please try again later.';
+          return l10n.tooManyAttempts;
         case 'network-request-failed':
-          return "You're not connected to the internet.";
+          return l10n.notConnected;
         default:
-          return 'Sign-in failed. Please try again.';
+          return l10n.signInFailed;
       }
     } catch (_) {
-      return 'Sign-in failed. Please try again.';
+      return l10n.signInFailed;
     }
     return null;
   }
@@ -189,6 +191,7 @@ class _WelcomePageState extends State<WelcomePage> {
   }
 
   Future<String?> _signInAndCreateProfile() async {
+    final l10n = context.l10n;
     final auth = FirebaseAuth.instance;
     try {
       if (auth.currentUser == null) {
@@ -197,20 +200,20 @@ class _WelcomePageState extends State<WelcomePage> {
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'network-request-failed':
-          return "You're not connected to the internet.";
+          return l10n.notConnected;
         case 'operation-not-allowed':
-          return 'Anonymous sign-in is disabled. Please try again later.';
+          return l10n.anonymousSignInDisabled;
         default:
-          return 'Could not get you started. Please try again.';
+          return l10n.couldNotStart;
       }
     } catch (_) {
-      return 'An unknown error occurred.';
+      return l10n.unknownError;
     }
 
     try {
       await UserService.instance.createProfile(_usernameCtrl.text.trim());
     } catch (_) {
-      return 'Could not save your name. Please try again.';
+      return l10n.couldNotSaveName;
     }
     return null;
   }
@@ -298,7 +301,7 @@ class _WelcomePageState extends State<WelcomePage> {
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: AuthForm(
             mode: AuthFormMode.login,
-            submitText: 'Login',
+            submitText: context.l10n.login,
             reserveErrorSpace: true,
             onSubmit: _signIn,
             onSuccess: widget.onFinished,
@@ -321,10 +324,10 @@ class _WelcomePageState extends State<WelcomePage> {
               children: [
                 _logo(context),
                 const SizedBox(height: 24),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 32),
                   child: Text(
-                    'Choose the name other players and co-authors will see:',
+                    context.l10n.chooseYourName,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.black87, fontSize: 14),
                   ),
@@ -340,9 +343,9 @@ class _WelcomePageState extends State<WelcomePage> {
                     textInputAction: TextInputAction.done,
                     autofillHints: const [AutofillHints.name],
                     onSubmitted: (_) => _createAccount(),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       prefixIcon: Icon(Icons.person_outline),
-                      hintText: 'The name others will see',
+                      hintText: context.l10n.theNameOthersWillSee,
                       counterText: '',
                     ),
                   ),
@@ -360,7 +363,7 @@ class _WelcomePageState extends State<WelcomePage> {
                       child: TextButton.icon(
                         onPressed: _joining ? null : _joinAsGuest,
                         icon: const Icon(Icons.qr_code_scanner, color: Colors.black87),
-                        label: const Text("Just join a show", style: TextStyle(color: Colors.black87)),
+                        label: Text(context.l10n.justJoinAShow, style: const TextStyle(color: Colors.black87)),
                       ),
                     ),
                   ),
@@ -370,7 +373,7 @@ class _WelcomePageState extends State<WelcomePage> {
                   Center(
                     child: TextButton(
                       onPressed: _loading ? null : _useOtherAccount,
-                      child: const Text('Use a different account', style: TextStyle(color: Colors.black87)),
+                      child: Text(context.l10n.useDifferentAccount, style: const TextStyle(color: Colors.black87)),
                     ),
                   )
                 // A guest who came to set up quizzes may have an account after all.
@@ -380,7 +383,7 @@ class _WelcomePageState extends State<WelcomePage> {
                     child: Center(
                       child: TextButton(
                         onPressed: _loading ? null : _toLogin,
-                        child: const Text('I already have an account', style: TextStyle(color: Colors.black87)),
+                        child: Text(context.l10n.haveAnAccount, style: const TextStyle(color: Colors.black87)),
                       ),
                     ),
                   ),
@@ -399,11 +402,11 @@ class _WelcomePageState extends State<WelcomePage> {
       TextSpan(
         style: base,
         children: [
-          const TextSpan(text: 'By continuing you agree to the '),
-          TextSpan(text: 'Terms & Conditions', style: link, recognizer: TapGestureRecognizer()..onTap = () => _openLink(_termsUrl)),
-          const TextSpan(text: ' and the '),
-          TextSpan(text: 'Privacy Policy', style: link, recognizer: TapGestureRecognizer()..onTap = () => _openLink(_privacyUrl)),
-          const TextSpan(text: '.'),
+          TextSpan(text: context.l10n.termsBefore),
+          TextSpan(text: context.l10n.termsLink, style: link, recognizer: TapGestureRecognizer()..onTap = () => _openLink(_termsUrl)),
+          TextSpan(text: context.l10n.termsBetween),
+          TextSpan(text: context.l10n.privacyLink, style: link, recognizer: TapGestureRecognizer()..onTap = () => _openLink(_privacyUrl)),
+          TextSpan(text: context.l10n.termsAfter),
         ],
       ),
       textAlign: TextAlign.center,
@@ -429,13 +432,13 @@ class _WelcomePageState extends State<WelcomePage> {
                 IconButton(
                   onPressed: _loading ? null : _back,
                   icon: const Icon(Icons.arrow_back, color: Colors.black),
-                  tooltip: 'Back',
+                  tooltip: context.l10n.back,
                 ),
               if (step == _Step.name)
                 Expanded(
                   child: FilledButton(
                     onPressed: !_loading && _nameValid ? _createAccount : null,
-                    child: _loading ? const CupertinoActivityIndicator() : const Text("Let's play"),
+                    child: _loading ? const CupertinoActivityIndicator() : Text(context.l10n.letsPlay),
                   ),
                 )
               else
@@ -498,7 +501,7 @@ class _ShowcasePage extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             children: [
-              for (final f in kOnboardingFeatures) _FeaturePill(feature: f),
+              for (final f in onboardingFeatures(context.l10n)) _FeaturePill(feature: f),
             ],
           ),
         ),
@@ -509,12 +512,12 @@ class _ShowcasePage extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onJoin,
                 icon: const Icon(Icons.qr_code_scanner),
-                label: const Text('Join a show'),
+                label: Text(context.l10n.joinAShow),
               ),
               const SizedBox(height: 8),
-              OutlinedButton(onPressed: onStart, child: const Text('Create my own quizzes')),
+              OutlinedButton(onPressed: onStart, child: Text(context.l10n.createOwnQuizzes)),
               const SizedBox(height: 4),
-              TextButton(onPressed: onLogin, child: const Text('I already have an account')),
+              TextButton(onPressed: onLogin, child: Text(context.l10n.haveAnAccount)),
             ],
           ),
         ),

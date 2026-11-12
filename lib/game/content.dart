@@ -343,6 +343,7 @@ class Question {
     this.wager = false,
     this.amountBet,
     this.rankStep,
+    this.closest = false,
     this.answers = const [],
     this.answersCorrect = const [],
     this.information = const [],
@@ -405,6 +406,18 @@ class Question {
   /// Stored as `rankStep`; for the types in [QuestionType.wagerable].
   final int? rankStep;
 
+  /// With [rankStep]: places go by how close each team's number came to the
+  /// solution instead of by order. Stored as `closest`; see [byCloseness].
+  final bool closest;
+
+  /// Whether this question is scored "by closeness": the team whose number
+  /// is nearest the solution gets [pointsPlus], each place after it
+  /// [rankStep] less. For numbers and sliders on the devices.
+  bool get byCloseness {
+    final kind = closest && rankStep != null && !hasBets ? companion?.kind : null;
+    return kind == CompanionKind.number || kind == CompanionKind.slider;
+  }
+
   /// What the question is worth on the boards and how it sorts: its points,
   /// or everything there is to win when they are given per item
   /// (Fragenhagel: the points times the items; Top answers: all answers).
@@ -418,7 +431,7 @@ class Question {
   };
 
   /// Whether this question is scored "by order"; see [rankStep].
-  bool get ranked => rankStep != null && type.wagerable && !hasBets;
+  bool get ranked => rankStep != null && !closest && type.wagerable && !hasBets;
 
   /// How long the question runs, in seconds, when the teams' devices have no
   /// screen of their own for it (that screen has its own timer). Stored as
@@ -490,6 +503,7 @@ class Question {
       wager: data['wager'] == true,
       amountBet: QuestionType.fromString(data['type']) == QuestionType.free ? AmountBet.fromMap(data['amountBet']) : null,
       rankStep: data['rankStep'] is num && (data['rankStep'] as num) >= 0 ? (data['rankStep'] as num).toInt() : null,
+      closest: data['closest'] == true,
       answers: _strings(data['answers']),
       answersCorrect: correct is List ? [for (final e in correct) e == true] : const [],
       information: _strings(data['information']),

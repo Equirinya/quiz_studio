@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/auth/widgets/user_name.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// Who is in a game, with which role, and the invite links that let more
 /// people in. Admins only.
@@ -28,20 +29,20 @@ class _GameAccessPageState extends State<GameAccessPage> {
     await guarded(context, () async {
       final invite = await _repo.createInvite(widget.gameId, gameName, role);
       if (mounted) _copy(invite);
-    }, failure: "Could not create the invite link.");
+    }, failure: context.l10n.couldNotCreateInvite);
   }
 
   Future<void> _copy(GameInvite invite) async {
     await Clipboard.setData(ClipboardData(text: invite.link));
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Invite link copied")));
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.inviteLinkCopied)));
   }
 
   Future<void> _remove(String uid) async {
     final sure = await confirm(
       context,
-      title: "Remove from game",
-      message: "They lose access right away. Revoke any invite link they still have, or they can join again.",
-      action: "Remove",
+      title: context.l10n.removeFromGame,
+      message: context.l10n.removeFromGameText,
+      action: context.l10n.remove,
     );
     if (!sure || !mounted) return;
     await guarded(context, () => _repo.setRole(widget.gameId, uid, null));
@@ -57,24 +58,24 @@ class _GameAccessPageState extends State<GameAccessPage> {
         );
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Access")),
+      appBar: AppBar(title: Text(context.l10n.access)),
       body: StreamBuilder<GameSnapshot>(
         stream: _game,
         builder: (context, snapshot) {
-          if (snapshot.hasError) return const Center(child: Text("This game is not available."));
+          if (snapshot.hasError) return Center(child: Text(context.l10n.gameNotAvailable));
           final game = snapshot.data;
           if (game == null) return const Center(child: CupertinoActivityIndicator());
           final admins = List<String>.from(game.data[GameRole.admin.name] as List? ?? const []);
           return ListView(
             padding: const EdgeInsets.only(bottom: 32),
             children: [
-              header("Members"),
+              header(context.l10n.members),
               for (final role in GameRole.values)
                 for (final uid in List<String>.from(game.data[role.name] as List? ?? const []))
                   ListTile(
                     leading: const Icon(Icons.person_outline),
                     title: UserName(uid),
-                    subtitle: uid == me ? const Text("You") : null,
+                    subtitle: uid == me ? Text(context.l10n.you) : null,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -90,12 +91,12 @@ class _GameAccessPageState extends State<GameAccessPage> {
                                   }
                                 },
                           items: [
-                            for (final option in GameRole.values) DropdownMenuItem(value: option, child: Text(option.uiString)),
+                            for (final option in GameRole.values) DropdownMenuItem(value: option, child: Text(context.l10n.gameRole(option))),
                           ],
                         ),
                         IconButton(
                           icon: const Icon(Icons.person_remove_outlined),
-                          tooltip: "Remove",
+                          tooltip: context.l10n.remove,
                           onPressed: role == GameRole.admin && admins.length == 1 ? null : () => _remove(uid),
                         ),
                       ],
@@ -104,12 +105,11 @@ class _GameAccessPageState extends State<GameAccessPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Text(
-                  "Full access edits everything. Limited access only sees categories they created "
-                  "or were given, so they can write questions and still play along.",
+                  context.l10n.accessExplanation,
                   style: theme.textTheme.bodySmall,
                 ),
               ),
-              header("Invite links"),
+              header(context.l10n.inviteLinks),
               StreamBuilder<List<GameInvite>>(
                 stream: _invites,
                 builder: (context, snapshot) {
@@ -118,29 +118,29 @@ class _GameAccessPageState extends State<GameAccessPage> {
                   return Column(
                     children: [
                       if (snapshot.hasData && invites.isEmpty)
-                        const ListTile(title: Text("No invite links yet")),
+                        ListTile(title: Text(context.l10n.noInviteLinksYet)),
                       for (final invite in invites)
                         ListTile(
                           leading: const Icon(Icons.link),
-                          title: Text(invite.role.uiString),
+                          title: Text(context.l10n.gameRole(invite.role)),
                           subtitle: Text(
                             invite.isExpired(now)
-                                ? "Expired"
+                                ? context.l10n.expired
                                 : invite.expiresAtMillis == null
-                                    ? "Valid"
-                                    : "Valid for ${_remaining(invite.expiresAtMillis! - now.millisecondsSinceEpoch)}",
+                                    ? context.l10n.valid
+                                    : context.l10n.validFor(_remaining(context.l10n, invite.expiresAtMillis! - now.millisecondsSinceEpoch)),
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.copy),
-                                tooltip: "Copy link",
+                                tooltip: context.l10n.copyLink,
                                 onPressed: invite.isExpired(now) ? null : () => _copy(invite),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline),
-                                tooltip: "Revoke",
+                                tooltip: context.l10n.revoke,
                                 onPressed: () => guarded(context, () => _repo.revokeInvite(widget.gameId, invite.id)),
                               ),
                             ],
@@ -160,7 +160,7 @@ class _GameAccessPageState extends State<GameAccessPage> {
                       FilledButton.tonalIcon(
                         onPressed: () => _createInvite(game.content.name, role),
                         icon: const Icon(Icons.add_link),
-                        label: Text("New ${role.uiString.toLowerCase()} link"),
+                        label: Text(context.l10n.newRoleLink(role.name)),
                       ),
                   ],
                 ),
@@ -168,7 +168,7 @@ class _GameAccessPageState extends State<GameAccessPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  "Anyone with a link can join until it expires or you revoke it.",
+                  context.l10n.inviteLinksText,
                   style: theme.textTheme.bodySmall,
                 ),
               ),
@@ -180,10 +180,10 @@ class _GameAccessPageState extends State<GameAccessPage> {
   }
 }
 
-String _remaining(int millis) {
+String _remaining(AppLocalizations l10n, int millis) {
   final hours = (millis / Duration.millisecondsPerHour).ceil();
-  if (hours < 48) return hours == 1 ? "1 hour" : "$hours hours";
-  return "${(hours / 24).floor()} days";
+  if (hours < 48) return l10n.hourCount(hours);
+  return l10n.dayCount((hours / 24).floor());
 }
 
 /// Paste an invite link, see what it grants, join. Returns the game's id.
@@ -221,7 +221,7 @@ class _JoinGameDialogState extends State<_JoinGameDialog> {
   Future<void> _lookUp() async {
     final parsed = parseInviteLink(_link.text);
     if (parsed == null) {
-      setState(() => _error = "That doesn't look like an invite link.");
+      setState(() => _error = context.l10n.notAnInviteLink);
       return;
     }
     setState(() {
@@ -230,16 +230,17 @@ class _JoinGameDialogState extends State<_JoinGameDialog> {
     });
     GameInvite? invite;
     String? error;
+    final l10n = context.l10n;
     try {
       invite = await GameRepository.instance.loadInvite(parsed.gameId, parsed.inviteId);
       if (invite == null) {
-        error = "This invite link no longer exists.";
+        error = l10n.inviteGone;
       } else if (invite.isExpired(DateTime.now())) {
         invite = null;
-        error = "This invite link has expired.";
+        error = l10n.inviteExpired;
       }
     } catch (_) {
-      error = "Could not check the invite link.";
+      error = l10n.couldNotCheckInvite;
     }
     if (!mounted) return;
     setState(() {
@@ -262,7 +263,7 @@ class _JoinGameDialogState extends State<_JoinGameDialog> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = "Could not join. You may already be a member, or the link was revoked.";
+        _error = context.l10n.couldNotJoinGame;
       });
     }
   }
@@ -271,7 +272,7 @@ class _JoinGameDialogState extends State<_JoinGameDialog> {
   Widget build(BuildContext context) {
     final invite = _invite;
     return AlertDialog(
-      title: const Text("Join a game"),
+      title: Text(context.l10n.joinAGame),
       content: SizedBox(
         width: 420,
         child: Column(
@@ -283,15 +284,15 @@ class _JoinGameDialogState extends State<_JoinGameDialog> {
                 controller: _link,
                 autofocus: true,
                 enabled: !_busy,
-                decoration: const InputDecoration(labelText: "Invite link"),
+                decoration: InputDecoration(labelText: context.l10n.inviteLink),
                 onSubmitted: (_) => _lookUp(),
               )
             else
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.quiz_outlined),
-                title: Text(invite.gameName.isEmpty ? "Unnamed game" : invite.gameName),
-                subtitle: Text("You will join with ${invite.role.uiString.toLowerCase()}."),
+                title: Text(invite.gameName.isEmpty ? context.l10n.unnamedGame : invite.gameName),
+                subtitle: Text(context.l10n.youWillJoinWith(invite.role.name)),
               ),
             if (_error != null)
               Padding(
@@ -302,10 +303,10 @@ class _JoinGameDialogState extends State<_JoinGameDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(), child: const Text("Cancel")),
+        TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(), child: Text(context.l10n.cancel)),
         FilledButton(
           onPressed: _busy ? null : (invite == null ? _lookUp : _join),
-          child: _busy ? const CupertinoActivityIndicator() : Text(invite == null ? "Continue" : "Join"),
+          child: _busy ? const CupertinoActivityIndicator() : Text(invite == null ? context.l10n.continueLabel : context.l10n.join),
         ),
       ],
     );

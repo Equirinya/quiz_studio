@@ -4,6 +4,7 @@ import 'package:quiz_show/features/games/widgets/editor_section.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/features/games/widgets/ranker_import.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// Queues a partial update of the question document.
 typedef SaveQuestion = void Function(Map<String, dynamic> data);
@@ -11,24 +12,17 @@ typedef SaveQuestion = void Function(Map<String, dynamic> data);
 /// Puts a type's own settings (null if it has none) and its content in place.
 typedef TypeEditorLayout = Widget Function(Widget? settings, Widget content);
 
-String questionTypeExplanation(QuestionType type) => switch (type) {
-      QuestionType.free =>
-        "The most basic question: no answer options and nothing to reveal. Under \"How teams answer\" buzzers can be switched off, e.g. for estimation questions.",
-      QuestionType.abcd => "Shows right and wrong answer suggestions, which the gamemaster reveals one by one.",
-      QuestionType.progressingReveal => "The gamemaster reveals more information piece by piece.",
-      QuestionType.feud =>
-        "A duel over a survey: the team that buzzed uncovers answers until its third strike, then the other team may steal them all.",
-      QuestionType.topAnswers =>
-        "Name the most popular answers: teams find answers on a list, by buzzing or on their devices, and get the points of each one.",
-      QuestionType.connections =>
-        "Sixteen words in four groups of four. Every team solves it on its own device; each group found is worth a quarter of the points.",
-      QuestionType.rapidFire =>
-        "Fragenhagel: many short questions right after one another. Teams buzz, or judge statements right or wrong on their devices; each item can have a picture and a sound.",
-      QuestionType.matching =>
-        "Matching: pairs of texts or pictures, e.g. films and their years. Every team puts them back together on its device; the big screen shows the pictures.",
-      QuestionType.lastStanding =>
-        "Last team standing: one player per team takes turns, e.g. naming films or saying whether a star has a biopic. A wrong answer puts the team out; the last team left gets the points.",
-      QuestionType.unsupported => "This question type is not supported by this version of the app.",
+String questionTypeExplanation(AppLocalizations l10n, QuestionType type) => switch (type) {
+      QuestionType.free => l10n.explainFree,
+      QuestionType.abcd => l10n.explainAbcd,
+      QuestionType.progressingReveal => l10n.explainProgressingReveal,
+      QuestionType.feud => l10n.explainFeud,
+      QuestionType.topAnswers => l10n.explainTopAnswers,
+      QuestionType.connections => l10n.explainConnections,
+      QuestionType.rapidFire => l10n.explainRapidFire,
+      QuestionType.matching => l10n.explainMatching,
+      QuestionType.lastStanding => l10n.explainLastStanding,
+      QuestionType.unsupported => l10n.explainUnsupported,
     };
 
 /// The inputs that only one question type has.
@@ -116,10 +110,10 @@ class _ConnectionsEditorState extends State<_ConnectionsEditor> {
   String? get _problem {
     final groups = _groups;
     final missing = groups.where((g) => !g.isComplete).length;
-    if (missing > 0) return "$missing ${missing == 1 ? "group needs" : "groups need"} a name and four words.";
+    if (missing > 0) return context.l10n.groupsNeedNameAndWords(missing);
     final seen = <String>{};
     for (final word in [for (final g in groups) ...g.words]) {
-      if (!seen.add(word.toLowerCase())) return "\"$word\" is in the puzzle twice.";
+      if (!seen.add(word.toLowerCase())) return context.l10n.wordTwice(word);
     }
     return null;
   }
@@ -147,7 +141,7 @@ class _ConnectionsEditorState extends State<_ConnectionsEditor> {
                 TextField(
                   controller: _names[g],
                   decoration: InputDecoration(
-                    labelText: "${_groupNames[g]}: what they have in common",
+                    labelText: context.l10n.groupInCommon(g),
                     isDense: true,
                   ),
                   onChanged: (_) => _write(),
@@ -166,7 +160,7 @@ class _ConnectionsEditorState extends State<_ConnectionsEditor> {
                             width: width,
                             child: TextField(
                               controller: _words[g][w],
-                              decoration: InputDecoration(labelText: "Word ${w + 1}", isDense: true),
+                              decoration: InputDecoration(labelText: context.l10n.wordN(w + 1), isDense: true),
                               onChanged: (_) => _write(),
                             ),
                           ),
@@ -179,7 +173,7 @@ class _ConnectionsEditorState extends State<_ConnectionsEditor> {
           ),
         const SizedBox(height: 8),
         Text(
-          problem ?? "Ready. Yellow is meant to be the easiest group and purple the hardest.",
+          problem ?? context.l10n.connectionsReady,
           style: theme.textTheme.bodySmall?.copyWith(color: problem == null ? null : theme.colorScheme.error),
         ),
       ],
@@ -189,7 +183,6 @@ class _ConnectionsEditorState extends State<_ConnectionsEditor> {
 
 // The same colours as on screen; see features/companion/connections.dart.
 const List<Color> _groupColors = [Color(0xFFF9DF6D), Color(0xFFA0C35A), Color(0xFFB0C4EF), Color(0xFFBA81C5)];
-const List<String> _groupNames = ['Yellow', 'Green', 'Blue', 'Purple'];
 
 class _AbcdEditor extends StatefulWidget {
   const _AbcdEditor({required this.question, required this.save});
@@ -264,20 +257,20 @@ class _AbcdEditorState extends State<_AbcdEditor> {
                   child: TextField(
                     key: ObjectKey(_answers[i]),
                     controller: _answers[i],
-                    decoration: InputDecoration(labelText: "Answer ${String.fromCharCode(0x41 + i)}"),
+                    decoration: InputDecoration(labelText: context.l10n.answerLetter(String.fromCharCode(0x41 + i))),
                     onChanged: (_) => _write(),
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
-                  tooltip: "Remove answer",
+                  tooltip: context.l10n.removeAnswer,
                   onPressed: _answers.length > kMinAbcdAnswers ? () => _remove(i) : null,
                 ),
               ],
             ),
           ),
         if (_answers.length < kMaxAbcdAnswers)
-          TextButton.icon(onPressed: _add, icon: const Icon(Icons.add), label: const Text("Add answer")),
+          TextButton.icon(onPressed: _add, icon: const Icon(Icons.add), label: Text(context.l10n.addAnswer)),
       ],
     );
   }
@@ -384,14 +377,15 @@ class _InformationEditorState extends State<_InformationEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final noun = widget.feud ? "Answer" : "Information";
+    final l10n = context.l10n;
+    final feud = widget.feud;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (widget.feud)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text("Show absolute values instead of percentages"),
+            title: Text(l10n.absoluteValues),
             value: _absolute,
             onChanged: (value) {
               setState(() => _absolute = value);
@@ -425,7 +419,7 @@ class _InformationEditorState extends State<_InformationEditor> {
                       width: 84,
                       child: TextField(
                         controller: row.value,
-                        decoration: InputDecoration(labelText: _absolute ? "Value" : "%"),
+                        decoration: InputDecoration(labelText: _absolute ? l10n.value : "%"),
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         onChanged: (_) => _write(),
                       ),
@@ -435,7 +429,7 @@ class _InformationEditorState extends State<_InformationEditor> {
                   Expanded(
                     child: TextField(
                       controller: row.text,
-                      decoration: InputDecoration(labelText: "$noun ${i + 1}"),
+                      decoration: InputDecoration(labelText: feud ? l10n.answerN(i + 1) : l10n.informationN(i + 1)),
                       onChanged: (_) => _write(),
                     ),
                   ),
@@ -455,7 +449,7 @@ class _InformationEditorState extends State<_InformationEditor> {
                   ],
                   IconButton(
                     icon: const Icon(Icons.close),
-                    tooltip: "Remove",
+                    tooltip: context.l10n.remove,
                     onPressed: () => _change(() {
                       final removed = _rows.removeAt(i);
                       // Its text fields are still mounted until the next frame.
@@ -474,21 +468,21 @@ class _InformationEditorState extends State<_InformationEditor> {
             TextButton.icon(
               onPressed: () => _change(() => _rows.add(_InformationRow())),
               icon: const Icon(Icons.add),
-              label: Text("Add ${noun.toLowerCase()}"),
+              label: Text(feud ? l10n.addAnswer : l10n.addInformation),
             ),
             if (widget.feud)
               TextButton.icon(
                 onPressed: _importFromRanker,
                 icon: const Icon(Icons.link),
-                label: const Text("Import from Ranker"),
+                label: Text(l10n.importFromRanker),
               ),
           ],
         ),
         if (!widget.feud && _rows.any((row) => row.image.isNotEmpty))
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text("Picture strip"),
-            subtitle: const Text("Small pictures under the question, \"?\" for those still hidden"),
+            title: Text(l10n.pictureStrip),
+            subtitle: Text(l10n.pictureStripText),
             value: _pictureStrip,
             onChanged: (value) {
               setState(() => _pictureStrip = value);
@@ -504,22 +498,27 @@ class _RapidRow {
   _RapidRow(RapidItem item)
       : question = TextEditingController(text: item.question),
         answer = TextEditingController(text: item.answer),
+        hint = TextEditingController(text: item.hint),
         isTrue = item.isTrue,
         image = item.image,
         music = item.music;
 
   final TextEditingController question;
   final TextEditingController answer;
+
+  /// For the gamemaster only, e.g. other answers to accept.
+  final TextEditingController hint;
   bool isTrue;
   String? image;
   String? music;
 
   RapidItem get item =>
-      RapidItem(question: question.text, answer: answer.text, isTrue: isTrue, image: image, music: music);
+      RapidItem(question: question.text, answer: answer.text, isTrue: isTrue, hint: hint.text.trim(), image: image, music: music);
 
   void dispose() {
     question.dispose();
     answer.dispose();
+    hint.dispose();
   }
 }
 
@@ -567,18 +566,18 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SegmentedButton<RapidMode>(
-          segments: const [
-            ButtonSegment(value: RapidMode.buzzer, icon: Icon(Icons.notifications_active_outlined), label: Text("Teams buzz")),
-            ButtonSegment(value: RapidMode.devices, icon: Icon(Icons.tablet_android), label: Text("On the devices")),
+          segments: [
+            ButtonSegment(value: RapidMode.buzzer, icon: const Icon(Icons.notifications_active_outlined), label: Text(context.l10n.teamsBuzz)),
+            ButtonSegment(value: RapidMode.devices, icon: const Icon(Icons.tablet_android), label: Text(context.l10n.onTheDevicesShort)),
           ],
           selected: {_mode},
           onSelectionChanged: (selected) => _change(() => _mode = selected.first),
         ),
         const SizedBox(height: 12),
         FillDropdown<ProgressStyle>(
-          label: "Progress on the big screen",
+          label: context.l10n.progressOnBigScreen,
           value: _progress,
-          entries: [for (final style in ProgressStyle.values) DropdownMenuEntry(value: style, label: style.uiString)],
+          entries: [for (final style in ProgressStyle.values) DropdownMenuEntry(value: style, label: context.l10n.progressStyle(style))],
           onSelected: (style) {
             if (style != null) _change(() => _progress = style);
           },
@@ -586,8 +585,8 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
         const SizedBox(height: 8),
         Text(
           devices
-              ? "Each item is a statement. Every team picks right or wrong on its device; when you move on, a right pick gets the points."
-              : "Teams buzz for each item. A right answer gets the points and moves straight on to the next item.",
+              ? context.l10n.rapidDevicesText
+              : context.l10n.rapidBuzzText,
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
@@ -624,30 +623,50 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
                       children: [
                         TextField(
                           controller: row.question,
-                          decoration: InputDecoration(labelText: devices ? "Statement ${i + 1}" : "Question ${i + 1}", isDense: true),
+                          decoration: InputDecoration(labelText: devices ? context.l10n.statementN(i + 1) : context.l10n.questionN(i + 1), isDense: true),
                           onChanged: (_) => _write(),
                         ),
                         const SizedBox(height: 6),
-                        if (devices)
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: SegmentedButton<bool>(
-                              // Without icons "Wrong" fits beside a narrow statement field.
-                              showSelectedIcon: false,
-                              segments: const [
-                                ButtonSegment(value: true, label: Text("Right")),
-                                ButtonSegment(value: false, label: Text("Wrong")),
+                        // The answer (or right/wrong) and a hint only the
+                        // gamemaster sees: side by side when there is room.
+                        LayoutBuilder(
+                          builder: (context, box) {
+                            final answer = devices
+                                ? Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: SegmentedButton<bool>(
+                                      // Without icons "Wrong" fits beside a narrow statement field.
+                                      showSelectedIcon: false,
+                                      segments: [
+                                        ButtonSegment(value: true, label: Text(context.l10n.rapidRight)),
+                                        ButtonSegment(value: false, label: Text(context.l10n.rapidWrong)),
+                                      ],
+                                      selected: {row.isTrue},
+                                      onSelectionChanged: (selected) => _change(() => row.isTrue = selected.first),
+                                    ),
+                                  )
+                                : TextField(
+                                    controller: row.answer,
+                                    decoration: InputDecoration(labelText: context.l10n.answer, isDense: true),
+                                    onChanged: (_) => _write(),
+                                  );
+                            final hint = TextField(
+                              controller: row.hint,
+                              decoration: InputDecoration(labelText: context.l10n.answerHint, isDense: true),
+                              onChanged: (_) => _write(),
+                            );
+                            if (box.maxWidth < 420) {
+                              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [answer, const SizedBox(height: 6), hint]);
+                            }
+                            return Row(
+                              children: [
+                                devices ? answer : Expanded(child: answer),
+                                const SizedBox(width: 8),
+                                Expanded(child: hint),
                               ],
-                              selected: {row.isTrue},
-                              onSelectionChanged: (selected) => _change(() => row.isTrue = selected.first),
-                            ),
-                          )
-                        else
-                          TextField(
-                            controller: row.answer,
-                            decoration: const InputDecoration(labelText: "Answer", isDense: true),
-                            onChanged: (_) => _write(),
-                          ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -665,7 +684,7 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    tooltip: "Remove",
+                    tooltip: context.l10n.remove,
                     onPressed: () => _change(() {
                       final removed = _rows.removeAt(i);
                       WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
@@ -682,7 +701,7 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
           child: TextButton.icon(
             onPressed: () => _change(() => _rows.add(_RapidRow(const RapidItem()))),
             icon: const Icon(Icons.add),
-            label: Text(devices ? "Add statement" : "Add question"),
+            label: Text(devices ? context.l10n.addStatement : context.l10n.addQuestion),
           ),
         ),
       ],
@@ -730,17 +749,16 @@ class _StandingEditorState extends State<_StandingEditor> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FillDropdown<TurnOrder>(
-          label: "Turn order",
+          label: context.l10n.turnOrderLabel,
           value: _order,
-          entries: [for (final order in TurnOrder.values) DropdownMenuEntry(value: order, label: order.uiString)],
+          entries: [for (final order in TurnOrder.values) DropdownMenuEntry(value: order, label: context.l10n.turnOrder(order))],
           onSelected: (order) {
             if (order != null) _change(() => _order = order);
           },
         ),
         const SizedBox(height: 8),
         Text(
-          "One player per team takes turns. You rate each turn: right, wrong (the team is out) or wrong but it stays in. "
-          "The last team left gets the points.",
+          context.l10n.lastStandingText,
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
@@ -749,7 +767,7 @@ class _StandingEditorState extends State<_StandingEditor> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          _rows.isEmpty ? "No prompts: every turn answers the question itself." : "One prompt per turn, in this order.",
+          _rows.isEmpty ? context.l10n.noPrompts : context.l10n.onePromptPerTurn,
           style: Theme.of(context).textTheme.bodySmall,
         ),
         ReorderableListView.builder(
@@ -778,7 +796,7 @@ class _StandingEditorState extends State<_StandingEditor> {
                   Expanded(
                     child: TextField(
                       controller: row.question,
-                      decoration: InputDecoration(labelText: "Prompt ${i + 1}", isDense: true),
+                      decoration: InputDecoration(labelText: context.l10n.promptN(i + 1), isDense: true),
                       onChanged: (_) => _write(),
                     ),
                   ),
@@ -786,7 +804,7 @@ class _StandingEditorState extends State<_StandingEditor> {
                   Expanded(
                     child: TextField(
                       controller: row.answer,
-                      decoration: const InputDecoration(labelText: "Answer", isDense: true),
+                      decoration: InputDecoration(labelText: context.l10n.answer, isDense: true),
                       onChanged: (_) => _write(),
                     ),
                   ),
@@ -798,7 +816,7 @@ class _StandingEditorState extends State<_StandingEditor> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    tooltip: "Remove",
+                    tooltip: context.l10n.remove,
                     onPressed: () => _change(() {
                       final removed = _rows.removeAt(i);
                       WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
@@ -815,7 +833,7 @@ class _StandingEditorState extends State<_StandingEditor> {
           child: TextButton.icon(
             onPressed: () => _change(() => _rows.add(_RapidRow(const RapidItem()))),
             icon: const Icon(Icons.add),
-            label: const Text("Add prompt"),
+            label: Text(context.l10n.addPrompt),
           ),
         ),
       ],
@@ -840,8 +858,7 @@ class DevicesOnlyHint extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              "Only playable with the teams' own devices: every team needs a phone or tablet connected "
-              "(Setup, then Connect devices). Without them there is nothing to answer with.",
+              context.l10n.onlyWithDevices,
               style: TextStyle(color: scheme.onSecondaryContainer),
             ),
           ),
@@ -937,8 +954,7 @@ class _MatchingEditorState extends State<_MatchingEditor> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          "Write each pair the way it belongs together; the teams get the right side mixed up. "
-          "A side can be a text, a picture or both. Pictures appear on the big screen with a letter or number, which the devices show.",
+          context.l10n.matchingEditorText,
           style: Theme.of(context).textTheme.bodySmall,
         ),
         for (final (i, row) in _rows.indexed)
@@ -951,8 +967,8 @@ class _MatchingEditorState extends State<_MatchingEditor> {
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, box) {
-                      final left = _side("Left", row.left, row.leftImage, (name) => _change(() => row.leftImage = name));
-                      final right = _side("Belongs to", row.right, row.rightImage, (name) => _change(() => row.rightImage = name));
+                      final left = _side(context.l10n.matchLeft, row.left, row.leftImage, (name) => _change(() => row.leftImage = name));
+                      final right = _side(context.l10n.matchBelongsTo, row.right, row.rightImage, (name) => _change(() => row.rightImage = name));
                       // On a phone the two sides go one above the other.
                       if (box.maxWidth < 480) return Column(children: [left, const SizedBox(height: 6), right]);
                       return Row(
@@ -967,7 +983,7 @@ class _MatchingEditorState extends State<_MatchingEditor> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
-                  tooltip: "Remove pair",
+                  tooltip: context.l10n.removePair,
                   onPressed: () => _change(() {
                     final removed = _rows.removeAt(i);
                     WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
@@ -982,7 +998,7 @@ class _MatchingEditorState extends State<_MatchingEditor> {
           child: TextButton.icon(
             onPressed: () => _change(() => _rows.add(_MatchRow(const MatchPair()))),
             icon: const Icon(Icons.add),
-            label: const Text("Add pair"),
+            label: Text(context.l10n.addPair),
           ),
         ),
       ],
@@ -1058,10 +1074,10 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SegmentedButton<TopAnswersMode>(
-          segments: const [
-            ButtonSegment(value: TopAnswersMode.buzzer, icon: Icon(Icons.notifications_active_outlined), label: Text("Buzz")),
-            ButtonSegment(value: TopAnswersMode.typed, icon: Icon(Icons.keyboard_outlined), label: Text("Typed")),
-            ButtonSegment(value: TopAnswersMode.whiteboard, icon: Icon(Icons.draw_outlined), label: Text("Whiteboard")),
+          segments: [
+            ButtonSegment(value: TopAnswersMode.buzzer, icon: const Icon(Icons.notifications_active_outlined), label: Text(context.l10n.buzz)),
+            ButtonSegment(value: TopAnswersMode.typed, icon: const Icon(Icons.keyboard_outlined), label: Text(context.l10n.typed)),
+            ButtonSegment(value: TopAnswersMode.whiteboard, icon: const Icon(Icons.draw_outlined), label: Text(context.l10n.whiteboard)),
           ],
           selected: {_mode},
           onSelectionChanged: (selected) => _change(() => _mode = selected.first),
@@ -1074,11 +1090,9 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
         const SizedBox(height: 8),
         Text(
           switch (_mode) {
-            TopAnswersMode.buzzer =>
-              "A team buzzes and names an answer. Tap the one it named: it is uncovered and the team gets its points. Then everyone may buzz again.",
-            TopAnswersMode.typed =>
-              "Every team types its answers into a list on its device. You tick the ones it found, with suggestions for what it typed.",
-            TopAnswersMode.whiteboard => "Every team writes its answers on a numbered whiteboard. You tick the ones it found.",
+            TopAnswersMode.buzzer => context.l10n.topAnswersBuzzText,
+            TopAnswersMode.typed => context.l10n.topAnswersTypedText,
+            TopAnswersMode.whiteboard => context.l10n.topAnswersWhiteboardText,
           },
           style: theme.textTheme.bodySmall,
         ),
@@ -1088,7 +1102,7 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          "Most popular first. Without its own points an answer is worth the question's points. Other spellings to accept go after a /.",
+          context.l10n.topAnswersListText,
           style: theme.textTheme.bodySmall,
         ),
         ReorderableListView.builder(
@@ -1117,7 +1131,7 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
                   Expanded(
                     child: TextField(
                       controller: row.answer,
-                      decoration: const InputDecoration(labelText: "Answer", isDense: true),
+                      decoration: InputDecoration(labelText: context.l10n.answer, isDense: true),
                       onChanged: (_) => _write(),
                     ),
                   ),
@@ -1127,13 +1141,13 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
                     child: TextField(
                       controller: row.points,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(labelText: "Points", hintText: "${widget.question.pointsPlus}", isDense: true),
+                      decoration: InputDecoration(labelText: context.l10n.points, hintText: "${widget.question.pointsPlus}", isDense: true),
                       onChanged: (_) => _write(),
                     ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    tooltip: "Remove",
+                    tooltip: context.l10n.remove,
                     onPressed: () => _change(() {
                       final removed = _rows.removeAt(i);
                       WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
@@ -1150,7 +1164,7 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
           child: TextButton.icon(
             onPressed: () => _change(() => _rows.add(_TopRow(const TopAnswer()))),
             icon: const Icon(Icons.add),
-            label: const Text("Add answer"),
+            label: Text(context.l10n.addAnswer),
           ),
         ),
       ],

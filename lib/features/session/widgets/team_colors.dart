@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The team's own colour, if it has one.
 Color? teamColor(Team? team) => team?.color == null ? null : Color(team!.color!);
@@ -21,7 +22,7 @@ class TeamColorPicker extends StatelessWidget {
     Widget dot(int? color, double size) {
       final on = color == selected;
       return Tooltip(
-        message: color == null ? "No colour" : "Use this colour",
+        message: color == null ? context.l10n.noColour : context.l10n.useThisColour,
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: () => onChanged(color),

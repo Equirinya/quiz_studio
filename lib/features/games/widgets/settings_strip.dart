@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// One labelled setting: what it is, what is set right now, and where a tap
 /// leads. Easier to find and understand than a row of bare icons.
@@ -82,20 +83,20 @@ class SettingsStrip extends StatelessWidget {
 }
 
 /// "2 music, 3 effects"; [inherited] says what applies when nothing is set.
-String soundsSummary(MusicConfig sounds, {required String inherited}) {
+String soundsSummary(AppLocalizations l10n, MusicConfig sounds, {required String inherited}) {
   final music = sounds.slots.length;
   final effects = sounds.effects.length;
   if (music == 0 && effects == 0) return inherited;
   return [
-    if (music > 0) music == 1 ? "1 music" : "$music music",
-    if (effects > 0) effects == 1 ? "1 effect" : "$effects effects",
+    if (music > 0) l10n.musicCount(music),
+    if (effects > 0) l10n.effectCount(effects),
   ].join(", ");
 }
 
 /// "12 offered, 2 off" for the game, "3 cards" for a board or category.
-String cardsSummary(List<CueCard> cards, {String none = "None"}) {
+String cardsSummary(AppLocalizations l10n, List<CueCard> cards, {String? none}) {
   final off = cards.where((card) => card.hidden).length;
   final on = cards.length - off;
-  if (cards.isEmpty) return none;
-  return off == 0 ? (on == 1 ? "1 card" : "$on cards") : "$on offered, $off off";
+  if (cards.isEmpty) return none ?? l10n.none;
+  return off == 0 ? l10n.cardCount(on) : l10n.cardsOfferedOff(on, off);
 }

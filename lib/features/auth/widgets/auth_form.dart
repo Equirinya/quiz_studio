@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// Which variant of the shared credential form to render.
 enum AuthFormMode {
@@ -159,11 +160,12 @@ class _AuthFormState extends State<AuthForm> {
 
   List<(String, bool)> get _passwordChecks {
     final p = _passCtrl.text;
+    final l10n = context.l10n;
     return [
-      ('At least 8 characters', p.length >= 8),
-      ('An uppercase letter', p.contains(RegExp(r'[A-Z]'))),
-      ('A lowercase letter', p.contains(RegExp(r'[a-z]'))),
-      ('A number', p.contains(RegExp(r'[0-9]'))),
+      (l10n.passwordMinLength, p.length >= 8),
+      (l10n.passwordUppercase, p.contains(RegExp(r'[A-Z]'))),
+      (l10n.passwordLowercase, p.contains(RegExp(r'[a-z]'))),
+      (l10n.passwordNumber, p.contains(RegExp(r'[0-9]'))),
     ];
   }
 
@@ -252,9 +254,9 @@ class _AuthFormState extends State<AuthForm> {
               autocorrect: false,
               autofillHints: const [AutofillHints.username, AutofillHints.email],
               onSubmitted: (_) => _passNode.requestFocus(),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 prefixIcon: Icon(Icons.email_outlined),
-                hintText: 'Email',
+                hintText: context.l10n.email,
               ),
             ),
             const SizedBox(height: 12),
@@ -273,11 +275,11 @@ class _AuthFormState extends State<AuthForm> {
               onSubmitted: (_) => _isRegister ? _pass2Node.requestFocus() : _submit(),
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.lock_outline),
-                hintText: 'Password',
+                hintText: context.l10n.password,
                 suffixIcon: ExcludeFocus(
                   child: IconButton(
                     icon: Icon(_passVisible ? Icons.visibility : Icons.visibility_off),
-                    tooltip: _passVisible ? 'Hide password' : 'Show password',
+                    tooltip: _passVisible ? context.l10n.hidePassword : context.l10n.showPassword,
                     onPressed: () => setState(() => _passVisible = !_passVisible),
                   ),
                 ),
@@ -303,11 +305,11 @@ class _AuthFormState extends State<AuthForm> {
                 onSubmitted: (_) => _submit(),
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.lock_outline),
-                  hintText: 'Confirm password',
+                  hintText: context.l10n.confirmPassword,
                   suffixIcon: ExcludeFocus(
                     child: IconButton(
                       icon: Icon(_pass2Visible ? Icons.visibility : Icons.visibility_off),
-                      tooltip: _pass2Visible ? 'Hide password' : 'Show password',
+                      tooltip: _pass2Visible ? context.l10n.hidePassword : context.l10n.showPassword,
                       onPressed: () => setState(() => _pass2Visible = !_pass2Visible),
                     ),
                   ),
@@ -317,7 +319,7 @@ class _AuthFormState extends State<AuthForm> {
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    "Passwords don't match.",
+                    context.l10n.passwordsDontMatch,
                     style: TextStyle(color: theme.colorScheme.error, fontSize: 13),
                   ),
                 ),

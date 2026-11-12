@@ -42,6 +42,8 @@ bool _sameSet(List<int> a, List<int> b) => a.toSet().length == b.toSet().length 
 List<Command> _candidates(SessionState state, AnswerRound round, Question question) {
   // Whether a team reached the number it bet is for the gamemaster to say.
   if (question.amountBet != null) return const [];
+  // By closeness the places say it all.
+  if (question.byCloseness) return const [];
   final top = question.topAnswers;
   if (question.type == QuestionType.topAnswers) {
     if (top == null || round.kind != CompanionKind.list) return const [];

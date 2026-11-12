@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The card the gamemaster put over the screen: a title, a text, an image,
 /// in any combination. The dimmed backdrop fades; the card itself comes and
@@ -144,7 +145,7 @@ class _CardBody extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final builtin = builtinImage(card.image);
     final file = card.image == null || builtin != null ? null : imageFile(card.image!);
-    final ImageProvider? image = builtin != null ? AssetImage(builtin.asset) : (file == null ? null : FileImage(file));
+    final ImageProvider? image = builtin != null ? AssetImage(context.l10n.builtinImageAsset(builtin)) : (file == null ? null : FileImage(file));
     final hasText = (card.title ?? '').isNotEmpty || (card.text ?? '').isNotEmpty;
     if (card.style == CardStyle.silentFilm) return _SilentFilmCard(card: card, image: image, unit: unit);
     // A picture on its own fills the screen, without a frame around it.

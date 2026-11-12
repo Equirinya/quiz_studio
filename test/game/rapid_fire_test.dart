@@ -32,14 +32,18 @@ void main() {
   });
 
   group('teams buzz', () {
-    test('opening starts with the first item and plays its sound', () {
-      final s = play(const [OpenQuestion(buzzerRound)]);
-      expect((s.phase, s.revealed, s.media), (Phase.question, 0, MediaPlayback.playing));
+    test('opening shows only the question; the first next brings up the first item and its sound', () {
+      var s = play(const [OpenQuestion(buzzerRound)]);
+      expect((s.phase, s.revealed), (Phase.question, -1));
+      expect(buzzersOpen(s, game), isFalse, reason: 'nothing to buzz for yet');
+      expect((publicView(s, game)['question'] as Map)['text'], 'Capitals');
+      s = run(s, const [Reveal(1)], game);
+      expect((s.revealed, s.media), (0, MediaPlayback.playing));
       expect(buzzersOpen(s, game), isTrue);
     });
 
     test('a right answer scores and moves straight on; a wrong one costs and reopens', () {
-      var s = play(const [OpenQuestion(buzzerRound), Buzz('red'), Judge(correct: true)]);
+      var s = play(const [OpenQuestion(buzzerRound), Reveal(1), Buzz('red'), Judge(correct: true)]);
       expect((points(s, 'red'), s.revealed, s.phase), (10, 1, Phase.question));
       expect(s.buzzQueue, isEmpty);
       // The second item has no sound of its own.
@@ -49,29 +53,44 @@ void main() {
     });
 
     test('next skips an item nobody knew; after the last one the round is over', () {
-      var s = play(const [OpenQuestion(buzzerRound), Reveal(1), Reveal(1)]);
+      var s = play(const [OpenQuestion(buzzerRound), Reveal(1), Reveal(1), Reveal(1)]);
       expect(s.revealed, 2);
       s = run(s, const [Buzz('red'), Judge(correct: true)], game);
       expect((s.revealed, s.phase, points(s, 'red')), (3, Phase.answerRevealed, 10));
       expect(buzzersOpen(s, game), isFalse);
       expect(apply(s, const Buzz('blue')).accepted, isFalse);
       expect(apply(s, const Reveal(1)).accepted, isFalse);
-      // Going back is fine here: nothing is scored on the way.
-      expect(apply(s, const Reveal(-1)).state.revealed, 2);
+      // Back to the last item: its points are taken back, to play it again.
+      final back = apply(s, const Reveal(-1)).state;
+      expect((back.revealed, back.phase, points(back, 'red')), (2, Phase.question, 0));
+    });
+
+    test('going back takes back what was scored on the items left, and stops at the question', () {
+      var s = play(const [OpenQuestion(buzzerRound), Reveal(1), Buzz('blue'), Judge(correct: false), Buzz('red'), Judge(correct: true)]);
+      expect((points(s, 'red'), points(s, 'blue'), s.revealed), (10, -5, 1));
+      s = run(s, const [Buzz('blue'), Judge(correct: false)], game);
+      expect(points(s, 'blue'), -10);
+      // Back to item 1 (index 0): everything from it on is undone.
+      s = run(s, const [Reveal(-1)], game);
+      expect((points(s, 'red'), points(s, 'blue'), s.revealed), (0, 0, 0));
+      s = run(s, const [Reveal(-1)], game);
+      expect(s.revealed, -1);
+      expect(apply(s, const Reveal(-1)).accepted, isFalse);
+      expect(SessionState.fromJson(play(const [OpenQuestion(buzzerRound), Reveal(1), Buzz('red'), Judge(correct: true)]).toJson()).rapidSteps[0]!.points, {'red': 10});
     });
 
     test('players see the item being asked, never its answer', () {
-      final s = play(const [OpenQuestion(buzzerRound), Reveal(1)]);
+      final s = play(const [OpenQuestion(buzzerRound), Reveal(1), Reveal(1)]);
       final view = publicView(s, game);
       final question = view['question'] as Map;
-      expect((question['text'], question['itemIndex'], question['itemCount']), ('Italy?', 1, 3));
+      expect((question['text'], question['lead'], question['itemIndex'], question['itemCount']), ('Italy?', 'Capitals', 1, 3));
       expect(view.toString(), isNot(contains('Rome')));
     });
   });
 
   group('right or wrong on the devices', () {
     test('every item gets a fresh round with the two choices, and no buzzers', () {
-      final s = play(const [OpenQuestion(devicesRound)]);
+      final s = play(const [OpenQuestion(devicesRound), Reveal(1)]);
       expect(s.answerRound!.spec.kind, CompanionKind.choice);
       expect(s.answerRound!.spec.options, rapidChoices);
       expect(buzzersOpen(s, game), isFalse);
@@ -81,6 +100,7 @@ void main() {
     test('moving on scores the picks; no pick, no points', () {
       var s = play(const [
         OpenQuestion(devicesRound),
+        Reveal(1),
         SubmitAnswer('red', PlayerAnswer(choice: 0)), // "Right": correct
         SubmitAnswer('blue', PlayerAnswer(choice: 1)), // "Wrong": not
         Reveal(1),
@@ -92,13 +112,20 @@ void main() {
       expect((s.phase, s.answerRound), (Phase.answerRevealed, null));
     });
 
-    test('there is no going back, so nothing is counted twice', () {
-      final s = play(const [OpenQuestion(devicesRound), SubmitAnswer('red', PlayerAnswer(choice: 0)), Reveal(1)]);
-      expect(apply(s, const Reveal(-1)).accepted, isFalse);
+    test('going back takes the points back and gives the picks back, so nothing counts twice', () {
+      var s = play(const [OpenQuestion(devicesRound), Reveal(1), SubmitAnswer('red', PlayerAnswer(choice: 0)), Reveal(1)]);
+      expect(points(s, 'red'), 10);
+      s = run(s, const [Reveal(-1)], game);
+      expect((points(s, 'red'), s.revealed), (0, 0));
+      expect(s.answerRound!.answers['red']!.choice, 0);
+      s = run(s, const [Reveal(1)], game);
+      expect(points(s, 'red'), 10);
+      // Before the first item there is no round to answer.
+      expect(play(const [OpenQuestion(devicesRound)]).answerRound, isNull);
     });
 
     test('the statement goes to the devices, whether it is right does not', () {
-      final s = play(const [OpenQuestion(devicesRound), Reveal(1)]);
+      final s = play(const [OpenQuestion(devicesRound), Reveal(1), Reveal(1)]);
       final view = publicView(s, game, teamId: 'red');
       expect((view['question'] as Map)['text'], 'Bats are birds');
       expect(view.toString(), isNot(contains('true: false')));

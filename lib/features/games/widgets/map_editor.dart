@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/session/boards/map_board.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// Arranges a map board by hand: drag the bubbles, connect them, and add
 /// titles, pictures and lines around them.
@@ -152,7 +153,7 @@ class _MapEditorState extends State<MapEditor> {
   // ── tools ──────────────────────────────────────────────────────────────────
 
   Future<void> _addTitle() async {
-    final text = await promptText(context, title: "Add title", label: "Text");
+    final text = await promptText(context, title: context.l10n.addTitle, label: context.l10n.text);
     if (text == null) return;
     _change(() {
       _decorations.add({'type': 'title', 'text': text, 'x': 0.5, 'y': 0.08, 'size': 1.4});
@@ -176,7 +177,7 @@ class _MapEditorState extends State<MapEditor> {
 
   Future<void> _editSelectedText() async {
     final decoration = _decorations[_selected!];
-    final text = await promptText(context, title: "Edit title", initial: decoration['text'] as String, label: "Text");
+    final text = await promptText(context, title: context.l10n.editTitle, initial: decoration['text'] as String, label: context.l10n.text);
     if (text != null) _change(() => decoration['text'] = text);
   }
 
@@ -238,7 +239,7 @@ class _MapEditorState extends State<MapEditor> {
           if (at == from) {
             setState(() => _from = null);
             ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-              const SnackBar(content: Text("That arrow would go round in a circle.")),
+              SnackBar(content: Text(context.l10n.arrowCircle)),
             );
             return;
           }
@@ -329,7 +330,7 @@ class _MapEditorState extends State<MapEditor> {
                         onChanged: most <= 0 ? null : (value) => _scroll.jumpTo(value * most),
                       ),
                     ),
-                    Text("${formatNumber(layoutMap(_draft).widthFactor)} screens wide", style: theme.textTheme.bodySmall),
+                    Text(context.l10n.screensWide(formatNumber(layoutMap(_draft).widthFactor)), style: theme.textTheme.bodySmall),
                   ],
                 );
               },
@@ -340,14 +341,13 @@ class _MapEditorState extends State<MapEditor> {
           child: Text(
             _connecting
                 ? (_from == null
-                    ? "Tap the bubble that comes first."
-                    : "Now tap the bubble it leads to: that adds an arrow, or removes the one already there. "
-                        "Tap the same bubble again to remove every arrow into it.")
+                    ? context.l10n.mapTapFirst
+                    : context.l10n.mapTapNext)
                 : _bubble != null
-                    ? "Drag to move. Use − and + below to change this bubble's size."
+                    ? context.l10n.mapDragBubble
                     : selected != null
-                        ? "Drag to move. Use the buttons below to change or remove it."
-                        : "Drag things to place them. Tap a bubble, title, picture or line to select it.",
+                        ? context.l10n.mapDragSelected
+                        : context.l10n.mapDragAnything,
             style: theme.textTheme.bodySmall,
             textAlign: TextAlign.center,
           ),
@@ -362,7 +362,7 @@ class _MapEditorState extends State<MapEditor> {
             children: [
               FilterChip(
                 avatar: const Icon(Icons.timeline, size: 18),
-                label: const Text("Connect"),
+                label: Text(context.l10n.connect),
                 selected: _connecting,
                 onSelected: (on) => setState(() {
                   _connecting = on;
@@ -371,23 +371,23 @@ class _MapEditorState extends State<MapEditor> {
                   _bubble = null;
                 }),
               ),
-              ActionChip(avatar: const Icon(Icons.title, size: 18), label: const Text("Title"), onPressed: _addTitle),
+              ActionChip(avatar: const Icon(Icons.title, size: 18), label: Text(context.l10n.title), onPressed: _addTitle),
               if (widget.pickImage != null)
-                ActionChip(avatar: const Icon(Icons.image_outlined, size: 18), label: const Text("Picture"), onPressed: _addImage),
-              ActionChip(avatar: const Icon(Icons.horizontal_rule, size: 18), label: const Text("Line"), onPressed: _addLine),
+                ActionChip(avatar: const Icon(Icons.image_outlined, size: 18), label: Text(context.l10n.picture), onPressed: _addImage),
+              ActionChip(avatar: const Icon(Icons.horizontal_rule, size: 18), label: Text(context.l10n.line), onPressed: _addLine),
               ActionChip(
                 avatar: const Icon(Icons.unfold_less, size: 18),
-                label: const Text("Narrower"),
+                label: Text(context.l10n.narrower),
                 onPressed: layoutMap(_draft).widthFactor <= 1 ? null : () => _widen(-0.5),
               ),
               ActionChip(
                 avatar: const Icon(Icons.unfold_more, size: 18),
-                label: const Text("Wider"),
+                label: Text(context.l10n.wider),
                 onPressed: layoutMap(_draft).widthFactor >= kMapMaxWidth ? null : () => _widen(0.5),
               ),
               ActionChip(
                 avatar: const Icon(Icons.auto_fix_high, size: 18),
-                label: const Text("Tidy up"),
+                label: Text(context.l10n.tidyUp),
                 // Positions go back to automatic; sizes are kept.
                 onPressed: _nodes.values.every((node) => (node as Map)['x'] == null)
                     ? null
@@ -409,22 +409,22 @@ class _MapEditorState extends State<MapEditor> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
-                tooltip: "Smaller",
+                tooltip: context.l10n.smaller,
                 icon: const Icon(Icons.remove_circle_outline),
                 onPressed: _bubble == null && (selected == null || selected['type'] == 'line') ? null : () => _resize(1 / 1.15),
               ),
               IconButton(
-                tooltip: "Larger",
+                tooltip: context.l10n.larger,
                 icon: const Icon(Icons.add_circle_outline),
                 onPressed: _bubble == null && (selected == null || selected['type'] == 'line') ? null : () => _resize(1.15),
               ),
               IconButton(
-                tooltip: "Edit text",
+                tooltip: context.l10n.editText,
                 icon: const Icon(Icons.edit_outlined),
                 onPressed: selected?['type'] == 'title' ? _editSelectedText : null,
               ),
               IconButton(
-                tooltip: "Remove",
+                tooltip: context.l10n.remove,
                 icon: const Icon(Icons.delete_outline),
                 onPressed: selected == null
                     ? null

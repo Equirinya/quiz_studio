@@ -7,6 +7,7 @@ import 'cards.dart';
 import 'companion.dart';
 import 'content.dart';
 import 'last_standing.dart';
+import 'rapid_fire.dart';
 import 'results.dart';
 
 export 'results.dart';
@@ -223,6 +224,7 @@ class SessionState {
     this.results = const Results(),
     this.scoreLog = const [],
     this.standing,
+    this.rapidSteps = const {},
   });
 
   /// Incremented on every accepted command; lets a client drop stale updates.
@@ -317,6 +319,9 @@ class SessionState {
   /// A last-team-standing question being played.
   final StandingPlay? standing;
 
+  /// A Fragenhagel being played: what happened on each item, by its index.
+  final Map<int, RapidStep> rapidSteps;
+
   Team? team(String id) {
     for (final team in teams) {
       if (team.id == id) return team;
@@ -353,6 +358,7 @@ class SessionState {
     Results? results,
     List<ScoreChange>? scoreLog,
     Object? standing = _unset,
+    Map<int, RapidStep>? rapidSteps,
   }) => SessionState(
     seq: seq ?? this.seq,
     gameId: identical(gameId, _unset) ? this.gameId : gameId as String?,
@@ -382,6 +388,7 @@ class SessionState {
     results: results ?? this.results,
     scoreLog: scoreLog ?? this.scoreLog,
     standing: identical(standing, _unset) ? this.standing : standing as StandingPlay?,
+    rapidSteps: rapidSteps ?? this.rapidSteps,
   );
 
   Map<String, dynamic> toJson() => {
@@ -413,6 +420,7 @@ class SessionState {
     if (!results.isEmpty) 'results': results.toJson(),
     if (scoreLog.isNotEmpty) 'scoreLog': [for (final change in scoreLog) change.toJson()],
     if (standing != null) 'standing': standing!.toJson(),
+    if (rapidSteps.isNotEmpty) 'rapidSteps': {for (final MapEntry(:key, :value) in rapidSteps.entries) '$key': value.toJson()},
   };
 
   factory SessionState.fromJson(Map<String, dynamic> json) => SessionState(
@@ -448,5 +456,9 @@ class SessionState {
     results: Results.fromJson(json['results']),
     scoreLog: [for (final change in json['scoreLog'] as List? ?? const []) ?ScoreChange.fromJson(change)],
     standing: StandingPlay.fromJson(json['standing']),
+    rapidSteps: {
+      for (final MapEntry(:key, :value) in (json['rapidSteps'] as Map? ?? const {}).entries)
+        if (int.tryParse('$key') != null) int.parse('$key'): RapidStep.fromJson(value),
+    },
   );
 }

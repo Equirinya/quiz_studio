@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The codes other devices scan to join: one per team for the players'
 /// phones, and one for a second controller.
@@ -34,11 +35,11 @@ class _ConnectDevicesPageState extends State<ConnectDevicesPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text("Connect devices")),
+      appBar: AppBar(title: Text(context.l10n.connectDevices)),
       body: FutureBuilder(
         future: _links,
         builder: (context, snapshot) {
-          if (snapshot.hasError) return const Center(child: Text("Could not create the codes."));
+          if (snapshot.hasError) return Center(child: Text(context.l10n.couldNotCreateCodes));
           final links = snapshot.data;
           if (links == null) return const Center(child: CupertinoActivityIndicator());
           final forController = _selected >= widget.teams.length;
@@ -56,7 +57,7 @@ class _ConnectDevicesPageState extends State<ConnectDevicesPage> {
                     ChoiceChip(label: Text(team.name), selected: _selected == i, onSelected: (_) => setState(() => _selected = i)),
                   ChoiceChip(
                     avatar: const Icon(Icons.tune, size: 18),
-                    label: const Text("Controller"),
+                    label: Text(context.l10n.controller),
                     selected: forController,
                     onSelected: (_) => setState(() => _selected = widget.teams.length),
                   ),
@@ -73,9 +74,8 @@ class _ConnectDevicesPageState extends State<ConnectDevicesPage> {
               const SizedBox(height: 16),
               Text(
                 forController
-                    ? "Scan in Quiz Studio to control this session from another device. "
-                        "That device must be signed in with an account that can open the game."
-                    : "Scan in Quiz Studio to use a phone as the buzzer of ${widget.teams[_selected].name}.",
+                    ? context.l10n.scanToControl
+                    : context.l10n.scanToBuzz(widget.teams[_selected].name),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyLarge,
               ),
@@ -88,8 +88,8 @@ class _ConnectDevicesPageState extends State<ConnectDevicesPage> {
                   Flexible(
                     child: Text(
                       widget.lanEndpoints.isEmpty
-                          ? "Devices connect through the internet."
-                          : "Devices on this network connect directly; others through the internet.",
+                          ? context.l10n.devicesViaInternet
+                          : context.l10n.devicesViaLan,
                       style: theme.textTheme.bodySmall,
                     ),
                   ),
@@ -101,17 +101,17 @@ class _ConnectDevicesPageState extends State<ConnectDevicesPage> {
                   onPressed: () async {
                     await Clipboard.setData(ClipboardData(text: link.webLink));
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Link copied")));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.linkCopied)));
                     }
                   },
                   icon: const Icon(Icons.copy),
-                  label: const Text("Copy link instead"),
+                  label: Text(context.l10n.copyLinkInstead),
                 ),
               ),
               if (widget.teams.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: 16),
-                  child: Text("Add teams first to get a buzzer code for each.", textAlign: TextAlign.center),
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Text(context.l10n.addTeamsFirst, textAlign: TextAlign.center),
                 ),
             ],
           );

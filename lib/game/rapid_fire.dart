@@ -42,13 +42,16 @@ const List<String> rapidChoices = ["Right", "Wrong"];
 ///   question: what is asked, or the statement to judge
 ///   answer:   buzzer mode: the answer, for the gamemaster
 ///   true:     devices mode: whether the statement is right
+///   hint:     optional, for the gamemaster only: something to help judge
+///             or to tell after the item ("also accept: Lisbon")
 ///   image, music: media files of the game shown and played with the item
 class RapidItem {
-  const RapidItem({this.question = '', this.answer = '', this.isTrue = true, this.image, this.music});
+  const RapidItem({this.question = '', this.answer = '', this.isTrue = true, this.hint = '', this.image, this.music});
 
   final String question;
   final String answer;
   final bool isTrue;
+  final String hint;
   final String? image;
   final String? music;
 
@@ -59,17 +62,27 @@ class RapidItem {
       question: stored['question'] is String ? stored['question'] as String : '',
       answer: stored['answer'] is String ? stored['answer'] as String : '',
       isTrue: stored['true'] != false,
+      hint: stored['hint'] is String ? stored['hint'] as String : '',
       image: file(stored['image']),
       music: file(stored['music']),
     );
   }
 
-  Map<String, dynamic> toMap() => {'question': question, 'answer': answer, 'true': isTrue, 'image': image, 'music': music};
+  Map<String, dynamic> toMap() => {
+        'question': question,
+        'answer': answer,
+        'true': isTrue,
+        if (hint.isNotEmpty) 'hint': hint,
+        'image': image,
+        'music': music,
+      };
 
-  RapidItem copyWith({String? question, String? answer, bool? isTrue, Object? image = _keep, Object? music = _keep}) => RapidItem(
+  RapidItem copyWith({String? question, String? answer, bool? isTrue, String? hint, Object? image = _keep, Object? music = _keep}) =>
+      RapidItem(
         question: question ?? this.question,
         answer: answer ?? this.answer,
         isTrue: isTrue ?? this.isTrue,
+        hint: hint ?? this.hint,
         image: image == _keep ? this.image : image as String?,
         music: music == _keep ? this.music : music as String?,
       );
@@ -81,6 +94,8 @@ const Object _keep = Object();
 ///
 /// In the session the reveal counter counts the items done: item `revealed`
 /// is the one asked, and `revealed == items.length` means the round is over.
+/// It starts at -1: only the question itself is on screen, for the
+/// gamemaster to read out, and the first "next" brings up the first item.
 class RapidFire {
   const RapidFire({this.mode = RapidMode.buzzer, this.progress = ProgressStyle.bar, this.items = const []});
 
@@ -112,4 +127,35 @@ class RapidFire {
   Iterable<String> get mediaPaths => [
         for (final item in items) ...[?item.image, ?item.music],
       ];
+}
+
+/// What happened on one Fragenhagel item: the points each team got or lost
+/// on it, and on the devices what each team picked. Kept so that going back
+/// takes the points back and gives the picks back.
+class RapidStep {
+  const RapidStep({this.points = const {}, this.picks = const {}});
+
+  final Map<String, int> points;
+
+  /// Team id to the index of its pick in [rapidChoices].
+  final Map<String, int> picks;
+
+  RapidStep withPoints(String teamId, int delta) =>
+      RapidStep(points: {...points, teamId: (points[teamId] ?? 0) + delta}, picks: picks);
+
+  RapidStep withPick(String teamId, int choice) => RapidStep(points: points, picks: {...picks, teamId: choice});
+
+  Map<String, dynamic> toJson() => {
+        if (points.isNotEmpty) 'points': points,
+        if (picks.isNotEmpty) 'picks': picks,
+      };
+
+  static RapidStep fromJson(Object? json) {
+    Map<String, int> ints(Object? map) => {
+          if (map is Map)
+            for (final MapEntry(:key, :value) in map.entries)
+              if (value is num) '$key': value.toInt(),
+        };
+    return json is Map ? RapidStep(points: ints(json['points']), picks: ints(json['picks'])) : const RapidStep();
+  }
 }

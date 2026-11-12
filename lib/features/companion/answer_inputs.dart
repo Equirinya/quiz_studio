@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:quiz_show/features/companion/match_input.dart';
 import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The input a team's device shows for an answer round. [spec] is the public
 /// form of the round's setup (`CompanionSpec.toPublicMap`): no solution, and
@@ -65,11 +66,11 @@ class _CompanionInputState extends State<CompanionInput> {
   // order: the items in the team's current order
   late final List<_Item> _items = [
     for (final entry in widget.spec['items'] as List? ?? const [])
-      _Item(((entry as Map)['i'] as num).toInt(), entry['t'] as String),
+      _Item(((entry as Map)['i'] as num).toInt(), context.l10n.deviceLabel(entry['t'] as String)),
   ];
 
   // choice and match: the options (match: the left-hand items)
-  late final List<String> _left = (widget.spec['options'] as List? ?? const []).cast<String>();
+  late final List<String> _left = [for (final option in (widget.spec['options'] as List? ?? const []).cast<String>()) context.l10n.deviceLabel(option)];
 
   // list: one field per answer
   late final List<TextEditingController> _lines = [
@@ -114,7 +115,7 @@ class _CompanionInputState extends State<CompanionInput> {
           minLines: 1,
           maxLines: 4,
           style: theme.textTheme.headlineSmall,
-          decoration: const InputDecoration(labelText: "Your answer"),
+          decoration: InputDecoration(labelText: context.l10n.yourAnswer),
           onChanged: (text) => _later(() => PlayerAnswer(text: text.trim())),
         );
 
@@ -127,7 +128,7 @@ class _CompanionInputState extends State<CompanionInput> {
           style: theme.textTheme.displaySmall,
           keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
           inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,\-]'))],
-          decoration: InputDecoration(labelText: "Your number", suffixText: widget.spec['unit'] as String?),
+          decoration: InputDecoration(labelText: context.l10n.yourNumber, suffixText: widget.spec['unit'] as String?),
           onChanged: (text) {
             final number = double.tryParse(text.replaceAll(',', '.'));
             if (number != null) _later(() => PlayerAnswer(number: number));
@@ -141,7 +142,7 @@ class _CompanionInputState extends State<CompanionInput> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              _moved ? formatNumber(_value, unit: _range.unit) : "Slide to answer",
+              _moved ? formatNumber(_value, unit: _range.unit) : context.l10n.slideToAnswer,
               style: _moved ? theme.textTheme.displaySmall : theme.textTheme.titleLarge,
             ),
             Slider(
@@ -208,7 +209,7 @@ class _CompanionInputState extends State<CompanionInput> {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text("Drag into the right order", style: theme.textTheme.bodyMedium),
+            Text(context.l10n.dragIntoOrder, style: theme.textTheme.bodyMedium),
             const SizedBox(height: 8),
             Flexible(
               child: ReorderableListView(
@@ -243,7 +244,7 @@ class _CompanionInputState extends State<CompanionInput> {
             if (enabled)
               TextButton(
                 onPressed: () => widget.onChanged(PlayerAnswer(order: [for (final item in _items) item.index])),
-                child: const Text("This order is right"),
+                child: Text(context.l10n.thisOrderIsRight),
               ),
           ],
         );
@@ -280,7 +281,7 @@ class _CompanionInputState extends State<CompanionInput> {
                   autofocus: i == 0,
                   textInputAction: i == _lines.length - 1 ? TextInputAction.done : TextInputAction.next,
                   style: theme.textTheme.titleLarge,
-                  decoration: InputDecoration(prefixText: "${i + 1}.  ", hintText: "Answer ${i + 1}"),
+                  decoration: InputDecoration(prefixText: "${i + 1}.  ", hintText: context.l10n.answerN(i + 1)),
                   onChanged: (_) => _later(() => PlayerAnswer(items: [for (final line in _lines) line.text.trim()])),
                 ),
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// Asks for one line of text. Returns null when cancelled or left empty.
 Future<String?> promptText(BuildContext context, {required String title, String initial = '', String? label}) {
@@ -20,8 +21,8 @@ Future<String?> promptText(BuildContext context, {required String title, String 
           onSubmitted: (_) => submit(),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Cancel")),
-          FilledButton(onPressed: submit, child: const Text("Save")),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.cancel)),
+          FilledButton(onPressed: submit, child: Text(context.l10n.save)),
         ],
       );
     },
@@ -37,7 +38,7 @@ Future<bool> confirm(BuildContext context, {required String title, required Stri
       title: Text(title),
       content: Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text("Cancel")),
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.l10n.cancel)),
         FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(action)),
       ],
     ),
@@ -46,11 +47,12 @@ Future<bool> confirm(BuildContext context, {required String title, required Stri
 }
 
 /// Runs [action] and reports a failure in a snackbar instead of dropping it.
-Future<void> guarded(BuildContext context, Future<void> Function() action, {String failure = "That didn't work."}) async {
+Future<void> guarded(BuildContext context, Future<void> Function() action, {String? failure}) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
+  final message = failure ?? context.l10n.thatDidntWork;
   try {
     await action();
   } catch (_) {
-    messenger?.showSnackBar(SnackBar(content: Text(failure)));
+    messenger?.showSnackBar(SnackBar(content: Text(message)));
   }
 }

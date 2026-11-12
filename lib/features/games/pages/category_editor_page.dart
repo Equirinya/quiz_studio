@@ -17,6 +17,7 @@ import 'package:quiz_show/features/games/widgets/sounds_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:quiz_show/features/auth/widgets/user_name.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// One category and its questions.
 class CategoryEditorPage extends StatefulWidget {
@@ -38,7 +39,7 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
   GameRepository get _repo => GameRepository.instance;
 
   Future<void> _rename(Category category) async {
-    final name = await promptText(context, title: "Rename category", initial: category.name, label: "Name");
+    final name = await promptText(context, title: context.l10n.renameCategory, initial: category.name, label: context.l10n.name);
     if (name == null || !mounted) return;
     await guarded(context, () => _repo.updateCategory(widget.gameId, category.id, {'name': name}));
   }
@@ -58,18 +59,18 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text("Share category"),
+          title: Text(context.l10n.shareCategory),
           content: SizedBox(
             width: 360,
             child: ListView(
               shrinkWrap: true,
               children: [
-                const Text("Members with limited access only see the categories switched on here."),
+                Text(context.l10n.shareCategoryText),
                 for (final uid in limited)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: UserName(uid),
-                    subtitle: uid == creator ? const Text("Created this category") : null,
+                    subtitle: uid == creator ? Text(context.l10n.createdThisCategory) : null,
                     value: uid == creator || shared.contains(uid),
                     onChanged: uid == creator
                         ? null
@@ -81,7 +82,7 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
               ],
             ),
           ),
-          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Done"))],
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.done))],
         ),
       ),
     );
@@ -121,9 +122,9 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
   }
 
   /// Who of the limited members sees this category besides its creator.
-  static String _sharedSummary(Category category) {
+  static String _sharedSummary(AppLocalizations l10n, Category category) {
     final count = category.data['access'] is List ? (category.data['access'] as List).length : 0;
-    return count == 0 ? "Not shared" : (count == 1 ? "With 1 person" : "With $count people");
+    return count == 0 ? l10n.notShared : l10n.sharedWith(count);
   }
 
   @override
@@ -135,7 +136,7 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
         if (snapshot.hasError || (snapshot.hasData && category == null)) {
           return Scaffold(
             appBar: AppBar(),
-            body: const Center(child: Text("This category is not available.")),
+            body: Center(child: Text(context.l10n.categoryNotAvailable)),
           );
         }
         if (category == null) {
@@ -146,13 +147,13 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
         }
         return Scaffold(
           appBar: AppBar(
-            title: Text(category.name.isEmpty ? "Unnamed" : category.name),
-            actions: [IconButton(icon: const Icon(Icons.edit_outlined), tooltip: "Rename", onPressed: () => _rename(category))],
+            title: Text(category.name.isEmpty ? context.l10n.unnamed : category.name),
+            actions: [IconButton(icon: const Icon(Icons.edit_outlined), tooltip: context.l10n.rename, onPressed: () => _rename(category))],
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => _addQuestion(category),
             icon: const Icon(Icons.add),
-            label: const Text("Add question"),
+            label: Text(context.l10n.addQuestion),
           ),
           body: ListView(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 96),
@@ -164,26 +165,26 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
                   tiles: [
                     SettingTile(
                       icon: Icons.queue_music,
-                      title: "Music & sounds",
-                      summary: soundsSummary(category.sounds, inherited: "Uses the board's"),
+                      title: context.l10n.musicAndSounds,
+                      summary: soundsSummary(context.l10n, category.sounds, inherited: context.l10n.usesBoards),
                       isSet: category.sounds.slots.isNotEmpty || category.sounds.effects.isNotEmpty,
                       onTap: () => showSoundsDialog(
                         context,
                         gameId: widget.gameId,
-                        title: "Sounds for this category",
+                        title: context.l10n.soundsForCategory,
                         data: category.data,
                         save: (update) => guarded(context, () => _repo.updateCategory(widget.gameId, category.id, update)),
                       ),
                     ),
                     SettingTile(
                       icon: Icons.style_outlined,
-                      title: "Cards",
-                      summary: cardsSummary(category.cards, none: "Only the board's and game's"),
+                      title: context.l10n.cards,
+                      summary: cardsSummary(context.l10n, category.cards, none: context.l10n.onlyBoardsAndGames),
                       isSet: category.cards.isNotEmpty,
                       onTap: () => showCardsDialog(
                         context,
                         gameId: widget.gameId,
-                        title: "Cards for this category",
+                        title: context.l10n.cardsForCategory,
                         cards: category.cards,
                         save: (cards) => guarded(context, () => _repo.updateCategory(widget.gameId, category.id, {'cards': cards})),
                       ),
@@ -191,18 +192,18 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
                     if (_canShare(snapshot.data!, category))
                       SettingTile(
                         icon: Icons.person_add_alt,
-                        title: "Share",
-                        summary: _sharedSummary(category),
-                        isSet: _sharedSummary(category) != "Not shared",
+                        title: context.l10n.share,
+                        summary: _sharedSummary(context.l10n, category),
+                        isSet: _sharedSummary(context.l10n, category) != context.l10n.notShared,
                         onTap: () => _share(snapshot.data!, category),
                       ),
                   ],
                 ),
               ),
               if (category.questions.isEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.all(32),
-                  child: Center(child: Text("No questions yet.")),
+                  child: Center(child: Text(context.l10n.noQuestionsYet)),
                 ),
               Builder(builder: (context) {
                 final questions = _ordered(category.questions);
@@ -277,6 +278,8 @@ class _QuestionCardState extends State<QuestionCard> {
       ? _Scoring.amount
       : widget.question.wager
       ? _Scoring.points
+      : widget.question.rankStep != null && widget.question.closest
+      ? _Scoring.closest
       : widget.question.rankStep != null
       ? _Scoring.ranked
       : _Scoring.fixed;
@@ -289,15 +292,25 @@ class _QuestionCardState extends State<QuestionCard> {
     _Scoring.amount when _q.type == QuestionType.free => _Scoring.amount,
     _Scoring.points || _Scoring.amount when _q.type.wagerable => _Scoring.points,
     _Scoring.ranked when _q.type.wagerable => _Scoring.ranked,
+    _Scoring.closest when _closable => _Scoring.closest,
     _ => _Scoring.fixed,
   };
+
+  /// Numbers and sliders on the devices can go by how close teams came.
+  bool get _closable => switch (_q.companion?.kind) {
+    CompanionKind.number || CompanionKind.slider => !_q.hasBets,
+    _ => false,
+  };
+
+  bool get _byPlace => _effectiveScoring == _Scoring.ranked || _effectiveScoring == _Scoring.closest;
 
   void _setScoring(_Scoring scoring) {
     setState(() => _scoring = scoring);
     _save({
       'wager': scoring == _Scoring.points,
       'amountBet': scoring == _Scoring.amount ? _amountBet() : null,
-      'rankStep': scoring == _Scoring.ranked ? (int.tryParse(_rankStep.text) ?? 100).clamp(0, 100000) : null,
+      'rankStep': scoring == _Scoring.ranked || scoring == _Scoring.closest ? (int.tryParse(_rankStep.text) ?? 100).clamp(0, 100000) : null,
+      'closest': scoring == _Scoring.closest ? true : null,
     });
   }
 
@@ -319,7 +332,7 @@ class _QuestionCardState extends State<QuestionCard> {
     final data = Map<String, dynamic>.of(_pending);
     _pending.clear();
     GameRepository.instance.updateQuestion(widget.gameId, widget.categoryId, _q.id, data).catchError((Object _) {
-      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text("Could not save.")));
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(context.l10n.couldNotSave)));
     });
   }
 
@@ -333,7 +346,7 @@ class _QuestionCardState extends State<QuestionCard> {
   }
 
   Future<void> _delete() async {
-    final sure = await confirm(context, title: "Delete question", message: "This question will be deleted.", action: "Delete");
+    final sure = await confirm(context, title: context.l10n.deleteQuestion, message: context.l10n.deleteQuestionText, action: context.l10n.delete);
     if (!sure) return;
     _pending.clear();
     await GameRepository.instance.deleteQuestion(widget.gameId, widget.categoryId, _q.id);
@@ -362,6 +375,7 @@ class _QuestionCardState extends State<QuestionCard> {
   /// of points cost more than the bet.
   bool get _hasMinus =>
       _effectiveScoring != _Scoring.points &&
+      _effectiveScoring != _Scoring.closest &&
       _q.type != QuestionType.feud &&
       _q.type != QuestionType.connections &&
       _q.type != QuestionType.lastStanding;
@@ -369,49 +383,56 @@ class _QuestionCardState extends State<QuestionCard> {
   /// "Free question · slider on the devices · by order"
   String get _subtitle {
     final companion = _q.companion;
+    final l10n = context.l10n;
     final devices = switch (_q.type) {
       QuestionType.connections || QuestionType.matching => null,
-      QuestionType.rapidFire || QuestionType.topAnswers => companion == null ? null : "on the devices",
-      _ => companion == null ? null : "${companion.kind.uiString.toLowerCase()} on the devices",
+      QuestionType.rapidFire || QuestionType.topAnswers => companion == null ? null : l10n.onTheDevices,
+      _ => companion == null ? null : l10n.kindOnTheDevices(l10n.inline(l10n.companionKind(companion.kind))),
     };
     final scoring = switch (_effectiveScoring) {
-      _Scoring.points => "teams bet",
-      _Scoring.amount => "teams bet how many",
-      _Scoring.ranked => "by order",
+      _Scoring.points => l10n.teamsBetShort,
+      _Scoring.amount => l10n.teamsBetHowManyShort,
+      _Scoring.ranked => l10n.byOrderShort,
+      _Scoring.closest => l10n.byClosenessShort,
       _Scoring.fixed => null,
     };
-    return [_q.type.uiString, ?devices, ?scoring].join(" · ");
+    return [l10n.questionType(_q.type), ?devices, ?scoring].join(" · ");
   }
 
   String get _scoringSummary {
     final plus = _q.pointsPlus;
     final minus = _hasMinus && _q.pointsMinus > 0 ? _q.pointsMinus : null;
+    final l10n = context.l10n;
     return switch (_effectiveScoring) {
-      _Scoring.fixed => [if (_q.type.wagerable) "Fixed", minus == null ? "+$plus" : "+$plus / −$minus"].join(" · "),
-      _Scoring.points => "Teams bet their points · at least ${plus > kMinBetLimit ? plus : kMinBetLimit} to bet",
-      _Scoring.amount => "Bet on how many · ${minus == null ? "+$plus each" : "+$plus / −$minus each"}",
-      _Scoring.ranked => ["By order · $plus, then −${_q.rankStep ?? 0} per place", if (minus != null) "wrong −$minus"].join(" · "),
+      _Scoring.fixed => [if (_q.type.wagerable) l10n.fixed, minus == null ? "+$plus" : "+$plus / −$minus"].join(" · "),
+      _Scoring.points => l10n.pointsBetSummary(plus > kMinBetLimit ? plus : kMinBetLimit),
+      _Scoring.amount => "${l10n.betOnHowMany} · ${minus == null ? l10n.plusEach(plus) : l10n.plusMinusEach(plus, minus)}",
+      _Scoring.ranked => [l10n.byOrderSummary(plus, _q.rankStep ?? 0), if (minus != null) l10n.wrongMinus(minus)].join(" · "),
+      _Scoring.closest => l10n.byClosenessSummary(plus, _q.rankStep ?? 0),
     };
   }
 
   String get _mediaSummary {
-    final sounds = soundsSummary(_q.sounds, inherited: "");
-    final parts = [if (_q.image != null) "Picture", if (_q.music != null) "Music", if (sounds.isNotEmpty) sounds];
-    return parts.isEmpty ? "No picture, music or sounds of its own" : parts.join(" · ");
+    final l10n = context.l10n;
+    final sounds = soundsSummary(l10n, _q.sounds, inherited: "");
+    final parts = [if (_q.image != null) l10n.picture, if (_q.music != null) l10n.music, if (sounds.isNotEmpty) sounds];
+    return parts.isEmpty ? l10n.noOwnMedia : parts.join(" · ");
   }
 
   Widget _scoringSection(ThemeData theme) {
     final scoring = _effectiveScoring;
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_q.type.wagerable) ...[
           FillDropdown<_Scoring>(
-            label: "Rule",
+            label: l10n.rule,
             value: scoring,
             entries: [
               for (final option in _Scoring.values)
-                if (option != _Scoring.amount || _q.type == QuestionType.free) DropdownMenuEntry(value: option, label: option.label),
+                if ((option != _Scoring.amount || _q.type == QuestionType.free) && (option != _Scoring.closest || _closable))
+                  DropdownMenuEntry(value: option, label: l10n.scoringRuleName(option.name)),
             ],
             onSelected: (option) {
               if (option != null) _setScoring(option);
@@ -419,28 +440,20 @@ class _QuestionCardState extends State<QuestionCard> {
           ),
           const SizedBox(height: 6),
           Text(switch (scoring) {
-            _Scoring.fixed => "Every team plays for the same points.",
-            _Scoring.ranked =>
-              "The first team gets the most points, each after it a bit less. The order is the order teams locked in a "
-                  "right answer on their devices, or the order you tap them in, e.g. as they finish on stage. "
-                  "Wrong answers lose the minus points.",
-            _Scoring.points =>
-              "Before the question, each team bets some of its points: a right answer wins the bet, a wrong one loses it. "
-                  "Teams may bet up to their score, or up to ${_q.pointsPlus > kMinBetLimit ? _q.pointsPlus : kMinBetLimit} "
-                  "if they have less.",
-            _Scoring.amount =>
-              "First only the bet question is shown and each team says how many it can do. Then the question runs; "
-                  "you decide per team whether it reached its number. Reached: the points for each one. "
-                  "Missed: the minus points for each one.",
+            _Scoring.fixed => l10n.scoringFixedText,
+            _Scoring.ranked => l10n.scoringRankedText,
+            _Scoring.closest => _q.companion?.solution == null ? l10n.scoringClosenessNoSolution : l10n.scoringClosenessText,
+            _Scoring.points => l10n.scoringPointsText(_q.pointsPlus > kMinBetLimit ? _q.pointsPlus : kMinBetLimit),
+            _Scoring.amount => l10n.scoringAmountText,
           }, style: theme.textTheme.bodySmall),
           const SizedBox(height: 12),
         ],
         if (scoring == _Scoring.amount) ...[
           TextField(
             controller: _betPrompt,
-            decoration: const InputDecoration(
-              labelText: "Bet question",
-              hintText: "How many science fiction films can you name?",
+            decoration: InputDecoration(
+              labelText: l10n.betQuestion,
+              hintText: l10n.betQuestionHint,
               isDense: true,
             ),
             minLines: 1,
@@ -455,23 +468,23 @@ class _QuestionCardState extends State<QuestionCard> {
             _points(
               _plus,
               switch (scoring) {
-                _Scoring.points => "Points",
-                _Scoring.amount => "Each +",
-                _Scoring.ranked => "1st place +",
-                _Scoring.fixed when _q.type == QuestionType.rapidFire => "Each item +",
-                _Scoring.fixed when _q.type == QuestionType.lastStanding => "Winner +",
-                _Scoring.fixed when _q.type == QuestionType.topAnswers => "Each answer +",
-                _Scoring.fixed => "If right +",
+                _Scoring.points => l10n.points,
+                _Scoring.amount => l10n.eachPlus,
+                _Scoring.ranked || _Scoring.closest => l10n.firstPlacePlus,
+                _Scoring.fixed when _q.type == QuestionType.rapidFire => l10n.eachItemPlus,
+                _Scoring.fixed when _q.type == QuestionType.lastStanding => l10n.winnerPlus,
+                _Scoring.fixed when _q.type == QuestionType.topAnswers => l10n.eachAnswerPlus,
+                _Scoring.fixed => l10n.ifRightPlus,
               },
               'pointsPlus',
               // Given per item: the boards show everything there is to win.
-              helper: _q.boardPoints != _q.pointsPlus ? "${_q.boardPoints} on the board" : null,
+              helper: _q.boardPoints != _q.pointsPlus ? l10n.onTheBoard(_q.boardPoints) : null,
             ),
-            if (_hasMinus) _points(_minus, scoring == _Scoring.amount ? "Each −" : "If wrong −", 'pointsMinus'),
-            if (scoring == _Scoring.ranked)
+            if (_hasMinus) _points(_minus, scoring == _Scoring.amount ? l10n.eachMinus : l10n.ifWrongMinus, 'pointsMinus'),
+            if (_byPlace)
               TextField(
                 controller: _rankStep,
-                decoration: const InputDecoration(labelText: "Less per place", isDense: true),
+                decoration: InputDecoration(labelText: l10n.lessPerPlace, isDense: true),
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 onChanged: (text) => _save({'rankStep': (int.tryParse(text) ?? 0).clamp(0, 100000)}),
@@ -479,14 +492,14 @@ class _QuestionCardState extends State<QuestionCard> {
             if (scoring == _Scoring.amount)
               TextField(
                 controller: _betMax,
-                decoration: const InputDecoration(labelText: "Highest bet", isDense: true),
+                decoration: InputDecoration(labelText: l10n.highestBet, isDense: true),
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 onChanged: (_) => _save({'amountBet': _amountBet()}),
               ),
           ],
         ),
-        if (scoring == _Scoring.ranked)
+        if (_byPlace)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
@@ -509,15 +522,15 @@ class _QuestionCardState extends State<QuestionCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        row(MediaKind.image, _q.image, "No picture", 'image'),
-        row(MediaKind.audio, _q.music, "No music", 'music'),
+        row(MediaKind.image, _q.image, context.l10n.noPicture, 'image'),
+        row(MediaKind.audio, _q.music, context.l10n.noMusic, 'music'),
         ListTile(
           contentPadding: const EdgeInsets.only(left: 8),
           leading: const Icon(Icons.queue_music),
-          title: const Text("Music & effects"),
-          subtitle: Text(soundsSummary(_q.sounds, inherited: "The category's")),
+          title: Text(context.l10n.musicAndEffects),
+          subtitle: Text(soundsSummary(context.l10n, _q.sounds, inherited: context.l10n.theCategorys)),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () => showSoundsDialog(context, gameId: widget.gameId, title: "Sounds for this question", data: _q.data, save: _save),
+          onTap: () => showSoundsDialog(context, gameId: widget.gameId, title: context.l10n.soundsForQuestion, data: _q.data, save: _save),
         ),
       ],
     );
@@ -537,22 +550,22 @@ class _QuestionCardState extends State<QuestionCard> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FillDropdown<QuestionType>(
-          label: "Type",
+          label: context.l10n.type,
           value: _q.type,
           entries: [
             for (final type in QuestionType.values)
-              if (type != QuestionType.unsupported || _q.type == type) DropdownMenuEntry(value: type, label: type.uiString),
+              if (type != QuestionType.unsupported || _q.type == type) DropdownMenuEntry(value: type, label: context.l10n.questionType(type)),
           ],
           onSelected: (type) {
             if (type != null && type != QuestionType.unsupported) _save({'type': type.name});
           },
         ),
         const SizedBox(height: 4),
-        Text(questionTypeExplanation(_q.type), style: theme.textTheme.bodySmall),
+        Text(questionTypeExplanation(context.l10n, _q.type), style: theme.textTheme.bodySmall),
         const SizedBox(height: 12),
         TextField(
           controller: _text,
-          decoration: const InputDecoration(labelText: "Question"),
+          decoration: InputDecoration(labelText: context.l10n.question),
           minLines: 1,
           maxLines: 4,
           onChanged: (value) => _save({'question': value}),
@@ -560,7 +573,7 @@ class _QuestionCardState extends State<QuestionCard> {
         const SizedBox(height: 12),
         TextField(
           controller: _hint,
-          decoration: const InputDecoration(labelText: "Answer hint", helperText: "Only the gamemaster sees this"),
+          decoration: InputDecoration(labelText: context.l10n.answerHint, helperText: context.l10n.onlyGamemasterSees),
           minLines: 1,
           maxLines: 4,
           onChanged: (value) => _save({'answerHint': value}),
@@ -569,7 +582,7 @@ class _QuestionCardState extends State<QuestionCard> {
         if (_showLabel) ...[
           TextField(
             controller: _description,
-            decoration: const InputDecoration(labelText: "Label", helperText: "Small badge shown on the question card"),
+            decoration: InputDecoration(labelText: context.l10n.label, helperText: context.l10n.labelHelper),
             onChanged: (value) => _save({'description': value}),
           ),
           const SizedBox(height: 8),
@@ -578,8 +591,8 @@ class _QuestionCardState extends State<QuestionCard> {
             alignment: Alignment.centerLeft,
             child: ActionChip(
               avatar: const Icon(Icons.add),
-              label: const Text("Label"),
-              tooltip: "A small badge shown on the question card",
+              label: Text(context.l10n.label),
+              tooltip: context.l10n.labelTooltip,
               onPressed: () => setState(() => _showLabel = true),
             ),
           ),
@@ -592,15 +605,15 @@ class _QuestionCardState extends State<QuestionCard> {
         if (answering != null)
           EditorSection(
             icon: Icons.touch_app_outlined,
-            title: "How teams answer",
-            summary: answeringSummary(_q),
+            title: context.l10n.howTeamsAnswer,
+            summary: answeringSummary(context.l10n, _q),
             open: _isOpen('answer', roomy),
             onToggle: () => _toggle('answer', roomy),
             child: answering,
           ),
         EditorSection(
           icon: Icons.scoreboard_outlined,
-          title: "Scoring",
+          title: context.l10n.scoring,
           summary: _scoringSummary,
           open: _isOpen('scoring', roomy),
           onToggle: () => _toggle('scoring', roomy),
@@ -608,7 +621,7 @@ class _QuestionCardState extends State<QuestionCard> {
         ),
         EditorSection(
           icon: Icons.perm_media_outlined,
-          title: "Media & sound",
+          title: context.l10n.mediaAndSound,
           summary: _mediaSummary,
           open: _isOpen('media', roomy),
           onToggle: () => _toggle('media', roomy),
@@ -642,9 +655,9 @@ class _QuestionCardState extends State<QuestionCard> {
             if (widget.reorderIndex != null)
               ReorderableDragStartListener(
                 index: widget.reorderIndex!,
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.only(right: 8),
-                  child: Icon(Icons.drag_indicator, semanticLabel: "Move question"),
+                  child: Icon(Icons.drag_indicator, semanticLabel: context.l10n.moveQuestion),
                 ),
               ),
             CircleAvatar(
@@ -656,7 +669,7 @@ class _QuestionCardState extends State<QuestionCard> {
             ),
           ],
         ),
-        title: Text(_q.text.isEmpty ? "New question" : _q.text, maxLines: 2, overflow: TextOverflow.ellipsis),
+        title: Text(_q.text.isEmpty ? context.l10n.newQuestion : _q.text, maxLines: 2, overflow: TextOverflow.ellipsis),
         subtitle: Text(_subtitle),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -664,13 +677,13 @@ class _QuestionCardState extends State<QuestionCard> {
             if (_expanded) ...[
               IconButton(
                 icon: const Icon(Icons.visibility_outlined),
-                tooltip: "Preview",
+                tooltip: context.l10n.preview,
                 onPressed: () {
                   _flush();
                   showQuestionPreview(context, gameId: widget.gameId, categoryId: widget.categoryId, question: _q);
                 },
               ),
-              IconButton(icon: const Icon(Icons.delete_outline), tooltip: "Delete question", onPressed: _delete),
+              IconButton(icon: const Icon(Icons.delete_outline), tooltip: context.l10n.deleteQuestion, onPressed: _delete),
             ],
             Icon(_expanded ? Icons.expand_less : Icons.expand_more),
           ],
@@ -707,7 +720,8 @@ enum _Scoring {
   fixed("Fixed points"),
   points("Teams bet their points"),
   amount("Teams bet how many they can do"),
-  ranked("By order: fastest first");
+  ranked("By order: fastest first"),
+  closest("By closeness: nearest first");
 
   const _Scoring(this.label);
 

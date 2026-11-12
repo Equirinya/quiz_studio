@@ -14,6 +14,7 @@ import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
 import 'package:quiz_show/features/session/session_client.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// What a presenter window is started with: which session, and how to reach
 /// the main window that runs it.
@@ -85,8 +86,12 @@ Future<void> runPresenterWindow(PresenterWindowArgs args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await CrashLog.init(role: "presenter");
   await windowManager.ensureInitialized();
+  await AppLanguage.load();
+  final l10n = lookupAppLocalizations(
+    basicLocaleListResolution([AppLanguage.locale.value ?? PlatformDispatcher.instance.locale], AppLocalizations.supportedLocales),
+  );
   await windowManager.waitUntilReadyToShow(
-    const WindowOptions(title: "Quiz Studio · Presenter", size: Size(1280, 720), center: true),
+    WindowOptions(title: l10n.presenterWindowTitle, size: Size(1280, 720), center: true),
     () async {
       await windowManager.show();
       await windowManager.focus();
@@ -125,6 +130,9 @@ class PresenterWindowApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     theme: buildAppTheme(Brightness.light),
     darkTheme: buildAppTheme(Brightness.dark),
+    locale: AppLanguage.locale.value,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: PresenterWindowView(connection: connection, onFullscreen: onFullscreen, onQuit: onQuit, orphanAfter: orphanAfter),
   );
 }
@@ -239,7 +247,7 @@ class _PresenterWindowViewState extends State<PresenterWindowView> {
                               children: [
                                 const CupertinoActivityIndicator(),
                                 const SizedBox(height: 12),
-                                Text(_everConnected ? "Reconnecting to the main window…" : "Connecting to the main window…"),
+                                Text(_everConnected ? context.l10n.reconnectingMainWindow : context.l10n.connectingMainWindow),
                               ],
                             ),
                           )
@@ -251,7 +259,7 @@ class _PresenterWindowViewState extends State<PresenterWindowView> {
                   right: 4,
                   child: IconButton(
                     icon: Icon(_fullscreen ? Icons.fullscreen_exit : Icons.fullscreen, color: faint),
-                    tooltip: _fullscreen ? "Leave full screen (Esc)" : "Full screen (F11)",
+                    tooltip: _fullscreen ? context.l10n.leaveFullScreen : context.l10n.fullScreenF11,
                     onPressed: _toggleFullscreen,
                   ),
                 ),
@@ -267,7 +275,7 @@ class _PresenterWindowViewState extends State<PresenterWindowView> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           child: Text(
-                            "Drag this window to the projector, then double-click it or press F11 for full screen.",
+                            context.l10n.dragToProjector,
                             style: TextStyle(color: Theme.of(context).colorScheme.onInverseSurface),
                           ),
                         ),

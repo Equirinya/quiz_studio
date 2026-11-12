@@ -27,6 +27,7 @@ import 'package:quiz_show/features/session/pages/session_setup_page.dart';
 import 'package:quiz_show/features/session/presenter_window.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The shows the user hosts: start a new one, or present or control one.
 class SessionsPage extends StatefulWidget {
@@ -67,7 +68,7 @@ class _SessionsPageState extends State<SessionsPage> {
       context,
       // Saved with the game's name for devices that cannot open the game.
       () => _repo.createSession(name: _gameNames[picked.gameId] ?? "", gameId: picked.gameId),
-      failure: "Could not create the session.",
+      failure: context.l10n.couldNotCreateSession,
     );
   }
 
@@ -83,9 +84,9 @@ class _SessionsPageState extends State<SessionsPage> {
     if (session.hostDevice != null && session.hostDevice != deviceId) {
       final sure = await confirm(
         context,
-        title: "Present here",
-        message: "Another of your devices was presenting this session last. It stops if it is still running.",
-        action: "Present here",
+        title: context.l10n.presentHere,
+        message: context.l10n.presentHereText,
+        action: context.l10n.presentHere,
       );
       if (!sure || !mounted) return;
     }
@@ -94,14 +95,14 @@ class _SessionsPageState extends State<SessionsPage> {
 
   void _setUp(SessionSummary session) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => SessionSetupPage(session: session, title: sessionTitle(session, _gameNames))),
+      MaterialPageRoute(builder: (_) => SessionSetupPage(session: session, title: sessionTitle(session, _gameNames, context.l10n))),
     );
   }
 
   void _control(SessionSummary session) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ControlPage(sessionId: session.id, title: sessionTitle(session, _gameNames)),
+        builder: (_) => ControlPage(sessionId: session.id, title: sessionTitle(session, _gameNames, context.l10n)),
       ),
     );
   }
@@ -109,9 +110,9 @@ class _SessionsPageState extends State<SessionsPage> {
   Future<void> _delete(SessionSummary session) async {
     final sure = await confirm(
       context,
-      title: "Delete session",
-      message: "The session of \"${sessionTitle(session, _gameNames)}\" with its teams and points will be deleted.",
-      action: "Delete",
+      title: context.l10n.deleteSession,
+      message: context.l10n.deleteSessionText(sessionTitle(session, _gameNames, context.l10n)),
+      action: context.l10n.delete,
     );
     if (!sure || !mounted) return;
     await guarded(context, () => _repo.deleteSession(session.id));
@@ -127,7 +128,7 @@ class _SessionsPageState extends State<SessionsPage> {
           FloatingActionButton.small(
             heroTag: 'joinSession',
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const JoinSessionPage())),
-            tooltip: JoinSessionPage.hasScanner ? "Join a session: scan its code" : "Join a session with its link",
+            tooltip: JoinSessionPage.hasScanner ? context.l10n.joinSessionScan : context.l10n.joinSessionLink,
             child: Icon(JoinSessionPage.hasScanner ? Icons.qr_code_scanner : Icons.link),
           ),
           const SizedBox(height: 12),
@@ -135,14 +136,14 @@ class _SessionsPageState extends State<SessionsPage> {
             heroTag: 'createSession',
             onPressed: _create,
             icon: const Icon(Icons.add),
-            label: const Text("New session"),
+            label: Text(context.l10n.newSession),
           ),
         ],
       ),
       body: StreamBuilder<List<SessionSummary>>(
         stream: _sessions,
         builder: (context, snapshot) {
-          if (snapshot.hasError) return const Center(child: Text("Could not load your sessions."));
+          if (snapshot.hasError) return Center(child: Text(context.l10n.couldNotLoadSessions));
           final sessions = snapshot.data;
           if (sessions == null) return const Center(child: CupertinoActivityIndicator());
           return SessionsList(
@@ -187,12 +188,11 @@ class SessionsList extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (sessions.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(32),
+          padding: const EdgeInsets.all(32),
           child: Text(
-            "A session is one evening's show: its teams, points and progress. "
-            "Create one, present it on the big screen and control it from your phone.",
+            context.l10n.noSessionsText,
             textAlign: TextAlign.center,
           ),
         ),
@@ -226,7 +226,7 @@ class SessionsList extends StatelessWidget {
                                 children: [
                                   Flexible(
                                     child: Text(
-                                      sessionTitle(session, gameNames),
+                                      sessionTitle(session, gameNames, context.l10n),
                                       style: theme.textTheme.titleMedium?.copyWith(
                                         color: session.gameId == null ? theme.colorScheme.primary : null,
                                       ),
@@ -243,15 +243,15 @@ class SessionsList extends StatelessWidget {
                       PopupMenuButton<VoidCallback>(
                         onSelected: (action) => action(),
                         itemBuilder: (context) => [
-                          PopupMenuItem(value: () => onChangeGame(session), child: const Text("Change game")),
-                          PopupMenuItem(value: () => onDelete(session), child: const Text("Delete")),
+                          PopupMenuItem(value: () => onChangeGame(session), child: Text(context.l10n.changeGame)),
+                          PopupMenuItem(value: () => onDelete(session), child: Text(context.l10n.delete)),
                         ],
                       ),
                     ],
                   ),
                   if (session.createdAtMillis != null)
                     Text(
-                      "Created ${formatSessionDate(DateTime.fromMillisecondsSinceEpoch(session.createdAtMillis!))}",
+                      context.l10n.createdAt(formatSessionDate(DateTime.fromMillisecondsSinceEpoch(session.createdAtMillis!), german: context.l10n.localeName == 'de')),
                       style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                   const SizedBox(height: 12),
@@ -261,7 +261,7 @@ class SessionsList extends StatelessWidget {
                         child: FilledButton.icon(
                           onPressed: () => onPresent(session),
                           icon: const Icon(Icons.tv),
-                          label: const Text("Present"),
+                          label: Text(context.l10n.present),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -269,7 +269,7 @@ class SessionsList extends StatelessWidget {
                         child: FilledButton.tonalIcon(
                           onPressed: () => onControl(session),
                           icon: const Icon(Icons.tune),
-                          label: const Text("Control"),
+                          label: Text(context.l10n.control),
                         ),
                       ),
                       if (onSetUp != null) ...[
@@ -277,7 +277,7 @@ class SessionsList extends StatelessWidget {
                         IconButton.outlined(
                           onPressed: () => onSetUp!(session),
                           icon: const Icon(Icons.settings_outlined),
-                          tooltip: "Set up teams and buzzers",
+                          tooltip: context.l10n.setUpTeamsAndBuzzers,
                         ),
                       ],
                       const SizedBox(width: 8),
@@ -293,18 +293,22 @@ class SessionsList extends StatelessWidget {
 }
 
 /// What a session is called on screen: the game it plays.
-String sessionTitle(SessionSummary session, Map<String, String> gameNames) {
-  if (session.gameId == null) return "Choose a game";
+String sessionTitle(SessionSummary session, Map<String, String> gameNames, [AppLocalizations? l10n]) {
+  final t = l10n ?? englishL10n;
+  if (session.gameId == null) return t.chooseAGame;
   final name = gameNames[session.gameId];
-  if (name != null) return name.isEmpty ? "Unnamed game" : name;
-  return session.name.isEmpty ? "A game you cannot open" : session.name;
+  if (name != null) return name.isEmpty ? t.unnamedGame : name;
+  return session.name.isEmpty ? t.gameYouCannotOpen : session.name;
 }
 
 /// "17 Oct, 20:15", with the year when it is not this one.
-String formatSessionDate(DateTime date, {DateTime? now}) {
+/// "17. Okt., 20:15" in German.
+String formatSessionDate(DateTime date, {DateTime? now, bool german = false}) {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monate = ['Jan.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni', 'Juli', 'Aug.', 'Sept.', 'Okt.', 'Nov.', 'Dez.'];
   String two(int n) => n.toString().padLeft(2, '0');
   final year = date.year == (now ?? DateTime.now()).year ? '' : ' ${date.year}';
+  if (german) return "${date.day}. ${monate[date.month - 1]}$year, ${two(date.hour)}:${two(date.minute)}";
   return "${date.day} ${months[date.month - 1]}$year, ${two(date.hour)}:${two(date.minute)}";
 }
 
@@ -328,9 +332,9 @@ class _GameChoices extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (games.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(24),
-        child: Text("You have no games yet. Create one in the Games tab first.", textAlign: TextAlign.center),
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(context.l10n.noGamesForSession, textAlign: TextAlign.center),
       );
     }
     return ListView(
@@ -340,7 +344,7 @@ class _GameChoices extends StatelessWidget {
         for (final game in games)
           ListTile(
             leading: Icon(game.id == selected ? Icons.radio_button_checked : Icons.radio_button_off),
-            title: Text(game.name.isEmpty ? "Unnamed" : game.name),
+            title: Text(game.name.isEmpty ? context.l10n.unnamed : game.name),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             onTap: () => onPicked(game.id),
           ),
@@ -380,9 +384,9 @@ class _NewSessionSheetState extends State<_NewSessionSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text("New session", style: theme.textTheme.titleLarge),
+          Text(context.l10n.newSession, style: theme.textTheme.titleLarge),
           const SizedBox(height: 8),
-          Text("Game", style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
+          Text(context.l10n.game, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
           ConstrainedBox(
             constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.35),
             child: _GameChoices(games: widget.games, selected: _gameId, onPicked: (id) => setState(() => _gameId = id)),
@@ -392,7 +396,7 @@ class _NewSessionSheetState extends State<_NewSessionSheet> {
             height: 52,
             child: FilledButton(
               onPressed: () => Navigator.of(context).pop((gameId: _gameId)),
-              child: Text(_gameId == null ? "Create without a game" : "Create"),
+              child: Text(_gameId == null ? context.l10n.createWithoutGame : context.l10n.create),
             ),
           ),
         ],
@@ -421,7 +425,7 @@ class _ControlPageState extends State<ControlPage> {
     widget.sessionId,
     joinLink: widget.joinLink,
     onSendError: (_) {
-      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text("That did not reach the presenter.")));
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(context.l10n.didNotReachPresenter)));
     },
   );
   late final Stream<SessionSummary?> _session = SessionRepository.instance.watchSession(widget.sessionId);
@@ -466,7 +470,7 @@ class _ControlPageState extends State<ControlPage> {
                 backgroundColor: scheme.errorContainer,
                 leading: Icon(Icons.warning_amber_rounded, color: scheme.onErrorContainer),
                 content: Text(
-                  "No device is presenting this session. Nothing you do here happens until one presents it.",
+                  context.l10n.noDevicePresenting,
                   style: TextStyle(color: scheme.onErrorContainer),
                 ),
                 actions: const [SizedBox()],
@@ -587,14 +591,14 @@ class _PresentPageState extends State<PresentPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("Presenting elsewhere"),
-        content: const Text("Another of your devices took over this session."),
+        title: Text(context.l10n.presentingElsewhere),
+        content: Text(context.l10n.presentingElsewhereText),
         actions: [
           FilledButton(
             onPressed: () => Navigator.of(context)
               ..pop()
               ..pop(),
-            child: const Text("OK"),
+            child: Text(context.l10n.ok),
           ),
         ],
       ),
@@ -618,6 +622,7 @@ class _PresentPageState extends State<PresentPage> {
     final access = connection.windowAccess;
     if (access == null) return;
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     final arrivalsBefore = connection.windowArrivals.value;
     try {
       final window = await PresenterWindow.open(
@@ -640,9 +645,9 @@ class _PresentPageState extends State<PresentPage> {
       // this one controlling an empty screen: take the show back.
       if (await _windowArrives(connection, arrivalsBefore) || !mounted || !identical(_window, window)) return;
       _bringBack();
-      messenger.showSnackBar(const SnackBar(content: Text("Could not open a second window.")));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.couldNotOpenWindow)));
     } catch (error) {
-      messenger.showSnackBar(const SnackBar(content: Text("Could not open a second window.")));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.couldNotOpenWindow)));
     }
   }
 
@@ -670,7 +675,7 @@ class _PresentPageState extends State<PresentPage> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(child: Text("Could not start presenting this session.")),
+        body: Center(child: Text(context.l10n.couldNotStartPresenting)),
       );
     }
     if (connection == null) return const Scaffold(body: Center(child: CupertinoActivityIndicator()));
@@ -679,10 +684,10 @@ class _PresentPageState extends State<PresentPage> {
       // The audience looks at the other window; this one is the controller.
       return Scaffold(
         appBar: AppBar(
-          title: const Text("Controlling"),
+          title: Text(context.l10n.controlling),
           actions: [
-            TextButton.icon(onPressed: _bringBack, icon: const Icon(Icons.close_fullscreen), label: const Text("Close presenter window")),
-            IconButton(icon: const Icon(Icons.close), tooltip: "Stop presenting", onPressed: () => Navigator.of(context).pop()),
+            TextButton.icon(onPressed: _bringBack, icon: const Icon(Icons.close_fullscreen), label: Text(context.l10n.closePresenterWindow)),
+            IconButton(icon: const Icon(Icons.close), tooltip: context.l10n.stopPresenting, onPressed: () => Navigator.of(context).pop()),
           ],
         ),
         body: Center(
@@ -725,7 +730,7 @@ class _PresentPageState extends State<PresentPage> {
                     children: [
                       IconButton(
                         icon: Icon(Icons.close, color: faint),
-                        tooltip: "Stop presenting",
+                        tooltip: context.l10n.stopPresenting,
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                       RevealedWhen(
@@ -735,13 +740,13 @@ class _PresentPageState extends State<PresentPage> {
                             if (PresenterWindow.supported && connection.windowAccess != null)
                               IconButton(
                                 icon: Icon(Icons.open_in_new, color: faint),
-                                tooltip: "Open in a new window, to drag onto another screen",
+                                tooltip: context.l10n.openInNewWindow,
                                 onPressed: () => _openWindow(connection),
                               ),
                             if (_canFullscreen)
                               IconButton(
                                 icon: Icon(_fullscreen ? Icons.fullscreen_exit : Icons.fullscreen, color: faint),
-                                tooltip: "Fullscreen",
+                                tooltip: context.l10n.fullscreen,
                                 onPressed: () {
                                   setState(() => _fullscreen = !_fullscreen);
                                   windowManager.setFullScreen(_fullscreen);
@@ -749,7 +754,7 @@ class _PresentPageState extends State<PresentPage> {
                               ),
                             IconButton(
                               icon: Icon(Icons.tune, color: faint),
-                              tooltip: "Controls",
+                              tooltip: context.l10n.controls,
                               onPressed: () => Scaffold.of(context).openEndDrawer(),
                             ),
                           ],
@@ -770,7 +775,7 @@ class _PresentPageState extends State<PresentPage> {
               builder: (context, status, _) => Buzzers.instance.wanted.value && (status == BuzzerStatus.disconnected || status == BuzzerStatus.silent)
                   ? Chip(
                       avatar: Icon(Icons.usb_off, size: 18, color: Theme.of(context).colorScheme.error),
-                      label: const Text("Buzzer box not connected · retrying"),
+                      label: Text(context.l10n.buzzerBoxRetrying),
                     )
                   : const SizedBox(),
             ),
@@ -784,7 +789,7 @@ class _PresentPageState extends State<PresentPage> {
                   ? const SizedBox()
                   : Chip(
                       avatar: const Icon(Icons.cloud_off, size: 18),
-                      label: Text("${missing.length} media files could not be downloaded"),
+                      label: Text(context.l10n.mediaNotDownloaded(missing.length)),
                     ),
             ),
           ),

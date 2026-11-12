@@ -2,6 +2,7 @@ import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// Picks the two colours a group's board is themed with. [save] receives the
 /// ARGB values, or nulls to go back to the app's own colours.
@@ -54,14 +55,14 @@ class _GroupColorsDialogState extends State<_GroupColorsDialog> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return AlertDialog(
-      title: const Text("Board colours"),
+      title: Text(context.l10n.boardColours),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _picker("Primary", _color ?? scheme.primary, (value) => _color = value),
+            _picker(context.l10n.primaryColour, _color ?? scheme.primary, (value) => _color = value),
             const SizedBox(height: 16),
-            _picker("Accent", _accent ?? scheme.tertiary, (value) => _accent = value),
+            _picker(context.l10n.accentColour, _accent ?? scheme.tertiary, (value) => _accent = value),
           ],
         ),
       ),
@@ -71,9 +72,9 @@ class _GroupColorsDialogState extends State<_GroupColorsDialog> {
             widget.save(null, null);
             Navigator.of(context).pop();
           },
-          child: const Text("Use app colours"),
+          child: Text(context.l10n.useAppColours),
         ),
-        FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Done")),
+        FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.done)),
       ],
     );
   }

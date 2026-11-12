@@ -12,6 +12,7 @@ import 'package:quiz_show/features/games/widgets/group_colors_dialog.dart';
 import 'package:quiz_show/features/games/widgets/settings_strip.dart';
 import 'package:quiz_show/features/games/widgets/sounds_dialog.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 extension BoardTypeIcon on BoardType {
   IconData get icon => switch (this) {
@@ -43,7 +44,7 @@ class _GameEditorPageState extends State<GameEditorPage> {
         if (snapshot.hasError) {
           return Scaffold(
             appBar: AppBar(),
-            body: const Center(child: Text("This game is not available.")),
+            body: Center(child: Text(context.l10n.gameNotAvailable)),
           );
         }
         final data = snapshot.data;
@@ -76,12 +77,13 @@ class _GameEditorViewState extends State<GameEditorView> {
   /// Everything in the game, answers included, for pasting elsewhere.
   Future<void> _copyAsText(GameContent game) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     await Clipboard.setData(ClipboardData(text: gameAsText(game)));
-    messenger.showSnackBar(const SnackBar(content: Text("Copied the game with its answers.")));
+    messenger.showSnackBar(SnackBar(content: Text(l10n.copiedGame)));
   }
 
   Future<void> _rename(GameContent game) async {
-    final name = await promptText(context, title: "Rename game", initial: game.name, label: "Name");
+    final name = await promptText(context, title: context.l10n.renameGame, initial: game.name, label: context.l10n.name);
     if (name == null || !mounted) return;
     await guarded(context, () => _repo.updateGame(game.id, {'name': name}));
   }
@@ -89,9 +91,9 @@ class _GameEditorViewState extends State<GameEditorView> {
   Future<void> _delete(GameContent game) async {
     final sure = await confirm(
       context,
-      title: "Delete game",
-      message: "\"${game.name}\" and all of its questions will be deleted for everyone.",
-      action: "Delete",
+      title: context.l10n.deleteGame,
+      message: context.l10n.deleteGameText(game.name),
+      action: context.l10n.delete,
     );
     if (!sure || !mounted) return;
     Navigator.of(context).pop();
@@ -101,9 +103,9 @@ class _GameEditorViewState extends State<GameEditorView> {
   Future<void> _leave(GameContent game) async {
     final sure = await confirm(
       context,
-      title: "Leave game",
-      message: "You will lose access to \"${game.name}\" until someone invites you again.",
-      action: "Leave",
+      title: context.l10n.leaveGame,
+      message: context.l10n.leaveGameText(game.name),
+      action: context.l10n.leave,
     );
     if (!sure || !mounted) return;
     Navigator.of(context).pop();
@@ -129,13 +131,13 @@ class _GameEditorViewState extends State<GameEditorView> {
       if (canEditStructure)
         SettingTile(
           icon: Icons.queue_music,
-          title: "Music & sounds",
-          summary: soundsSummary(game.sounds, inherited: "None yet"),
+          title: context.l10n.musicAndSounds,
+          summary: soundsSummary(context.l10n, game.sounds, inherited: context.l10n.noneYet),
           isSet: game.sounds.slots.isNotEmpty || game.sounds.effects.isNotEmpty,
           onTap: () => showSoundsDialog(
             context,
             gameId: game.id,
-            title: "Sounds for the whole game",
+            title: context.l10n.soundsForGame,
             isGame: true,
             data: data.data,
             save: (update) => guarded(context, () => _repo.updateGame(game.id, update)),
@@ -144,13 +146,13 @@ class _GameEditorViewState extends State<GameEditorView> {
       if (canEditStructure)
         SettingTile(
           icon: Icons.style_outlined,
-          title: "Cards",
-          summary: cardsSummary(game.cards),
+          title: context.l10n.cards,
+          summary: cardsSummary(context.l10n, game.cards),
           isSet: CueCard.listFrom(data.data['cards']).isNotEmpty,
           onTap: () => showCardsDialog(
             context,
             gameId: game.id,
-            title: "Cards for the whole game",
+            title: context.l10n.cardsForGame,
             cards: game.cards,
             save: (cards) => guarded(context, () => _repo.updateGame(game.id, {'cards': cards})),
           ),
@@ -158,38 +160,38 @@ class _GameEditorViewState extends State<GameEditorView> {
       if (data.role == GameRole.admin)
         SettingTile(
           icon: Icons.group_outlined,
-          title: "People",
-          summary: _peopleSummary(data.data),
+          title: context.l10n.people,
+          summary: _peopleSummary(context.l10n, data.data),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameAccessPage(gameId: game.id))),
         ),
     ];
     return Scaffold(
       appBar: AppBar(
-        title: Text(game.name.isEmpty ? "Unnamed" : game.name),
+        title: Text(game.name.isEmpty ? context.l10n.unnamed : game.name),
         actions: [
           // The rarely needed ones, so the title keeps its room on a phone.
           PopupMenuButton<VoidCallback>(
-            tooltip: "More",
+            tooltip: context.l10n.more,
             onSelected: (action) => action(),
             itemBuilder: (context) => [
               if (canEditStructure)
                 PopupMenuItem(
                   value: () => _rename(game),
-                  child: const ListTile(leading: Icon(Icons.edit_outlined), title: Text("Rename")),
+                  child: ListTile(leading: const Icon(Icons.edit_outlined), title: Text(context.l10n.rename)),
                 ),
               PopupMenuItem(
                 value: () => _copyAsText(game),
-                child: const ListTile(leading: Icon(Icons.copy_all_outlined), title: Text("Copy as text")),
+                child: ListTile(leading: const Icon(Icons.copy_all_outlined), title: Text(context.l10n.copyAsText)),
               ),
               if (data.role == GameRole.admin)
                 PopupMenuItem(
                   value: () => _delete(game),
-                  child: const ListTile(leading: Icon(Icons.delete_outline), title: Text("Delete game")),
+                  child: ListTile(leading: const Icon(Icons.delete_outline), title: Text(context.l10n.deleteGame)),
                 )
               else
                 PopupMenuItem(
                   value: () => _leave(game),
-                  child: const ListTile(leading: Icon(Icons.logout), title: Text("Leave game")),
+                  child: ListTile(leading: const Icon(Icons.logout), title: Text(context.l10n.leaveGame)),
                 ),
             ],
           ),
@@ -225,14 +227,14 @@ class _GameEditorViewState extends State<GameEditorView> {
               if (canEditStructure)
                 for (final type in BoardType.values)
                   OutlinedButton.icon(
-                    onPressed: () => guarded(context, () => _repo.addGroup(game.id, type, game.groups.where((g) => !g.isUngrouped).length)),
+                    onPressed: () => guarded(context, () => _repo.addGroup(game.id, type, game.groups.where((g) => !g.isUngrouped).length, name: context.l10n.newBoard(type.name))),
                     icon: Icon(type.icon),
-                    label: Text("Add ${type.uiString}"),
+                    label: Text(context.l10n.addBoard(type.name)),
                   )
               else if (game.groups.isEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.all(24),
-                  child: Text("Nothing here yet. Ask an admin to share a category with you.", textAlign: TextAlign.center),
+                  child: Text(context.l10n.nothingSharedYet, textAlign: TextAlign.center),
                 ),
             ],
           ),
@@ -241,10 +243,10 @@ class _GameEditorViewState extends State<GameEditorView> {
     );
   }
 
-  static String _peopleSummary(Map<String, dynamic> game) {
+  static String _peopleSummary(AppLocalizations l10n, Map<String, dynamic> game) {
     int count(String key) => game[key] is List ? (game[key] as List).length : 0;
     final total = count('admin') + count('full') + count('limited');
-    return total == 1 ? "Only you" : "$total members";
+    return total == 1 ? l10n.onlyYou : l10n.memberCount(total);
   }
 }
 
@@ -259,25 +261,25 @@ class _GroupCard extends StatelessWidget {
   GameRepository get _repo => GameRepository.instance;
 
   Future<void> _rename(BuildContext context) async {
-    final name = await promptText(context, title: "Rename group", initial: group.name, label: "Name");
+    final name = await promptText(context, title: context.l10n.renameGroup, initial: group.name, label: context.l10n.name);
     if (name == null || !context.mounted) return;
     await guarded(context, () => _repo.updateGroup(game.id, group.id, {'name': name}));
   }
 
   Future<void> _editDisplayText(BuildContext context) async {
-    final text = await promptText(context, title: "Display text", initial: group.text ?? '', label: "Shown on the board");
+    final text = await promptText(context, title: context.l10n.displayText, initial: group.text ?? '', label: context.l10n.shownOnBoard);
     if (text == null || !context.mounted) return;
     await guarded(context, () => _repo.updateGroup(game.id, group.id, {'text': text}));
   }
 
   /// "Wheel · 3 categories · own music · 2 cards"
-  String get _summary {
+  String _summary(AppLocalizations l10n) {
     final count = group.categories.length;
     return [
-      group.type.uiString,
-      count == 1 ? "1 category" : "$count categories",
-      if (group.sounds.slots.isNotEmpty || group.sounds.effects.isNotEmpty) "own sounds",
-      if (group.cards.isNotEmpty) group.cards.length == 1 ? "1 card" : "${group.cards.length} cards",
+      l10n.boardType(group.type),
+      l10n.categoryCount(count),
+      if (group.sounds.slots.isNotEmpty || group.sounds.effects.isNotEmpty) l10n.ownSounds,
+      if (group.cards.isNotEmpty) l10n.cardCount(group.cards.length),
     ].join(" · ");
   }
 
@@ -308,12 +310,12 @@ class _GroupCard extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Text("${group.name.isEmpty ? "Unnamed" : group.name} · ${group.type.uiString}", style: theme.textTheme.titleLarge),
+              child: Text("${group.name.isEmpty ? context.l10n.unnamed : group.name} · ${context.l10n.boardType(group.type)}", style: theme.textTheme.titleLarge),
             ),
             ListTile(
               leading: const Icon(Icons.edit_outlined),
-              title: const Text("Name"),
-              subtitle: Text(group.name.isEmpty ? "Unnamed" : group.name),
+              title: Text(context.l10n.name),
+              subtitle: Text(group.name.isEmpty ? context.l10n.unnamed : group.name),
               onTap: () {
                 close();
                 _rename(context);
@@ -321,14 +323,14 @@ class _GroupCard extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.queue_music),
-              title: const Text("Music & sounds"),
-              subtitle: Text(soundsSummary(group.sounds, inherited: "Uses the game's")),
+              title: Text(context.l10n.musicAndSounds),
+              subtitle: Text(soundsSummary(context.l10n, group.sounds, inherited: context.l10n.usesGames)),
               onTap: () {
                 close();
                 showSoundsDialog(
                   context,
                   gameId: game.id,
-                  title: "Sounds for this board",
+                  title: context.l10n.soundsForBoard,
                   data: group.data,
                   save: (update) => _update(context, update),
                 );
@@ -336,14 +338,14 @@ class _GroupCard extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.style_outlined),
-              title: const Text("Cards"),
-              subtitle: Text(cardsSummary(group.cards, none: "Only the game's")),
+              title: Text(context.l10n.cards),
+              subtitle: Text(cardsSummary(context.l10n, group.cards, none: context.l10n.onlyGames)),
               onTap: () {
                 close();
                 showCardsDialog(
                   context,
                   gameId: game.id,
-                  title: "Cards for this board",
+                  title: context.l10n.cardsForBoard,
                   cards: group.cards,
                   save: (cards) => _update(context, {'cards': cards}),
                 );
@@ -351,8 +353,8 @@ class _GroupCard extends StatelessWidget {
             ),
             ListTile(
               leading: Icon(Icons.palette_outlined, color: group.color == null ? null : Color(group.color!)),
-              title: const Text("Colours"),
-              subtitle: Text(group.color == null ? "The app's colours" : "Own colours"),
+              title: Text(context.l10n.colours),
+              subtitle: Text(group.color == null ? context.l10n.appsColours : context.l10n.ownColours),
               onTap: () {
                 close();
                 showGroupColorsDialog(
@@ -365,8 +367,8 @@ class _GroupCard extends StatelessWidget {
             if (group.type == BoardType.display)
               ListTile(
                 leading: const Icon(Icons.short_text),
-                title: const Text("Text on the board"),
-                subtitle: Text((group.text ?? '').isEmpty ? "None" : group.text!, maxLines: 2, overflow: TextOverflow.ellipsis),
+                title: Text(context.l10n.textOnBoard),
+                subtitle: Text((group.text ?? '').isEmpty ? context.l10n.none : group.text!, maxLines: 2, overflow: TextOverflow.ellipsis),
                 onTap: () {
                   close();
                   _editDisplayText(context);
@@ -375,8 +377,8 @@ class _GroupCard extends StatelessWidget {
             if (group.type == BoardType.wheel)
               SwitchListTile(
                 secondary: const Icon(Icons.call_split),
-                title: const Text("Split point fields"),
-                subtitle: const Text("When a value appears more than once in a ring"),
+                title: Text(context.l10n.splitPointFields),
+                subtitle: Text(context.l10n.splitPointFieldsText),
                 value: splitFields,
                 onChanged: (value) {
                   setSheet(() => splitFields = value);
@@ -386,8 +388,8 @@ class _GroupCard extends StatelessWidget {
             if (group.type == BoardType.map) ...[
               ListTile(
                 leading: const Icon(Icons.open_with),
-                title: const Text("Arrange the map"),
-                subtitle: const Text("Bubbles, arrows, titles, pictures and lines"),
+                title: Text(context.l10n.arrangeMap),
+                subtitle: Text(context.l10n.arrangeMapShort),
                 onTap: () {
                   close();
                   _arrangeMap(context);
@@ -395,8 +397,8 @@ class _GroupCard extends StatelessWidget {
               ),
               SwitchListTile(
                 secondary: const Icon(Icons.label_outline),
-                title: const Text("Labels instead of points"),
-                subtitle: const Text("Questions without a label still show their points"),
+                title: Text(context.l10n.labelsInsteadOfPoints),
+                subtitle: Text(context.l10n.labelsInsteadOfPointsText),
                 value: mapLabels,
                 onChanged: (value) {
                   setSheet(() => mapLabels = value);
@@ -407,8 +409,8 @@ class _GroupCard extends StatelessWidget {
             const Divider(),
             ListTile(
               leading: Icon(Icons.delete_outline, color: group.categories.isEmpty ? theme.colorScheme.error : null),
-              title: const Text("Delete board"),
-              subtitle: group.categories.isEmpty ? null : const Text("Move or delete its categories first"),
+              title: Text(context.l10n.deleteBoard),
+              subtitle: group.categories.isEmpty ? null : Text(context.l10n.deleteBoardFirst),
               enabled: group.categories.isEmpty,
               onTap: () {
                 close();
@@ -423,7 +425,7 @@ class _GroupCard extends StatelessWidget {
 
   Future<void> _addCategory(BuildContext context) async {
     await guarded(context, () async {
-      final id = await _repo.addCategory(game.id, groupId: group.id, index: group.categories.length);
+      final id = await _repo.addCategory(game.id, groupId: group.id, index: group.categories.length, name: context.l10n.newCategory);
       if (context.mounted) _openCategory(context, id);
     });
   }
@@ -448,10 +450,10 @@ class _GroupCard extends StatelessWidget {
           ListTile(
             leading: Icon(group.type.icon, color: group.color == null ? theme.colorScheme.onSurfaceVariant : Color(group.color!)),
             title: Text(
-              group.isUngrouped ? "Ungrouped categories" : (group.name.isEmpty ? "Unnamed" : group.name),
+              group.isUngrouped ? context.l10n.ungroupedCategories : (group.name.isEmpty ? context.l10n.unnamed : group.name),
               style: theme.textTheme.titleMedium,
             ),
-            subtitle: group.isUngrouped ? null : Text(_summary),
+            subtitle: group.isUngrouped ? null : Text(_summary(context.l10n)),
             onTap: editable ? () => _openSettings(context) : null,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -461,19 +463,19 @@ class _GroupCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: () => _openSettings(context),
                     icon: const Icon(Icons.tune),
-                    label: const Text("Board settings"),
+                    label: Text(context.l10n.boardSettings),
                   )
                 else if (editable)
                   IconButton.filledTonal(
                     onPressed: () => _openSettings(context),
                     icon: const Icon(Icons.tune),
-                    tooltip: "Board settings",
+                    tooltip: context.l10n.boardSettings,
                   ),
                 if (editable)
                   ReorderableDragStartListener(
                     index: listIndex,
-                    child: const Tooltip(
-                      message: "Move board",
+                    child: Tooltip(
+                      message: context.l10n.moveBoard,
                       child: Padding(padding: EdgeInsets.all(8), child: Icon(Icons.drag_handle)),
                     ),
                   ),
@@ -485,8 +487,8 @@ class _GroupCard extends StatelessWidget {
             ListTile(
               dense: true,
               leading: const Icon(Icons.open_with),
-              title: const Text("Arrange the map"),
-              subtitle: const Text("Place bubbles, connect them, add titles, pictures and lines"),
+              title: Text(context.l10n.arrangeMap),
+              subtitle: Text(context.l10n.arrangeMapLong),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _arrangeMap(context),
             ),
@@ -509,7 +511,7 @@ class _GroupCard extends StatelessWidget {
                 child: TextButton.icon(
                   onPressed: () => _addCategory(context),
                   icon: const Icon(Icons.add),
-                  label: const Text("Add category"),
+                  label: Text(context.l10n.addCategory),
                 ),
               ),
             ),
@@ -583,7 +585,7 @@ class _CategoryTile extends StatelessWidget {
     final target = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text("Move to another board"),
+        title: Text(context.l10n.moveToAnotherBoard),
         children: [
           for (final other in game.groups.where((g) => g.id != group.id && !g.isUngrouped))
             SimpleDialogOption(
@@ -612,10 +614,10 @@ class _CategoryTile extends StatelessWidget {
     final choice = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: Text("\"${category.name}\" comes after"),
+        title: Text(context.l10n.comesAfterTitle(category.name)),
         children: [
-          SimpleDialogOption(onPressed: () => Navigator.of(context).pop(previous), child: const Text("The category before it (default)")),
-          SimpleDialogOption(onPressed: () => Navigator.of(context).pop(''), child: const Text("Nothing: it starts a new chain")),
+          SimpleDialogOption(onPressed: () => Navigator.of(context).pop(previous), child: Text(context.l10n.categoryBeforeIt)),
+          SimpleDialogOption(onPressed: () => Navigator.of(context).pop(''), child: Text(context.l10n.startsNewChain)),
           for (final other in group.categories.where((c) => c.id != category.id))
             SimpleDialogOption(onPressed: () => Navigator.of(context).pop(other.id), child: Text(other.name)),
         ],
@@ -631,9 +633,9 @@ class _CategoryTile extends StatelessWidget {
   Future<void> _delete(BuildContext context) async {
     final sure = await confirm(
       context,
-      title: "Delete category",
-      message: "\"${category.name}\" and its ${category.questions.length} questions will be deleted.",
-      action: "Delete",
+      title: context.l10n.deleteCategory,
+      message: context.l10n.deleteCategoryText(category.name, category.questions.length),
+      action: context.l10n.delete,
     );
     if (!sure || !context.mounted) return;
     await guarded(context, () => _repo.deleteCategory(game.id, category));
@@ -644,13 +646,13 @@ class _CategoryTile extends StatelessWidget {
     final questions = category.questions.length;
     final hasOtherGroups = game.groups.any((g) => g.id != group.id && !g.isUngrouped);
     final checkbox = Tooltip(
-      message: category.active ? "In play: tap to take it out of the game" : "Not in play: tap to put it back",
+      message: category.active ? context.l10n.inPlayTip : context.l10n.notInPlayTip,
       child: Checkbox(
         value: category.active,
         onChanged: (value) => guarded(context, () => _repo.updateCategory(game.id, category.id, {'active': value ?? true})),
       ),
     );
-    final dragged = _DraggedCategory(category.id, group.id, index, category.name.isEmpty ? "Unnamed" : category.name);
+    final dragged = _DraggedCategory(category.id, group.id, index, category.name.isEmpty ? context.l10n.unnamed : category.name);
     final tile = ListTile(
       // Grabbed by the handle and dropped on another place, on this board or
       // on another one.
@@ -671,14 +673,14 @@ class _CategoryTile extends StatelessWidget {
                   ),
                   child: MouseRegion(
                     cursor: SystemMouseCursors.grab,
-                    child: Icon(Icons.drag_indicator, semanticLabel: "Move category", color: Theme.of(context).colorScheme.outline),
+                    child: Icon(Icons.drag_indicator, semanticLabel: context.l10n.moveCategory, color: Theme.of(context).colorScheme.outline),
                   ),
                 ),
                 checkbox,
               ],
             ),
-      title: Text(category.name.isEmpty ? "Unnamed" : category.name),
-      subtitle: Text("${questions == 1 ? "1 question" : "$questions questions"}${category.active ? "" : " · not in play"}"),
+      title: Text(category.name.isEmpty ? context.l10n.unnamed : category.name),
+      subtitle: Text("${context.l10n.questionCount(questions)}${category.active ? "" : " · ${context.l10n.notInPlay}"}"),
       onTap: onOpen,
       trailing: PopupMenuButton<_CategoryAction>(
         onSelected: (action) {
@@ -696,13 +698,13 @@ class _CategoryTile extends StatelessWidget {
           }
         },
         itemBuilder: (context) => [
-          if (canEditStructure && index > 0) const PopupMenuItem(value: _CategoryAction.up, child: ListTile(leading: Icon(Icons.arrow_upward), title: Text("Move up"))),
+          if (canEditStructure && index > 0) PopupMenuItem(value: _CategoryAction.up, child: ListTile(leading: const Icon(Icons.arrow_upward), title: Text(context.l10n.moveUp))),
           if (canEditStructure && index < group.categories.length - 1)
-            const PopupMenuItem(value: _CategoryAction.down, child: ListTile(leading: Icon(Icons.arrow_downward), title: Text("Move down"))),
-          if (canEditStructure && hasOtherGroups) const PopupMenuItem(value: _CategoryAction.move, child: ListTile(leading: Icon(Icons.drive_file_move_outlined), title: Text("Move to another board…"))),
+            PopupMenuItem(value: _CategoryAction.down, child: ListTile(leading: const Icon(Icons.arrow_downward), title: Text(context.l10n.moveDown))),
+          if (canEditStructure && hasOtherGroups) PopupMenuItem(value: _CategoryAction.move, child: ListTile(leading: const Icon(Icons.drive_file_move_outlined), title: Text(context.l10n.moveToAnotherBoardMenu))),
           if (canEditStructure && group.type == BoardType.map && group.categories.length > 1)
-            const PopupMenuItem(value: _CategoryAction.follows, child: ListTile(leading: Icon(Icons.account_tree_outlined), title: Text("Comes after…"))),
-          const PopupMenuItem(value: _CategoryAction.delete, child: ListTile(leading: Icon(Icons.delete_outline), title: Text("Delete"))),
+            PopupMenuItem(value: _CategoryAction.follows, child: ListTile(leading: const Icon(Icons.account_tree_outlined), title: Text(context.l10n.comesAfterMenu))),
+          PopupMenuItem(value: _CategoryAction.delete, child: ListTile(leading: const Icon(Icons.delete_outline), title: Text(context.l10n.delete))),
         ],
       ),
     );

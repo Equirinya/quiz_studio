@@ -5,6 +5,7 @@ import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/pages/game_access_page.dart';
 import 'package:quiz_show/features/games/pages/game_editor_page.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The user's games: open one to edit it, or create a new one.
 class GamesPage extends StatefulWidget {
@@ -22,12 +23,13 @@ class _GamesPageState extends State<GamesPage> {
   }
 
   Future<void> _create() async {
-    final name = await promptText(context, title: "New game", label: "Name");
+    final l10n = context.l10n;
+    final name = await promptText(context, title: l10n.newGame, label: l10n.name);
     if (name == null || !mounted) return;
     await guarded(context, () async {
       final id = await GameRepository.instance.createGame(name: name);
       if (mounted) _open(id);
-    }, failure: "Could not create the game.");
+    }, failure: l10n.couldNotCreateGame);
   }
 
   Future<void> _join() async {
@@ -45,7 +47,7 @@ class _GamesPageState extends State<GamesPage> {
           FloatingActionButton.small(
             heroTag: 'join',
             onPressed: _join,
-            tooltip: "Join with an invite link",
+            tooltip: context.l10n.joinWithInviteLink,
             child: const Icon(Icons.group_add_outlined),
           ),
           const SizedBox(height: 12),
@@ -53,14 +55,14 @@ class _GamesPageState extends State<GamesPage> {
             heroTag: 'create',
             onPressed: _create,
             icon: const Icon(Icons.add),
-            label: const Text("New game"),
+            label: Text(context.l10n.newGame),
           ),
         ],
       ),
       body: StreamBuilder<List<GameSummary>>(
         stream: _games,
         builder: (context, snapshot) {
-          if (snapshot.hasError) return const Center(child: Text("Could not load your games."));
+          if (snapshot.hasError) return Center(child: Text(context.l10n.couldNotLoadGames));
           final games = snapshot.data;
           if (games == null) return const Center(child: CupertinoActivityIndicator());
           if (games.isEmpty) {
@@ -72,10 +74,10 @@ class _GamesPageState extends State<GamesPage> {
                   children: [
                     Icon(Icons.quiz_outlined, size: 56, color: Theme.of(context).colorScheme.primary),
                     const SizedBox(height: 16),
-                    Text("No games yet", style: Theme.of(context).textTheme.titleLarge),
+                    Text(context.l10n.noGamesYet, style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 8),
-                    const Text(
-                      "Create your first quiz, or ask a friend to invite you to theirs.",
+                    Text(
+                      context.l10n.noGamesYetText,
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -90,8 +92,8 @@ class _GamesPageState extends State<GamesPage> {
               final game = games[index];
               return ListTile(
                 leading: const Icon(Icons.quiz_outlined),
-                title: Text(game.name.isEmpty ? "Unnamed" : game.name),
-                subtitle: Text(game.role.uiString),
+                title: Text(game.name.isEmpty ? context.l10n.unnamed : game.name),
+                subtitle: Text(context.l10n.gameRole(game.role)),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _open(game.id),
               );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:quiz_show/features/companion/connections.dart';
 import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// One team's answer, drawn for whoever may see it: the gamemaster all
 /// along, the audience once it is revealed. [fontSize] scales it from a
@@ -23,7 +24,7 @@ class AnswerView extends StatelessWidget {
     final style = TextStyle(fontSize: fontSize, color: scheme.onSurface);
     final answer = this.answer;
     if (answer == null || answer.isEmpty) return Text("–", style: style.copyWith(color: scheme.outline));
-    String option(List<String> list, int index) => index >= 0 && index < list.length ? list[index] : "?";
+    String option(List<String> list, int index) => index >= 0 && index < list.length ? context.l10n.deviceLabel(list[index]) : "?";
 
     switch (spec.kind) {
       case CompanionKind.connections:
@@ -35,7 +36,7 @@ class AnswerView extends StatelessWidget {
             ConnectionsProgressRow(solved: progress.solved, mistakes: progress.mistakes, allowed: spec.mistakes, size: fontSize * 1.2),
             SizedBox(height: fontSize * 0.3),
             Text(
-              "${progress.solved.length} of 4 found · ${progress.mistakes} ${progress.mistakes == 1 ? "mistake" : "mistakes"}",
+              "${context.l10n.foundOfFour(progress.solved.length)} · ${context.l10n.mistakeCount(progress.mistakes)}",
               style: style.copyWith(fontSize: fontSize * 0.85),
             ),
           ],

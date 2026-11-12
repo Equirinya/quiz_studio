@@ -10,6 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
 
   cupertino_icons: ^1.0.2
   flutter_native_splash: ^2.2.17
@@ -103,10 +106,13 @@ flutter_native_splash:
 
 flutter:
   uses-material-design: true
+  # German and English texts from lib/l10n/*.arb; see l10n.yaml.
+  generate: true
   assets:
     - assets/
     - assets/icon/
     - assets/cards/
+    - assets/cards/de/
     - assets/sounds/music/
     - assets/sounds/effects/
     - assets/sounds/effects/announcer/

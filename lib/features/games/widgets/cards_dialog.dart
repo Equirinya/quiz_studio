@@ -7,6 +7,7 @@ import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The cards a game, a board or a category brings along for the gamemaster
 /// to put on screen: the rules of a round, a break notice, a picture. [save]
@@ -17,10 +18,10 @@ Future<void> showCardsDialog(
   required String gameId,
   required List<CueCard> cards,
   required void Function(List<Map<String, dynamic>> cards) save,
-  String title = "Cards",
+  String? title,
 }) => showDialog<void>(
   context: context,
-  builder: (_) => CardsDialog(gameId: gameId, cards: cards, save: save, title: title),
+  builder: (_) => CardsDialog(gameId: gameId, cards: cards, save: save, title: title ?? context.l10n.cards),
 );
 
 /// A small picture of what a card shows: its image, a built-in picture, or
@@ -39,7 +40,7 @@ class CardThumbnail extends StatelessWidget {
     final builtin = builtinImage(image);
     ImageProvider? provider;
     if (builtin != null) {
-      provider = AssetImage(builtin.asset);
+      provider = AssetImage(context.l10n.builtinImageAsset(builtin));
     } else if (image != null && MediaService.instance.ready) {
       final file = MediaService.instance.localFile(gameId, image!);
       if (file.existsSync()) provider = FileImage(file);
@@ -102,7 +103,7 @@ class CardPreview extends StatelessWidget {
                       animation: CardAnimation.off,
                       imageFile: _file,
                       card: empty
-                          ? const OverlayCard(text: "Empty card")
+                          ? OverlayCard(text: context.l10n.emptyCard)
                           : OverlayCard(
                               title: card.title.isEmpty ? null : card.title,
                               text: card.text.isEmpty ? null : card.text,
@@ -192,6 +193,7 @@ class _CardsDialogState extends State<CardsDialog> {
   /// A new card that is just a picture: pick it, and it is in the row.
   Future<void> _addPicture() async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     final path = await MediaKind.image.pick();
     if (path == null || !mounted) return;
     setState(() => _uploading = true);
@@ -199,11 +201,13 @@ class _CardsDialogState extends State<CardsDialog> {
       final name = await MediaService.instance.upload(widget.gameId, path);
       if (mounted) _append(CueCard(image: name));
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text("Could not upload the picture.")));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.couldNotUploadPicture)));
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
   }
+
+  String? _builtinName(BuiltinImage? image) => image == null ? null : context.l10n.builtinImage(image);
 
   Widget _tile(int index) {
     final theme = Theme.of(context);
@@ -212,7 +216,7 @@ class _CardsDialogState extends State<CardsDialog> {
     final builtin = isBuiltinImage(card.image);
     final label = card.title.isNotEmpty
         ? card.title
-        : builtinImage(card.image)?.label ?? (card.text.isNotEmpty ? card.text : (card.image != null ? "Picture" : "Card"));
+        : _builtinName(builtinImage(card.image)) ?? (card.text.isNotEmpty ? card.text : (card.image != null ? context.l10n.picture : context.l10n.card));
     return Padding(
       key: ObjectKey(card),
       padding: const EdgeInsets.only(right: 12),
@@ -236,12 +240,12 @@ class _CardsDialogState extends State<CardsDialog> {
                   index: index,
                   child: Padding(
                     padding: const EdgeInsets.all(4),
-                    child: Icon(Icons.drag_indicator, size: 20, color: scheme.outline, semanticLabel: "Move card"),
+                    child: Icon(Icons.drag_indicator, size: 20, color: scheme.outline, semanticLabel: context.l10n.moveCard),
                   ),
                 ),
                 Expanded(
                   child: Text(
-                    card.hidden ? "$label · off" : label,
+                    card.hidden ? "$label · ${context.l10n.off}" : label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.labelMedium?.copyWith(color: card.hidden ? scheme.outline : null),
@@ -250,7 +254,7 @@ class _CardsDialogState extends State<CardsDialog> {
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   iconSize: 20,
-                  tooltip: card.hidden ? "Offer it in the show" : "Keep it out of the show",
+                  tooltip: card.hidden ? context.l10n.offerInShow : context.l10n.keepOutOfShow,
                   icon: Icon(card.hidden ? Icons.visibility_off_outlined : Icons.visibility_outlined),
                   onPressed: () => _change(() => _cards[index] = _switched(card)),
                 ),
@@ -259,7 +263,7 @@ class _CardsDialogState extends State<CardsDialog> {
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     iconSize: 20,
-                    tooltip: "Edit",
+                    tooltip: context.l10n.edit,
                     icon: const Icon(Icons.edit_outlined),
                     onPressed: () => _edit(index),
                   ),
@@ -283,8 +287,7 @@ class _CardsDialogState extends State<CardsDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              "What you can put over the screen during the show, offered in this order. Tap a card to change it, "
-              "drag it by its handle to move it, or switch it off to keep it out of the show.",
+              context.l10n.cardsDialogText,
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
@@ -292,11 +295,11 @@ class _CardsDialogState extends State<CardsDialog> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                FilledButton.tonalIcon(onPressed: _new, icon: const Icon(Icons.add), label: const Text("New card")),
+                FilledButton.tonalIcon(onPressed: _new, icon: const Icon(Icons.add), label: Text(context.l10n.newCard)),
                 FilledButton.tonalIcon(
                   onPressed: _uploading ? null : _addPicture,
                   icon: const Icon(Icons.add_photo_alternate_outlined),
-                  label: Text(_uploading ? "Uploading…" : "Add picture"),
+                  label: Text(_uploading ? context.l10n.uploading : context.l10n.addPicture),
                 ),
               ],
             ),
@@ -325,7 +328,7 @@ class _CardsDialogState extends State<CardsDialog> {
           ],
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Done"))],
+      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.done))],
     );
   }
 }
@@ -376,7 +379,7 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return AlertDialog(
-      title: Text(widget.isNew ? "New card" : "Card"),
+      title: Text(widget.isNew ? context.l10n.newCard : context.l10n.card),
       content: SizedBox(
         width: 560,
         child: SingleChildScrollView(
@@ -389,13 +392,13 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
               TextField(
                 controller: _title,
                 autofocus: widget.isNew,
-                decoration: const InputDecoration(labelText: "Title"),
+                decoration: InputDecoration(labelText: context.l10n.title),
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: _text,
-                decoration: const InputDecoration(labelText: "Text"),
+                decoration: InputDecoration(labelText: context.l10n.text),
                 minLines: 1,
                 maxLines: 4,
                 onChanged: (_) => setState(() {}),
@@ -403,17 +406,17 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Text("Picture", style: theme.textTheme.labelLarge),
+                  Text(context.l10n.picture, style: theme.textTheme.labelLarge),
                   MediaButton(gameId: widget.gameId, kind: MediaKind.image, name: _image, onChanged: (name) => setState(() => _image = name)),
                   const SizedBox(width: 16),
-                  Text("Video clip", style: theme.textTheme.labelLarge),
+                  Text(context.l10n.videoClip, style: theme.textTheme.labelLarge),
                   MediaButton(gameId: widget.gameId, kind: MediaKind.video, name: _video, onChanged: (name) => setState(() => _video = name)),
                 ],
               ),
               if (_video != null)
-                Text("A clip plays full screen on the big screen and the card goes when it ends.", style: theme.textTheme.bodySmall),
+                Text(context.l10n.videoClipText, style: theme.textTheme.bodySmall),
               const SizedBox(height: 12),
-              Text("Look", style: theme.textTheme.labelLarge),
+              Text(context.l10n.look, style: theme.textTheme.labelLarge),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 10,
@@ -433,7 +436,7 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
                           children: [
                             CardPreview(gameId: widget.gameId, card: _card(style: style), width: 120),
                             const SizedBox(height: 4),
-                            Text(style.uiString, style: theme.textTheme.labelSmall),
+                            Text(context.l10n.cardStyle(style), style: theme.textTheme.labelSmall),
                           ],
                         ),
                       ),
@@ -450,10 +453,10 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
             style: TextButton.styleFrom(foregroundColor: scheme.error),
             onPressed: () => Navigator.of(context).pop(CardEditorDialog.removed),
             icon: const Icon(Icons.delete_outline),
-            label: const Text("Remove card"),
+            label: Text(context.l10n.removeCard),
           ),
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Cancel")),
-        FilledButton(onPressed: () => Navigator.of(context).pop(_card()), child: Text(widget.isNew ? "Add" : "Save")),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.cancel)),
+        FilledButton(onPressed: () => Navigator.of(context).pop(_card()), child: Text(widget.isNew ? context.l10n.add : context.l10n.save)),
       ],
     );
   }

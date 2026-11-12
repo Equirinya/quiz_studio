@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// Shows [question] as the audience will see it.
 Future<void> showQuestionPreview(
@@ -88,18 +89,18 @@ class _QuestionPreviewState extends State<QuestionPreview> {
               if (steps > 0) ...[
                 IconButton(
                   icon: const Icon(Icons.navigate_before),
-                  tooltip: "Hide one",
+                  tooltip: context.l10n.hideOne,
                   onPressed: _revealed == 0 ? null : () => setState(() => _revealed--),
                 ),
-                Text("$_revealed of $steps revealed"),
+                Text(context.l10n.revealedOf(_revealed, steps)),
                 IconButton(
                   icon: const Icon(Icons.navigate_next),
-                  tooltip: "Reveal next",
+                  tooltip: context.l10n.revealNext,
                   onPressed: _revealed >= steps ? null : () => setState(() => _revealed++),
                 ),
               ],
               const Spacer(),
-              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Close")),
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.close)),
             ],
           ),
         ),

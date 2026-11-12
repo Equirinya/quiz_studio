@@ -18,6 +18,7 @@ import 'package:quiz_show/features/session/widgets/score_pop.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/game/game.dart';
 import 'package:quiz_show/features/session/pages/rapid_fire_display.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// What the audience sees: scores, the board, and the open question as far
 /// as the gamemaster has revealed it. Everything scales with the screen
@@ -40,7 +41,7 @@ class PresenterView extends StatelessWidget {
         final game = connection.game.value;
         if (state == null) return const Center(child: CupertinoActivityIndicator());
         if (game == null) {
-          return Center(child: Text("Waiting for a game…", style: Theme.of(context).textTheme.headlineSmall));
+          return Center(child: Text(context.l10n.waitingForGame, style: Theme.of(context).textTheme.headlineSmall));
         }
         final group = game.group(state.groupId) ?? game.groups.firstOrNull;
         final base = Theme.of(context);
@@ -216,7 +217,7 @@ class _Scores extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            "${question?.amountBet == null ? "Bet" : "Goal"} ${bets[team.id] ?? 0}",
+                            question?.amountBet == null ? context.l10n.betValue(bets[team.id] ?? 0) : context.l10n.goalValue(bets[team.id] ?? 0),
                             style: TextStyle(fontSize: unit * 2.2, fontWeight: FontWeight.w600, color: text ?? scheme.primary),
                           ),
                           // Amount bets: reached or missed, once judged.
@@ -290,7 +291,7 @@ class BettingDisplay extends StatelessWidget {
               Flexible(
                 child: Text.rich(
                   TextSpan(children: [
-                    TextSpan(text: prompt.isNotEmpty ? prompt : (amount != null ? "How many can you do?" : (shown ? "The bets" : "Place your bets"))),
+                    TextSpan(text: prompt.isNotEmpty ? prompt : (amount != null ? context.l10n.howManyCanYouDo : (shown ? context.l10n.theBets : context.l10n.placeYourBets))),
                     if (amount == null && category != null)
                       TextSpan(text: "  ·  ${category!}", style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w500)),
                   ]),
@@ -388,10 +389,10 @@ class BettingDisplay extends StatelessWidget {
             padding: EdgeInsets.only(top: unit * 3),
             child: Text(
               amount == null
-                  ? "Right wins your bet, wrong loses it"
+                  ? context.l10n.betRule
                   : question!.pointsMinus > 0
-                  ? "Reach your number: ${question!.pointsPlus} points for each one · miss it: −${question!.pointsMinus} for each"
-                  : "Reach your number: ${question!.pointsPlus} points for each one",
+                  ? context.l10n.amountRuleWithMinus(question!.pointsPlus, question!.pointsMinus)
+                  : context.l10n.amountRule(question!.pointsPlus),
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: unit * 2.8, color: scheme.onSurfaceVariant),
             ),
@@ -603,6 +604,7 @@ class QuestionDisplay extends StatelessWidget {
               state: state,
               round: round,
               unit: unit,
+              places: question.byCloseness ? closenessPlaces(state) : const {},
               backgroundImage: _file(round.spec.backgroundImage) == null ? null : FileImage(_file(round.spec.backgroundImage)!),
             ),
           )
@@ -982,7 +984,7 @@ class _ConnectionsDisplay extends StatelessWidget {
     return Column(
       children: [
         Text(
-          question.text.isEmpty ? "Find four groups of four" : question.text,
+          question.text.isEmpty ? context.l10n.findFourGroups : question.text,
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -1262,9 +1264,12 @@ class _Tiles extends StatelessWidget {
 /// left, and the answers the gamemaster has shown so far, each with its
 /// ruling once there is one.
 class _AnswerRoundDisplay extends StatelessWidget {
-  const _AnswerRoundDisplay({required this.state, required this.round, required this.unit, this.backgroundImage});
+  const _AnswerRoundDisplay({required this.state, required this.round, required this.unit, this.places = const {}, this.backgroundImage});
 
   final ImageProvider? backgroundImage;
+
+  /// By closeness: each team's place, 0 = first.
+  final Map<String, int> places;
 
   final SessionState state;
   final AnswerRound round;
@@ -1345,6 +1350,8 @@ class _AnswerRoundDisplay extends StatelessWidget {
                                   final verdict = state.results.verdicts[team.id];
                                   // Shown once it is on the scoreboard, not while it is being rated.
                                   final awarded = state.results.given[team.id];
+                                  final place = verdict == null ? places[team.id] : null;
+                                  final medal = place == null ? null : _placeColors.elementAtOrNull(place);
                                   final took = round.answers[team.id]?.secondsTaken(round);
                                   return Container(
                                     margin: EdgeInsets.symmetric(horizontal: unit * 0.8),
@@ -1355,7 +1362,7 @@ class _AnswerRoundDisplay extends StatelessWidget {
                                       border: Border.all(
                                         width: unit * 0.5,
                                         color: verdict == null
-                                            ? Colors.transparent
+                                            ? (medal ?? Colors.transparent)
                                             : verdict
                                             ? Colors.green
                                             : scheme.error,
@@ -1379,6 +1386,15 @@ class _AnswerRoundDisplay extends StatelessWidget {
                                                 "  ${took.toStringAsFixed(1)} s",
                                                 style: TextStyle(fontSize: unit * 2.2, color: scheme.outline),
                                               ),
+                                            if (place != null) ...[
+                                              SizedBox(width: unit),
+                                              _PlaceBadge(place: place, color: medal, unit: unit),
+                                              if (awarded != null && awarded != 0)
+                                                Text(
+                                                  " +$awarded",
+                                                  style: TextStyle(fontSize: unit * 2.6, fontWeight: FontWeight.w700),
+                                                ),
+                                            ],
                                             if (verdict != null) ...[
                                               SizedBox(width: unit),
                                               Icon(
@@ -1440,6 +1456,31 @@ class _AnswerRoundDisplay extends StatelessWidget {
 }
 
 /// [items] in rows of [perRow].
+/// Gold, silver and bronze for the first three places.
+const _placeColors = [Color(0xFFE0B526), Color(0xFFA8B0B8), Color(0xFFC07A3E)];
+
+/// "1st", "2nd", … on a round badge, in the place's colour from the podium.
+class _PlaceBadge extends StatelessWidget {
+  const _PlaceBadge({required this.place, required this.color, required this.unit});
+
+  final int place;
+  final Color? color;
+  final double unit;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: unit * 1.2, vertical: unit * 0.3),
+      decoration: BoxDecoration(color: color ?? scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(unit * 2)),
+      child: Text(
+        context.l10n.ordinal(place + 1),
+        style: TextStyle(fontSize: unit * 2.4, fontWeight: FontWeight.w800, color: color == null ? scheme.onSurface : Colors.black87),
+      ),
+    );
+  }
+}
+
 List<List<T>> _rowsOf<T>(List<T> items, int perRow) => [
   for (var start = 0; start < items.length; start += perRow)
     items.sublist(start, start + perRow > items.length ? items.length : start + perRow),

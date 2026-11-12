@@ -22,6 +22,7 @@ import 'features/session/presenter_window.dart';
 import 'features/session/session_links.dart';
 import 'features/settings/account_page.dart';
 import 'firebase_options.dart';
+import 'l10n/l10n.dart';
 
 void main(List<String> args) async {
   // A second window showing a show the main window runs; see PresenterWindow.
@@ -44,6 +45,7 @@ void main(List<String> args) async {
     FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: false);
   }
   await MediaService.instance.init();
+  await AppLanguage.load();
   runApp(const MyApp());
 }
 
@@ -52,13 +54,20 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(Brightness.light),
-      darkTheme: buildAppTheme(Brightness.dark),
-      // An installed version below `config/app.minRequiredVersion` never
-      // reaches onboarding or the app.
-      home: const VersionGate(child: AuthGate(child: HomePage())),
+    return ValueListenableBuilder(
+      valueListenable: AppLanguage.locale,
+      builder: (context, locale, _) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        onGenerateTitle: (context) => context.l10n.appTitle,
+        theme: buildAppTheme(Brightness.light),
+        darkTheme: buildAppTheme(Brightness.dark),
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        // An installed version below `config/app.minRequiredVersion` never
+        // reaches onboarding or the app.
+        home: const VersionGate(child: AuthGate(child: HomePage())),
+      ),
     );
   }
 }
@@ -110,7 +119,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
-            tooltip: "Account",
+            tooltip: context.l10n.account,
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AccountPage())),
           ),
         ],
@@ -119,9 +128,9 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (index) => setState(() => _tab = index),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz), label: "Games"),
-          NavigationDestination(icon: Icon(Icons.live_tv_outlined), selectedIcon: Icon(Icons.live_tv), label: "Sessions"),
+        destinations: [
+          NavigationDestination(icon: const Icon(Icons.quiz_outlined), selectedIcon: const Icon(Icons.quiz), label: context.l10n.navGames),
+          NavigationDestination(icon: const Icon(Icons.live_tv_outlined), selectedIcon: const Icon(Icons.live_tv), label: context.l10n.navSessions),
         ],
       ),
     );

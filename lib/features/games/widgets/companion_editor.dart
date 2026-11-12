@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:quiz_show/features/games/widgets/editor_section.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// Sets up what the teams' own devices show while a question is open: a
 /// whiteboard, a number to enter, items to sort, and so on. Stored on the
@@ -17,14 +18,6 @@ class CompanionEditor extends StatefulWidget {
   @override
   State<CompanionEditor> createState() => _CompanionEditorState();
 }
-
-const Map<String, String> _backgroundNames = {
-  'blank': "Blank",
-  'lines': "Ruled",
-  'grid': "Squared",
-  'list': "Numbered list",
-  'image': "Picture",
-};
 
 class _CompanionEditorState extends State<CompanionEditor> {
   late CompanionKind? _kind;
@@ -171,11 +164,10 @@ class _CompanionEditorState extends State<CompanionEditor> {
       children: [
         Text(
           connections
-              ? "Every team solves the puzzle on its own device. You see live which groups each team has found."
+              ? context.l10n.connectionsDevicesText
               : kind == null
-              ? "Choose a screen to open on every team's device with the question. You see the answers as they are written "
-                    "and decide when to show them."
-              : "Opens on every team's device with the question. You see the answers as they are written and decide when to show them.",
+              ? context.l10n.chooseDeviceScreenText
+              : context.l10n.deviceScreenText,
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: 12),
@@ -184,17 +176,17 @@ class _CompanionEditorState extends State<CompanionEditor> {
           children: [
             if (!connections)
               FillDropdown<String>(
-                label: "On the devices",
+                label: context.l10n.onTheDevicesShort,
                 value: kind?.name ?? (_phoneBuzzer ? _buzzer : _nothing),
                 entries: [
-                  if (_canBuzz) const DropdownMenuEntry(value: _buzzer, label: "Buzzer"),
-                  const DropdownMenuEntry(value: _nothing, label: "Nothing"),
+                  if (_canBuzz) DropdownMenuEntry(value: _buzzer, label: context.l10n.buzzer),
+                  DropdownMenuEntry(value: _nothing, label: context.l10n.nothing),
                   for (final option in companionKindsFor(widget.question.type, current: kind))
                     DropdownMenuEntry(
                       value: option.name,
-                      label: option.uiString,
+                      label: context.l10n.companionKind(option),
                       trailingIcon: option == recommendedCompanionKind(widget.question.type)
-                          ? const Tooltip(message: "Recommended", child: Icon(Icons.star_outline, size: 18))
+                          ? Tooltip(message: context.l10n.recommended, child: const Icon(Icons.star_outline, size: 18))
                           : null,
                     ),
                 ],
@@ -207,21 +199,21 @@ class _CompanionEditorState extends State<CompanionEditor> {
             TimerDropdown(seconds: _timer, onChanged: (value) => _change(() => _timer = value)),
             if (connections)
               FillDropdown<int>(
-                label: "Mistakes allowed",
+                label: context.l10n.mistakesAllowed,
                 value: _mistakes,
                 entries: [for (var n = 1; n <= 6; n++) DropdownMenuEntry(value: n, label: "$n")],
                 onSelected: (value) => _change(() => _mistakes = value ?? 3),
               ),
             if (kind == CompanionKind.whiteboard)
               FillDropdown<String>(
-                label: "Paper",
+                label: context.l10n.paper,
                 value: _background,
-                entries: [for (final entry in _backgroundNames.entries) DropdownMenuEntry(value: entry.key, label: entry.value)],
+                entries: [for (final name in whiteboardBackgrounds) DropdownMenuEntry(value: name, label: context.l10n.paperName(name))],
                 onSelected: (value) => _change(() => _background = value ?? 'blank'),
               ),
             if ((kind == CompanionKind.whiteboard && _background == 'list') || kind == CompanionKind.list)
               FillDropdown<int>(
-                label: "Rows",
+                label: context.l10n.rows,
                 value: _listRows,
                 entries: [for (var rows = 2; rows <= 12; rows++) DropdownMenuEntry(value: rows, label: "$rows")],
                 onSelected: (value) => _change(() => _listRows = value ?? 5),
@@ -239,7 +231,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
                   name: _backgroundImage,
                   onChanged: (name) => _change(() => _backgroundImage = name),
                 ),
-                Expanded(child: Text(_backgroundImage == null ? "Choose the picture to draw on" : "Picture set")),
+                Expanded(child: Text(_backgroundImage == null ? context.l10n.choosePictureToDrawOn : context.l10n.pictureSet)),
               ],
             ),
           ),
@@ -247,28 +239,28 @@ class _CompanionEditorState extends State<CompanionEditor> {
           const SizedBox(height: 12),
           FieldGrid(
             children: [
-              if (kind == CompanionKind.slider) ...[_number(_min, "From"), _number(_max, "To"), _number(_step, "Step")],
+              if (kind == CompanionKind.slider) ...[_number(_min, context.l10n.from), _number(_max, context.l10n.to), _number(_step, context.l10n.step)],
               TextField(
                 controller: _unit,
-                decoration: const InputDecoration(labelText: "Unit", isDense: true),
+                decoration: InputDecoration(labelText: context.l10n.unit, isDense: true),
                 onChanged: (_) => _write(),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          FieldGrid(children: [_number(_solution, "Right value"), _number(_tolerance, "Right within ±")]),
+          FieldGrid(children: [_number(_solution, context.l10n.rightValue), _number(_tolerance, context.l10n.rightWithin)]),
         ],
         if (kind == null && free && !_phoneBuzzer)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text("No buzzing at all"),
-            subtitle: const Text("Buzzer boxes stay off too, e.g. for estimation questions"),
+            title: Text(context.l10n.noBuzzingAtAll),
+            subtitle: Text(context.l10n.noBuzzingAtAllText),
             value: _noBuzzer,
             onChanged: (value) => _change(() => _noBuzzer = value),
           ),
         if (kind != null)
           LockInSwitch(
-            title: connections ? "Teams can stop early" : "Teams can lock in early",
+            title: connections ? context.l10n.teamsCanStopEarly : context.l10n.teamsCanLockIn,
             value: _lockable,
             onChanged: (value) => _change(() => _lockable = value),
           ),
@@ -276,8 +268,8 @@ class _CompanionEditorState extends State<CompanionEditor> {
           const SizedBox(height: 12),
           Text(
             kind == CompanionKind.order
-                ? "Enter the items in the right order. The teams get them shuffled."
-                : "Enter each pair. The teams get the right-hand side shuffled.",
+                ? context.l10n.orderEditorText
+                : context.l10n.matchEditorText,
             style: theme.textTheme.bodySmall,
           ),
           for (var i = 0; i < _options.length; i++)
@@ -289,7 +281,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
                   Expanded(
                     child: TextField(
                       controller: _options[i],
-                      decoration: InputDecoration(labelText: kind == CompanionKind.match ? "Left" : "Item", isDense: true),
+                      decoration: InputDecoration(labelText: kind == CompanionKind.match ? context.l10n.matchLeft : context.l10n.item, isDense: true),
                       onChanged: (_) => _write(),
                     ),
                   ),
@@ -298,14 +290,14 @@ class _CompanionEditorState extends State<CompanionEditor> {
                     Expanded(
                       child: TextField(
                         controller: _targets[i],
-                        decoration: const InputDecoration(labelText: "Right", isDense: true),
+                        decoration: InputDecoration(labelText: context.l10n.matchRight, isDense: true),
                         onChanged: (_) => _write(),
                       ),
                     ),
                   ],
                   IconButton(
                     icon: const Icon(Icons.close),
-                    tooltip: "Remove",
+                    tooltip: context.l10n.remove,
                     onPressed: () => _change(() {
                       final removed = [_options.removeAt(i), _targets.removeAt(i)];
                       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -326,7 +318,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
                 _targets.add(TextEditingController());
               }),
               icon: const Icon(Icons.add),
-              label: Text(kind == CompanionKind.match ? "Add pair" : "Add item"),
+              label: Text(kind == CompanionKind.match ? context.l10n.addPair : context.l10n.addItem),
             ),
           ),
         ],
@@ -361,45 +353,45 @@ List<CompanionKind> companionKindsFor(QuestionType type, {CompanionKind? current
 CompanionKind? recommendedCompanionKind(QuestionType type) => type == QuestionType.abcd ? CompanionKind.choice : null;
 
 /// How teams answer [question], in one line: "Slider 1900–2020 · right 1989 ±2 · timer 0:30".
-String answeringSummary(Question question) {
+String answeringSummary(AppLocalizations l10n, Question question) {
   String n(double? v) => v == null ? '?' : formatNumber(v);
-  String? timer(int? seconds) => seconds == null ? null : "timer ${timerLabel(seconds)}";
+  String? timer(int? seconds) => seconds == null ? null : l10n.timerSummary(timerLabel(seconds, l10n));
   final companion = question.companion;
   final parts = switch (question.type) {
     QuestionType.rapidFire => [
-      (question.rapidFire?.mode ?? RapidMode.buzzer).uiString,
-      "progress: ${(question.rapidFire?.progress ?? ProgressStyle.values.first).uiString.toLowerCase()}",
+      l10n.rapidMode(question.rapidFire?.mode ?? RapidMode.buzzer),
+      l10n.progressSummary(l10n.inline(l10n.progressStyle(question.rapidFire?.progress ?? ProgressStyle.values.first))),
     ],
     QuestionType.topAnswers => [
-      (question.topAnswers?.mode ?? TopAnswersMode.buzzer).uiString,
+      l10n.topAnswersMode(question.topAnswers?.mode ?? TopAnswersMode.buzzer),
       ?timer(companion?.timerSeconds),
     ],
-    QuestionType.matching => ["On the devices", ?timer(companion?.timerSeconds)],
+    QuestionType.matching => [l10n.onTheDevicesShort, ?timer(companion?.timerSeconds)],
     QuestionType.connections => [
-      "On the devices",
+      l10n.onTheDevicesShort,
       ?timer(companion?.timerSeconds),
-      "${companion?.mistakes ?? 3} mistakes allowed",
+      l10n.mistakesAllowedSummary(companion?.mistakes ?? 3),
     ],
     _ when companion == null => [
       if (!question.buzzerable)
-        "Out loud, no buzzer"
+        l10n.outLoudNoBuzzer
       else if (question.noPhoneBuzzer)
-        "Buzzer boxes only"
+        l10n.buzzerBoxesOnly
       else
-        "Buzzer",
+        l10n.buzzer,
       ?timer(question.questionTimer),
     ],
     _ => [
       switch (companion.kind) {
-        CompanionKind.slider => "Slider ${n(companion.min)}–${n(companion.max)}",
-        CompanionKind.whiteboard => "Whiteboard, ${(_backgroundNames[companion.background] ?? "blank").toLowerCase()}",
-        CompanionKind.order => "Put ${companion.options.length} in order",
-        CompanionKind.match => "Match ${companion.options.length} pairs",
-        CompanionKind.list => "Answer list, ${companion.listRows} rows",
-        final kind => kind.uiString,
+        CompanionKind.slider => l10n.sliderSummary(n(companion.min), n(companion.max)),
+        CompanionKind.whiteboard => l10n.whiteboardSummary(l10n.inline(l10n.paperName(companion.background))),
+        CompanionKind.order => l10n.orderSummary(companion.options.length),
+        CompanionKind.match => l10n.matchSummary(companion.options.length),
+        CompanionKind.list => l10n.listSummary(companion.listRows),
+        final kind => l10n.companionKind(kind),
       },
       if (companion.solution != null)
-        "right ${n(companion.solution)}${companion.tolerance == null || companion.tolerance == 0 ? '' : ' ±${n(companion.tolerance)}'}"
+        "${l10n.rightShort} ${n(companion.solution)}${companion.tolerance == null || companion.tolerance == 0 ? '' : ' ±${n(companion.tolerance)}'}"
             "${companion.unit == null ? '' : ' ${companion.unit}'}",
       ?timer(companion.timerSeconds),
     ],

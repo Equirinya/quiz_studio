@@ -304,3 +304,4 @@ GoogleService-Info.plist
 
 # Golden-test diffs written when a screenshot test fails
 /tool/failures/
+tool/screenshots_de/

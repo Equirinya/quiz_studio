@@ -29,6 +29,9 @@ Future<void> _loadFonts() async {
   await (FontLoader('MaterialIcons')..addFont(read('MaterialIcons-Regular.otf'))).load();
 }
 
+/// Where the pictures go; the German run (german_screenshots_test.dart) changes it.
+String shotDir = 'screenshots';
+
 void main() {
   setUpAll(_loadFonts);
 
@@ -49,7 +52,7 @@ void main() {
   }
 
   Future<void> shot(WidgetTester tester, String name) async {
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/standing/$name.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('$shotDir/standing/$name.png'));
     expect(tester.takeException(), isNull);
   }
 

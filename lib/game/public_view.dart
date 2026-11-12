@@ -211,7 +211,11 @@ Map<String, dynamic> _visibleQuestion(SessionState state, Question question, Gam
       final item = rapid?.itemAt(state.revealed);
       view['itemCount'] = rapid?.items.length ?? 0;
       view['itemIndex'] = state.revealed;
-      if (item != null) view['text'] = item.question;
+      // The item becomes the question; the question itself stays above it.
+      if (item != null) {
+        view['text'] = item.question;
+        if (question.text.trim().isNotEmpty) view['lead'] = question.text;
+      }
     case QuestionType.matching:
       // The pairs travel in the answer round, without their pairing.
       break;

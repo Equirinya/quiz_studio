@@ -19,7 +19,7 @@ void main() {
 
   test('Fragenhagel: the next item, and a fanfare when the last one is done', () {
     final game = rapidGame();
-    var s = reduce(fixtureState(), const OpenQuestion(buzzerRound), game).state;
+    var s = reduce(reduce(fixtureState(), const OpenQuestion(buzzerRound), game).state, const Reveal(1), game).state;
     var r = reduce(s, const Reveal(1), game);
     expect(sounds(r), [effectNextItem]);
     r = reduce(r.state, const Buzz('red'), game);

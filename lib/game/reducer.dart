@@ -51,8 +51,9 @@ bool buzzersOpen(SessionState state, GameContent? game) {
   final ref = state.current;
   final question = ref == null ? null : game?.question(ref);
   if (question == null || !question.buzzerable) return false;
-  // A Fragenhagel whose last item is done has nothing left to buzz for.
-  if (question.type == QuestionType.rapidFire && state.revealed >= question.maxReveal) return false;
+  // A Fragenhagel buzzes for its items: not while only the question itself
+  // is up, and not once the last item is done.
+  if (question.type == QuestionType.rapidFire && (state.revealed < 0 || state.revealed >= question.maxReveal)) return false;
   return state.phase == Phase.question || (state.phase == Phase.buzzered && state.queueBuzzers);
 }
 
@@ -140,8 +141,9 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
         betting: opened.hasBets ? const Betting() : null,
         timer: opened.hasBets ? null : _timerFor(opened, now),
       );
-      // A Fragenhagel starts with its first item, sound and all.
-      return _ok(opened.type == QuestionType.rapidFire ? _rapidAt(next, opened, 0, now) : next, const [SoundEffect(effectQuestionOpen)]);
+      // A Fragenhagel starts with only the question itself on screen; the
+      // first "next" brings up its first item.
+      return _ok(opened.type == QuestionType.rapidFire ? _rapidAt(next, opened, -1, now) : next, const [SoundEffect(effectQuestionOpen)]);
 
     case CloseQuestion(:final markPlayed):
       if (s.current == null) return _no(s);
@@ -227,7 +229,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       if (correct && question.type == QuestionType.rapidFire) {
         // Right: the points, and straight on to the next item.
         final finished = s.revealed + 1 >= question.maxReveal;
-        return _ok(_rapidAt(s.copyWith(teams: _addPoints(s.teams, team, question.pointsPlus)), question, s.revealed + 1, now), [
+        return _ok(_rapidAt(_rapidScore(s, team, question.pointsPlus), question, s.revealed + 1, now), [
           const SoundEffect(effectAnswerCorrect),
           if (finished) const SoundEffect(effectFanfare),
         ]);
@@ -239,6 +241,9 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
           ).copyWith(teams: _addPoints(s.teams, team, pointsIfRight(s, question, team)), played: {...s.played, s.current!.key}),
           const [SoundEffect(effectAnswerCorrect)],
         );
+      }
+      if (question.type == QuestionType.rapidFire) {
+        return _ok(_nextBuzzer(_rapidScore(s, team, -question.pointsMinus), question), const [SoundEffect(effectAnswerWrong)]);
       }
       return _ok(_nextBuzzer(s, question).copyWith(teams: _addPoints(s.teams, team, -pointsIfWrong(s, question, team))), const [
         SoundEffect(effectAnswerWrong),
@@ -263,15 +268,16 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
     case Reveal(:final delta):
       if (!questionOpen || question == null || delta == 0 || s.waitingForBets) return _no(s);
       final revealed = s.revealed + delta;
-      if (revealed < 0 || revealed > question.maxReveal) return _no(s);
-      if (question.type == QuestionType.rapidFire) {
+      final rapid = question.type == QuestionType.rapidFire;
+      // A Fragenhagel goes back as far as the question itself (-1).
+      if (revealed < (rapid ? -1 : 0) || revealed > question.maxReveal) return _no(s);
+      if (rapid) {
         final devices = question.rapidFire?.mode == RapidMode.devices;
-        // Points for an item on the devices are given when moving on, so
-        // going back would count them twice.
-        if (devices && delta < 0) return _no(s);
-        final scored = devices ? _scoreRapidItem(s, question) : s;
+        if (delta < 0) return _ok(_rapidBack(s, question, revealed, now));
+        // On the devices an item is scored as the gamemaster moves on.
+        final scored = devices && s.revealed >= 0 ? _scoreRapidItem(s, question) : s;
         final finished = revealed >= question.maxReveal;
-        return _ok(_rapidAt(scored, question, revealed, now), [if (delta > 0) SoundEffect(finished ? effectFanfare : effectNextItem)]);
+        return _ok(_rapidAt(scored, question, revealed, now), [SoundEffect(finished ? effectFanfare : effectNextItem)]);
       }
       // The enlarged image follows a new reveal and never points past the
       // last revealed one.
@@ -742,6 +748,7 @@ SessionState _backToBoard(SessionState s) => s.copyWith(
   timer: null,
   results: const Results(),
   standing: null,
+  rapidSteps: const {},
 );
 
 /// After a wrong answer: the next queued team is up, or the question reopens.
@@ -751,10 +758,11 @@ SessionState _nextBuzzer(SessionState s, Question question) {
 }
 
 /// A Fragenhagel at item [index]: everyone may answer again, the item's sound
-/// plays, and on the devices a fresh round asks it. At the end nothing is
-/// asked any more.
+/// plays, and on the devices a fresh round asks it. Before the first item
+/// (-1) and after the last nothing is asked.
 SessionState _rapidAt(SessionState s, Question question, int index, int? now) {
   final done = index >= question.maxReveal;
+  final asking = !done && index >= 0;
   final music = done ? null : question.musicAt(index);
   final companion = question.companion;
   return s.copyWith(
@@ -764,7 +772,43 @@ SessionState _rapidAt(SessionState s, Question question, int index, int? now) {
     wrongAttempts: 0,
     media: music == null ? MediaPlayback.stopped : MediaPlayback.playing,
     music: music == null ? _keepTimer : null,
-    answerRound: companion == null || done ? null : _newRound(companion, now),
+    answerRound: companion == null || !asking ? null : _newRound(companion, now),
+  );
+}
+
+/// Fragenhagel: [delta] points for [teamId] on the item being asked, noted
+/// so that going back can take them back.
+SessionState _rapidScore(SessionState s, String teamId, int delta) => s.copyWith(
+  teams: _addPoints(s.teams, teamId, delta),
+  rapidSteps: {...s.rapidSteps, s.revealed: (s.rapidSteps[s.revealed] ?? const RapidStep()).withPoints(teamId, delta)},
+);
+
+/// Fragenhagel, one step back to item [index], e.g. after a "next" by
+/// mistake: everything scored on that item and after it is taken back, so it
+/// can be played again, and on the devices the teams' picks come back.
+SessionState _rapidBack(SessionState s, Question question, int index, int? now) {
+  var teams = s.teams;
+  final kept = <int, RapidStep>{};
+  for (final MapEntry(key: item, value: step) in s.rapidSteps.entries) {
+    if (item < index) {
+      kept[item] = step;
+      continue;
+    }
+    for (final MapEntry(key: teamId, value: delta) in step.points.entries) {
+      teams = _addPoints(teams, teamId, -delta);
+    }
+  }
+  final back = _rapidAt(s.copyWith(teams: teams, rapidSteps: kept), question, index, now);
+  final picks = s.rapidSteps[index]?.picks ?? const {};
+  final round = back.answerRound;
+  if (round == null || picks.isEmpty) return back;
+  return back.copyWith(
+    answerRound: round.copyWith(
+      answers: {
+        for (final MapEntry(key: teamId, value: choice) in picks.entries)
+          if (back.team(teamId) != null) teamId: PlayerAnswer(choice: choice),
+      },
+    ),
   );
 }
 
@@ -775,14 +819,16 @@ SessionState _scoreRapidItem(SessionState s, Question question) {
   final item = question.rapidFire?.itemAt(s.revealed);
   final round = s.answerRound;
   if (item == null || round == null) return s;
-  var teams = s.teams;
+  var scored = s;
   for (final team in s.teams) {
     final choice = round.answers[team.id]?.choice;
     if (choice == null) continue;
     final right = (choice == 0) == item.isTrue;
-    teams = _addPoints(teams, team.id, right ? question.pointsPlus : -question.pointsMinus);
+    scored = _rapidScore(scored, team.id, right ? question.pointsPlus : -question.pointsMinus);
+    final step = scored.rapidSteps[s.revealed]!;
+    scored = scored.copyWith(rapidSteps: {...scored.rapidSteps, s.revealed: step.withPick(team.id, choice)});
   }
-  return s.copyWith(teams: teams);
+  return scored;
 }
 
 bool _feudAnswering(SessionState s, Question? question) =>

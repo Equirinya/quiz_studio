@@ -11,6 +11,7 @@ import 'package:quiz_show/features/auth/user_service.dart';
 import 'package:quiz_show/features/auth/widgets/auth_form.dart';
 import 'package:quiz_show/features/settings/account_deletion.dart';
 import 'package:quiz_show/features/settings/sound_credits.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 const String _termsUrl = 'https://equirinya.github.io/quiz_studio/terms.html';
 const String _privacyUrl = 'https://equirinya.github.io/quiz_studio/privacy.html';
@@ -40,11 +41,12 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Future<void> _rename() async {
-    final name = await promptText(context, title: "Your name", initial: _username ?? '', label: "The name others see");
+    final l10n = context.l10n;
+    final name = await promptText(context, title: l10n.yourName, initial: _username ?? '', label: l10n.theNameOthersSee);
     if (name == null || !mounted) return;
     if (name.length < kUsernameMinLength || name.length > kUsernameMaxLength) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("A name needs between $kUsernameMinLength and $kUsernameMaxLength characters.")),
+        SnackBar(content: Text(l10n.nameLength(kUsernameMinLength, kUsernameMaxLength))),
       );
       return;
     }
@@ -55,6 +57,7 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Future<void> _upgrade() async {
+    final l10n = context.l10n;
     final done = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -64,11 +67,11 @@ class _AccountPageState extends State<AccountPage> {
         child: SingleChildScrollView(
           child: AuthForm(
             mode: AuthFormMode.register,
-            title: "Add email and password",
-            subtitle: "Your games stay with this account. Afterwards you can sign in to it on your other devices.",
-            submitText: "Save",
+            title: l10n.addEmailAndPassword,
+            subtitle: l10n.upgradeSubtitle,
+            submitText: l10n.save,
             autofocus: true,
-            onSubmit: UserService.instance.addEmailAndPassword,
+            onSubmit: (email, password) => UserService.instance.addEmailAndPassword(email, password, l10n),
             onSuccess: () => Navigator.of(context).pop(true),
           ),
         ),
@@ -76,20 +79,20 @@ class _AccountPageState extends State<AccountPage> {
     );
     if (done == true && mounted) {
       setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Done. This account now has an email address.")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.upgradeDone)));
     }
   }
 
   Future<void> _signOut(bool guest) async {
     final navigator = Navigator.of(context);
+    final l10n = context.l10n;
     final sure = await confirm(
       context,
-      title: "Sign out",
+      title: l10n.signOut,
       message: guest
-          ? "You are signed in as a guest. Signing out loses this account and the games only it can access. "
-              "Add an email address first to keep them."
-          : "You can sign in again with your email address and password.",
-      action: "Sign out",
+          ? l10n.signOutGuestWarning
+          : l10n.signOutInfo,
+      action: l10n.signOut,
     );
     if (!sure) return;
     navigator.popUntil((route) => route.isFirst);
@@ -103,27 +106,28 @@ class _AccountPageState extends State<AccountPage> {
     if (user == null) return;
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     final password = await showDialog<String>(context: context, builder: (_) => DeleteAccountDialog(email: user.email));
     if (password == null || !mounted) return;
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const PopScope(
+      builder: (_) => PopScope(
         canPop: false,
-        child: AlertDialog(content: Row(children: [CircularProgressIndicator(), SizedBox(width: 20), Expanded(child: Text("Deleting your account…"))])),
+        child: AlertDialog(content: Row(children: [const CircularProgressIndicator(), const SizedBox(width: 20), Expanded(child: Text(l10n.deletingAccount))])),
       ),
     );
     try {
       await Assistant.instance.stop();
       await deleteAccount(password: user.email == null ? null : password);
       navigator.popUntil((route) => route.isFirst);
-      messenger.showSnackBar(const SnackBar(content: Text("Your account and its data are deleted.")));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.accountDeleted)));
     } on FirebaseAuthException catch (e) {
       navigator.pop();
-      messenger.showSnackBar(SnackBar(content: Text(deletionErrorMessage(e.code))));
+      messenger.showSnackBar(SnackBar(content: Text(deletionErrorMessage(l10n, e.code))));
     } catch (_) {
       navigator.pop();
-      messenger.showSnackBar(const SnackBar(content: Text("The account could not be deleted. Check the connection and try again.")));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.accountNotDeletedConnection)));
     }
   }
 
@@ -131,7 +135,7 @@ class _AccountPageState extends State<AccountPage> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
-      appBar: AppBar(title: const Text("Account")),
+      appBar: AppBar(title: Text(context.l10n.account)),
       body: AccountView(
         username: _username,
         email: user?.email,
@@ -186,13 +190,14 @@ class AccountView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final l10n = context.l10n;
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
       children: [
         ListTile(
           leading: const Icon(Icons.person_outline),
           title: Text(username ?? "…"),
-          subtitle: const Text("The name other players and co-authors see"),
+          subtitle: Text(l10n.nameSubtitle),
           trailing: const Icon(Icons.edit_outlined),
           onTap: onRename,
         ),
@@ -204,18 +209,17 @@ class AccountView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Guest account", style: theme.textTheme.titleMedium?.copyWith(color: scheme.onTertiaryContainer)),
+                Text(l10n.guestAccount, style: theme.textTheme.titleMedium?.copyWith(color: scheme.onTertiaryContainer)),
                 const SizedBox(height: 4),
                 Text(
-                  "Your games live only on this device's account. Add an email address and password to keep them "
-                  "safe and to sign in on your other devices, for example the PC that presents and the phone that controls.",
+                  l10n.guestAccountText,
                   style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onTertiaryContainer),
                 ),
                 const SizedBox(height: 12),
                 FilledButton.icon(
                   onPressed: onUpgrade,
                   icon: const Icon(Icons.mail_outline),
-                  label: const Text("Add email and password"),
+                  label: Text(l10n.addEmailAndPassword),
                 ),
               ],
             ),
@@ -224,36 +228,37 @@ class AccountView extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.mail_outline),
             title: Text(email ?? ""),
-            subtitle: const Text("Sign in with this address on your other devices"),
+            subtitle: Text(l10n.emailSubtitle),
           ),
-        ListTile(leading: const Icon(Icons.logout), title: const Text("Sign out"), onTap: onSignOut),
+        ListTile(leading: const Icon(Icons.logout), title: Text(l10n.signOut), onTap: onSignOut),
         if (onDelete != null)
           ListTile(
             leading: Icon(Icons.delete_forever_outlined, color: scheme.error),
-            title: Text("Delete account", style: TextStyle(color: scheme.error)),
-            subtitle: const Text("Your profile, your own games and your sessions"),
+            title: Text(l10n.deleteAccount, style: TextStyle(color: scheme.error)),
+            subtitle: Text(l10n.deleteAccountSubtitle),
             onTap: onDelete,
           ),
         if (assistant != null) ...[const Divider(height: 32), assistant!],
         const Divider(height: 32),
+        const LanguageTile(),
         ListTile(
           leading: const Icon(Icons.mail_outlined),
-          title: const Text("Contact"),
-          subtitle: const Text("Feedback, bug reports and feature requests"),
+          title: Text(l10n.contact),
+          subtitle: Text(l10n.contactSubtitle),
           onTap: () => _open(_contactMail),
         ),
-        ListTile(leading: const Icon(Icons.gavel_outlined), title: const Text("Terms"), onTap: () => _open(_termsUrl)),
-        ListTile(leading: const Icon(Icons.shield_outlined), title: const Text("Privacy"), onTap: () => _open(_privacyUrl)),
+        ListTile(leading: const Icon(Icons.gavel_outlined), title: Text(l10n.terms), onTap: () => _open(_termsUrl)),
+        ListTile(leading: const Icon(Icons.shield_outlined), title: Text(l10n.privacy), onTap: () => _open(_privacyUrl)),
         ListTile(
           leading: const Icon(Icons.info_outline),
-          title: const Text("About and licences"),
+          title: Text(l10n.aboutAndLicences),
           subtitle: Text(version == null ? "Quiz Studio" : "Quiz Studio $version"),
           onTap: () => showLicensePage(context: context, applicationName: "Quiz Studio", applicationVersion: version),
         ),
         ListTile(
           leading: const Icon(Icons.library_music_outlined),
-          title: const Text("Sound credits"),
-          subtitle: const Text("Where the built-in sounds are from"),
+          title: Text(l10n.soundCredits),
+          subtitle: Text(l10n.soundCreditsSubtitle),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SoundCreditsPage())),
         ),
       ],
@@ -285,36 +290,33 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final needsPassword = widget.email != null;
+    final l10n = context.l10n;
     return AlertDialog(
       icon: Icon(Icons.delete_forever_outlined, color: scheme.error),
-      title: const Text("Delete account?"),
+      title: Text(l10n.deleteAccountQuestion),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "This deletes your profile, the games only you are in, with their pictures and sounds, and the sessions you host. "
-            "Games you share stay with the others; if you are their only admin, a co-author becomes admin. "
-            "This cannot be undone.",
-          ),
+          Text(l10n.deleteAccountText),
           if (needsPassword) ...[
             const SizedBox(height: 16),
             TextField(
               controller: _password,
               obscureText: true,
               autofocus: true,
-              decoration: InputDecoration(labelText: "Password", helperText: widget.email),
+              decoration: InputDecoration(labelText: l10n.password, helperText: widget.email),
               onChanged: (_) => setState(() {}),
             ),
           ],
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Cancel")),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.cancel)),
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: scheme.error, foregroundColor: scheme.onError),
           onPressed: needsPassword && _password.text.isEmpty ? null : () => Navigator.of(context).pop(needsPassword ? _password.text : ''),
-          child: const Text("Delete"),
+          child: Text(l10n.delete),
         ),
       ],
     );
@@ -322,10 +324,57 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
 }
 
 /// What to tell someone whose account could not be deleted.
-String deletionErrorMessage(String code) => switch (code) {
-      'wrong-password' || 'invalid-credential' || 'invalid-login-credentials' => "That password is not right.",
-      'too-many-requests' => "Too many tries. Wait a moment and try again.",
-      'requires-recent-login' => "Sign out, sign in again and then delete the account.",
-      'network-request-failed' => "No connection. Try again when you are online.",
-      _ => "The account could not be deleted. Try again.",
+String deletionErrorMessage(AppLocalizations l10n, String code) => switch (code) {
+      'wrong-password' || 'invalid-credential' || 'invalid-login-credentials' => l10n.wrongPassword,
+      'too-many-requests' => l10n.tooManyTries,
+      'requires-recent-login' => l10n.requiresRecentLogin,
+      'network-request-failed' => l10n.noConnectionTryOnline,
+      _ => l10n.accountNotDeleted,
     };
+
+/// The app's language: the system's, German or English.
+class LanguageTile extends StatelessWidget {
+  const LanguageTile({super.key});
+
+  static String _name(AppLocalizations l10n, Locale? locale) => switch (locale?.languageCode) {
+    'de' => l10n.languageGerman,
+    'en' => l10n.languageEnglish,
+    _ => l10n.languageSystem,
+  };
+
+  Future<void> _pick(BuildContext context) async {
+    final l10n = context.l10n;
+    final current = AppLanguage.locale.value;
+    const choices = <Locale?>[null, Locale('de'), Locale('en')];
+    final picked = await showDialog<(Locale?,)>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(l10n.language),
+        children: [
+          for (final choice in choices)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop((choice,)),
+              child: Row(
+                children: [
+                  Expanded(child: Text(_name(l10n, choice))),
+                  if (choice?.languageCode == current?.languageCode) const Icon(Icons.check),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+    if (picked != null) await AppLanguage.set(picked.$1);
+  }
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder(
+    valueListenable: AppLanguage.locale,
+    builder: (context, locale, _) => ListTile(
+      leading: const Icon(Icons.translate),
+      title: Text(context.l10n.language),
+      subtitle: Text(_name(context.l10n, locale)),
+      onTap: () => _pick(context),
+    ),
+  );
+}

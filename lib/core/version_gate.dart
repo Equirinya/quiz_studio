@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:quiz_show/l10n/l10n.dart';
+
 /// Fallback store link, used when `config/app` doesn't provide one.
 const String _kAndroidPackage = 'de.equirinya.quizStudio';
 
@@ -156,7 +158,7 @@ class UpdateRequiredPage extends StatelessWidget {
     }
     if (opened || !context.mounted) return;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      const SnackBar(content: Text("Couldn't open the store")),
+      SnackBar(content: Text(context.l10n.couldNotOpenStore)),
     );
   }
 
@@ -168,7 +170,7 @@ class UpdateRequiredPage extends StatelessWidget {
       'android' => 'Play Store',
       'ios' || 'macos' => 'App Store',
       'windows' => 'Microsoft Store',
-      _ => 'download page',
+      _ => context.l10n.downloadPage,
     };
 
     // Back must not escape the gate — on Android it would otherwise pop straight
@@ -186,21 +188,20 @@ class UpdateRequiredPage extends StatelessWidget {
                   Icon(Icons.system_update, size: 56, color: scheme.primary),
                   const SizedBox(height: 24),
                   Text(
-                    'Update required',
+                    context.l10n.updateRequired,
                     style: Theme.of(context).textTheme.headlineSmall,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'This version of the app is no longer supported. '
-                    'Please update to continue.',
+                    context.l10n.updateRequiredText,
                     style: Theme.of(context).textTheme.bodyLarge,
                     textAlign: TextAlign.center,
                   ),
                   if (installedVersion != null && requiredVersion != null) ...[
                     const SizedBox(height: 16),
                     Text(
-                      'Installed $installedVersion · required $requiredVersion',
+                      context.l10n.installedAndRequired(installedVersion!, requiredVersion!),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: scheme.onSurfaceVariant,
                           ),
@@ -212,7 +213,7 @@ class UpdateRequiredPage extends StatelessWidget {
                     FilledButton.icon(
                       onPressed: () => _openStore(context, storeUrl),
                       icon: const Icon(Icons.open_in_new),
-                      label: Text('Open $storeName'),
+                      label: Text(context.l10n.openStore(storeName)),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size(220, 52),
                       ),

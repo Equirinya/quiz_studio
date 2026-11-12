@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// "Match pairs" on a team's device: every left-hand item has a slot, and the
 /// right-hand items wait in a tray until they are dragged onto one.
@@ -160,12 +161,12 @@ class _MatchInputState extends State<MatchInput> {
         final placed = _pairs.where((p) => p >= 0).length;
         final selected = _selected;
         final hint = !widget.enabled
-            ? "Your pairs"
+            ? context.l10n.yourPairs
             : selected != null
-            ? "Now tap where “${_text(selected)}” goes"
+            ? context.l10n.tapWhereItGoes(_text(selected))
             : placed == widget.left.length
-            ? "All placed · drag to swap"
-            : "Drag each answer onto its partner";
+            ? context.l10n.allPlacedSwap
+            : context.l10n.dragOntoPartner;
         final header = Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Row(
@@ -398,7 +399,7 @@ class _MatchInputState extends State<MatchInput> {
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Text(
-                        returning || _dragging != null ? "Drop here to take it back" : "All placed",
+                        returning || _dragging != null ? context.l10n.dropToTakeBack : context.l10n.allPlaced,
                         style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline),
                         textAlign: TextAlign.center,
                       ),

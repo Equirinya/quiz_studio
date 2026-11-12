@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The shape of a whiteboard on a device held sideways, and upright. A
 /// drawing remembers which it was made on, so it looks the same on the
@@ -395,7 +396,7 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              tooltip: "Undo",
+                              tooltip: context.l10n.undo,
                               icon: const Icon(Icons.undo),
                               color: Colors.black87,
                               onPressed: canEdit
@@ -406,7 +407,7 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
                                   : null,
                             ),
                             IconButton(
-                              tooltip: "Clear",
+                              tooltip: context.l10n.clear,
                               icon: const Icon(Icons.delete_outline),
                               color: scheme.error,
                               onPressed: canEdit

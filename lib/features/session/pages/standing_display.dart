@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// Last team standing on the big screen: the question, whose turn it is and
 /// this turn's prompt, and every team in turn order, crossed out once it is
@@ -55,7 +56,7 @@ class StandingDisplay extends StatelessWidget {
                       style: TextStyle(fontSize: unit * 9, fontWeight: FontWeight.w800),
                     ),
                     Text(
-                      "is the last team standing",
+                      context.l10n.isLastTeamStanding,
                       style: TextStyle(fontSize: unit * 4, color: scheme.primary),
                     ),
                   ] else ...[
@@ -67,7 +68,7 @@ class StandingDisplay extends StatelessWidget {
                           borderRadius: BorderRadius.circular(unit * 4),
                         ),
                         child: Text(
-                          "${current.name}'s turn",
+                          context.l10n.teamsTurn(current.name),
                           style: TextStyle(
                             fontSize: unit * 4.5,
                             fontWeight: FontWeight.w700,

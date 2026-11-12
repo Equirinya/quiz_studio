@@ -9,6 +9,8 @@
 ///     loses the minus points for each one bet
 ///   * by order: the first right team gets the points, each after it
 ///     [Question.rankStep] less; wrong loses the minus points
+///   * by closeness: the same by places, the team whose number is nearest
+///     the solution first, once the answering is closed
 /// Points worked out from the answer itself (part of the items right, an
 /// estimate, top answers found) or set by hand win over the rule.
 library;
@@ -71,6 +73,24 @@ List<String> rightInOrder(SessionState state) {
   ];
 }
 
+/// "By closeness": each team's place (0 = first) by how near its number is
+/// to the solution. Teams equally near share a place, and the next team is
+/// as many places further down as shared it (1st, 1st, 3rd). Empty while
+/// the teams may still answer, or without a solution.
+Map<String, int> closenessPlaces(SessionState state) {
+  final round = state.answerRound;
+  final solution = round?.spec.solution;
+  if (round == null || round.open || solution == null) return const {};
+  final distances = <String, double>{
+    for (final team in state.teams)
+      if (round.answers[team.id]?.number case final number?) team.id: (number - solution).abs(),
+  };
+  return {
+    for (final MapEntry(key: teamId, value: distance) in distances.entries)
+      teamId: distances.values.where((other) => other < distance - 1e-9).length,
+  };
+}
+
 /// What [teamId] is due for the open question as rated so far; null while it
 /// is not rated.
 int? pointsDue(SessionState state, Question question, String teamId) {
@@ -79,6 +99,10 @@ int? pointsDue(SessionState state, Question question, String teamId) {
   if (set != null) return set;
   final verdict = results.verdicts[teamId];
   if (verdict == false) return -pointsIfWrong(state, question, teamId);
+  if (question.byCloseness) {
+    final place = closenessPlaces(state)[teamId];
+    if (place != null) return placePoints(question, place);
+  }
   if (question.ranked) {
     final place = rightInOrder(state).indexOf(teamId);
     if (place >= 0) return placePoints(question, place);

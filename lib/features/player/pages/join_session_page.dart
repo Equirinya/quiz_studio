@@ -11,6 +11,7 @@ import 'package:quiz_show/features/session/pages/sessions_page.dart';
 import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// Joins a session from the code on the presenter's screen: scanned with the
 /// camera where there is one, pasted as a link everywhere.
@@ -64,7 +65,7 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
     if (_busy) return;
     final link = SessionJoinLink.tryParse(raw);
     if (link == null) {
-      setState(() => _error = "That is not a Quiz Studio session code.");
+      setState(() => _error = context.l10n.notASessionCode);
       return;
     }
     setState(() {
@@ -80,7 +81,7 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
         if (mounted) {
           setState(() {
             _busy = false;
-            _error = "Could not join. The code may no longer be valid.";
+            _error = context.l10n.couldNotJoinSession;
           });
         }
         return;
@@ -91,17 +92,17 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) =>
-            link.role == Role.player ? PlayerPage(link: link) : ControlPage(sessionId: link.sessionId, title: "Session", joinLink: link),
+            link.role == Role.player ? PlayerPage(link: link) : ControlPage(sessionId: link.sessionId, title: context.l10n.session, joinLink: link),
       ),
     );
   }
 
-  static String _ago(int millis) {
+  static String _ago(AppLocalizations l10n, int millis) {
     final minutes = (DateTime.now().millisecondsSinceEpoch - millis) ~/ 60000;
-    if (minutes < 2) return "just now";
-    if (minutes < 60) return "$minutes minutes ago";
-    if (minutes < 60 * 24) return "${minutes ~/ 60} hours ago";
-    return "${minutes ~/ (60 * 24)} days ago";
+    if (minutes < 2) return l10n.justNow;
+    if (minutes < 60) return l10n.minutesAgo(minutes);
+    if (minutes < 60 * 24) return l10n.hoursAgo(minutes ~/ 60);
+    return l10n.daysAgo(minutes ~/ (60 * 24));
   }
 
   @override
@@ -117,8 +118,8 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
               dense: true,
               contentPadding: EdgeInsets.zero,
               leading: Icon(recent.link.role == Role.player ? Icons.touch_app_outlined : Icons.tune),
-              title: Text(recent.link.role == Role.player ? "Rejoin as a team's device" : "Rejoin as controller"),
-              subtitle: Text("Joined ${_ago(recent.joinedAtMillis)}"),
+              title: Text(recent.link.role == Role.player ? context.l10n.rejoinAsTeam : context.l10n.rejoinAsController),
+              subtitle: Text(context.l10n.joinedAgo(_ago(context.l10n, recent.joinedAtMillis))),
               trailing: const Icon(Icons.chevron_right),
               onTap: _busy ? null : () => _join(recent.link.link),
             ),
@@ -126,13 +127,13 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
             controller: _link,
             enabled: !_busy,
             // Next to the camera it is the other way in; on its own, the only one.
-            decoration: InputDecoration(labelText: _scanner == null ? "Join link" : "Or paste the link", errorText: _error),
+            decoration: InputDecoration(labelText: _scanner == null ? context.l10n.joinLink : context.l10n.orPasteLink, errorText: _error),
             onSubmitted: _join,
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(onPressed: _busy ? null : () => _join(_link.text), child: const Text("Join")),
+            child: FilledButton(onPressed: _busy ? null : () => _join(_link.text), child: Text(context.l10n.join)),
           ),
           if (widget.asGuest)
             Padding(
@@ -140,10 +141,10 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
               child: TextButton(
                 onPressed: () =>
                     launchUrl(Uri.parse('https://equirinya.github.io/quiz_studio/privacy.html'), mode: LaunchMode.externalApplication),
-                child: const Text(
-                  "By joining you agree to the terms and privacy policy. No account or name needed.",
+                child: Text(
+                  context.l10n.joinTerms,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12),
+                  style: const TextStyle(fontSize: 12),
                 ),
               ),
             ),
@@ -151,7 +152,7 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
       ),
     );
     return Scaffold(
-      appBar: AppBar(title: const Text("Join a session")),
+      appBar: AppBar(title: Text(context.l10n.joinASession)),
       // Without a camera there is nothing to scan: the link is the way in.
       body: _scanner == null
           ? Center(
@@ -162,10 +163,10 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.link, size: 48, color: Theme.of(context).colorScheme.primary),
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(32, 16, 32, 0),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(32, 16, 32, 0),
                         child: Text(
-                          "Open \"Connect devices\" on the presenting device, copy the join link there and paste it here.",
+                          context.l10n.pasteJoinLinkHelp,
                           textAlign: TextAlign.center,
                         ),
                       ),

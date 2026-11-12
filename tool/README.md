@@ -14,8 +14,9 @@ other system reports small pixel differences; these are previews, not CI checks.
 | --- | --- |
 | `flutter test tool/screenshot_test.dart --update-goldens` | `tool/screenshots/`: sessions, controller, presenter, editors, buzzers, account |
 | `flutter test tool/rating_screenshot_test.dart --update-goldens` | `tool/screenshots/`: top answers and rating |
+| `flutter test tool/german_screenshots_test.dart --update-goldens` | `tool/screenshots_de/` (ignored by git): the screens of the tools above in German, to check that the German texts fit |
 | `flutter test tool/store_screenshots_test.dart --update-goldens` | `screenshots/<store size>/` for the store listings and `docs/images/` for the README and the website |
-| `flutter test tool/default_images_test.dart --update-goldens` | `assets/cards/`: the pictures that come with the app (then convert to JPEG, see the end of the file) |
+| `flutter test tool/default_images_test.dart --update-goldens` | `assets/cards/` and `assets/cards/de/`: the pictures that come with the app, in English and German (then convert to JPEG, see the end of the file) |
 
 `tool/store/showcase.dart` is the sample quiz the store screenshots show.
 

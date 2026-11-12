@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// Where the sounds that come with the app are from, and under what terms.
 /// Keep in step with assets/sounds/CREDITS.md.
@@ -97,22 +98,28 @@ class SoundCreditsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
+    String local(String text) => switch (text) {
+      "Made for Quiz Studio" => l10n.creditsMadeForApp,
+      "Made by Nikita Zaloga" => l10n.creditsMadeBy("Nikita Zaloga"),
+      "Part of the app" => l10n.creditsPartOfApp,
+      _ => text.replaceAll("(public domain)", l10n.creditsPublicDomain),
+    };
     return Scaffold(
-      appBar: AppBar(title: const Text("Sound credits")),
+      appBar: AppBar(title: Text(l10n.soundCredits)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
           Text(
-            "The sounds that come with Quiz Studio were made for it or are free to use in any project (CC0). "
-            "Tap a source to see where it is from.",
+            l10n.creditsIntro,
             style: theme.textTheme.bodyMedium,
           ),
           for (final source in soundSources) ...[
             const SizedBox(height: 16),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text(source.name, style: theme.textTheme.titleMedium),
-              subtitle: Text(source.licence),
+              title: Text(local(source.name), style: theme.textTheme.titleMedium),
+              subtitle: Text(local(source.licence)),
               trailing: source.url == null ? null : const Icon(Icons.open_in_new),
               onTap: source.url == null ? null : () => _open(source.url!),
             ),

@@ -4,21 +4,26 @@ import 'package:flutter/material.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
-const Map<String, String> _slotLabels = {musicBackground: "Board music", musicCalm: "Calm music", musicExciting: "Thrilling music"};
+String _slotLabel(AppLocalizations l10n, String slot) => switch (slot) {
+  musicBackground => l10n.boardMusic,
+  musicCalm => l10n.calmMusic,
+  _ => l10n.thrillingMusic,
+};
 
-const Map<String, String> _effectLabels = {
-  effectAnswerCorrect: "Right answer",
-  effectAnswerWrong: "Wrong answer",
-  effectAnswerClosed: "Question closed",
-  effectReveal: "Reveal",
-  effectQuestionOpen: "Question opens",
-  effectLockIn: "Team locks in",
-  effectNextItem: "Next Fragenhagel item",
-  effectCountdown: "Last 10 seconds",
-  effectTimesUp: "Time's up",
-  effectSteal: "Steal",
-  effectFanfare: "Fully solved",
+String _effectLabel(AppLocalizations l10n, String key) => switch (key) {
+  effectAnswerCorrect => l10n.effectRightAnswer,
+  effectAnswerWrong => l10n.effectWrongAnswer,
+  effectAnswerClosed => l10n.effectQuestionClosed,
+  effectReveal => l10n.effectReveal,
+  effectQuestionOpen => l10n.effectQuestionOpens,
+  effectLockIn => l10n.effectTeamLocksIn,
+  effectNextItem => l10n.effectNextItem,
+  effectCountdown => l10n.effectLastTenSeconds,
+  effectTimesUp => l10n.effectTimesUp,
+  effectSteal => l10n.effectSteal,
+  _ => l10n.effectFullySolved,
 };
 
 /// Music and sound effects of one level: the game, a group, a category or a
@@ -146,7 +151,7 @@ class _SoundsDialogState extends State<SoundsDialog> {
   }) {
     final isOwn = value != null && value != silentSound && !value.startsWith(builtinSoundPrefix);
     final picked = value == null ? null : builtins.where((sound) => sound.key == value).firstOrNull;
-    final fallbackLabel = widget.isGame ? (fallback == null ? "Nothing" : "App default: ${fallback.label}") : "As set above";
+    final fallbackLabel = widget.isGame ? (fallback == null ? context.l10n.nothing : context.l10n.appDefault(fallback.label)) : context.l10n.asSetAbove;
     // What the listen button plays: the choice, or what the default is here.
     final asset = picked?.asset ?? (value == null && widget.isGame ? fallback?.asset : null);
     final canListen = asset != null;
@@ -163,8 +168,8 @@ class _SoundsDialogState extends State<SoundsDialog> {
               items: [
                 DropdownMenuItem(value: '', child: Text(fallbackLabel)),
                 for (final sound in builtins) DropdownMenuItem(value: sound.key, child: Text(sound.label)),
-                const DropdownMenuItem(value: silentSound, child: Text("Silent")),
-                DropdownMenuItem(value: _ownFile, child: Text(isOwn ? "Own file" : "Own file…")),
+                DropdownMenuItem(value: silentSound, child: Text(context.l10n.silent)),
+                DropdownMenuItem(value: _ownFile, child: Text(isOwn ? context.l10n.ownFile : context.l10n.ownFileMenu)),
               ],
               onChanged: (next) {
                 if (next == null || next == _ownFile) {
@@ -180,7 +185,7 @@ class _SoundsDialogState extends State<SoundsDialog> {
           if (!isOwn)
             IconButton(
               icon: Icon(_playing == row ? Icons.stop : Icons.play_arrow),
-              tooltip: _playing == row ? "Stop" : "Listen",
+              tooltip: _playing == row ? context.l10n.stop : context.l10n.listen,
               onPressed: canListen ? () => _listen(row, asset, null) : null,
             ),
           if (isOwn || _choosingOwn.contains(row))
@@ -200,7 +205,7 @@ class _SoundsDialogState extends State<SoundsDialog> {
 
   Widget _effectRow(String key) => _choice(
     row: key,
-    label: _effectLabels[key]!,
+    label: _effectLabel(context.l10n, key),
     value: _builtIn[key],
     builtins: builtinSoundsFor(key),
     fallback: defaultEffectSounds[key] == null ? null : builtinSound(defaultEffectSounds[key]!),
@@ -212,7 +217,7 @@ class _SoundsDialogState extends State<SoundsDialog> {
 
   Widget _musicRow(String slot) => _choice(
     row: slot,
-    label: _slotLabels[slot]!,
+    label: _slotLabel(context.l10n, slot),
     value: _slots[slot],
     builtins: builtinMusicTracks,
     fallback: defaultMusicTrack(slot),
@@ -243,15 +248,15 @@ class _SoundsDialogState extends State<SoundsDialog> {
             children: [
               Text(
                 widget.isGame
-                    ? "What plays during this game. Anything not set uses the sounds that come with the app."
-                    : "Anything left on \"As set above\" comes from the board or the game.",
+                    ? context.l10n.soundsGameText
+                    : context.l10n.soundsLevelText,
                 style: theme.textTheme.bodySmall,
               ),
-              header("Music"),
+              header(context.l10n.music),
               for (final slot in musicSlots) _musicRow(slot),
-              header("Sounds at moments of the show"),
+              header(context.l10n.soundsAtMoments),
               for (final key in builtInEffects) _effectRow(key),
-              header("Your own effects"),
+              header(context.l10n.ownEffects),
               for (final effect in _custom)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
@@ -260,7 +265,7 @@ class _SoundsDialogState extends State<SoundsDialog> {
                       Expanded(
                         child: TextField(
                           controller: effect.name,
-                          decoration: const InputDecoration(labelText: "Name"),
+                          decoration: InputDecoration(labelText: context.l10n.name),
                           onChanged: (_) => _saveEffects(),
                         ),
                       ),
@@ -275,7 +280,7 @@ class _SoundsDialogState extends State<SoundsDialog> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
-                        tooltip: "Remove",
+                        tooltip: context.l10n.remove,
                         onPressed: () {
                           setState(() => _custom.remove(effect));
                           _saveEffects();
@@ -290,14 +295,14 @@ class _SoundsDialogState extends State<SoundsDialog> {
                 child: TextButton.icon(
                   onPressed: () => setState(() => _custom.add(_CustomEffect('', null))),
                   icon: const Icon(Icons.add),
-                  label: const Text("Add effect"),
+                  label: Text(context.l10n.addEffect),
                 ),
               ),
             ],
           ),
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Done"))],
+      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.done))],
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/games/widgets/map_editor.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The map of one category group, to arrange by hand.
 class MapEditorPage extends StatefulWidget {
@@ -23,12 +24,13 @@ class _MapEditorPageState extends State<MapEditorPage> {
 
   Future<String?> _pickImage() async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     final path = await MediaKind.image.pick();
     if (path == null) return null;
     try {
       return await MediaService.instance.upload(widget.gameId, path);
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text("Could not upload the picture.")));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.couldNotUploadPicture)));
       return null;
     }
   }
@@ -40,9 +42,9 @@ class _MapEditorPageState extends State<MapEditorPage> {
       builder: (context, snapshot) {
         final group = snapshot.data?.content.group(widget.groupId);
         return Scaffold(
-          appBar: AppBar(title: Text(group == null ? "Map" : "Map · ${group.name}")),
+          appBar: AppBar(title: Text(group == null ? context.l10n.map : "${context.l10n.map} · ${group.name}")),
           body: snapshot.hasError || (snapshot.hasData && group == null)
-              ? const Center(child: Text("This group is not available."))
+              ? Center(child: Text(context.l10n.groupNotAvailable))
               : group == null
                   ? const Center(child: CupertinoActivityIndicator())
                   : SafeArea(

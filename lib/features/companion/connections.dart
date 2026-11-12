@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The four group colours, easiest first, as people know them from the
 /// newspaper puzzle. Dark ink reads on all four in light and dark mode.
@@ -378,7 +379,7 @@ class _ConnectionsPlayState extends State<ConnectionsPlay> {
     }
   }
 
-  static const _praise = ["Perfect!", "Great!", "Nice!", "Solid!"];
+  List<String> get _praise => [context.l10n.praisePerfect, context.l10n.praiseGreat, context.l10n.praiseNice, context.l10n.praiseSolid];
 
   /// Feedback for what changed since [found] groups and [wrong] mistakes.
   void _react(int found, int wrong) {
@@ -386,12 +387,12 @@ class _ConnectionsPlayState extends State<ConnectionsPlay> {
       final level = _found.last;
       _selected.removeAll(_groups.where((g) => g.level == level).expand((g) => g.positions));
       HapticFeedback.mediumImpact();
-      _say(_found.length == kConnectionsGroups ? "All four found!" : _praise[_found.length % _praise.length]);
+      _say(_found.length == kConnectionsGroups ? context.l10n.allFourFound : _praise[_found.length % _praise.length]);
     } else if (_wrong.length > wrong) {
       _shake++;
       HapticFeedback.heavyImpact();
       final left = _view.connectionMistakesAllowed - _wrong.length;
-      _say(left <= 0 ? "No tries left" : (_oneAway.isNotEmpty && _oneAway.last ? "One away…" : "Not a group"));
+      _say(left <= 0 ? context.l10n.noTriesLeft : (_oneAway.isNotEmpty && _oneAway.last ? context.l10n.oneAway : context.l10n.notAGroup));
     }
   }
 
@@ -427,7 +428,7 @@ class _ConnectionsPlayState extends State<ConnectionsPlay> {
     if (_selected.length != kConnectionsGroupSize) return;
     final guess = _selected.toList()..sort();
     if (_wrong.any((wrong) => _same(wrong, guess))) {
-      _say("Already guessed");
+      _say(context.l10n.alreadyGuessed);
       return;
     }
     widget.send(GuessConnection(widget.teamId, guess));
@@ -466,13 +467,13 @@ class _ConnectionsPlayState extends State<ConnectionsPlay> {
     final allowed = _view.connectionMistakesAllowed;
     final mistakes = _wrong.length;
     final status = _found.length == kConnectionsGroups
-        ? "All four groups found"
+        ? context.l10n.allFourGroupsFound
         : _finished
-            ? "No tries left. Wait for the solution"
+            ? context.l10n.noTriesLeftWait
             : _locked
-                ? "Locked in with ${_found.length} of 4"
+                ? context.l10n.lockedInWith(_found.length)
                 : !_view.answersOpen
-                    ? "Time is up"
+                    ? context.l10n.timeIsUp
                     : null;
     return Column(
       children: [
@@ -514,7 +515,7 @@ class _ConnectionsPlayState extends State<ConnectionsPlay> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("Mistakes remaining:", style: theme.textTheme.bodyMedium),
+            Text(context.l10n.mistakesRemaining, style: theme.textTheme.bodyMedium),
             const SizedBox(width: 8),
             for (var i = 0; i < allowed; i++)
               AnimatedScale(
@@ -534,20 +535,20 @@ class _ConnectionsPlayState extends State<ConnectionsPlay> {
         Row(
           children: [
             Expanded(
-              child: OutlinedButton(onPressed: _playable ? _shuffle : null, child: const _OneLine("Shuffle")),
+              child: OutlinedButton(onPressed: _playable ? _shuffle : null, child: _OneLine(context.l10n.shuffle)),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: OutlinedButton(
                 onPressed: _playable && _selected.isNotEmpty ? () => setState(_selected.clear) : null,
-                child: const _OneLine("Deselect all"),
+                child: _OneLine(context.l10n.deselectAll),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: FilledButton(
                 onPressed: _playable && _selected.length == kConnectionsGroupSize ? _submit : null,
-                child: const _OneLine("Submit"),
+                child: _OneLine(context.l10n.submit),
               ),
             ),
           ],
@@ -556,7 +557,7 @@ class _ConnectionsPlayState extends State<ConnectionsPlay> {
           TextButton.icon(
             onPressed: () => widget.send(LockAnswer(widget.teamId)),
             icon: const Icon(Icons.flag_outlined),
-            label: const Text("We're done"),
+            label: Text(context.l10n.wereDone),
           ),
       ],
     );

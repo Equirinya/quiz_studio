@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// A Feud question built from a ranker.com list.
 class RankerImport {
@@ -53,23 +54,34 @@ RankerImport buildRankerImport({
   );
 }
 
+/// Why a Ranker import failed: [kind] is page, noList, list, items or tooFew.
+class RankerError implements Exception {
+  const RankerError(this.kind, [this.status = 0]);
+
+  final String kind;
+  final int status;
+
+  @override
+  String toString() => 'RankerError($kind, $status)';
+}
+
 Future<RankerImport> fetchRankerImport(String url, {http.Client? client}) async {
   final get = client?.get ?? http.get;
   // The site only serves the full page, list id included, to link previewers.
   final page = await get(Uri.parse(url), headers: {"User-Agent": "Twitterbot"});
-  if (page.statusCode != 200) throw Exception("The page could not be loaded (${page.statusCode}).");
+  if (page.statusCode != 200) throw RankerError('page', page.statusCode);
   final listId = rankerListId(page.body);
-  if (listId == null) throw Exception("No list was found on that page.");
+  if (listId == null) throw const RankerError('noList');
 
   final info = await get(Uri.parse('https://api.ranker.com/lists/$listId'));
-  if (info.statusCode != 200) throw Exception("The list could not be loaded (${info.statusCode}).");
+  if (info.statusCode != 200) throw RankerError('list', info.statusCode);
   final infoJson = jsonDecode(info.body) as Map<String, dynamic>;
   final title = (infoJson['name'] ?? infoJson['displayName'] ?? infoJson['title'] ?? 'Imported list').toString();
 
   final itemsResponse = await get(Uri.parse('https://api.ranker.com/lists/$listId/items?limit=20'));
-  if (itemsResponse.statusCode != 200) throw Exception("The list items could not be loaded (${itemsResponse.statusCode}).");
+  if (itemsResponse.statusCode != 200) throw RankerError('items', itemsResponse.statusCode);
   final listItems = (jsonDecode(itemsResponse.body) as Map<String, dynamic>)['listItems'] as List? ?? const [];
-  if (listItems.length < 2) throw Exception("The list has too few entries.");
+  if (listItems.length < 2) throw const RankerError('tooFew');
 
   return buildRankerImport(
     title: title,
@@ -109,7 +121,7 @@ class _RankerImportDialogState extends State<_RankerImportDialog> {
   Future<void> _import() async {
     final url = _url.text.trim();
     if (!isRankerListUrl(url)) {
-      setState(() => _error = "Enter a ranker.com list URL, e.g. https://www.ranker.com/list/best-smells/jacob-shelton");
+      setState(() => _error = context.l10n.enterRankerUrl);
       return;
     }
     setState(() {
@@ -123,7 +135,7 @@ class _RankerImportDialogState extends State<_RankerImportDialog> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = error is Exception ? error.toString().replaceFirst('Exception: ', '') : "The import failed.";
+        _error = error is RankerError ? context.l10n.rankerError(error.kind, error.status) : context.l10n.importFailed;
       });
     }
   }
@@ -131,20 +143,20 @@ class _RankerImportDialogState extends State<_RankerImportDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("Import from Ranker"),
+      title: Text(context.l10n.importFromRanker),
       content: SizedBox(
         width: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text("The top ten entries of the list replace this question's answers."),
+            Text(context.l10n.rankerImportText),
             const SizedBox(height: 12),
             TextField(
               controller: _url,
               autofocus: true,
               enabled: !_loading,
-              decoration: const InputDecoration(labelText: "Ranker list URL"),
+              decoration: InputDecoration(labelText: context.l10n.rankerListUrl),
               onSubmitted: (_) => _import(),
             ),
             if (_error != null)
@@ -156,12 +168,12 @@ class _RankerImportDialogState extends State<_RankerImportDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _loading ? null : () => Navigator.of(context).pop(), child: const Text("Cancel")),
+        TextButton(onPressed: _loading ? null : () => Navigator.of(context).pop(), child: Text(context.l10n.cancel)),
         FilledButton(
           onPressed: _loading ? null : _import,
           child: _loading
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text("Import"),
+              : Text(context.l10n.import),
         ),
       ],
     );

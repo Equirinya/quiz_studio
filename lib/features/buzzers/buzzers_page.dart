@@ -12,6 +12,7 @@ import 'package:quiz_show/features/buzzers/serial_protocol.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// The buzzer box of this device: connection, a live test of every buzzer,
 /// which buzzer belongs to which team, and each team's sound.
@@ -44,6 +45,7 @@ class _BuzzersPageState extends State<BuzzersPage> {
 
   Future<void> _chooseSound(Team team) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     final path = await MediaKind.audio.pick();
     if (path == null || !mounted) return;
     setState(() => _uploading.add(team.id));
@@ -52,9 +54,9 @@ class _BuzzersPageState extends State<BuzzersPage> {
       widget.connection.send(SetTeamSound(team.id, name));
       if (team.sound != null && builtinBuzzer(team.sound) == null) TeamSounds.instance.delete(_sessionId, team.sound!);
     } on UnsupportedError catch (error) {
-      messenger.showSnackBar(SnackBar(content: Text(error.message ?? "This file cannot be used.")));
+      messenger.showSnackBar(SnackBar(content: Text((error.message ?? '').contains('too big') ? l10n.buzzerSoundTooBig : l10n.notASoundFile)));
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text("Could not upload the sound. The team keeps the one it had.")));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.couldNotUploadBuzzerSound)));
     }
     if (mounted) setState(() => _uploading.remove(team.id));
   }
@@ -72,7 +74,7 @@ class _BuzzersPageState extends State<BuzzersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Buzzers")),
+      appBar: AppBar(title: Text(context.l10n.buzzers)),
       body: ValueListenableBuilder(
         valueListenable: widget.connection.state,
         builder: (context, state, _) {
@@ -83,8 +85,8 @@ class _BuzzersPageState extends State<BuzzersPage> {
               if (Buzzers.supported)
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text("Use a USB buzzer box"),
-                  subtitle: const Text("Off: teams buzz with their phones only, and the big screen does not look for a box."),
+                  title: Text(context.l10n.useUsbBox),
+                  subtitle: Text(context.l10n.useUsbBoxText),
                   value: _buzzers.wanted.value,
                   onChanged: (on) async {
                     await _buzzers.setWanted(on);
@@ -110,8 +112,8 @@ class _BuzzersPageState extends State<BuzzersPage> {
                   },
                 )
               else
-                const Text(
-                  "A USB buzzer box works on Windows, macOS and Linux. Phones and tablets can still be buzzers: see Connect devices.",
+                Text(
+                  context.l10n.usbBoxPlatforms,
                 ),
               const Divider(height: 40),
               TeamSoundsList(teams: teams, uploading: _uploading, onChoose: _chooseSound, onClear: _clearSound, onBuiltin: _useBuiltin),
@@ -150,11 +152,10 @@ class TeamSoundsList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Buzzer sounds", style: theme.textTheme.titleMedium),
+        Text(context.l10n.buzzerSounds, style: theme.textTheme.titleMedium),
         const SizedBox(height: 4),
         Text(
-          "Saved with the session and played by whichever device presents. "
-          "Until that device has fetched a sound, and for teams without one, the built-in buzzer plays.",
+          context.l10n.buzzerSoundsText,
           style: theme.textTheme.bodySmall,
         ),
         for (final team in teams)
@@ -163,17 +164,17 @@ class TeamSoundsList extends StatelessWidget {
             leading: Icon(team.sound == null ? Icons.notifications_none : Icons.notifications_active),
             title: Text(team.name),
             subtitle: Text(uploading.contains(team.id)
-                ? "Uploading…"
+                ? context.l10n.uploading
                 : team.sound == null
                     ? builtinBuzzers.first.label
-                    : builtinBuzzer(team.sound)?.label ?? "Own sound"),
+                    : builtinBuzzer(team.sound)?.label ?? context.l10n.ownSound),
             trailing: uploading.contains(team.id)
                 ? const SizedBox(width: 48, child: Center(child: CupertinoActivityIndicator()))
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       PopupMenuButton<String>(
-                        tooltip: "Choose a buzzer sound",
+                        tooltip: context.l10n.chooseBuzzerSound,
                         onSelected: (choice) => choice == '' ? onChoose(team) : onBuiltin?.call(team, choice == builtinBuzzers.first.key ? null : choice),
                         itemBuilder: (context) => [
                           for (final sound in builtinBuzzers)
@@ -183,20 +184,20 @@ class TeamSoundsList extends StatelessWidget {
                               child: Text(sound.label),
                             ),
                           const PopupMenuDivider(),
-                          const PopupMenuItem(value: '', child: Text("Upload own sound…")),
+                          PopupMenuItem(value: '', child: Text(context.l10n.uploadOwnSound)),
                         ],
-                        child: const Padding(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Text("Choose")),
+                        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Text(context.l10n.choose)),
                       ),
                       if (team.sound != null && builtinBuzzer(team.sound) == null)
                         IconButton(
                           icon: const Icon(Icons.close),
-                          tooltip: "Back to the built-in buzzer",
+                          tooltip: context.l10n.backToBuiltinBuzzer,
                           onPressed: () => onClear(team),
                         ),
                     ],
                   ),
           ),
-        if (teams.isEmpty) const Padding(padding: EdgeInsets.only(top: 8), child: Text("Add teams first.")),
+        if (teams.isEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(context.l10n.addTeamsFirstShort)),
       ],
     );
   }
@@ -297,16 +298,15 @@ class _BuzzersViewState extends State<BuzzersView> {
             const SizedBox(height: 24),
             Row(
               children: [
-                Expanded(child: Text("Test", style: theme.textTheme.titleMedium)),
-                TextButton(onPressed: _order.isEmpty ? null : () => setState(_order.clear), child: const Text("Clear order")),
-                TextButton(onPressed: ids.isEmpty ? null : _calibrate, child: const Text("Calibrate")),
+                Expanded(child: Text(context.l10n.test, style: theme.textTheme.titleMedium)),
+                TextButton(onPressed: _order.isEmpty ? null : () => setState(_order.clear), child: Text(context.l10n.clearOrder)),
+                TextButton(onPressed: ids.isEmpty ? null : _calibrate, child: Text(context.l10n.calibrate)),
               ],
             ),
             Text(
               ids.isEmpty
-                  ? "Buzzers appear here as soon as the box sends readings."
-                  : "Press the buzzers. Each lights up while it is held, and the numbers show who was first. "
-                      "Tap one to change its team or sensitivity.",
+                  ? context.l10n.buzzersAppearHere
+                  : context.l10n.pressTheBuzzers,
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
@@ -330,14 +330,14 @@ class _BuzzersViewState extends State<BuzzersView> {
             const SizedBox(height: 28),
             Row(
               children: [
-                Expanded(child: Text("Teams", style: theme.textTheme.titleMedium)),
+                Expanded(child: Text(context.l10n.teams, style: theme.textTheme.titleMedium)),
                 if (_awaiting.isNotEmpty)
-                  TextButton(onPressed: () => setState(_awaiting.clear), child: const Text("Cancel"))
+                  TextButton(onPressed: () => setState(_awaiting.clear), child: Text(context.l10n.cancel))
                 else
                   FilledButton.tonal(
                     onPressed:
                         widget.teams.isEmpty ? null : () => setState(() => _awaiting.addAll(widget.teams.map((t) => t.id))),
-                    child: const Text("Assign all by pressing"),
+                    child: Text(context.l10n.assignAllByPressing),
                   ),
               ],
             ),
@@ -352,8 +352,8 @@ class _BuzzersViewState extends State<BuzzersView> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        "Press the buzzer of ${waitingFor.name} now"
-                        "${_awaiting.length > 1 ? " · ${_awaiting.length - 1} more to go" : ""}",
+                        "${context.l10n.pressBuzzerOf(waitingFor.name)}"
+                        "${_awaiting.length > 1 ? " · ${context.l10n.moreToGo(_awaiting.length - 1)}" : ""}",
                         style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onPrimaryContainer),
                       ),
                     ),
@@ -362,7 +362,7 @@ class _BuzzersViewState extends State<BuzzersView> {
               )
             else
               Text(
-                "Without anything assigned, buzzer 1 is the first team, buzzer 2 the second, and so on.",
+                context.l10n.defaultAssignment,
                 style: theme.textTheme.bodySmall,
               ),
             for (final team in widget.teams)
@@ -379,17 +379,17 @@ class _BuzzersViewState extends State<BuzzersView> {
                   leading: const Icon(Icons.group_outlined),
                   title: Text(team.name),
                   subtitle: Text(
-                    own.isEmpty ? "No buzzer" : own.map((id) => "Buzzer ${id + 1}").join(", "),
+                    own.isEmpty ? context.l10n.noBuzzer : own.map((id) => context.l10n.buzzerN(id + 1)).join(", "),
                     style: own.isEmpty ? TextStyle(color: theme.colorScheme.error) : null,
                   ),
                   trailing: TextButton(
                     onPressed: _awaiting.isNotEmpty ? null : () => setState(() => _awaiting.add(team.id)),
-                    child: const Text("Assign by pressing"),
+                    child: Text(context.l10n.assignByPressing),
                   ),
                 );
               }),
             if (widget.teams.isEmpty)
-              const Padding(padding: EdgeInsets.only(top: 8), child: Text("Add teams in the session first.")),
+              Padding(padding: const EdgeInsets.only(top: 8), child: Text(context.l10n.addTeamsInSessionFirst)),
             const SizedBox(height: 20),
             Row(
               children: [
@@ -397,8 +397,8 @@ class _BuzzersViewState extends State<BuzzersView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Raw data", style: theme.textTheme.titleMedium),
-                      Text("Exactly what the box sends, for finding faults", style: theme.textTheme.bodySmall),
+                      Text(context.l10n.rawData, style: theme.textTheme.titleMedium),
+                      Text(context.l10n.rawDataText, style: theme.textTheme.bodySmall),
                     ],
                   ),
                 ),
@@ -421,7 +421,7 @@ class _BuzzersViewState extends State<BuzzersView> {
                       width: double.infinity,
                       child: Text(
                         _link.recentLines.isEmpty
-                            ? (_link.status.value == BuzzerStatus.connected ? "Nothing received yet." : "Not connected.")
+                            ? (_link.status.value == BuzzerStatus.connected ? context.l10n.nothingReceivedYet : context.l10n.notConnectedDot)
                             : _link.recentLines.join("\n"),
                         softWrap: false,
                         style: const TextStyle(
@@ -460,9 +460,9 @@ class _BuzzersViewState extends State<BuzzersView> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text("Buzzer ${id + 1}", style: theme.textTheme.titleLarge),
+                Text(context.l10n.buzzerN(id + 1), style: theme.textTheme.titleLarge),
                 const SizedBox(height: 12),
-                Text("Team", style: theme.textTheme.titleSmall),
+                Text(context.l10n.team, style: theme.textTheme.titleSmall),
                 Wrap(
                   spacing: 8,
                   children: [
@@ -477,7 +477,7 @@ class _BuzzersViewState extends State<BuzzersView> {
                       ),
                     if (widget.assignments.containsKey(id))
                       ActionChip(
-                        label: const Text("By position"),
+                        label: Text(context.l10n.byPosition),
                         onPressed: () {
                           widget.onAssign(id, null);
                           Navigator.of(context).pop();
@@ -486,7 +486,7 @@ class _BuzzersViewState extends State<BuzzersView> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text("How hard it has to be pressed", style: theme.textTheme.titleSmall),
+                Text(context.l10n.howHardPressed, style: theme.textTheme.titleSmall),
                 const SizedBox(height: 4),
                 // The bar is the reading, the slider's knob where a press starts.
                 Stack(
@@ -521,7 +521,7 @@ class _BuzzersViewState extends State<BuzzersView> {
                     ),
                   ],
                 ),
-                Text("Reading $value · counts as pressed above $threshold", style: theme.textTheme.bodySmall),
+                Text(context.l10n.readingThreshold(value, threshold), style: theme.textTheme.bodySmall),
               ],
             ),
           );
@@ -538,7 +538,7 @@ class _BuzzersViewState extends State<BuzzersView> {
     result.forEach(widget.onThreshold);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.isEmpty ? "No buzzer was pressed clearly." : "Calibrated ${result.length} buzzers.")),
+        SnackBar(content: Text(result.isEmpty ? context.l10n.noBuzzerPressedClearly : context.l10n.calibratedBuzzers(result.length))),
       );
     }
   }
@@ -564,25 +564,26 @@ class _ConnectionCard extends StatelessWidget {
     final status = link.status.value;
     final ports = link.availablePorts;
     final ok = status == BuzzerStatus.connected;
+    final l10n = context.l10n;
     final (IconData icon, String headline, String detail) = switch (status) {
       BuzzerStatus.connected => (
           Icons.check_circle,
-          "Connected",
-          "${link.rate.value} readings per second · up ${_duration(link.uptimeMillis)}"
-              "${link.reconnects == 0 ? "" : " · reconnected ${link.reconnects}×"}",
+          l10n.connected,
+          "${l10n.readingsPerSecond(link.rate.value, _duration(link.uptimeMillis))}"
+              "${link.reconnects == 0 ? "" : " · ${l10n.reconnectedTimes(link.reconnects)}"}",
         ),
       BuzzerStatus.silent => (
           Icons.hourglass_top,
-          "Open, but the box is not sending",
-          "Trying again every few seconds. Is it the right port, and is the box powered?",
+          l10n.boxSilent,
+          l10n.boxSilentText,
         ),
       BuzzerStatus.disconnected => (
           Icons.usb_off,
-          "Not connected",
-          "Trying again every few seconds. Plug the box in; nothing needs to be pressed here.",
+          l10n.notConnectedShort,
+          l10n.boxDisconnectedText,
         ),
-      BuzzerStatus.notConfigured => (Icons.usb, "Choose the port of the buzzer box", "It is remembered on this device."),
-      BuzzerStatus.unsupported => (Icons.usb_off, "No serial ports on this device", ""),
+      BuzzerStatus.notConfigured => (Icons.usb, l10n.choosePort, l10n.rememberedOnDevice),
+      BuzzerStatus.unsupported => (Icons.usb_off, l10n.noSerialPorts, ""),
     };
     return Container(
       padding: const EdgeInsets.all(16),
@@ -619,7 +620,7 @@ class _ConnectionCard extends StatelessWidget {
                 child: DropdownMenu<String>(
                   key: ValueKey('${link.portName}/${ports.join(',')}'),
                   expandedInsets: EdgeInsets.zero,
-                  label: const Text("Port"),
+                  label: Text(context.l10n.port),
                   initialSelection: ports.contains(link.portName) ? link.portName : null,
                   hintText: link.portName,
                   dropdownMenuEntries: [for (final port in ports) DropdownMenuEntry(value: port, label: port)],
@@ -628,7 +629,7 @@ class _ConnectionCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
-                tooltip: "Reconnect now",
+                tooltip: context.l10n.reconnectNow,
                 icon: const Icon(Icons.refresh),
                 onPressed: link.portName == null ? null : link.reconnect,
               ),
@@ -724,7 +725,7 @@ class _BuzzerDial extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              team ?? "No team",
+              team ?? context.l10n.noTeam,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelLarge?.copyWith(color: team == null ? scheme.error : null),
@@ -822,7 +823,7 @@ class _CalibrationDialogState extends State<_CalibrationDialog> {
   Widget build(BuildContext context) {
     final done = _calibration.calibrated.toList()..sort();
     return AlertDialog(
-      title: const Text("Calibrate"),
+      title: Text(context.l10n.calibrate),
       content: SizedBox(
         width: 360,
         child: Column(
@@ -830,22 +831,22 @@ class _CalibrationDialogState extends State<_CalibrationDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _pressing ? "Now press every buzzer once, as hard as a player would." : "Hands off all buzzers for a moment…",
+              _pressing ? context.l10n.pressEveryBuzzer : context.l10n.handsOff,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
             if (!_pressing)
               const LinearProgressIndicator()
             else
-              Text(done.isEmpty ? "Waiting for the first press." : "Got ${done.map((id) => "buzzer ${id + 1}").join(", ")}."),
+              Text(done.isEmpty ? context.l10n.waitingFirstPress : context.l10n.gotBuzzers(done.map((id) => "${id + 1}").join(", "))),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Cancel")),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.cancel)),
         FilledButton(
           onPressed: _pressing ? () => Navigator.of(context).pop(_calibration.thresholds) : null,
-          child: const Text("Done"),
+          child: Text(context.l10n.done),
         ),
       ],
     );

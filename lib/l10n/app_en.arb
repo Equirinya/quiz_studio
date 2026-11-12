@@ -1,0 +1,1891 @@
+{
+  "@@locale": "en",
+  "appTitle": "Quiz Studio",
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "done": "Done",
+  "close": "Close",
+  "ok": "OK",
+  "thatDidntWork": "That didn't work.",
+  "account": "Account",
+  "navGames": "Games",
+  "navSessions": "Sessions",
+  "couldNotOpenStore": "Couldn't open the store",
+  "downloadPage": "download page",
+  "updateRequired": "Update required",
+  "updateRequiredText": "This version of the app is no longer supported. Please update to continue.",
+  "installedAndRequired": "Installed {installed} · required {required}",
+  "@installedAndRequired": {
+    "placeholders": {
+      "installed": {
+        "type": "String"
+      },
+      "required": {
+        "type": "String"
+      }
+    }
+  },
+  "openStore": "Open {store}",
+  "@openStore": {
+    "placeholders": {
+      "store": {
+        "type": "String"
+      }
+    }
+  },
+  "yourName": "Your name",
+  "theNameOthersSee": "The name others see",
+  "nameLength": "A name needs between {min} and {max} characters.",
+  "@nameLength": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "addEmailAndPassword": "Add email and password",
+  "upgradeSubtitle": "Your games stay with this account. Afterwards you can sign in to it on your other devices.",
+  "upgradeDone": "Done. This account now has an email address.",
+  "signOut": "Sign out",
+  "signOutGuestWarning": "You are signed in as a guest. Signing out loses this account and the games only it can access. Add an email address first to keep them.",
+  "signOutInfo": "You can sign in again with your email address and password.",
+  "deletingAccount": "Deleting your account…",
+  "accountDeleted": "Your account and its data are deleted.",
+  "accountNotDeletedConnection": "The account could not be deleted. Check the connection and try again.",
+  "nameSubtitle": "The name other players and co-authors see",
+  "guestAccount": "Guest account",
+  "guestAccountText": "Your games live only on this device's account. Add an email address and password to keep them safe and to sign in on your other devices, for example the PC that presents and the phone that controls.",
+  "emailSubtitle": "Sign in with this address on your other devices",
+  "deleteAccount": "Delete account",
+  "deleteAccountSubtitle": "Your profile, your own games and your sessions",
+  "contact": "Contact",
+  "contactSubtitle": "Feedback, bug reports and feature requests",
+  "terms": "Terms",
+  "privacy": "Privacy",
+  "aboutAndLicences": "About and licences",
+  "soundCredits": "Sound credits",
+  "soundCreditsSubtitle": "Where the built-in sounds are from",
+  "deleteAccountQuestion": "Delete account?",
+  "deleteAccountText": "This deletes your profile, the games only you are in, with their pictures and sounds, and the sessions you host. Games you share stay with the others; if you are their only admin, a co-author becomes admin. This cannot be undone.",
+  "password": "Password",
+  "wrongPassword": "That password is not right.",
+  "tooManyTries": "Too many tries. Wait a moment and try again.",
+  "requiresRecentLogin": "Sign out, sign in again and then delete the account.",
+  "noConnectionTryOnline": "No connection. Try again when you are online.",
+  "accountNotDeleted": "The account could not be deleted. Try again.",
+  "language": "Language",
+  "languageSystem": "System language",
+  "languageGerman": "Deutsch",
+  "languageEnglish": "English",
+  "notSignedIn": "You are not signed in.",
+  "emailInUse": "There is already an account with this email address. Sign in to that one instead.",
+  "invalidEmail": "That is not a valid email address.",
+  "weakPassword": "Please choose a stronger password.",
+  "alreadyHasEmail": "This account already has an email address.",
+  "restartAndRetry": "For safety, please restart the app and try again.",
+  "notConnected": "You're not connected to the internet.",
+  "emailSignInOff": "Email sign-in is switched off for this app.",
+  "didNotWorkTryAgain": "That did not work. Please try again.",
+  "unknownUser": "Unknown user",
+  "passwordMinLength": "At least 8 characters",
+  "passwordUppercase": "An uppercase letter",
+  "passwordLowercase": "A lowercase letter",
+  "passwordNumber": "A number",
+  "email": "Email",
+  "hidePassword": "Hide password",
+  "showPassword": "Show password",
+  "confirmPassword": "Confirm password",
+  "passwordsDontMatch": "Passwords don't match.",
+  "featureBuildTitle": "Build quizzes together",
+  "featureBuildText": "Write categories and questions with friends, without spoiling each other.",
+  "featurePresentTitle": "Present on the big screen",
+  "featurePresentText": "Run the show on a TV or projector and control it from your phone.",
+  "featureBuzzersTitle": "Phones as buzzers",
+  "featureBuzzersText": "Players join by scanning a code. Arduino buzzers work too.",
+  "featureMusicTitle": "Music and sound effects",
+  "featureMusicText": "Background music, reveal sounds and a buzzer sound per team.",
+  "enterValidEmail": "Please enter a valid email address.",
+  "enterPassword": "Please enter your password.",
+  "noAccountForEmail": "No account found with this email address.",
+  "wrongEmailOrPassword": "Wrong email address or password.",
+  "invalidEmailShort": "Invalid email address.",
+  "accountDisabled": "This account has been disabled.",
+  "tooManyAttempts": "Too many attempts. Please try again later.",
+  "signInFailed": "Sign-in failed. Please try again.",
+  "anonymousSignInDisabled": "Anonymous sign-in is disabled. Please try again later.",
+  "couldNotStart": "Could not get you started. Please try again.",
+  "unknownError": "An unknown error occurred.",
+  "couldNotSaveName": "Could not save your name. Please try again.",
+  "login": "Login",
+  "chooseYourName": "Choose the name other players and co-authors will see:",
+  "theNameOthersWillSee": "The name others will see",
+  "justJoinAShow": "Just join a show",
+  "useDifferentAccount": "Use a different account",
+  "haveAnAccount": "I already have an account",
+  "termsBefore": "By continuing you agree to the ",
+  "termsLink": "Terms & Conditions",
+  "termsBetween": " and the ",
+  "privacyLink": "Privacy Policy",
+  "termsAfter": ".",
+  "back": "Back",
+  "letsPlay": "Let's play",
+  "joinAShow": "Join a show",
+  "createOwnQuizzes": "Create my own quizzes",
+  "creditsMadeForApp": "Made for Quiz Studio",
+  "creditsMadeBy": "Made by {name}",
+  "@creditsMadeBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "creditsPartOfApp": "Part of the app",
+  "creditsPublicDomain": "(public domain)",
+  "creditsIntro": "The sounds that come with Quiz Studio were made for it or are free to use in any project (CC0). Tap a source to see where it is from.",
+  "questionTypeName": "{type, select, free{Free Question} abcd{ABCD} progressingReveal{Progressing Reveal} feud{Survey duel} connections{Word groups} rapidFire{Fragenhagel} matching{Matching} topAnswers{Top answers} lastStanding{Last team standing} other{Unsupported}}",
+  "@questionTypeName": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "boardTypeName": "{type, select, display{Display Board} wheel{Wheel Playboard} other{Map Playboard}}",
+  "@boardTypeName": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "gameRoleName": "{role, select, admin{Admin} full{Full Access} other{Limited Access}}",
+  "@gameRoleName": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "companionKindName": "{kind, select, whiteboard{Whiteboard} text{Text} number{Number} slider{Slider} choice{Pick one} order{Put in order} match{Match pairs} connections{Word groups} other{Answer list}}",
+  "@companionKindName": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "estimateScoringName": "{scoring, select, closest{Closest wins} podium{1st, 2nd, 3rd} other{By distance}}",
+  "@estimateScoringName": {
+    "placeholders": {
+      "scoring": {
+        "type": "String"
+      }
+    }
+  },
+  "turnOrderName": "{order, select, teams{As the teams are listed} mostPoints{Most points first} other{Fewest points first}}",
+  "@turnOrderName": {
+    "placeholders": {
+      "order": {
+        "type": "String"
+      }
+    }
+  },
+  "standingResultName": "{result, select, right{Right} out{Wrong, out} other{Wrong, stays in}}",
+  "@standingResultName": {
+    "placeholders": {
+      "result": {
+        "type": "String"
+      }
+    }
+  },
+  "rapidModeName": "{mode, select, buzzer{Teams buzz} other{Right or wrong on the teams' devices}}",
+  "@rapidModeName": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "progressStyleName": "{style, select, off{No progress indicator} bar{Bar} dots{Dots} battery{Battery} thermometer{Thermometer} other{Flux capacitor}}",
+  "@progressStyleName": {
+    "placeholders": {
+      "style": {
+        "type": "String"
+      }
+    }
+  },
+  "topAnswersModeName": "{mode, select, buzzer{Teams buzz} typed{Typed in on the teams' devices} other{Written on a whiteboard}}",
+  "@topAnswersModeName": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "cardAnimationName": "{animation, select, off{Off} fade{Fade} slideUp{Slide in from bottom} slideDown{Slide in from top} bounce{Bounce in} zoom{Zoom} spin{Spin in} other{Flip}}",
+  "@cardAnimationName": {
+    "placeholders": {
+      "animation": {
+        "type": "String"
+      }
+    }
+  },
+  "cardStyleName": "{style, select, standard{Standard} silentFilm{Silent film} poster{Poster} other{Just the words}}",
+  "@cardStyleName": {
+    "placeholders": {
+      "style": {
+        "type": "String"
+      }
+    }
+  },
+  "builtinImageName": "{id, select, correct{Correct!} wrong{Wrong!} times_up{Time's up!} get_ready{Get ready} thinking{Thinking time} bonus{Bonus question} drumroll{Drumroll…} applause{Applause!} quiet{Quiet please} break{Break} final_round{Final round} winner{And the winner is…} other{Picture}}",
+  "@builtinImageName": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "rapidRight": "Right",
+  "rapidWrong": "Wrong",
+  "newGame": "New game",
+  "name": "Name",
+  "couldNotCreateGame": "Could not create the game.",
+  "joinWithInviteLink": "Join with an invite link",
+  "couldNotLoadGames": "Could not load your games.",
+  "noGamesYet": "No games yet",
+  "noGamesYetText": "Create your first quiz, or ask a friend to invite you to theirs.",
+  "unnamed": "Unnamed",
+  "couldNotUploadPicture": "Could not upload the picture.",
+  "map": "Map",
+  "groupNotAvailable": "This group is not available.",
+  "newBoard": "{type, select, display{New Display Board} wheel{New Wheel Playboard} other{New Map Playboard}}",
+  "@newBoard": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "addBoard": "{type, select, display{Add Display Board} wheel{Add Wheel Playboard} other{Add Map Playboard}}",
+  "@addBoard": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "newCategory": "New Category",
+  "hideOne": "Hide one",
+  "revealedOf": "{revealed} of {steps} revealed",
+  "@revealedOf": {
+    "placeholders": {
+      "revealed": {
+        "type": "int"
+      },
+      "steps": {
+        "type": "int"
+      }
+    }
+  },
+  "revealNext": "Reveal next",
+  "boardColours": "Board colours",
+  "primaryColour": "Primary",
+  "accentColour": "Accent",
+  "useAppColours": "Use app colours",
+  "noTimer": "No timer",
+  "timer": "Timer",
+  "teamsCanLockIn": "Teams can lock in early",
+  "lockInOnText": "Locking in ends a team's time, and how long it took is kept",
+  "lockInOffText": "Every answer counts as it stands when the time is up or you end the round",
+  "musicCount": "{count, plural, =1{1 music} other{{count} music}}",
+  "@musicCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "effectCount": "{count, plural, =1{1 effect} other{{count} effects}}",
+  "@effectCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "none": "None",
+  "cardCount": "{count, plural, =1{1 card} other{{count} cards}}",
+  "@cardCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cardsOfferedOff": "{on} offered, {off} off",
+  "@cardsOfferedOff": {
+    "placeholders": {
+      "on": {
+        "type": "int"
+      },
+      "off": {
+        "type": "int"
+      }
+    }
+  },
+  "gameNotAvailable": "This game is not available.",
+  "copiedGame": "Copied the game with its answers.",
+  "renameGame": "Rename game",
+  "deleteGame": "Delete game",
+  "deleteGameText": "\"{name}\" and all of its questions will be deleted for everyone.",
+  "@deleteGameText": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "leaveGame": "Leave game",
+  "leaveGameText": "You will lose access to \"{name}\" until someone invites you again.",
+  "@leaveGameText": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "leave": "Leave",
+  "musicAndSounds": "Music & sounds",
+  "noneYet": "None yet",
+  "soundsForGame": "Sounds for the whole game",
+  "cards": "Cards",
+  "cardsForGame": "Cards for the whole game",
+  "people": "People",
+  "more": "More",
+  "rename": "Rename",
+  "copyAsText": "Copy as text",
+  "nothingSharedYet": "Nothing here yet. Ask an admin to share a category with you.",
+  "onlyYou": "Only you",
+  "memberCount": "{count} members",
+  "@memberCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "renameGroup": "Rename group",
+  "displayText": "Display text",
+  "shownOnBoard": "Shown on the board",
+  "categoryCount": "{count, plural, =1{1 category} other{{count} categories}}",
+  "@categoryCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ownSounds": "own sounds",
+  "usesGames": "Uses the game's",
+  "soundsForBoard": "Sounds for this board",
+  "onlyGames": "Only the game's",
+  "cardsForBoard": "Cards for this board",
+  "colours": "Colours",
+  "appsColours": "The app's colours",
+  "ownColours": "Own colours",
+  "textOnBoard": "Text on the board",
+  "splitPointFields": "Split point fields",
+  "splitPointFieldsText": "When a value appears more than once in a ring",
+  "arrangeMap": "Arrange the map",
+  "arrangeMapShort": "Bubbles, arrows, titles, pictures and lines",
+  "arrangeMapLong": "Place bubbles, connect them, add titles, pictures and lines",
+  "labelsInsteadOfPoints": "Labels instead of points",
+  "labelsInsteadOfPointsText": "Questions without a label still show their points",
+  "deleteBoard": "Delete board",
+  "deleteBoardFirst": "Move or delete its categories first",
+  "ungroupedCategories": "Ungrouped categories",
+  "boardSettings": "Board settings",
+  "moveBoard": "Move board",
+  "addCategory": "Add category",
+  "moveToAnotherBoard": "Move to another board",
+  "comesAfterTitle": "\"{name}\" comes after",
+  "@comesAfterTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "categoryBeforeIt": "The category before it (default)",
+  "startsNewChain": "Nothing: it starts a new chain",
+  "deleteCategory": "Delete category",
+  "deleteCategoryText": "\"{name}\" and its {count} questions will be deleted.",
+  "@deleteCategoryText": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "inPlayTip": "In play: tap to take it out of the game",
+  "notInPlayTip": "Not in play: tap to put it back",
+  "moveCategory": "Move category",
+  "questionCount": "{count, plural, =1{1 question} other{{count} questions}}",
+  "@questionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInPlay": "not in play",
+  "moveUp": "Move up",
+  "moveDown": "Move down",
+  "moveToAnotherBoardMenu": "Move to another board…",
+  "comesAfterMenu": "Comes after…",
+  "renameCategory": "Rename category",
+  "shareCategory": "Share category",
+  "shareCategoryText": "Members with limited access only see the categories switched on here.",
+  "createdThisCategory": "Created this category",
+  "notShared": "Not shared",
+  "sharedWith": "{count, plural, =1{With 1 person} other{With {count} people}}",
+  "@sharedWith": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "categoryNotAvailable": "This category is not available.",
+  "addQuestion": "Add question",
+  "usesBoards": "Uses the board's",
+  "soundsForCategory": "Sounds for this category",
+  "onlyBoardsAndGames": "Only the board's and game's",
+  "cardsForCategory": "Cards for this category",
+  "share": "Share",
+  "noQuestionsYet": "No questions yet.",
+  "couldNotSave": "Could not save.",
+  "deleteQuestion": "Delete question",
+  "deleteQuestionText": "This question will be deleted.",
+  "onTheDevices": "on the devices",
+  "kindOnTheDevices": "{kind} on the devices",
+  "@kindOnTheDevices": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "teamsBetShort": "teams bet",
+  "teamsBetHowManyShort": "teams bet how many",
+  "byOrderShort": "by order",
+  "fixed": "Fixed",
+  "pointsBetSummary": "Teams bet their points · at least {limit} to bet",
+  "@pointsBetSummary": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "betOnHowMany": "Bet on how many",
+  "plusEach": "+{plus} each",
+  "@plusEach": {
+    "placeholders": {
+      "plus": {
+        "type": "int"
+      }
+    }
+  },
+  "plusMinusEach": "+{plus} / −{minus} each",
+  "@plusMinusEach": {
+    "placeholders": {
+      "plus": {
+        "type": "int"
+      },
+      "minus": {
+        "type": "int"
+      }
+    }
+  },
+  "byOrderSummary": "By order · {plus}, then −{step} per place",
+  "@byOrderSummary": {
+    "placeholders": {
+      "plus": {
+        "type": "int"
+      },
+      "step": {
+        "type": "int"
+      }
+    }
+  },
+  "wrongMinus": "wrong −{minus}",
+  "@wrongMinus": {
+    "placeholders": {
+      "minus": {
+        "type": "int"
+      }
+    }
+  },
+  "picture": "Picture",
+  "music": "Music",
+  "noOwnMedia": "No picture, music or sounds of its own",
+  "rule": "Rule",
+  "scoringRuleName": "{rule, select, fixed{Fixed points} points{Teams bet their points} amount{Teams bet how many they can do} closest{By closeness: nearest first} other{By order: fastest first}}",
+  "@scoringRuleName": {
+    "placeholders": {
+      "rule": {
+        "type": "String"
+      }
+    }
+  },
+  "scoringFixedText": "Every team plays for the same points.",
+  "scoringRankedText": "The first team gets the most points, each after it a bit less. The order is the order teams locked in a right answer on their devices, or the order you tap them in, e.g. as they finish on stage. Wrong answers lose the minus points.",
+  "scoringPointsText": "Before the question, each team bets some of its points: a right answer wins the bet, a wrong one loses it. Teams may bet up to their score, or up to {limit} if they have less.",
+  "@scoringPointsText": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "scoringAmountText": "First only the bet question is shown and each team says how many it can do. Then the question runs; you decide per team whether it reached its number. Reached: the points for each one. Missed: the minus points for each one.",
+  "betQuestion": "Bet question",
+  "betQuestionHint": "How many science fiction films can you name?",
+  "points": "Points",
+  "eachPlus": "Each +",
+  "firstPlacePlus": "1st place +",
+  "eachItemPlus": "Each item +",
+  "winnerPlus": "Winner +",
+  "eachAnswerPlus": "Each answer +",
+  "ifRightPlus": "If right +",
+  "onTheBoard": "{points} on the board",
+  "@onTheBoard": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "eachMinus": "Each −",
+  "ifWrongMinus": "If wrong −",
+  "lessPerPlace": "Less per place",
+  "highestBet": "Highest bet",
+  "musicAndEffects": "Music & effects",
+  "theCategorys": "The category's",
+  "soundsForQuestion": "Sounds for this question",
+  "type": "Type",
+  "question": "Question",
+  "answerHint": "Answer hint",
+  "onlyGamemasterSees": "Only the gamemaster sees this",
+  "label": "Label",
+  "labelHelper": "Small badge shown on the question card",
+  "labelTooltip": "A small badge shown on the question card",
+  "howTeamsAnswer": "How teams answer",
+  "scoring": "Scoring",
+  "mediaAndSound": "Media & sound",
+  "moveQuestion": "Move question",
+  "newQuestion": "New question",
+  "preview": "Preview",
+  "explainFree": "The most basic question: no answer options and nothing to reveal. Under \"How teams answer\" buzzers can be switched off, e.g. for estimation questions.",
+  "explainAbcd": "Shows right and wrong answer suggestions, which the gamemaster reveals one by one.",
+  "explainProgressingReveal": "The gamemaster reveals more information piece by piece.",
+  "explainFeud": "A duel over a survey: the team that buzzed uncovers answers until its third strike, then the other team may steal them all.",
+  "explainTopAnswers": "Name the most popular answers: teams find answers on a list, by buzzing or on their devices, and get the points of each one.",
+  "explainConnections": "Sixteen words in four groups of four. Every team solves it on its own device; each group found is worth a quarter of the points.",
+  "explainRapidFire": "Fragenhagel: many short questions right after one another. Teams buzz, or judge statements right or wrong on their devices; each item can have a picture and a sound.",
+  "explainMatching": "Matching: pairs of texts or pictures, e.g. films and their years. Every team puts them back together on its device; the big screen shows the pictures.",
+  "explainLastStanding": "Last team standing: one player per team takes turns, e.g. naming films or saying whether a star has a biopic. A wrong answer puts the team out; the last team left gets the points.",
+  "explainUnsupported": "This question type is not supported by this version of the app.",
+  "groupsNeedNameAndWords": "{count, plural, =1{1 group needs a name and four words.} other{{count} groups need a name and four words.}}",
+  "@groupsNeedNameAndWords": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wordTwice": "\"{word}\" is in the puzzle twice.",
+  "@wordTwice": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "groupInCommon": "{group, plural, =0{Yellow} =1{Green} =2{Blue} other{Purple}}: what they have in common",
+  "@groupInCommon": {
+    "placeholders": {
+      "group": {
+        "type": "int"
+      }
+    }
+  },
+  "wordN": "Word {n}",
+  "@wordN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "connectionsReady": "Ready. Yellow is meant to be the easiest group and purple the hardest.",
+  "answerLetter": "Answer {letter}",
+  "@answerLetter": {
+    "placeholders": {
+      "letter": {
+        "type": "String"
+      }
+    }
+  },
+  "removeAnswer": "Remove answer",
+  "addAnswer": "Add answer",
+  "absoluteValues": "Show absolute values instead of percentages",
+  "value": "Value",
+  "answerN": "Answer {n}",
+  "@answerN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "informationN": "Information {n}",
+  "@informationN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "addInformation": "Add information",
+  "importFromRanker": "Import from Ranker",
+  "pictureStrip": "Picture strip",
+  "pictureStripText": "Small pictures under the question, \"?\" for those still hidden",
+  "teamsBuzz": "Teams buzz",
+  "onTheDevicesShort": "On the devices",
+  "progressOnBigScreen": "Progress on the big screen",
+  "rapidDevicesText": "Each item is a statement. Every team picks right or wrong on its device; when you move on, a right pick gets the points.",
+  "rapidBuzzText": "Teams buzz for each item. A right answer gets the points and moves straight on to the next item.",
+  "statementN": "Statement {n}",
+  "@statementN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "questionN": "Question {n}",
+  "@questionN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "answer": "Answer",
+  "remove": "Remove",
+  "addStatement": "Add statement",
+  "turnOrderLabel": "Turn order",
+  "lastStandingText": "One player per team takes turns. You rate each turn: right, wrong (the team is out) or wrong but it stays in. The last team left gets the points.",
+  "noPrompts": "No prompts: every turn answers the question itself.",
+  "onePromptPerTurn": "One prompt per turn, in this order.",
+  "promptN": "Prompt {n}",
+  "@promptN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "addPrompt": "Add prompt",
+  "onlyWithDevices": "Only playable with the teams' own devices: every team needs a phone or tablet connected (Setup, then Connect devices). Without them there is nothing to answer with.",
+  "matchingEditorText": "Write each pair the way it belongs together; the teams get the right side mixed up. A side can be a text, a picture or both. Pictures appear on the big screen with a letter or number, which the devices show.",
+  "matchLeft": "Left",
+  "matchBelongsTo": "Belongs to",
+  "removePair": "Remove pair",
+  "addPair": "Add pair",
+  "buzz": "Buzz",
+  "typed": "Typed",
+  "whiteboard": "Whiteboard",
+  "topAnswersBuzzText": "A team buzzes and names an answer. Tap the one it named: it is uncovered and the team gets its points. Then everyone may buzz again.",
+  "topAnswersTypedText": "Every team types its answers into a list on its device. You tick the ones it found, with suggestions for what it typed.",
+  "topAnswersWhiteboardText": "Every team writes its answers on a numbered whiteboard. You tick the ones it found.",
+  "topAnswersListText": "Most popular first. Without its own points an answer is worth the question's points. Other spellings to accept go after a /.",
+  "paperName": "{paper, select, lines{Ruled} grid{Squared} list{Numbered list} image{Picture} other{Blank}}",
+  "@paperName": {
+    "placeholders": {
+      "paper": {
+        "type": "String"
+      }
+    }
+  },
+  "connectionsDevicesText": "Every team solves the puzzle on its own device. You see live which groups each team has found.",
+  "chooseDeviceScreenText": "Choose a screen to open on every team's device with the question. You see the answers as they are written and decide when to show them.",
+  "deviceScreenText": "Opens on every team's device with the question. You see the answers as they are written and decide when to show them.",
+  "buzzer": "Buzzer",
+  "nothing": "Nothing",
+  "recommended": "Recommended",
+  "mistakesAllowed": "Mistakes allowed",
+  "paper": "Paper",
+  "rows": "Rows",
+  "choosePictureToDrawOn": "Choose the picture to draw on",
+  "pictureSet": "Picture set",
+  "from": "From",
+  "to": "To",
+  "step": "Step",
+  "unit": "Unit",
+  "rightValue": "Right value",
+  "rightWithin": "Right within ±",
+  "noBuzzingAtAll": "No buzzing at all",
+  "noBuzzingAtAllText": "Buzzer boxes stay off too, e.g. for estimation questions",
+  "teamsCanStopEarly": "Teams can stop early",
+  "orderEditorText": "Enter the items in the right order. The teams get them shuffled.",
+  "matchEditorText": "Enter each pair. The teams get the right-hand side shuffled.",
+  "item": "Item",
+  "matchRight": "Right",
+  "addItem": "Add item",
+  "timerSummary": "timer {time}",
+  "@timerSummary": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "progressSummary": "progress: {style}",
+  "@progressSummary": {
+    "placeholders": {
+      "style": {
+        "type": "String"
+      }
+    }
+  },
+  "mistakesAllowedSummary": "{count} mistakes allowed",
+  "@mistakesAllowedSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "outLoudNoBuzzer": "Out loud, no buzzer",
+  "buzzerBoxesOnly": "Buzzer boxes only",
+  "sliderSummary": "Slider {from}–{to}",
+  "@sliderSummary": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "whiteboardSummary": "Whiteboard, {paper}",
+  "@whiteboardSummary": {
+    "placeholders": {
+      "paper": {
+        "type": "String"
+      }
+    }
+  },
+  "orderSummary": "Put {count} in order",
+  "@orderSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "matchSummary": "Match {count} pairs",
+  "@matchSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "listSummary": "Answer list, {count} rows",
+  "@listSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rightShort": "right",
+  "emptyCard": "Empty card",
+  "card": "Card",
+  "moveCard": "Move card",
+  "off": "off",
+  "offerInShow": "Offer it in the show",
+  "keepOutOfShow": "Keep it out of the show",
+  "edit": "Edit",
+  "cardsDialogText": "What you can put over the screen during the show, offered in this order. Tap a card to change it, drag it by its handle to move it, or switch it off to keep it out of the show.",
+  "newCard": "New card",
+  "uploading": "Uploading…",
+  "addPicture": "Add picture",
+  "title": "Title",
+  "text": "Text",
+  "videoClip": "Video clip",
+  "videoClipText": "A clip plays full screen on the big screen and the card goes when it ends.",
+  "look": "Look",
+  "removeCard": "Remove card",
+  "add": "Add",
+  "boardMusic": "Board music",
+  "calmMusic": "Calm music",
+  "thrillingMusic": "Thrilling music",
+  "effectRightAnswer": "Right answer",
+  "effectWrongAnswer": "Wrong answer",
+  "effectQuestionClosed": "Question closed",
+  "effectReveal": "Reveal",
+  "effectQuestionOpens": "Question opens",
+  "effectTeamLocksIn": "Team locks in",
+  "effectNextItem": "Next Fragenhagel item",
+  "effectLastTenSeconds": "Last 10 seconds",
+  "effectTimesUp": "Time's up",
+  "effectSteal": "Steal",
+  "effectFullySolved": "Fully solved",
+  "appDefault": "App default: {sound}",
+  "@appDefault": {
+    "placeholders": {
+      "sound": {
+        "type": "String"
+      }
+    }
+  },
+  "asSetAbove": "As set above",
+  "silent": "Silent",
+  "ownFile": "Own file",
+  "ownFileMenu": "Own file…",
+  "stop": "Stop",
+  "listen": "Listen",
+  "soundsGameText": "What plays during this game. Anything not set uses the sounds that come with the app.",
+  "soundsLevelText": "Anything left on \"As set above\" comes from the board or the game.",
+  "soundsAtMoments": "Sounds at moments of the show",
+  "ownEffects": "Your own effects",
+  "addEffect": "Add effect",
+  "oggNotSupported": "Ogg sounds do not play on Windows. Please use MP3, WAV or M4A.",
+  "fileTypeNotSupported": "This file type is not supported.",
+  "couldNotUploadMedia": "{kind, select, image{Could not upload the picture.} audio{Could not upload the sound.} other{Could not upload the video.}}",
+  "@couldNotUploadMedia": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "addMedia": "{kind, select, image{Add picture} audio{Add sound} other{Add video}}",
+  "@addMedia": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "pictureTooltip": "Picture: tap to see it large, replace or remove it",
+  "replaceOrRemoveSound": "Replace or remove the sound",
+  "videoTooltip": "Video: tap to watch, replace or remove it",
+  "sound": "Sound",
+  "video": "Video",
+  "replace": "Replace",
+  "enterRankerUrl": "Enter a ranker.com list URL, e.g. https://www.ranker.com/list/best-smells/jacob-shelton",
+  "rankerError": "{kind, select, page{The page could not be loaded ({status}).} noList{No list was found on that page.} list{The list could not be loaded ({status}).} items{The list items could not be loaded ({status}).} other{The list has too few entries.}}",
+  "@rankerError": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "importFailed": "The import failed.",
+  "rankerImportText": "The top ten entries of the list replace this question's answers.",
+  "rankerListUrl": "Ranker list URL",
+  "import": "Import",
+  "addTitle": "Add title",
+  "arrowCircle": "That arrow would go round in a circle.",
+  "screensWide": "{count} screens wide",
+  "@screensWide": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "mapTapFirst": "Tap the bubble that comes first.",
+  "mapTapNext": "Now tap the bubble it leads to: that adds an arrow, or removes the one already there. Tap the same bubble again to remove every arrow into it.",
+  "mapDragBubble": "Drag to move. Use − and + below to change this bubble's size.",
+  "mapDragSelected": "Drag to move. Use the buttons below to change or remove it.",
+  "mapDragAnything": "Drag things to place them. Tap a bubble, title, picture or line to select it.",
+  "connect": "Connect",
+  "line": "Line",
+  "narrower": "Narrower",
+  "wider": "Wider",
+  "tidyUp": "Tidy up",
+  "smaller": "Smaller",
+  "larger": "Larger",
+  "editText": "Edit text",
+  "couldNotCreateInvite": "Could not create the invite link.",
+  "inviteLinkCopied": "Invite link copied",
+  "removeFromGame": "Remove from game",
+  "removeFromGameText": "They lose access right away. Revoke any invite link they still have, or they can join again.",
+  "access": "Access",
+  "members": "Members",
+  "you": "You",
+  "accessExplanation": "Full access edits everything. Limited access only sees categories they created or were given, so they can write questions and still play along.",
+  "inviteLinks": "Invite links",
+  "noInviteLinksYet": "No invite links yet",
+  "expired": "Expired",
+  "valid": "Valid",
+  "validFor": "Valid for {time}",
+  "@validFor": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "copyLink": "Copy link",
+  "revoke": "Revoke",
+  "newRoleLink": "{role, select, admin{New admin link} full{New full access link} other{New limited access link}}",
+  "@newRoleLink": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "inviteLinksText": "Anyone with a link can join until it expires or you revoke it.",
+  "hourCount": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@hourCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dayCount": "{count, plural, =1{1 day} other{{count} days}}",
+  "@dayCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notAnInviteLink": "That doesn't look like an invite link.",
+  "inviteGone": "This invite link no longer exists.",
+  "inviteExpired": "This invite link has expired.",
+  "couldNotCheckInvite": "Could not check the invite link.",
+  "couldNotJoinGame": "Could not join. You may already be a member, or the link was revoked.",
+  "joinAGame": "Join a game",
+  "inviteLink": "Invite link",
+  "unnamedGame": "Unnamed game",
+  "youWillJoinWith": "{role, select, admin{You will join with admin.} full{You will join with full access.} other{You will join with limited access.}}",
+  "@youWillJoinWith": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "continueLabel": "Continue",
+  "join": "Join",
+  "couldNotCreateSession": "Could not create the session.",
+  "presentHere": "Present here",
+  "presentHereText": "Another of your devices was presenting this session last. It stops if it is still running.",
+  "deleteSession": "Delete session",
+  "deleteSessionText": "The session of \"{game}\" with its teams and points will be deleted.",
+  "@deleteSessionText": {
+    "placeholders": {
+      "game": {
+        "type": "String"
+      }
+    }
+  },
+  "joinSessionScan": "Join a session: scan its code",
+  "joinSessionLink": "Join a session with its link",
+  "newSession": "New session",
+  "couldNotLoadSessions": "Could not load your sessions.",
+  "noSessionsText": "A session is one evening's show: its teams, points and progress. Create one, present it on the big screen and control it from your phone.",
+  "changeGame": "Change game",
+  "createdAt": "Created {date}",
+  "@createdAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "present": "Present",
+  "control": "Control",
+  "setUpTeamsAndBuzzers": "Set up teams and buzzers",
+  "chooseAGame": "Choose a game",
+  "gameYouCannotOpen": "A game you cannot open",
+  "noGamesForSession": "You have no games yet. Create one in the Games tab first.",
+  "game": "Game",
+  "createWithoutGame": "Create without a game",
+  "create": "Create",
+  "didNotReachPresenter": "That did not reach the presenter.",
+  "noDevicePresenting": "No device is presenting this session. Nothing you do here happens until one presents it.",
+  "presentingElsewhere": "Presenting elsewhere",
+  "presentingElsewhereText": "Another of your devices took over this session.",
+  "couldNotOpenWindow": "Could not open a second window.",
+  "couldNotStartPresenting": "Could not start presenting this session.",
+  "controlling": "Controlling",
+  "closePresenterWindow": "Close presenter window",
+  "stopPresenting": "Stop presenting",
+  "openInNewWindow": "Open in a new window, to drag onto another screen",
+  "fullscreen": "Fullscreen",
+  "controls": "Controls",
+  "buzzerBoxRetrying": "Buzzer box not connected · retrying",
+  "mediaNotDownloaded": "{count, plural, =1{1 media file could not be downloaded} other{{count} media files could not be downloaded}}",
+  "@mediaNotDownloaded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "couldNotSaveChange": "Could not save the change.",
+  "setUpTitle": "Set up {title}",
+  "@setUpTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "couldNotLoadSession": "Could not load the session.",
+  "setUpFromControl": "If this session is on a screen right now, set it up from Control instead: the presenting device keeps its own teams.",
+  "teams": "Teams",
+  "noTeamsYet": "No teams yet",
+  "queueBuzzers": "Queue buzzers",
+  "queueBuzzersText": "Later buzzes line up behind the first",
+  "buzzerTest": "Buzzer test",
+  "buzzerTestText": "Buzzers light up their team; only from the board",
+  "buzzerBoxAndSounds": "Buzzer box and team sounds",
+  "buzzerBoxAndSoundsText": "The USB buzzer box, and the sound each team buzzes with",
+  "connectDevices": "Connect devices",
+  "connectDevicesText": "Phones as buzzers, or another controller",
+  "newTeam": "New team",
+  "renameTeam": "Rename team",
+  "removeTeam": "Remove team",
+  "removeTeamText": "\"{team}\" and its points will be removed.",
+  "@removeTeamText": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "addTeam": "Add team",
+  "noTeamsYetText": "No teams yet. Add them here, or let them join with a code.",
+  "couldNotCreateCodes": "Could not create the codes.",
+  "controller": "Controller",
+  "scanToControl": "Scan in Quiz Studio to control this session from another device. That device must be signed in with an account that can open the game.",
+  "scanToBuzz": "Scan in Quiz Studio to use a phone as the buzzer of {team}.",
+  "@scanToBuzz": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "devicesViaInternet": "Devices connect through the internet.",
+  "devicesViaLan": "Devices on this network connect directly; others through the internet.",
+  "linkCopied": "Link copied",
+  "copyLinkInstead": "Copy link instead",
+  "addTeamsFirst": "Add teams first to get a buzzer code for each.",
+  "teamRemoved": "This team was removed.",
+  "buzzForTeam": "Buzz for this team",
+  "setPoints": "Set points",
+  "sessionHasNoGame": "This session has no game yet.",
+  "statusBoard": "Board",
+  "statusBetsShown": "The bets are on the big screen · start the question when ready",
+  "statusBetting": "Teams are betting · {placed} of {total} bets in",
+  "@statusBetting": {
+    "placeholders": {
+      "placed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "statusRapidDevices": "Teams pick right or wrong on their devices",
+  "statusAmountBet": "Teams go for the number they bet",
+  "statusOpenNoBuzzers": "Question open · no buzzers",
+  "statusOpenWaiting": "Question open · waiting for a buzz",
+  "statusAnswering": "{team} is answering",
+  "@statusAnswering": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "statusAnsweringThen": "{team} is answering · then {next}",
+  "@statusAnsweringThen": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      },
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "statusAnswerRevealed": "Answer revealed",
+  "noGamePicked": "No game picked yet. Choose one for this session in the sessions list.",
+  "groupHasNoQuestions": "This group has no questions.",
+  "questionsPlayed": "{played} of {total} questions played",
+  "@questionsPlayed": {
+    "placeholders": {
+      "played": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "teamsBetTheirPoints": "teams bet their points",
+  "betQuestionShown": "Bet question: {prompt}",
+  "@betQuestionShown": {
+    "placeholders": {
+      "prompt": {
+        "type": "String"
+      }
+    }
+  },
+  "enlargedImage": "Enlarged image",
+  "noStrikes": "No strikes",
+  "strikes": "Strikes",
+  "resetStrikes": "Reset strikes",
+  "buzzBeforeUncover": "A team has to buzz before answers can be uncovered.",
+  "betFor": "Bet for {team}",
+  "@betFor": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "betRange": "0 to {limit} points",
+  "@betRange": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "betsTapTeam": "Bets · tap a team to enter its bet",
+  "bets": "Bets",
+  "upTo": "up to {limit}",
+  "@upTo": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "noBet": "no bet",
+  "allPointsGiven": "All points given",
+  "givePoints": "Give points",
+  "givePointsToTeams": "Give points to {count} teams",
+  "@givePointsToTeams": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "given": "Given",
+  "notGivenYet": "Not given yet",
+  "givenSoFar": "Given {points} so far",
+  "@givenSoFar": {
+    "placeholders": {
+      "points": {
+        "type": "String"
+      }
+    }
+  },
+  "takeOutOfOrder": "Take out of the order",
+  "putNextInOrder": "Put next in order",
+  "pointsFor": "Points for {team}",
+  "@pointsFor": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "pointsForQuestion": "Points for this question",
+  "didTeamsReach": "Did each team reach its number?",
+  "tapInOrder": "Tap the teams in order as they finish · {points}, then {step} less each",
+  "@tapInOrder": {
+    "placeholders": {
+      "points": {
+        "type": "String"
+      },
+      "step": {
+        "type": "int"
+      }
+    }
+  },
+  "rateEachTeam": "Rate each team",
+  "goal": "goal {goal}",
+  "@goal": {
+    "placeholders": {
+      "goal": {
+        "type": "int"
+      }
+    }
+  },
+  "otherPoints": "Other points",
+  "otherPointsMenu": "Other points…",
+  "reached": "Reached",
+  "missed": "Missed",
+  "pointsForAnswer": "Points for this answer",
+  "teamWins": "{team} wins · +{points}",
+  "@teamWins": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      },
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "teamsTurn": "{team}'s turn",
+  "@teamsTurn": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "nobodyLeft": "Nobody left",
+  "noPromptsLeft": "No prompts left",
+  "undo": "Undo",
+  "rapidNoItems": "This Fragenhagel has no items yet.",
+  "answerShown": "Answer: {answer}",
+  "@answerShown": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "allDone": "All {count} done",
+  "@allDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "itemOf": "Item {item} of {count}",
+  "@itemOf": {
+    "placeholders": {
+      "item": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "topAnswersEmpty": "This question has no answers on its list yet.",
+  "topTapToUncover": "Tap an answer to uncover it on the big screen.",
+  "topTapNamed": "Tap the answer {team} named. Wrong if it is not on the list.",
+  "@topTapNamed": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "topWhenBuzz": "When a team buzzes, tap the answer it names.",
+  "revealGroupNow": "Reveal a group now?",
+  "revealGroupNowText": "The teams are still playing and will see this group on their devices too. Their time keeps running.",
+  "reveal": "Reveal",
+  "stealWorked": "Steal worked",
+  "stealFailed": "Steal failed",
+  "strike": "Strike",
+  "hide": "Hide",
+  "betsAreIn": "Bets are in",
+  "startQuestion": "Start question",
+  "showAnswer": "Show answer",
+  "finish": "Finish",
+  "nextItem": "Next item",
+  "solution": "Solution",
+  "revealGroup": "Reveal group",
+  "pause": "Pause",
+  "play": "Play",
+  "nextTeam": "Next team",
+  "reopen": "Reopen",
+  "tabBoard": "Board",
+  "tabEffects": "Effects",
+  "tabAnswers": "Answers",
+  "tabSetup": "Setup",
+  "ungrouped": "Ungrouped",
+  "groupHasNoCategories": "This group has no categories.",
+  "showCategoryInMiddle": "Show this category in the middle",
+  "tapFieldToRead": "Tap a field to read its question.",
+  "onScreen": "on screen",
+  "played": "played",
+  "takeOffKeepPlayable": "Take off screen, keep playable",
+  "markNotPlayed": "Mark as not played",
+  "openQuestion": "Open question",
+  "slotBoard": "Board",
+  "slotCalm": "Calm",
+  "slotThrilling": "Thrilling",
+  "effectClosed": "Closed",
+  "effectLockedIn": "Locked in",
+  "effectCountdown": "Countdown",
+  "effectFanfare": "Fanfare",
+  "onScreenHeader": "On screen",
+  "animation": "Animation",
+  "noCardsPrepare": "No cards. Prepare some in the editor.",
+  "textToShow": "Text to show",
+  "show": "Show",
+  "noCardOnScreen": "No card on screen",
+  "takeCardOff": "Take card off screen",
+  "keepSpeakersAwake": "Keep speakers awake",
+  "fewerDetails": "Fewer details",
+  "whatIsThis": "What is this?",
+  "keepSpeakersAwakeText": "Many speakers switch themselves off after a few minutes of silence and miss the start of the next sound. This plays a very quiet noise whenever nothing else plays; music and question sounds take over as they start.",
+  "softNoise": "Soft noise",
+  "whiteNoise": "White noise",
+  "noiseVolume": "Noise {volume} %",
+  "@noiseVolume": {
+    "placeholders": {
+      "volume": {
+        "type": "int"
+      }
+    }
+  },
+  "soundEffects": "Sound effects",
+  "questionSound": "Question sound",
+  "answersOnDevices": "Answers on the teams' devices",
+  "openAQuestionFirst": "Open a question first.",
+  "answersOnDevicesText": "Every team answers on its own device. You see the answers as they come in; the audience only when you show them.",
+  "preparedScreensText": "Sliders, sorting, matching and prepared whiteboards are set up per question in the editor and start by themselves.",
+  "roundOpen": "open",
+  "roundLocked": "locked",
+  "answersIn": "{count} of {total} in",
+  "@answersIn": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "lockAll": "Lock all",
+  "letThemEditAgain": "Let them edit again",
+  "showAll": "Show all",
+  "rateAutomatically": "Rate automatically",
+  "givePointsForGroups": "Give points for groups",
+  "discard": "Discard",
+  "solutionShown": "Solution: {solution}",
+  "@solutionShown": {
+    "placeholders": {
+      "solution": {
+        "type": "String"
+      }
+    }
+  },
+  "partialRight": "{right} of {total} right",
+  "@partialRight": {
+    "placeholders": {
+      "right": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "looksRight": "Looks right",
+  "looksWrong": "Looks wrong",
+  "takeOffScreen": "Take off screen",
+  "showOnScreen": "Show on screen",
+  "halfPoints": "Half points (+{points})",
+  "@halfPoints": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "outPlaceLabel": "{place} out",
+  "@outPlaceLabel": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "waitingForGame": "Waiting for a game…",
+  "betValue": "Bet {bet}",
+  "@betValue": {
+    "placeholders": {
+      "bet": {
+        "type": "int"
+      }
+    }
+  },
+  "goalValue": "Goal {goal}",
+  "@goalValue": {
+    "placeholders": {
+      "goal": {
+        "type": "int"
+      }
+    }
+  },
+  "howManyCanYouDo": "How many can you do?",
+  "theBets": "The bets",
+  "placeYourBets": "Place your bets",
+  "betRule": "Right wins your bet, wrong loses it",
+  "amountRuleWithMinus": "Reach your number: {plus} points for each one · miss it: −{minus} for each",
+  "@amountRuleWithMinus": {
+    "placeholders": {
+      "plus": {
+        "type": "int"
+      },
+      "minus": {
+        "type": "int"
+      }
+    }
+  },
+  "amountRule": "Reach your number: {plus} points for each one",
+  "@amountRule": {
+    "placeholders": {
+      "plus": {
+        "type": "int"
+      }
+    }
+  },
+  "findFourGroups": "Find four groups of four",
+  "isLastTeamStanding": "is the last team standing",
+  "thatWasTheLastOne": "That was the last one!",
+  "thenTeams": "then {teams}",
+  "@thenTeams": {
+    "placeholders": {
+      "teams": {
+        "type": "String"
+      }
+    }
+  },
+  "noColour": "No colour",
+  "useThisColour": "Use this colour",
+  "presenterWindowTitle": "Quiz Studio · Presenter",
+  "reconnectingMainWindow": "Reconnecting to the main window…",
+  "connectingMainWindow": "Connecting to the main window…",
+  "leaveFullScreen": "Leave full screen (Esc)",
+  "fullScreenF11": "Full screen (F11)",
+  "dragToProjector": "Drag this window to the projector, then double-click it or press F11 for full screen.",
+  "pictureLabel": "Picture {label}",
+  "@pictureLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "yourAnswer": "Your answer",
+  "slideToAnswer": "Slide to answer",
+  "dragIntoOrder": "Drag into the right order",
+  "thisOrderIsRight": "This order is right",
+  "foundOfFour": "{count} of 4 found",
+  "@foundOfFour": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mistakeCount": "{count, plural, =1{1 mistake} other{{count} mistakes}}",
+  "@mistakeCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "yourPairs": "Your pairs",
+  "tapWhereItGoes": "Now tap where “{item}” goes",
+  "@tapWhereItGoes": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      }
+    }
+  },
+  "allPlacedSwap": "All placed · drag to swap",
+  "dragOntoPartner": "Drag each answer onto its partner",
+  "dropToTakeBack": "Drop here to take it back",
+  "allPlaced": "All placed",
+  "praisePerfect": "Perfect!",
+  "praiseGreat": "Great!",
+  "praiseNice": "Nice!",
+  "praiseSolid": "Solid!",
+  "allFourFound": "All four found!",
+  "noTriesLeft": "No tries left",
+  "oneAway": "One away…",
+  "notAGroup": "Not a group",
+  "alreadyGuessed": "Already guessed",
+  "allFourGroupsFound": "All four groups found",
+  "noTriesLeftWait": "No tries left. Wait for the solution",
+  "lockedInWith": "Locked in with {count} of 4",
+  "@lockedInWith": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeIsUp": "Time is up",
+  "mistakesRemaining": "Mistakes remaining:",
+  "shuffle": "Shuffle",
+  "deselectAll": "Deselect all",
+  "submit": "Submit",
+  "wereDone": "We're done",
+  "clear": "Clear",
+  "notASessionCode": "That is not a Quiz Studio session code.",
+  "couldNotJoinSession": "Could not join. The code may no longer be valid.",
+  "session": "Session",
+  "justNow": "just now",
+  "minutesAgo": "{count} minutes ago",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hoursAgo": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "{count, plural, =1{1 day ago} other{{count} days ago}}",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rejoinAsTeam": "Rejoin as a team's device",
+  "rejoinAsController": "Rejoin as controller",
+  "joinedAgo": "Joined {ago}",
+  "@joinedAgo": {
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "joinLink": "Join link",
+  "orPasteLink": "Or paste the link",
+  "joinTerms": "By joining you agree to the terms and privacy policy. No account or name needed.",
+  "joinASession": "Join a session",
+  "pasteJoinLinkHelp": "Open \"Connect devices\" on the presenting device, copy the join link there and paste it here.",
+  "didNotGetThrough": "That did not get through.",
+  "couldNotReachSession": "Could not reach this session.",
+  "waitingForShow": "Waiting for the show to start…",
+  "teamRemovedFromSession": "Your team was removed from the session.",
+  "youAreLastTeam": "You are the last team standing!",
+  "teamWinsShort": "{team} wins",
+  "@teamWinsShort": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "youAreOut": "You are out",
+  "yourTurn": "Your turn!",
+  "buzzerTestPress": "Buzzer test: press to check",
+  "waitingForNextQuestion": "Waiting for the next question",
+  "yourGoal": "Your goal: {goal}",
+  "@yourGoal": {
+    "placeholders": {
+      "goal": {
+        "type": "int"
+      }
+    }
+  },
+  "goalReached": "Goal reached!",
+  "goalMissed": "Goal missed",
+  "buzzOnBox": "Buzz on the buzzer box",
+  "buzzWhenYouKnow": "Buzz when you know it!",
+  "noBuzzersForQuestion": "No buzzers for this question",
+  "numberInLine": "You are number {n} in line",
+  "@numberInLine": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "anotherTeam": "Another team",
+  "needsNewerVersion": "This question needs a newer version of Quiz Studio. Please update the app.",
+  "answerHere": "Answer here",
+  "answerBeingShown": "Your answer is being shown",
+  "lockedInWaiting": "Locked in, waiting for the others",
+  "answersAreIn": "Answers are in",
+  "pointsCount": "{count, plural, =1{1 point} other{{count} points}}",
+  "@pointsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "betShort": "bet {bet}",
+  "@betShort": {
+    "placeholders": {
+      "bet": {
+        "type": "int"
+      }
+    }
+  },
+  "rightExclaim": "Right!",
+  "notThisTime": "Not this time",
+  "answerCountsWhenEnded": "Your answer counts as it stands when the gamemaster ends the round.",
+  "answerCountsWhenTimeUp": "Your answer counts as it stands when the time is up.",
+  "lockedIn": "Locked in",
+  "lockedInAfter": "Locked in after {seconds} s",
+  "@lockedInAfter": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "lockInAnswer": "Lock in answer",
+  "answerFirst": "Answer first",
+  "answerOnBigScreen": "Your answer is on the big screen.",
+  "gettingPicture": "Getting the picture…",
+  "connectedLan": "Connected over the local network",
+  "connectedInternet": "Connected through the internet",
+  "yourBetOn": "Your bet on {category}",
+  "@yourBetOn": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "placeYourBet": "Place your bet",
+  "theGoals": "The goals",
+  "betOutcome": "Right: +{value} · Wrong: −{value}",
+  "@betOutcome": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "amountOutcomeWithMinus": "If successful: +{win} · Missed: −{lose}",
+  "@amountOutcomeWithMinus": {
+    "placeholders": {
+      "win": {
+        "type": "int"
+      },
+      "lose": {
+        "type": "int"
+      }
+    }
+  },
+  "amountOutcome": "If successful: +{win}",
+  "@amountOutcome": {
+    "placeholders": {
+      "win": {
+        "type": "int"
+      }
+    }
+  },
+  "betNothing": "Nothing",
+  "betHalf": "Half",
+  "allIn": "All in",
+  "questionStartsSoon": "The question starts in a moment",
+  "betPlaced": "Bet placed",
+  "changeTo": "Change to {value}",
+  "@changeTo": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "betAction": "Bet {value}",
+  "@betAction": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "buzzerSoundTooBig": "This file is too big; a buzzer sound can be up to 5 MB.",
+  "notASoundFile": "This is not a sound file the app can play.",
+  "couldNotUploadBuzzerSound": "Could not upload the sound. The team keeps the one it had.",
+  "buzzers": "Buzzers",
+  "useUsbBox": "Use a USB buzzer box",
+  "useUsbBoxText": "Off: teams buzz with their phones only, and the big screen does not look for a box.",
+  "usbBoxPlatforms": "A USB buzzer box works on Windows, macOS and Linux. Phones and tablets can still be buzzers: see Connect devices.",
+  "buzzerSounds": "Buzzer sounds",
+  "buzzerSoundsText": "Saved with the session and played by whichever device presents. Until that device has fetched a sound, and for teams without one, the built-in buzzer plays.",
+  "ownSound": "Own sound",
+  "chooseBuzzerSound": "Choose a buzzer sound",
+  "uploadOwnSound": "Upload own sound…",
+  "choose": "Choose",
+  "backToBuiltinBuzzer": "Back to the built-in buzzer",
+  "addTeamsFirstShort": "Add teams first.",
+  "test": "Test",
+  "clearOrder": "Clear order",
+  "calibrate": "Calibrate",
+  "buzzersAppearHere": "Buzzers appear here as soon as the box sends readings.",
+  "pressTheBuzzers": "Press the buzzers. Each lights up while it is held, and the numbers show who was first. Tap one to change its team or sensitivity.",
+  "assignAllByPressing": "Assign all by pressing",
+  "pressBuzzerOf": "Press the buzzer of {team} now",
+  "@pressBuzzerOf": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "moreToGo": "{count} more to go",
+  "@moreToGo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "defaultAssignment": "Without anything assigned, buzzer 1 is the first team, buzzer 2 the second, and so on.",
+  "noBuzzer": "No buzzer",
+  "buzzerN": "Buzzer {n}",
+  "@buzzerN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "assignByPressing": "Assign by pressing",
+  "addTeamsInSessionFirst": "Add teams in the session first.",
+  "rawData": "Raw data",
+  "rawDataText": "Exactly what the box sends, for finding faults",
+  "nothingReceivedYet": "Nothing received yet.",
+  "notConnectedDot": "Not connected.",
+  "team": "Team",
+  "byPosition": "By position",
+  "howHardPressed": "How hard it has to be pressed",
+  "readingThreshold": "Reading {value} · counts as pressed above {threshold}",
+  "@readingThreshold": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      },
+      "threshold": {
+        "type": "int"
+      }
+    }
+  },
+  "noBuzzerPressedClearly": "No buzzer was pressed clearly.",
+  "calibratedBuzzers": "Calibrated {count} buzzers.",
+  "@calibratedBuzzers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "connected": "Connected",
+  "readingsPerSecond": "{rate} readings per second · up {uptime}",
+  "@readingsPerSecond": {
+    "placeholders": {
+      "rate": {
+        "type": "int"
+      },
+      "uptime": {
+        "type": "String"
+      }
+    }
+  },
+  "reconnectedTimes": "reconnected {count}×",
+  "@reconnectedTimes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "boxSilent": "Open, but the box is not sending",
+  "boxSilentText": "Trying again every few seconds. Is it the right port, and is the box powered?",
+  "notConnectedShort": "Not connected",
+  "boxDisconnectedText": "Trying again every few seconds. Plug the box in; nothing needs to be pressed here.",
+  "choosePort": "Choose the port of the buzzer box",
+  "rememberedOnDevice": "It is remembered on this device.",
+  "noSerialPorts": "No serial ports on this device",
+  "port": "Port",
+  "reconnectNow": "Reconnect now",
+  "noTeam": "No team",
+  "pressEveryBuzzer": "Now press every buzzer once, as hard as a player would.",
+  "handsOff": "Hands off all buzzers for a moment…",
+  "waitingFirstPress": "Waiting for the first press.",
+  "gotBuzzers": "Got buzzer {buzzers}.",
+  "@gotBuzzers": {
+    "placeholders": {
+      "buzzers": {
+        "type": "String"
+      }
+    }
+  },
+  "yourNumber": "Your number",
+  "confetti": "Confetti",
+  "flash": "Flash",
+  "fireworks": "Fireworks",
+  "balloons": "Balloons",
+  "stars": "Stars",
+  "spotlight": "Spotlight",
+  "editTitle": "Edit title",
+  "noPicture": "No picture",
+  "noMusic": "No music",
+  "firstItem": "First item",
+  "rapidIntro": "The question first: read it out, then Next brings up item 1",
+  "closeAnswering": "Close answering",
+  "hintShown": "Hint: {hint}",
+  "@hintShown": {"placeholders": {"hint": {"type": "String"}}},
+  "byClosenessShort": "by closeness",
+  "byClosenessSummary": "By closeness · {plus}, then −{step} per place",
+  "@byClosenessSummary": {"placeholders": {"plus": {"type": "int"}, "step": {"type": "int"}}},
+  "scoringClosenessText": "The team whose number is nearest the right value gets the most points, each place after it a bit less. Teams equally near share a place. The places count once the answering is closed, and the big screen shows them with the answers.",
+  "scoringClosenessNoSolution": "Places go by how near each number is to the solution, so give the slider or number a right value under How teams answer.",
+  "placeN": "{place} place",
+  "@placeN": {"placeholders": {"place": {"type": "String"}}},
+  "statusRapidIntro": "Question open · read it out first"
+}

@@ -24,7 +24,7 @@ GameContent rapidGame() => GameContent.assemble(
               'mode': 'buzzer',
               'progress': 'flux',
               'items': [
-                {'question': 'France?', 'answer': 'Paris', 'music': 'marseillaise.mp3'},
+                {'question': 'France?', 'answer': 'Paris', 'hint': 'Also accept: Lutetia', 'music': 'marseillaise.mp3'},
                 {'question': 'Italy?', 'answer': 'Rome', 'image': 'rome.png'},
                 {'question': 'Spain?', 'answer': 'Madrid'},
               ],

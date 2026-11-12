@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quiz_show/l10n/l10n.dart';
 
 /// A group of settings in the question editor: a header with what is set in
 /// one line, which opens to show the settings themselves. Closed, the
@@ -131,8 +132,8 @@ const List<int> kTimerChoices = [10, 20, 30, 45, 60, 90, 120, 180, 300];
 
 /// A timer the way the editor writes it everywhere: "0:30", "1:30", "5:00",
 /// like the clock on the screen.
-String timerLabel(int? seconds) =>
-    seconds == null || seconds <= 0 ? "No timer" : "${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}";
+String timerLabel(int? seconds, [AppLocalizations? l10n]) =>
+    seconds == null || seconds <= 0 ? (l10n ?? englishL10n).noTimer : "${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}";
 
 /// Picks a question's timer from [kTimerChoices]; a time set elsewhere (e.g.
 /// by the assistant) stays offered.
@@ -146,10 +147,10 @@ class TimerDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     final choices = [...kTimerChoices, if (seconds != null && !kTimerChoices.contains(seconds)) seconds!]..sort();
     return FillDropdown<int?>(
-      label: "Timer",
+      label: context.l10n.timer,
       value: seconds,
       entries: [
-        const DropdownMenuEntry(value: null, label: "No timer"),
+        DropdownMenuEntry(value: null, label: context.l10n.noTimer),
         for (final choice in choices) DropdownMenuEntry(value: choice, label: timerLabel(choice)),
       ],
       onSelected: onChanged,
@@ -159,21 +160,21 @@ class TimerDropdown extends StatelessWidget {
 
 /// Whether teams may lock in their answer before the time is up.
 class LockInSwitch extends StatelessWidget {
-  const LockInSwitch({super.key, required this.value, required this.onChanged, this.title = "Teams can lock in early"});
+  const LockInSwitch({super.key, required this.value, required this.onChanged, this.title});
 
   final bool value;
   final ValueChanged<bool> onChanged;
-  final String title;
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text(title),
+      title: Text(title ?? context.l10n.teamsCanLockIn),
       subtitle: Text(
         value
-            ? "Locking in ends a team's time, and how long it took is kept"
-            : "Every answer counts as it stands when the time is up or you end the round",
+            ? context.l10n.lockInOnText
+            : context.l10n.lockInOffText,
       ),
       value: value,
       onChanged: onChanged,
