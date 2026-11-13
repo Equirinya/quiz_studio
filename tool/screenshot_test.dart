@@ -526,6 +526,17 @@ void main() {
     await shot('matching_presenter');
   });
 
+  testWidgets('matching: big screen, two pairs put together', (tester) async {
+    await screen(tester, const [OpenQuestion(matchingRound), LockAnswers(), Reveal(1), Reveal(1)], game: matchingGame());
+    await tester.pump(const Duration(seconds: 2));
+    await shot('matching_presenter_two');
+  });
+
+  testWidgets('presenter: progressing reveal while the teams write', (tester) async {
+    await screen(tester, const [OpenQuestion(reveal), OpenAnswers(CompanionSpec(kind: CompanionKind.text, timerSeconds: 60)), Reveal(1), Reveal(1)]);
+    await shot('reveal_presenter_answering');
+  });
+
   testWidgets('presenter: confetti', (tester) async {
     await screen(tester, const [AdjustPoints('red', 900), AdjustPoints('blue', 700)]);
     tester.state<ScreenEffectLayerState>(find.byType(ScreenEffectLayer)).play(screenEffectConfetti);
@@ -1474,6 +1485,14 @@ void main() {
     await shot('matching_presenter_ten');
   });
 
+  testWidgets('matching: ten pairs, five put together', (tester) async {
+    final game = princessGame();
+    await cachePictures(tester, game);
+    await screen(tester, [const OpenQuestion(QuestionRef('c', 'q')), const LockAnswers(), for (var i = 0; i < 5; i++) const Reveal(1)], game: game);
+    await tester.pump(const Duration(seconds: 2));
+    await shot('matching_presenter_ten_five');
+  });
+
   testWidgets('matching: ten pairs answered, read on the controller', (tester) async {
     final game = princessGame();
     await phone(tester, const [
@@ -1517,8 +1536,9 @@ void main() {
         'c': {
           'q': {
             'type': 'ordering',
-            'question': 'Put the inventions in order, oldest first.',
+            'question': 'Which invention changed the most lives? Put them in order of when they were invented, oldest first! 🎟️',
             'pointsPlus': 300,
+            'companion': {'timer': 90},
             'ordering': {
               'scoring': 'pairs',
               'items': [
@@ -1607,6 +1627,56 @@ void main() {
     expect(host.state.answerRound!.answers['red'], isNull);
     await shot('test_devices');
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('controller: answers sheet, choosing who answers', (tester) async {
+    await phone(tester, const [AdjustPoints('red', 300), OpenQuestion(free)]);
+    await tapText(tester, find.widgetWithText(TextButton, fallbackL10n.tabAnswers));
+    await tapText(tester, find.text('Red · 300').first);
+    await shot('controller_answers_sheet');
+  });
+
+  testWidgets('controller: answers sheet during a round, with more time, who answers and notes', (tester) async {
+    tester.view.physicalSize = const Size(412, 1100);
+    await phone(tester, [
+      const AdjustPoints('red', 300),
+      const OpenQuestion(free),
+      const OpenAnswers(CompanionSpec(kind: CompanionKind.order, options: ['Mercury', 'Venus', 'Earth', 'Mars'], timerSeconds: 60)),
+      const AllowNotes(['blue']),
+      const WriteNotes('blue', 'Mercury 58, Venus 108'),
+    ]);
+    tester.view.physicalSize = const Size(412, 1100);
+    await tester.pump();
+    await shot('controller_notes_panel');
+    // The screenshot ended the round; a new one for the popup.
+    host.dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.order, options: ['Mercury', 'Venus', 'Earth', 'Mars'], timerSeconds: 60)));
+    await tester.pump();
+    await tapText(tester, find.widgetWithText(TextButton, fallbackL10n.tabAnswers));
+    await shot('controller_answers_sheet_round');
+  });
+
+  testWidgets('player: notes, only for the chosen team; the others watch', (tester) async {
+    for (final (team, name) in [('blue', 'player_notes'), ('red', 'player_sitting_out')]) {
+      tester.view.physicalSize = const Size(412, 892);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      host = SessionHost(initial: fixtureState(), game: fixtureGame());
+      addTearDown(host.dispose);
+      host
+        ..dispatch(const OpenQuestion(free))
+        ..dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.order, options: ['Mercury', 'Venus', 'Earth', 'Mars']), teams: ['blue']))
+        ..dispatch(const AllowNotes(['blue']))
+        ..dispatch(const WriteNotes('blue', 'Mercury 58\nVenus 108'));
+      await tester.pumpWidget(MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        home: Scaffold(
+          body: SafeArea(child: PlayerView(key: ValueKey(team), view: PublicView(host.publicStateFor(team)), teamId: team, send: (_) {}, onLeave: () {})),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 400));
+      await shot(name);
+    }
   });
 
   testWidgets('editor: put in order', (tester) async {

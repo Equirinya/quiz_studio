@@ -11,7 +11,7 @@ void main() {
 
   test('a question opening, a team locking in', () {
     final game = fixtureGame();
-    var r = reduce(fixtureState(), const OpenQuestion(sum), game, now: 0);
+    var r = reduce(fixtureState(), const OpenQuestion(race), game, now: 0);
     expect(sounds(r), [effectQuestionOpen]);
     r = reduce(r.state, const LockAnswer('red'), game, now: 10);
     expect(sounds(r), [effectLockIn]);

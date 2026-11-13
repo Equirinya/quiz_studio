@@ -18,7 +18,9 @@ void main() {
     test('the arguments go there and back', () {
       const args = PresenterWindowArgs(sessionId: 's1', endpoint: '127.0.0.1:47800', token: 'abc');
       final parsed = PresenterWindowArgs.tryParse(['--something', ...args.toArgs()])!;
-      expect((parsed.sessionId, parsed.endpoint, parsed.token), ('s1', '127.0.0.1:47800', 'abc'));
+      expect((parsed.sessionId, parsed.endpoint, parsed.token, parsed.devices), ('s1', '127.0.0.1:47800', 'abc', false));
+      const devices = PresenterWindowArgs(sessionId: 's1', endpoint: '127.0.0.1:47800', token: 'abc', devices: true);
+      expect(PresenterWindowArgs.tryParse(devices.toArgs())!.devices, isTrue, reason: 'the test phones window');
     });
 
     test('an ordinary start, or anything incomplete or elsewhere, is not a presenter window', () {

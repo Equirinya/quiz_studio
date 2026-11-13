@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -23,7 +24,13 @@ class CompanionInput extends StatefulWidget {
     this.whiteboardAspect = kWhiteboardAspect,
     this.backgroundImage,
     this.pictures = const {},
+    this.teamAnswer,
   });
+
+  /// The team's answer as the host has it. Another phone of the same team
+  /// may have changed it; this one then follows (not for whiteboards and
+  /// matching, which keep their own).
+  final PlayerAnswer? teamAnswer;
 
   /// Matching: the round's pictures that have arrived, by media name.
   final Map<String, Uint8List> pictures;
@@ -97,9 +104,83 @@ class _CompanionInputState extends State<CompanionInput> {
     super.dispose();
   }
 
+  /// What this phone sent lately; the host's copies of these are not news.
+  final List<String> _sent = [];
+
+  static String _content(PlayerAnswer answer) => jsonEncode(answer.asLocked(false).toJson());
+
+  void _emit(PlayerAnswer answer) {
+    _sent.add(_content(answer));
+    if (_sent.length > 8) _sent.removeAt(0);
+    widget.onChanged(answer);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // A phone that joins or comes back mid-round starts from the team's answer.
+    _follow(widget.teamAnswer);
+    // Sorting: the order as shown counts as the team's answer from the
+    // start, so a team that finds it right can lock in without dragging.
+    if (_kind == CompanionKind.order && widget.enabled && widget.teamAnswer == null && !_startSent && _items.isNotEmpty) {
+      _startSent = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && widget.teamAnswer == null) _emit(PlayerAnswer(order: [for (final item in _items) item.index]));
+      });
+    }
+  }
+
+  bool _startSent = false;
+
+  @override
+  void didUpdateWidget(CompanionInput old) {
+    super.didUpdateWidget(old);
+    _follow(widget.teamAnswer);
+  }
+
+  /// Takes over [answer] when another phone of the team made it.
+  void _follow(PlayerAnswer? answer) {
+    if (answer == null || answer.isEmpty) return;
+    final content = _content(answer);
+    if (_sent.contains(content)) return;
+    _sent.add(content);
+    if (_sent.length > 8) _sent.removeAt(0);
+    switch (_kind) {
+      case CompanionKind.text when answer.text != null && answer.text != _text.text.trim():
+        _text.text = answer.text!;
+      case CompanionKind.number when answer.number != null:
+        _text.text = formatNumber(answer.number!);
+      case CompanionKind.slider when answer.number != null:
+        _value = answer.number!;
+        _moved = true;
+      case CompanionKind.choice:
+        _choice = answer.choice ?? _choice;
+        if (answer.choices != null) {
+          _choices
+            ..clear()
+            ..addAll(answer.choices!);
+        }
+      case CompanionKind.order when answer.order != null:
+        final byIndex = {for (final item in _items) item.index: item};
+        final ordered = [for (final index in answer.order!) ?byIndex[index]];
+        if (ordered.length == _items.length) {
+          _items
+            ..clear()
+            ..addAll(ordered);
+        }
+      case CompanionKind.list when answer.items != null:
+        for (final (i, line) in _lines.indexed) {
+          final text = answer.items!.elementAtOrNull(i) ?? '';
+          if (line.text.trim() != text) line.text = text;
+        }
+      default:
+        break;
+    }
+  }
+
   void _later(PlayerAnswer Function() answer) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 600), () => widget.onChanged(answer()));
+    _debounce = Timer(const Duration(milliseconds: 600), () => _emit(answer()));
   }
 
   @override
@@ -114,7 +195,7 @@ class _CompanionInputState extends State<CompanionInput> {
           backgroundImage: widget.backgroundImage,
           background: widget.spec['background'] as String? ?? 'blank',
           listRows: (widget.spec['listRows'] as num?)?.toInt() ?? 5,
-          onChanged: (drawing) => widget.onChanged(PlayerAnswer(drawing: drawing)),
+          onChanged: (drawing) => _emit(PlayerAnswer(drawing: drawing)),
         );
 
       case CompanionKind.text:
@@ -167,7 +248,7 @@ class _CompanionInputState extends State<CompanionInput> {
                         _value = ((value - range.min) / range.step).round() * range.step + range.min;
                         _moved = true;
                       }),
-              onChangeEnd: (_) => widget.onChanged(PlayerAnswer(number: _value)),
+              onChangeEnd: (_) => _emit(PlayerAnswer(number: _value)),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -207,11 +288,11 @@ class _CompanionInputState extends State<CompanionInput> {
                             : _multiple
                             ? () {
                                 setState(() => _choices.contains(i) ? _choices.remove(i) : _choices.add(i));
-                                widget.onChanged(PlayerAnswer(choices: [..._choices]..sort()));
+                                _emit(PlayerAnswer(choices: [..._choices]..sort()));
                               }
                             : () {
                                 setState(() => _choice = i);
-                                widget.onChanged(PlayerAnswer(choice: i));
+                                _emit(PlayerAnswer(choice: i));
                               },
                       ),
                     ),
@@ -239,7 +320,7 @@ class _CompanionInputState extends State<CompanionInput> {
                     if (to > from) to -= 1;
                     _items.insert(to, _items.removeAt(from));
                   });
-                  widget.onChanged(PlayerAnswer(order: [for (final item in _items) item.index]));
+                  _emit(PlayerAnswer(order: [for (final item in _items) item.index]));
                 },
                 children: [
                   for (final (i, item) in _items.indexed)
@@ -257,11 +338,6 @@ class _CompanionInputState extends State<CompanionInput> {
                 ],
               ),
             ),
-            if (enabled)
-              TextButton(
-                onPressed: () => widget.onChanged(PlayerAnswer(order: [for (final item in _items) item.index])),
-                child: Text(context.l10n.thisOrderIsRight),
-              ),
           ],
         );
 
@@ -289,7 +365,7 @@ class _CompanionInputState extends State<CompanionInput> {
               (item.index, rightPictures[item.index] != null && Matching.isPictureName(rawRight[item.index] ?? '') ? '' : item.text),
           ],
           enabled: enabled,
-          onChanged: (pairs) => widget.onChanged(PlayerAnswer(pairs: pairs)),
+          onChanged: (pairs) => _emit(PlayerAnswer(pairs: pairs)),
         );
 
       case CompanionKind.connections:

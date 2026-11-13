@@ -107,7 +107,7 @@ void main() {
       ]);
       expect((points(s, 'red'), points(s, 'blue')), (10, 0));
       expect(s.answerRound!.answers, isEmpty, reason: 'a fresh round for the next item');
-      s = run(s, const [SubmitAnswer('blue', PlayerAnswer(choice: 1)), LockAnswer('blue'), Reveal(1)], game);
+      s = run(s, const [SubmitAnswer('blue', PlayerAnswer(choice: 1)), Reveal(1)], game);
       expect((points(s, 'red'), points(s, 'blue')), (10, 10));
       expect((s.phase, s.answerRound), (Phase.answerRevealed, null));
     });

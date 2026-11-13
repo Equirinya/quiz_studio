@@ -301,7 +301,7 @@
   "noTimer": "No timer",
   "timer": "Timer",
   "teamsCanLockIn": "Teams can lock in early",
-  "lockInOnText": "Locking in ends a team's time, and how long it took is kept",
+  "lockInOnText": "Locking in ends a team's time, and how long it took is kept. Only when scored by order, fastest first",
   "lockInOffText": "Every answer counts as it stands when the time is up or you end the round",
   "musicCount": "{count, plural, =1{1 music} other{{count} music}}",
   "@musicCount": {
@@ -1512,7 +1512,6 @@
   "yourAnswer": "Your answer",
   "slideToAnswer": "Slide to answer",
   "dragIntoOrder": "Drag into the right order",
-  "thisOrderIsRight": "This order is right",
   "foundOfFour": "{count} of 4 found",
   "@foundOfFour": {
     "placeholders": {
@@ -1909,5 +1908,12 @@
   "testDevices": "Test devices",
   "bot": "Bot",
   "allBots": "All bots",
-  "noBots": "No bots"
+  "noBots": "No bots",
+  "whoAnswers": "Who answers",
+  "notes": "Notes",
+  "roundForOtherTeams": "This round is for other teams",
+  "nextPair": "Next pair",
+  "moreTime": "More time",
+  "noTimeLimit": "No time limit",
+  "notesText": "Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here."
 }

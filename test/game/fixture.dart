@@ -8,6 +8,10 @@ const abcd = QuestionRef('c2', 'abcd');
 const reveal = QuestionRef('c2', 'reveal');
 const feud = QuestionRef('c3', 'feud');
 
+/// Scored by order, fastest first: the one kind of question where teams lock
+/// in early.
+const race = QuestionRef('c3', 'race');
+
 /// Two groups: g1 (wheel) with c1 and c2, g2 (display) with c3.
 GameContent fixtureGame() => GameContent.assemble(
       id: 'game',
@@ -67,6 +71,14 @@ GameContent fixtureGame() => GameContent.assemble(
             'informationPercentage': [50, 30, 20],
             'pointsPlus': 1000,
           },
+          'race': {
+            'type': 'free',
+            'question': 'Draw it, fast!',
+            'noBuzzer': true,
+            'pointsPlus': 400,
+            'rankStep': 100,
+            'companion': {'kind': 'whiteboard', 'timer': 30},
+          },
         },
         'hidden': {
           'x': {'type': 'free', 'question': 'never shown', 'pointsPlus': 1},
@@ -81,10 +93,11 @@ SessionState fixtureState() => const SessionState(
     );
 
 /// Applies commands in order, failing loudly if one is rejected.
-SessionState run(SessionState state, List<Command> commands, [GameContent? game]) {
+/// [now] is the host's clock, which timed rounds need.
+SessionState run(SessionState state, List<Command> commands, [GameContent? game, int? now]) {
   game ??= fixtureGame();
   for (final command in commands) {
-    final result = reduce(state, command, game);
+    final result = reduce(state, command, game, now: now);
     if (!result.accepted) throw StateError('rejected: ${command.toJson()} in phase ${state.phase.name}');
     state = result.state;
   }

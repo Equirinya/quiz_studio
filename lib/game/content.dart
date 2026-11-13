@@ -648,8 +648,9 @@ class Question {
         QuestionType.connections => kConnectionsGroups,
         // One step per item; the last one ends the round.
         QuestionType.rapidFire => rapidFire?.items.length ?? 0,
-        // One step per entry put in its place.
+        // One step per entry put in its place, or per pair put together.
         QuestionType.ordering => ordering?.items.length ?? 0,
+        QuestionType.matching => matching?.pairs.length ?? 0,
         _ => 0,
       };
 

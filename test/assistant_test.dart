@@ -524,6 +524,70 @@ void main() {
       }
     });
 
+    test('a put-in-order question is changed in parts: entries keep the scoring, the scoring alone keeps the entries', () async {
+      await tools.call('add_question', {
+        'gameId': 'g',
+        'categoryId': 'c1',
+        'type': 'ordering',
+        'question': 'Highest first',
+        'ordering': {
+          'items': [
+            {'text': 'Everest', 'value': 8849},
+            {'text': 'K2', 'value': 8611.5},
+          ],
+          'scoring': 'exact',
+        },
+      });
+      String id() => (backend.questions['c1']!.keys.last);
+      Future<Question> stored() async => (await backend.loadGame('g')).groups.single.categories.single.questions.firstWhere((q) => q.id == id());
+      expect([for (final item in (await stored()).ordering!.items) item.value], ['8849', '8611.5']);
+
+      final update = {'gameId': 'g', 'categoryId': 'c1', 'questionId': id()};
+      await tools.call('update_question', {
+        ...update,
+        'ordering': {
+          'items': [
+            {'text': 'Everest'},
+            {'text': 'K2'},
+            {'text': 'Kangchenjunga'},
+          ],
+        },
+      });
+      expect((await stored()).ordering!.items, hasLength(3));
+      expect((await stored()).ordering!.scoring, OrderScoring.exact);
+
+      await tools.call('update_question', {...update, 'ordering': {'scoring': 'pairs'}});
+      expect((await stored()).ordering!.items, hasLength(3));
+      expect((await stored()).ordering!.scoring, OrderScoring.pairs);
+
+      for (final bad in [
+        {'ordering': <String, dynamic>{}},
+        {'ordering': {'scoring': 'random'}},
+        {'ordering': {'items': [{'text': 'only one'}]}},
+      ]) {
+        await expectLater(tools.call('update_question', {...update, ...bad}), throwsA(isA<ToolError>()), reason: '$bad');
+      }
+    });
+
+    test('a question only becomes put in order with its entries', () async {
+      await tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', 'question': 'Plain', 'pointsPlus': 100});
+      final id = backend.questions['c1']!.keys.last;
+      final update = {'gameId': 'g', 'categoryId': 'c1', 'questionId': id, 'type': 'ordering'};
+      await expectLater(tools.call('update_question', update), throwsA(isA<ToolError>()));
+      await tools.call('update_question', {
+        ...update,
+        'ordering': {
+          'items': [
+            {'text': 'a'},
+            {'text': 'b'},
+          ],
+        },
+      });
+      final read = (await described()).firstWhere((q) => q['id'] == id);
+      expect(read['type'], 'ordering');
+      expect((read['ordering'] as Map)['items'], [{'text': 'a'}, {'text': 'b'}]);
+    });
+
     test('a top answers question and an estimate with a range, read back as they were given', () async {
       final top = {
         'mode': 'typed',

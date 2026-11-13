@@ -103,9 +103,10 @@ void main() {
   });
 
   test('rate automatically only offers what is final and would change something', () {
-    const pick = CompanionSpec(kind: CompanionKind.order, options: ['a', 'b']);
-    var state = run(fixtureState(), const [OpenQuestion(estimate)]);
-    state = reduce(state, const OpenAnswers(pick), fixtureGame()).state;
+    const pick = CompanionSpec(kind: CompanionKind.order, options: ['a', 'b'], timerSeconds: 60);
+    // Scored fastest first, so teams lock in.
+    var state = run(fixtureState(), const [OpenQuestion(race)]);
+    state = reduce(state, const OpenAnswers(pick), fixtureGame(), now: 0).state;
     state = reduce(state, const SubmitAnswer('red', PlayerAnswer(order: [0, 1])), fixtureGame()).state;
     // Still being changed: nothing to rate yet.
     expect(autoRating(state, state.answerRound!, question), isEmpty);

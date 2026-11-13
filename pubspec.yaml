@@ -2,7 +2,7 @@ name: quiz_show
 description: "Create a quiz show with flutter and an arduino connected via usb"
 publish_to: 'none'
 
-version: 2.0.0+200
+version: 2.0.1+201
 
 environment:
   sdk: '>3.8.0 <4.0.0'
@@ -93,7 +93,7 @@ msix_config:
   display_name: Quiz Studio
   publisher_display_name: Equirinya
   identity_name: de.equirinya.quizshow
-  msix_version: 2.0.0.0
+  msix_version: 2.0.1.0
   logo_path: assets/icon/icon.png
   capabilities: internetClient, microphone, serialcommunication
 

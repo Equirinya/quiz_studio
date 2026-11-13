@@ -48,4 +48,16 @@ void main() {
     expect(rapidGame().question(devicesRound)!.needsDevices, isTrue);
     expect(rapidGame().question(buzzerRound)!.needsDevices, isFalse);
   });
+
+  test('the solution comes up pair by pair, the last two together, and back', () {
+    var s = reduce(fixtureState(), const OpenQuestion(matchingRound), game).state;
+    s = reduce(s, const LockAnswers(), game).state;
+    expect(question.maxReveal, 4);
+    for (final expected in [1, 2, 4]) {
+      s = reduce(s, const Reveal(1), game).state;
+      expect(s.revealed, expected);
+    }
+    expect(reduce(s, const Reveal(1), game).accepted, isFalse);
+    expect(reduce(s, const Reveal(-1), game).state.revealed, 2);
+  });
 }

@@ -446,13 +446,29 @@ class _NowPanel extends StatelessWidget {
             builder: (context) {
               final matching = q.matching ?? const Matching();
               final numbers = matching.rightNumbers(q.id);
+              // Ticked as the big screen puts each pair together.
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     for (var i = 0; i < matching.pairs.length; i++)
-                      Text("${l10n.deviceLabel(matching.leftLabel(i))}  →  ${l10n.deviceLabel(matching.rightLabel(i, numbers))}", style: theme.textTheme.bodyMedium),
+                      Row(
+                        children: [
+                          Icon(
+                            i < state.revealed ? Icons.check_circle : Icons.radio_button_unchecked,
+                            size: 18,
+                            color: i < state.revealed ? scheme.primary : scheme.outline,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              "${l10n.deviceLabel(matching.leftLabel(i))}  →  ${l10n.deviceLabel(matching.rightLabel(i, numbers))}",
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               );
@@ -464,6 +480,8 @@ class _NowPanel extends StatelessWidget {
         // Nothing on the devices: the gamemaster rates each team here.
         if (round == null && !state.waitingForBets && (q.ranked || q.amountBet != null || (q.noBuzzer && q.companion == null)))
           _ResultsPanel(state: state, question: q, send: send),
+        // Notes of the teams given a notes field, as they write.
+        if (state.notesTeams.isNotEmpty) _NotesPanel(state: state),
         if (round != null && q.type != QuestionType.rapidFire)
           _AnswersPanel(state: state, round: round, question: q, send: send, hostClock: hostClock, backgroundImage: backgroundImage),
         if (q.type == QuestionType.abcd)
@@ -1198,9 +1216,10 @@ class _ActionPad extends StatelessWidget {
     // otherwise they show the teams' answers one by one.
     final canReveal = q != null && q.maxReveal > 0 && state.current != null;
     final round = state.answerRound;
-    // Put in order: answering closes first, then the entries go in place
-    // one by one, then the teams' answers come up.
-    final ordering = q?.type == QuestionType.ordering;
+    // Put in order and matching: answering closes first, then the entries
+    // go in place (the pairs together) one by one, then the teams' answers
+    // come up.
+    final ordering = q?.type == QuestionType.ordering || q?.type == QuestionType.matching;
     final placing = ordering && canReveal && state.revealed < q.maxReveal;
     final answerSteps = round != null && (!canReveal || (ordering && !placing));
     final rapid = q?.type == QuestionType.rapidFire;
@@ -1224,7 +1243,7 @@ class _ActionPad extends StatelessWidget {
         : closeFirst
         ? const LockAnswers()
         : answerSteps
-        ? (state.teams.any((team) => !round.revealed.contains(team.id)) ? const RevealNextAnswer() : null)
+        ? (state.roundTeams.any((team) => !round.revealed.contains(team.id)) ? const RevealNextAnswer() : null)
         : canReveal && state.revealed < q.maxReveal
         ? const Reveal(1)
         : null;
@@ -1329,7 +1348,7 @@ class _ActionPad extends StatelessWidget {
                     : q?.type == QuestionType.connections
                     ? context.l10n.revealGroup
                     : placing
-                    ? context.l10n.placeNext
+                    ? (q.type == QuestionType.matching ? context.l10n.nextPair : context.l10n.placeNext)
                     : context.l10n.reveal,
                 Icons.navigate_next,
                 next,
@@ -2085,9 +2104,13 @@ class _AnswersSheet extends StatefulWidget {
 class _AnswersSheetState extends State<_AnswersSheet> {
   int? _timer;
 
+  /// Teams left out of the next round, e.g. all but the two last-placed.
+  final Set<String> _left = {};
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     final state = widget.state;
     final send = widget.send;
     final round = state.answerRound;
@@ -2096,78 +2119,184 @@ class _AnswersSheetState extends State<_AnswersSheet> {
       padding: const EdgeInsets.only(right: 8, top: 8),
       child: FilledButton.tonalIcon(onPressed: onPressed, icon: Icon(icon), label: Text(label)),
     );
+    Widget heading(String text) => Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 4),
+      child: Text(text, style: theme.textTheme.titleSmall),
+    );
+    // A chip per team with its points, so the last-placed are easy to find.
+    Widget teamChips(bool Function(Team team) selected, void Function(Team team, bool on) onSelected) => Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        for (final team in state.teams)
+          FilterChip(
+            label: Text("${team.name} · ${team.points}"),
+            selected: selected(team),
+            onSelected: (on) => onSelected(team, on),
+          ),
+      ],
+    );
+
+    final chosen = [for (final team in state.teams) if (!_left.contains(team.id)) team.id];
     void open(CompanionKind kind) {
-      send(OpenAnswers(CompanionSpec(kind: kind, timerSeconds: _timer)));
+      send(OpenAnswers(CompanionSpec(kind: kind, timerSeconds: _timer), teams: chosen.length == state.teams.length ? const [] : chosen));
       Navigator.of(context).pop();
     }
 
+    final canOpen = chosen.isNotEmpty;
     final automatic = round == null || question == null ? const <Command>[] : autoRating(state, round, question);
     final estimates = round == null || question == null || round.spec.solution == null ? const <EstimateScoring>[] : EstimateScoring.values;
+    final answering = state.roundTeams;
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(context.l10n.answersOnDevices, style: theme.textTheme.titleMedium),
+          Text(l10n.answersOnDevices, style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
           if (state.current == null)
-            Padding(padding: const EdgeInsets.symmetric(vertical: 16), child: Text(context.l10n.openAQuestionFirst))
+            Padding(padding: const EdgeInsets.symmetric(vertical: 16), child: Text(l10n.openAQuestionFirst))
           else if (round == null) ...[
-            Text(context.l10n.answersOnDevicesText),
+            Text(l10n.answersOnDevicesText),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text(context.l10n.timer),
+                Text(l10n.timer),
                 for (final seconds in [null, 20, 30, 60, 120])
                   ChoiceChip(
-                    label: Text(seconds == null ? context.l10n.none : "$seconds s"),
+                    label: Text(seconds == null ? l10n.none : "$seconds s"),
                     selected: _timer == seconds,
                     onSelected: (_) => setState(() => _timer = seconds),
                   ),
               ],
             ),
+            heading(l10n.whoAnswers),
+            teamChips((team) => !_left.contains(team.id), (team, on) => setState(() => on ? _left.remove(team.id) : _left.add(team.id))),
             Wrap(
               children: [
-                action(context.l10n.companionKind(CompanionKind.whiteboard), Icons.draw_outlined, () => open(CompanionKind.whiteboard)),
-                action(context.l10n.companionKind(CompanionKind.text), Icons.short_text, () => open(CompanionKind.text)),
-                action(context.l10n.companionKind(CompanionKind.number), Icons.pin_outlined, () => open(CompanionKind.number)),
+                action(l10n.companionKind(CompanionKind.whiteboard), Icons.draw_outlined, canOpen ? () => open(CompanionKind.whiteboard) : null),
+                action(l10n.companionKind(CompanionKind.text), Icons.short_text, canOpen ? () => open(CompanionKind.text) : null),
+                action(l10n.companionKind(CompanionKind.number), Icons.pin_outlined, canOpen ? () => open(CompanionKind.number) : null),
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              context.l10n.preparedScreensText,
-              style: theme.textTheme.bodySmall,
-            ),
+            Text(l10n.preparedScreensText, style: theme.textTheme.bodySmall),
           ] else ...[
             Text(
-              "${context.l10n.companionKind(round.kind)} · ${round.open ? context.l10n.roundOpen : context.l10n.roundLocked} · "
-              "${context.l10n.answersIn(round.answers.values.where((a) => !a.isEmpty).length, state.teams.length)}",
+              "${l10n.companionKind(round.kind)} · ${round.open ? l10n.roundOpen : l10n.roundLocked} · "
+              "${l10n.answersIn(round.answers.entries.where((a) => !a.value.isEmpty && round.takesPart(a.key)).length, answering.length)}",
             ),
             Wrap(
               children: [
                 if (round.open)
-                  action(context.l10n.lockAll, Icons.lock_outline, () => send(const LockAnswers()))
+                  action(l10n.lockAll, Icons.lock_outline, () => send(const LockAnswers()))
                 else
-                  action(context.l10n.letThemEditAgain, Icons.lock_open, () => send(const UnlockAnswers())),
+                  action(l10n.letThemEditAgain, Icons.lock_open, () => send(const UnlockAnswers())),
                 action(
-                  context.l10n.showAll,
+                  l10n.showAll,
                   Icons.tv,
-                  state.teams.every((team) => round.revealed.contains(team.id)) ? null : () => send(const RevealAnswers()),
+                  answering.every((team) => round.revealed.contains(team.id)) ? null : () => send(const RevealAnswers()),
                 ),
-                if (automatic.isNotEmpty) action(context.l10n.rateAutomatically, Icons.auto_fix_high, () => automatic.forEach(send)),
+                if (automatic.isNotEmpty) action(l10n.rateAutomatically, Icons.auto_fix_high, () => automatic.forEach(send)),
                 for (final scoring in estimates)
-                  action(context.l10n.estimateScoring(scoring), Icons.adjust, () => estimateRating(state, round, question!, scoring).forEach(send)),
+                  action(l10n.estimateScoring(scoring), Icons.adjust, () => estimateRating(state, round, question!, scoring).forEach(send)),
                 if (round.kind == CompanionKind.connections)
-                  action(context.l10n.givePointsForGroups, Icons.emoji_events_outlined, () => send(const AwardConnections())),
-                action(context.l10n.discard, Icons.delete_outline, () => send(const ClearAnswers())),
+                  action(l10n.givePointsForGroups, Icons.emoji_events_outlined, () => send(const AwardConnections())),
+                action(l10n.discard, Icons.delete_outline, () => send(const ClearAnswers())),
               ],
+            ),
+            // More time, also after it ran out: that opens the round again.
+            heading(l10n.moreTime),
+            Wrap(
+              children: [
+                action("+30 s", Icons.more_time, () => send(const ExtendAnswers(30))),
+                action("+1 min", Icons.more_time, () => send(const ExtendAnswers(60))),
+                action(
+                  l10n.noTimeLimit,
+                  Icons.all_inclusive,
+                  round.open && round.endsAtMillis == null ? null : () => send(const ExtendAnswers(null)),
+                ),
+              ],
+            ),
+            heading(l10n.whoAnswers),
+            teamChips(
+              (team) => round.takesPart(team.id),
+              (team, on) => send(
+                SetRoundTeams([
+                  for (final other in answering)
+                    if (other.id != team.id) other.id,
+                  if (on) team.id,
+                ]),
+              ),
+            ),
+          ],
+          // Notes: a field of their own on chosen teams' devices, whatever
+          // else they answer, e.g. estimates for a bonus.
+          if (state.current != null) ...[
+            heading(l10n.notes),
+            Text(l10n.notesText, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 6),
+            teamChips(
+              (team) => state.notesTeams.contains(team.id),
+              (team, on) => send(
+                AllowNotes([
+                  for (final id in state.notesTeams)
+                    if (id != team.id) id,
+                  if (on) team.id,
+                ]),
+              ),
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// What the teams with a notes field have written, e.g. bonus estimates.
+class _NotesPanel extends StatelessWidget {
+  const _NotesPanel({required this.state});
+
+  final SessionState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      color: theme.colorScheme.tertiaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.sticky_note_2_outlined, size: 18, color: theme.colorScheme.onTertiaryContainer),
+                const SizedBox(width: 6),
+                Text(context.l10n.notes, style: theme.textTheme.labelLarge),
+              ],
+            ),
+            for (final id in state.notesTeams)
+              if (state.team(id) case final team?)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: SelectableText.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(text: "${team.name}:  ", style: const TextStyle(fontWeight: FontWeight.w700)),
+                        TextSpan(text: (state.notes[id] ?? '').trim().isEmpty ? "–" : state.notes[id]!.trim()),
+                      ],
+                    ),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+          ],
+        ),
       ),
     );
   }
@@ -2262,7 +2391,7 @@ class _AnswersPanel extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(context.l10n.solutionShown(solution), style: theme.textTheme.labelLarge),
           ),
-        for (final team in state.teams)
+        for (final team in state.roundTeams)
           Builder(
             builder: (context) {
               final answer = round.answers[team.id];

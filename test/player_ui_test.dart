@@ -81,10 +81,19 @@ void main() {
     expect(buzzerEnabled(tester), isFalse);
   });
 
-  testWidgets('a text answer goes out as it is typed, and can be locked in', (tester) async {
+  testWidgets('without a timer the answer counts when the round ends; no locking in early', (tester) async {
     host
       ..dispatch(const OpenQuestion(estimate))
       ..dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.text)));
+    await pumpPlayer(tester);
+    expect(find.text('Lock in answer'), findsNothing);
+    expect(find.text('Your answer counts as it stands when the gamemaster ends the round.'), findsOneWidget);
+  });
+
+  testWidgets('a text answer goes out as it is typed, and can be locked in when scored fastest first', (tester) async {
+    host
+      ..dispatch(const OpenQuestion(race))
+      ..dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.text, timerSeconds: 60)));
     await pumpPlayer(tester);
     expect(find.byType(BuzzerButton), findsNothing);
     expect(find.text('Answer first'), findsOneWidget);
@@ -98,6 +107,8 @@ void main() {
     expect(host.state.answerRound!.answers['red']!.locked, isTrue);
     expect(find.text('Locked in'), findsOneWidget);
     expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
+    // Ends the round, and its clock with it.
+    host.dispatch(const ClearAnswers());
   });
 
   testWidgets('a question with a whiteboard opens it on the device by itself', (tester) async {
@@ -166,7 +177,7 @@ void main() {
     expect(number, greaterThan(50));
   });
 
-  testWidgets('sorting sends the original indices in the chosen order', (tester) async {
+  testWidgets('sorting sends the order as shown from the start, as original indices', (tester) async {
     host
       ..dispatch(const OpenQuestion(estimate))
       ..dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.order, options: ['one', 'two', 'three'])));
@@ -174,8 +185,9 @@ void main() {
     for (final text in ['one', 'two', 'three']) {
       expect(find.text(text), findsOneWidget);
     }
-    await tester.tap(find.text('This order is right'));
+    // No button needed: the team can lock this order in as it is.
     await tester.pump();
+    expect(find.text('This order is right'), findsNothing);
     final order = host.state.answerRound!.answers['red']!.order!;
     expect(order.toSet(), {0, 1, 2});
     // The device got them shuffled, so "as shown" is not the right order.

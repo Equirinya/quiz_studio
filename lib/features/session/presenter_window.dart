@@ -12,6 +12,7 @@ import 'package:quiz_show/core/crash_log.dart';
 import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
+import 'package:quiz_show/features/session/pages/test_devices_page.dart';
 import 'package:quiz_show/features/session/session_client.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/l10n/l10n.dart';
@@ -19,9 +20,13 @@ import 'package:quiz_show/l10n/l10n.dart';
 /// What a presenter window is started with: which session, and how to reach
 /// the main window that runs it.
 class PresenterWindowArgs {
-  const PresenterWindowArgs({required this.sessionId, required this.endpoint, required this.token});
+  const PresenterWindowArgs({required this.sessionId, required this.endpoint, required this.token, this.devices = false});
 
   static const String flag = '--presenter-window';
+
+  /// Instead of the big screen, every team's phone, to test a show without
+  /// devices; see [TestDevicesPage].
+  final bool devices;
 
   final String sessionId;
 
@@ -29,7 +34,7 @@ class PresenterWindowArgs {
   final String endpoint;
   final String token;
 
-  List<String> toArgs() => [flag, 'session=$sessionId', 'endpoint=$endpoint', 'token=$token'];
+  List<String> toArgs() => [flag, 'session=$sessionId', 'endpoint=$endpoint', 'token=$token', if (devices) 'devices'];
 
   /// Null unless [args] start a presenter window.
   static PresenterWindowArgs? tryParse(List<String> args) {
@@ -41,7 +46,7 @@ class PresenterWindowArgs {
     if (session == null || endpoint == null || token == null || session.isEmpty || token.isEmpty) return null;
     // Only ever this computer: the window has no business elsewhere.
     if (!endpoint.startsWith('127.0.0.1:')) return null;
-    return PresenterWindowArgs(sessionId: session, endpoint: endpoint, token: token);
+    return PresenterWindowArgs(sessionId: session, endpoint: endpoint, token: token, devices: args.contains('devices'));
   }
 }
 
@@ -91,7 +96,7 @@ Future<void> runPresenterWindow(PresenterWindowArgs args) async {
     basicLocaleListResolution([AppLanguage.locale.value ?? PlatformDispatcher.instance.locale], AppLocalizations.supportedLocales),
   );
   await windowManager.waitUntilReadyToShow(
-    WindowOptions(title: l10n.presenterWindowTitle, size: Size(1280, 720), center: true),
+    WindowOptions(title: args.devices ? l10n.testDevices : l10n.presenterWindowTitle, size: const Size(1280, 860), center: true),
     () async {
       await windowManager.show();
       await windowManager.focus();
@@ -100,10 +105,55 @@ Future<void> runPresenterWindow(PresenterWindowArgs args) async {
   // Video cards play in this window, on the big screen.
   MediaKit.ensureInitialized();
   await MediaService.instance.init();
-  runApp(
-    PresenterWindowApp(
-      connection: SessionConnection.window(sessionId: args.sessionId, endpoint: args.endpoint, token: args.token),
-    ),
+  final connection = SessionConnection.window(sessionId: args.sessionId, endpoint: args.endpoint, token: args.token);
+  runApp(args.devices ? TestDevicesWindowApp(connection: connection) : PresenterWindowApp(connection: connection));
+}
+
+/// The test phones in a window of their own; they close with the main window.
+class TestDevicesWindowApp extends StatefulWidget {
+  const TestDevicesWindowApp({super.key, required this.connection});
+
+  final SessionConnection connection;
+
+  @override
+  State<TestDevicesWindowApp> createState() => _TestDevicesWindowAppState();
+}
+
+class _TestDevicesWindowAppState extends State<TestDevicesWindowApp> {
+  Timer? _orphan;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.connection.link?.addListener(_onLink);
+  }
+
+  // Lost the main window for a while: it was closed or stopped presenting.
+  void _onLink() {
+    if (widget.connection.link?.value == LinkStatus.lan) {
+      _orphan?.cancel();
+      _orphan = null;
+    } else {
+      _orphan ??= Timer(PresenterWindowView.orphaned, () => exit(0));
+    }
+  }
+
+  @override
+  void dispose() {
+    _orphan?.cancel();
+    widget.connection.link?.removeListener(_onLink);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    debugShowCheckedModeBanner: false,
+    theme: buildAppTheme(Brightness.light),
+    darkTheme: buildAppTheme(Brightness.dark),
+    locale: AppLanguage.locale.value,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: TestDevicesPage(connection: widget.connection),
   );
 }
 

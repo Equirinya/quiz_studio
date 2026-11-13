@@ -175,6 +175,22 @@ class _PlayerViewState extends State<PlayerView> {
 
   @override
   Widget build(BuildContext context) {
+    final notes = widget.view.ownNotes;
+    final content = _content(context);
+    if (notes == null) return content;
+    // The gamemaster gave this team a notes field, apart from its answer.
+    return Column(
+      children: [
+        Expanded(child: content),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: NotesField(text: notes, onChanged: (text) => widget.send(WriteNotes(widget.teamId, text))),
+        ),
+      ],
+    );
+  }
+
+  Widget _content(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final view = widget.view;
@@ -195,7 +211,11 @@ class _PlayerViewState extends State<PlayerView> {
     final standing = view.standing;
     final l10n = context.l10n;
     String nameOf(String? id) => view.teams.where((t) => t.id == id).firstOrNull?.name ?? "";
-    final status = standing != null && view.phase == Phase.question
+    // A round only some teams answer: the others watch.
+    final sittingOut = view.companion != null && !view.takesPart(team.id);
+    final status = sittingOut
+        ? l10n.roundForOtherTeams
+        : standing != null && view.phase == Phase.question
         // Last team standing: no buzzing, only whose turn it is.
         ? (standing.winner == team.id
               ? l10n.youAreLastTeam
@@ -230,8 +250,8 @@ class _PlayerViewState extends State<PlayerView> {
             : l10n.statusAnswering(answeringTeam?.name ?? l10n.anotherTeam),
     };
     final canBuzz = view.canBuzz(team.id) && view.phoneBuzzer && _justBuzzed == null;
-    final kind = view.answerKind;
-    if (view.companion != null && kind == null) {
+    final kind = sittingOut ? null : view.answerKind;
+    if (!sittingOut && view.companion != null && kind == null) {
       // A screen from a newer app than this one.
       return _Message(l10n.needsNewerVersion, onLeave: widget.onLeave ?? () {});
     }
@@ -451,8 +471,9 @@ class _PlayerViewState extends State<PlayerView> {
               ),
             ),
             ?_countdown(top: 0),
-            // Teams that bet on an amount show it rather than buzz.
-            if (!view.phoneBuzzer || view.betsOnAmount)
+            // Teams that bet on an amount show it rather than buzz; a team
+            // sitting a round out only watches.
+            if (!view.phoneBuzzer || view.betsOnAmount || sittingOut)
               const Spacer()
             else
               Expanded(
@@ -525,7 +546,8 @@ class _PlayerViewState extends State<PlayerView> {
           enabled: _editable(team),
           whiteboardAspect: aspect,
           backgroundImage: widget.backgroundImage,
-          onChanged: (answer) => widget.send(SubmitAnswer(team.id, answer)),
+          teamAnswer: view.ownAnswer,
+      onChanged: (answer) => widget.send(SubmitAnswer(team.id, answer)),
         ),
       );
     }
@@ -538,7 +560,8 @@ class _PlayerViewState extends State<PlayerView> {
           enabled: _editable(team),
           whiteboardAspect: whiteboardAspectFor(box.biggest),
           backgroundImage: widget.backgroundImage,
-          onChanged: (answer) => widget.send(SubmitAnswer(team.id, answer)),
+          teamAnswer: view.ownAnswer,
+      onChanged: (answer) => widget.send(SubmitAnswer(team.id, answer)),
         ),
       );
     }
@@ -547,6 +570,7 @@ class _PlayerViewState extends State<PlayerView> {
       spec: view.companion!,
       pictures: widget.pictures,
       enabled: _editable(team),
+      teamAnswer: view.ownAnswer,
       onChanged: (answer) => widget.send(SubmitAnswer(team.id, answer)),
     );
   }
@@ -874,4 +898,55 @@ class _BetScreenState extends State<BetScreen> {
       ],
     );
   }
+}
+
+/// A team's notes, e.g. estimates for a bonus, which the gamemaster reads on
+/// the controller. Follows what another phone of the team writes.
+class NotesField extends StatefulWidget {
+  const NotesField({super.key, required this.text, required this.onChanged});
+
+  /// The notes as the host has them.
+  final String text;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<NotesField> createState() => _NotesFieldState();
+}
+
+class _NotesFieldState extends State<NotesField> {
+  late final TextEditingController _controller = TextEditingController(text: widget.text);
+  Timer? _debounce;
+
+  /// What this phone sent lately; the host's copies of these are not news.
+  final List<String> _sent = [];
+
+  @override
+  void didUpdateWidget(NotesField old) {
+    super.didUpdateWidget(old);
+    final text = widget.text;
+    if (text != _controller.text && !_sent.contains(text)) _controller.text = text;
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => TextField(
+    controller: _controller,
+    minLines: 2,
+    maxLines: 5,
+    decoration: InputDecoration(labelText: context.l10n.notes, alignLabelWithHint: true, prefixIcon: const Icon(Icons.sticky_note_2_outlined)),
+    onChanged: (text) {
+      _debounce?.cancel();
+      _debounce = Timer(const Duration(milliseconds: 500), () {
+        _sent.add(text);
+        if (_sent.length > 8) _sent.removeAt(0);
+        widget.onChanged(text);
+      });
+    },
+  );
 }

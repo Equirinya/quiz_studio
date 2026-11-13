@@ -14,7 +14,8 @@ import 'package:quiz_show/l10n/l10n.dart';
 /// without devices. Each runs the real phone screen against the session
 /// here, no network in between. A team switched to "Bot" plays by itself.
 ///
-/// Only for the presenting device, which holds the session.
+/// Works on the presenting device and in a window of its own that follows
+/// it (see PresenterWindow); either may send any team's commands.
 class TestDevicesPage extends StatefulWidget {
   const TestDevicesPage({super.key, required this.connection});
 
@@ -25,8 +26,6 @@ class TestDevicesPage extends StatefulWidget {
 }
 
 class _TestDevicesPageState extends State<TestDevicesPage> {
-  SessionHost get _host => widget.connection.host!;
-
   /// Teams played by a bot.
   final Set<String> _bots = {};
   final Random _random = Random();
@@ -47,14 +46,16 @@ class _TestDevicesPageState extends State<TestDevicesPage> {
     super.dispose();
   }
 
-  void _send(String teamId, Command command) => _host.dispatch(command, sender: Sender(Role.player, teamId: teamId));
+  void _send(Command command) => widget.connection.send(command);
 
   /// Each bot moves now and then, so they don't all answer at once.
   void _playBots() {
+    final state = widget.connection.state.value;
+    if (state == null) return;
     for (final teamId in _bots) {
       if (_random.nextDouble() < 0.6) continue;
-      final move = botMove(_host.state, _host.game, teamId, _random);
-      if (move != null) _send(teamId, move);
+      final move = botMove(state, widget.connection.game.value, teamId, _random);
+      if (move != null) _send(move);
     }
   }
 
@@ -124,9 +125,12 @@ class _TestDevicesPageState extends State<TestDevicesPage> {
                                   ignoring: _bots.contains(team.id),
                                   child: PlayerView(
                                     key: ValueKey(team.id),
-                                    view: PublicView(_host.publicStateFor(team.id)),
+                                    view: PublicView(publicView(state, widget.connection.game.value, teamId: team.id)),
                                     teamId: team.id,
-                                    send: (command) => _send(team.id, command),
+                                    // Only what that team's own phone could send.
+                                    send: (command) {
+                                      if (mayIssue(Sender(Role.player, teamId: team.id), command)) _send(command);
+                                    },
                                     pictures: _roundPictures(state),
                                   ),
                                 ),

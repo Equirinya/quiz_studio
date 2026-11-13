@@ -634,7 +634,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lockInOnText =>
-      'Locking in ends a team\'s time, and how long it took is kept';
+      'Locking in ends a team\'s time, and how long it took is kept. Only when scored by order, fastest first';
 
   @override
   String get lockInOffText =>
@@ -2670,9 +2670,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dragIntoOrder => 'Drag into the right order';
 
   @override
-  String get thisOrderIsRight => 'This order is right';
-
-  @override
   String foundOfFour(int count) {
     return '$count of 4 found';
   }
@@ -3356,4 +3353,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noBots => 'No bots';
+
+  @override
+  String get whoAnswers => 'Who answers';
+
+  @override
+  String get notes => 'Notes';
+
+  @override
+  String get roundForOtherTeams => 'This round is for other teams';
+
+  @override
+  String get nextPair => 'Next pair';
+
+  @override
+  String get moreTime => 'More time';
+
+  @override
+  String get noTimeLimit => 'No time limit';
+
+  @override
+  String get notesText =>
+      'Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here.';
 }

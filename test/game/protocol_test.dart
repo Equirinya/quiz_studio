@@ -144,12 +144,12 @@ void main() {
 
     test('answers stay hidden until shown, one team at a time; who has answered does not', () {
       var s = run(fixtureState(), [
-        const OpenQuestion(estimate),
-        const OpenAnswers(CompanionSpec(kind: CompanionKind.text)),
+        const OpenQuestion(race),
+        const OpenAnswers(CompanionSpec(kind: CompanionKind.text, timerSeconds: 60)),
         const SubmitAnswer('red', PlayerAnswer(text: 'red-secret')),
         const SubmitAnswer('blue', PlayerAnswer(text: 'blue-secret')),
         const LockAnswer('red'),
-      ]);
+      ], null, 0);
       expect(view(s), isNot(contains('secret')));
       expect(parsed(s).answerKind, CompanionKind.text);
       expect(parsed(s).answersOpen, isTrue);

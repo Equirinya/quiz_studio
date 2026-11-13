@@ -54,11 +54,11 @@ void main() {
 
     test('teams keep updating their board until they lock it', () {
       var s = run(fixtureState(), [
-        const OpenQuestion(sum),
+        const OpenQuestion(race),
         const SubmitAnswer('red', PlayerAnswer(drawing: 'a')),
         const SubmitAnswer('red', PlayerAnswer(drawing: 'ab')),
         const LockAnswer('red'),
-      ]);
+      ], null, 0);
       expect((s.answerRound!.answers['red']!.drawing, s.answerRound!.answers['red']!.locked), ('ab', true));
       expect(apply(s, const SubmitAnswer('red', PlayerAnswer(drawing: 'abc'))).accepted, isFalse);
       expect(apply(s, const LockAnswer('red')).accepted, isFalse);
@@ -74,7 +74,7 @@ void main() {
     });
 
     test('once everyone has locked in the round closes by itself', () {
-      final s = run(fixtureState(), [const OpenQuestion(sum), const LockAnswer('red'), const LockAnswer('blue')]);
+      final s = run(fixtureState(), [const OpenQuestion(race), const LockAnswer('red'), const LockAnswer('blue')], null, 0);
       expect(s.answerRound!.open, isFalse);
       expect(s.answerRound!.endsAtMillis, isNull);
     });

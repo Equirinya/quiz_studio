@@ -40,6 +40,7 @@ bool mayIssue(Sender sender, Command command) {
     PlaceBet(:final teamId) ||
     SubmitAnswer(:final teamId) ||
     LockAnswer(:final teamId) ||
+    WriteNotes(:final teamId) ||
     GuessConnection(:final teamId) => sender.teamId != null && teamId == sender.teamId,
     _ => false,
   };
@@ -107,12 +108,16 @@ sealed class Command {
       'guessConnection' => GuessConnection(j['teamId'] as String, [for (final p in j['positions'] as List) (p as num).toInt()]),
       'awardConnections' => const AwardConnections(),
       'setTeamSound' => SetTeamSound(j['teamId'] as String, j['sound'] as String?),
-      'openAnswers' => OpenAnswers(CompanionSpec.fromMap(j['spec'])!),
+      'setRoundTeams' => SetRoundTeams([for (final id in j['teams'] as List? ?? const []) '$id']),
+      'allowNotes' => AllowNotes([for (final id in j['teams'] as List? ?? const []) '$id']),
+      'writeNotes' => WriteNotes(j['teamId'] as String, j['text'] as String? ?? ''),
+      'openAnswers' => OpenAnswers(CompanionSpec.fromMap(j['spec'])!, teams: [for (final id in j['teams'] as List? ?? const []) '$id']),
       'submitAnswer' =>
         SubmitAnswer(j['teamId'] as String, PlayerAnswer.fromJson(Map<String, dynamic>.from(j['answer'] as Map))),
       'lockAnswer' => LockAnswer(j['teamId'] as String),
       'lockAnswers' => const LockAnswers(),
       'unlockAnswers' => const UnlockAnswers(),
+      'extendAnswers' => ExtendAnswers((j['seconds'] as num?)?.toInt()),
       'revealAnswer' => RevealAnswer(j['teamId'] as String, show: j['show'] != false),
       'revealNextAnswer' => const RevealNextAnswer(),
       'revealAnswers' => const RevealAnswers(),
@@ -514,12 +519,48 @@ class TimeUp extends Command {
 /// describes. A question with its own companion screen does this by itself
 /// when it is opened.
 class OpenAnswers extends Command {
-  const OpenAnswers(this.spec);
+  const OpenAnswers(this.spec, {this.teams = const []});
   final CompanionSpec spec;
+
+  /// Only these teams answer, by id; empty: every team.
+  final List<String> teams;
   @override
   String get type => 'openAnswers';
   @override
-  Map<String, dynamic> get _args => {'spec': spec.toMap()};
+  Map<String, dynamic> get _args => {'spec': spec.toMap(), if (teams.isNotEmpty) 'teams': teams};
+}
+
+/// Changes who answers in the running round: these teams, by id; empty or
+/// every team means all. Answers of teams left out stay but don't count.
+class SetRoundTeams extends Command {
+  const SetRoundTeams(this.teams);
+  final List<String> teams;
+  @override
+  String get type => 'setRoundTeams';
+  @override
+  Map<String, dynamic> get _args => {'teams': teams};
+}
+
+/// Gives these teams' devices a notes field for the open question, apart
+/// from any answer round; empty takes it away again.
+class AllowNotes extends Command {
+  const AllowNotes(this.teams);
+  final List<String> teams;
+  @override
+  String get type => 'allowNotes';
+  @override
+  Map<String, dynamic> get _args => {'teams': teams};
+}
+
+/// A team's notes as they stand; sent again whenever they change.
+class WriteNotes extends Command {
+  const WriteNotes(this.teamId, this.text);
+  final String teamId;
+  final String text;
+  @override
+  String get type => 'writeNotes';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId, 'text': text};
 }
 
 /// A team's answer as it stands. Sent again whenever it changes, so the
@@ -578,6 +619,18 @@ class UnlockAnswers extends Command {
   const UnlockAnswers();
   @override
   String get type => 'unlockAnswers';
+}
+
+/// More time for the answer round: [seconds] more (from now, if the time
+/// is already up, which opens the round again), or null for no time limit.
+/// Answers already locked in stay locked.
+class ExtendAnswers extends Command {
+  const ExtendAnswers(this.seconds);
+  final int? seconds;
+  @override
+  String get type => 'extendAnswers';
+  @override
+  Map<String, dynamic> get _args => {'seconds': seconds};
 }
 
 /// Puts one team's answer on the big screen, or takes it off again.

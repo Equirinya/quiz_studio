@@ -60,6 +60,8 @@ Map<String, dynamic> publicView(SessionState state, GameContent? game, {String? 
             // shuffled; the seed keeps the shuffle the same for everyone.
             'spec': round.spec.toPublicMap(state.current?.key ?? ''),
             'open': round.open,
+            'canLock': canLockIn(state, game),
+            if (round.teams.isNotEmpty) 'teams': round.teams,
             'openedAt': round.openedAtMillis,
             'endsAt': round.endsAtMillis,
             'submitted': [
@@ -94,6 +96,8 @@ Map<String, dynamic> publicView(SessionState state, GameContent? game, {String? 
     if (teamId != null && state.team(teamId) != null)
       'own': {
         ..._own(state, round, teamId, seed),
+        // Its notes, when the gamemaster gave the team a notes field.
+        if (state.notesTeams.contains(teamId)) 'notes': state.notes[teamId] ?? '',
         if (state.betting != null && question != null) ...{
           'bet': state.betting!.bets[teamId],
           'maxBet': maxBet(state.team(teamId)!, question),
@@ -273,6 +277,13 @@ class PublicView {
 
   int? get answersEndAt => (_round?['endsAt'] as num?)?.toInt();
 
+  /// Whether [teamId] answers in this round; the gamemaster may have chosen
+  /// only some teams.
+  bool takesPart(String teamId) {
+    final teams = _round?['teams'] as List?;
+    return teams == null || teams.isEmpty || teams.contains(teamId);
+  }
+
   bool hasSubmitted(String teamId) => (_round?['submitted'] as List? ?? const []).contains(teamId);
 
   bool hasLocked(String teamId) => (_round?['locked'] as List? ?? const []).contains(teamId);
@@ -288,7 +299,7 @@ class PublicView {
   String? get minAppVersion => json['minAppVersion'] as String?;
 
   /// Whether the team may lock its answer in before the time is up.
-  bool get lockable => companion?['lock'] != false;
+  bool get lockable => _round?['canLock'] as bool? ?? companion?['lock'] != false;
 
   /// What only this team's devices see; empty in a shared view.
   Map<String, dynamic> get own => json['own'] is Map ? Map<String, dynamic>.from(json['own'] as Map) : const {};
@@ -296,6 +307,10 @@ class PublicView {
   /// This team's own answer as the host has it, for kinds other than
   /// Connections.
   PlayerAnswer? get ownAnswer => own['answer'] is Map ? PlayerAnswer.fromJson(Map<String, dynamic>.from(own['answer'] as Map)) : null;
+
+  /// This team's notes as the host has them; null when it has no notes
+  /// field.
+  String? get ownNotes => own['notes'] as String?;
 
   /// When this team locked in, on the host's clock.
   int? get ownLockedAt => (own['lockedAt'] as num?)?.toInt() ?? ownAnswer?.lockedAtMillis;

@@ -44,6 +44,17 @@ class Reduction {
 }
 
 /// Whether a buzz by any team would count right now.
+/// Whether teams may lock their answer in now: only when the scoring goes by
+/// time ("by order", fastest first); otherwise an answer simply counts as it
+/// stands when the time is up or the gamemaster ends the round. Word groups
+/// are the exception: there stopping early means a team is done.
+bool canLockIn(SessionState state, GameContent? game) {
+  final round = state.answerRound;
+  if (round == null || !round.open || !round.spec.lockable) return false;
+  final question = state.current == null ? null : game?.question(state.current!);
+  return question?.ranked == true || round.kind == CompanionKind.connections;
+}
+
 bool buzzersOpen(SessionState state, GameContent? game) {
   if (state.phase == Phase.buzzerTest) return true;
   // Bets come first.
@@ -267,7 +278,14 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
     // ── reveals ──────────────────────────────────────────────────────────────
     case Reveal(:final delta):
       if (!questionOpen || question == null || delta == 0 || s.waitingForBets) return _no(s);
-      final revealed = s.revealed + delta;
+      var revealed = s.revealed + delta;
+      // Put in order and matching: once all but one are placed, the last
+      // has only one place left, so it goes with the one before it, there
+      // and back.
+      final placing = question.type == QuestionType.ordering || question.type == QuestionType.matching;
+      if (placing && question.maxReveal >= 2 && revealed == question.maxReveal - 1) {
+        revealed += delta > 0 ? 1 : -1;
+      }
       final rapid = question.type == QuestionType.rapidFire;
       // A Fragenhagel goes back as far as the question itself (-1).
       if (revealed < (rapid ? -1 : 0) || revealed > question.maxReveal) return _no(s);
@@ -284,7 +302,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       final focus = delta > 0 ? revealed : (s.imageFocus > revealed ? revealed : s.imageFocus);
       // Teams keep playing while groups come up; their time runs on.
       return _ok(s.copyWith(revealed: revealed, imageFocus: question.type == QuestionType.progressingReveal ? focus : null), [
-        if ((question.type == QuestionType.connections || question.type == QuestionType.ordering) && delta > 0)
+        if ((question.type == QuestionType.connections || placing) && delta > 0)
           const SoundEffect(effectReveal),
       ]);
 
@@ -495,19 +513,35 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       return _ok(s.copyWith(queueBuzzers: on));
 
     // ── answers from the teams' own devices ─────────────────────────────────
-    case OpenAnswers(:final spec):
+    case OpenAnswers(:final spec, :final teams):
       if (!questionOpen || s.waitingForBets) return _no(s);
-      return _ok(s.copyWith(answerRound: _newRound(spec, now)));
+      return _ok(s.copyWith(answerRound: _newRound(spec, now, teams: [for (final team in s.teams) if (teams.contains(team.id)) team.id])));
+
+    case SetRoundTeams(:final teams):
+      final round = s.answerRound;
+      if (round == null) return _no(s);
+      final chosen = [for (final team in s.teams) if (teams.contains(team.id)) team.id];
+      if (chosen.isEmpty) return _no(s);
+      final next = chosen.length == s.teams.length ? const <String>[] : chosen;
+      return _ok(s.copyWith(answerRound: round.withTeams(next)));
+
+    case AllowNotes(:final teams):
+      if (!questionOpen) return _no(s);
+      return _ok(s.copyWith(notesTeams: [for (final team in s.teams) if (teams.contains(team.id)) team.id]));
+
+    case WriteNotes(:final teamId, :final text):
+      if (!questionOpen || !s.notesTeams.contains(teamId) || s.notes[teamId] == text) return _no(s);
+      return _ok(s.copyWith(notes: {...s.notes, teamId: text}));
 
     case SubmitAnswer(:final teamId, :final answer):
       final round = s.answerRound;
-      if (round == null || !round.open || s.team(teamId) == null || !answer.matches(round.kind)) return _no(s);
+      if (round == null || !round.open || s.team(teamId) == null || !round.takesPart(teamId) || !answer.matches(round.kind)) return _no(s);
       if (round.answers[teamId]?.locked == true) return _no(s);
       return _ok(s.copyWith(answerRound: round.copyWith(answers: {...round.answers, teamId: answer.asLocked(false)})));
 
     case LockAnswer(:final teamId):
       final round = s.answerRound;
-      if (round == null || !round.open || !round.spec.lockable || s.team(teamId) == null) return _no(s);
+      if (round == null || !canLockIn(s, game) || s.team(teamId) == null || !round.takesPart(teamId)) return _no(s);
       if (round.answers[teamId]?.locked == true) return _no(s);
       return _ok(
         s.copyWith(
@@ -518,7 +552,9 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
 
     case GuessConnection(:final teamId, :final positions):
       final round = s.answerRound;
-      if (round == null || !round.open || round.kind != CompanionKind.connections || s.team(teamId) == null) return _no(s);
+      if (round == null || !round.open || round.kind != CompanionKind.connections || s.team(teamId) == null || !round.takesPart(teamId)) {
+        return _no(s);
+      }
       final spec = round.spec;
       final before = round.answers[teamId];
       final progress = before?.connections ?? const ConnectionsProgress();
@@ -566,6 +602,13 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       if (s.answerRound?.open != true) return _no(s);
       return _ok(s.copyWith(answerRound: s.answerRound!.copyWith(open: false, endsAtMillis: null)));
 
+    case ExtendAnswers(:final seconds):
+      final round = s.answerRound;
+      if (round == null || now == null || (seconds != null && seconds <= 0)) return _no(s);
+      if (seconds == null && round.open && round.endsAtMillis == null) return _no(s);
+      final from = round.open && round.endsAtMillis != null && round.endsAtMillis! > now ? round.endsAtMillis! : now;
+      return _ok(s.copyWith(answerRound: round.copyWith(open: true, endsAtMillis: seconds == null ? null : from + seconds * 1000)));
+
     case UnlockAnswers():
       final round = s.answerRound;
       if (round == null) return _no(s);
@@ -586,18 +629,18 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
 
     case RevealNextAnswer():
       final round = s.answerRound;
-      final next = s.teams.where((team) => round != null && !round.revealed.contains(team.id)).firstOrNull;
+      final next = s.roundTeams.where((team) => round != null && !round.revealed.contains(team.id)).firstOrNull;
       if (round == null || next == null) return _no(s);
       return _ok(s.copyWith(answerRound: _reveal(round, [...round.revealed, next.id])));
 
     case RevealAnswers():
       final round = s.answerRound;
-      if (round == null || s.teams.every((team) => round.revealed.contains(team.id))) return _no(s);
+      if (round == null || s.roundTeams.every((team) => round.revealed.contains(team.id))) return _no(s);
       return _ok(
         s.copyWith(
           answerRound: _reveal(round, [
             ...round.revealed,
-            for (final team in s.teams)
+            for (final team in s.roundTeams)
               if (!round.revealed.contains(team.id)) team.id,
           ]),
         ),
@@ -679,8 +722,9 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
 /// Marker for "leave the timer as it is" in a copyWith that may clear it.
 const Object _keepTimer = Object();
 
-AnswerRound _newRound(CompanionSpec spec, int? now) => AnswerRound(
+AnswerRound _newRound(CompanionSpec spec, int? now, {List<String> teams = const []}) => AnswerRound(
   spec: spec,
+  teams: teams,
   openedAtMillis: now,
   endsAtMillis: now != null && spec.timerSeconds != null ? now + spec.timerSeconds! * 1000 : null,
 );
@@ -689,7 +733,7 @@ AnswerRound _newRound(CompanionSpec spec, int? now) => AnswerRound(
 /// nothing left to wait for, so the round closes.
 AnswerRound _withAnswer(SessionState s, AnswerRound round, String teamId, PlayerAnswer answer) {
   final answers = {...round.answers, teamId: answer};
-  final everyone = s.teams.every((team) => answers[team.id]?.locked == true);
+  final everyone = s.roundTeams.every((team) => answers[team.id]?.locked == true);
   return round.copyWith(answers: answers, open: everyone ? false : null, endsAtMillis: everyone ? null : _keepTimer);
 }
 
@@ -750,6 +794,8 @@ SessionState _backToBoard(SessionState s) => s.copyWith(
   results: const Results(),
   standing: null,
   rapidSteps: const {},
+  notesTeams: const [],
+  notes: const {},
 );
 
 /// After a wrong answer: the next queued team is up, or the question reopens.

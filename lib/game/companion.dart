@@ -327,15 +327,43 @@ class CompanionSpec {
     List<Map<String, dynamic>> shuffled(List<String> items, String salt) {
       final indexed = [for (final (i, text) in items.indexed) {'i': i, 't': text}];
       if (indexed.length < 2) return indexed;
-      final random = Random(Object.hash(seed, salt));
-      final original = [...indexed];
-      // A shuffle that happens to come out in the right order would give
-      // the answer away, so that one result is not accepted.
-      for (var attempt = 0; attempt < 8; attempt++) {
-        indexed.shuffle(random);
-        if (Iterable<int>.generate(indexed.length).any((i) => indexed[i]['i'] != original[i]['i'])) break;
+      // A hash that is the same in every copy of the app: the big screen may
+      // run in a window of its own and must show the order the devices get.
+      final random = Random(stableHash('$salt|$seed'));
+      // How much of the solution a shown order already gives away: for
+      // sorting, the pairs already the right way round; for matching, the
+      // items already in their place. Less than half is fair; failing that,
+      // the fairest of the tries.
+      final n = indexed.length;
+      int given(List<Map<String, dynamic>> order) {
+        final at = [for (final item in order) item['i'] as int];
+        var count = 0;
+        if (salt == 'order') {
+          for (var a = 0; a < n; a++) {
+            for (var b = a + 1; b < n; b++) {
+              if (at[a] < at[b]) count++;
+            }
+          }
+        } else {
+          for (var i = 0; i < n; i++) {
+            if (at[i] == i) count++;
+          }
+        }
+        return count;
       }
-      return indexed;
+
+      final whole = salt == 'order' ? n * (n - 1) ~/ 2 : n;
+      var best = [...indexed];
+      var bestGiven = given(best);
+      for (var attempt = 0; attempt < 50 && bestGiven * 2 >= whole; attempt++) {
+        indexed.shuffle(random);
+        final now = given(indexed);
+        if (now < bestGiven) {
+          best = [...indexed];
+          bestGiven = now;
+        }
+      }
+      return best;
     }
 
     final order = kind == CompanionKind.connections ? connectionsOrder(seed) : const <int>[];
@@ -559,9 +587,16 @@ class AnswerRound {
     this.answers = const {},
     this.revealed = const [],
     this.found = const {},
+    this.teams = const [],
   });
 
   final CompanionSpec spec;
+
+  /// The teams that answer, by id, when the gamemaster chose some, e.g. the
+  /// two last-placed for a bonus; empty: every team.
+  final List<String> teams;
+
+  bool takesPart(String teamId) => teams.isEmpty || teams.contains(teamId);
 
   /// Whether answers can still be changed.
   final bool open;
@@ -600,6 +635,19 @@ class AnswerRound {
     answers: answers ?? this.answers,
     revealed: revealed ?? this.revealed,
     found: found ?? this.found,
+    teams: teams,
+  );
+
+  /// The same round answered by [teams] (empty: every team).
+  AnswerRound withTeams(List<String> teams) => AnswerRound(
+    spec: spec,
+    open: open,
+    openedAtMillis: openedAtMillis,
+    endsAtMillis: endsAtMillis,
+    answers: answers,
+    revealed: revealed,
+    found: found,
+    teams: teams,
   );
 
   Map<String, dynamic> toJson() => {
@@ -610,6 +658,7 @@ class AnswerRound {
     'answers': {for (final entry in answers.entries) entry.key: entry.value.toJson()},
     'revealed': revealed,
     if (found.isNotEmpty) 'found': found,
+    if (teams.isNotEmpty) 'teams': teams,
   };
 
   factory AnswerRound.fromJson(Map<String, dynamic> json) => AnswerRound(
@@ -626,6 +675,7 @@ class AnswerRound {
       for (final entry in (json['found'] as Map? ?? const {}).entries)
         entry.key as String: [for (final e in entry.value as List) (e as num).toInt()],
     },
+    teams: [for (final id in json['teams'] as List? ?? const []) '$id'],
   );
 }
 

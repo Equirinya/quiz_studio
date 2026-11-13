@@ -1013,7 +1013,7 @@ abstract class AppLocalizations {
   /// No description provided for @lockInOnText.
   ///
   /// In en, this message translates to:
-  /// **'Locking in ends a team\'s time, and how long it took is kept'**
+  /// **'Locking in ends a team\'s time, and how long it took is kept. Only when scored by order, fastest first'**
   String get lockInOnText;
 
   /// No description provided for @lockInOffText.
@@ -4370,12 +4370,6 @@ abstract class AppLocalizations {
   /// **'Drag into the right order'**
   String get dragIntoOrder;
 
-  /// No description provided for @thisOrderIsRight.
-  ///
-  /// In en, this message translates to:
-  /// **'This order is right'**
-  String get thisOrderIsRight;
-
   /// No description provided for @foundOfFour.
   ///
   /// In en, this message translates to:
@@ -5491,6 +5485,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No bots'**
   String get noBots;
+
+  /// No description provided for @whoAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'Who answers'**
+  String get whoAnswers;
+
+  /// No description provided for @notes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notes;
+
+  /// No description provided for @roundForOtherTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'This round is for other teams'**
+  String get roundForOtherTeams;
+
+  /// No description provided for @nextPair.
+  ///
+  /// In en, this message translates to:
+  /// **'Next pair'**
+  String get nextPair;
+
+  /// No description provided for @moreTime.
+  ///
+  /// In en, this message translates to:
+  /// **'More time'**
+  String get moreTime;
+
+  /// No description provided for @noTimeLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'No time limit'**
+  String get noTimeLimit;
+
+  /// No description provided for @notesText.
+  ///
+  /// In en, this message translates to:
+  /// **'Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here.'**
+  String get notesText;
 }
 
 class _AppLocalizationsDelegate

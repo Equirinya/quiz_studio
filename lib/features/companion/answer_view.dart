@@ -128,8 +128,19 @@ class _RoundCountdownState extends State<RoundCountdown> with SingleTickerProvid
 
   static int _now() => DateTime.now().millisecondsSinceEpoch;
 
-  /// How far this device's clock is ahead of the host's, as far as it can tell.
-  int _measureOffset() => widget.hostClock || widget.openedAt == null ? 0 : _now() - widget.openedAt!;
+  /// How far this device's clock is ahead of the host's, by round, measured
+  /// when the device first saw it: a countdown shown again later, e.g. after
+  /// the team sat part of a round out, goes on where it was.
+  static final Map<int, int> _offsets = {};
+
+  int _measureOffset() {
+    final opened = widget.openedAt;
+    if (widget.hostClock || opened == null) return 0;
+    return _offsets.putIfAbsent(opened, () {
+      if (_offsets.length > 20) _offsets.remove(_offsets.keys.first);
+      return _now() - opened;
+    });
+  }
 
   @override
   void didUpdateWidget(RoundCountdown old) {

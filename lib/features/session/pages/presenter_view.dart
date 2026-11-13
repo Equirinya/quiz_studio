@@ -516,11 +516,34 @@ class QuestionDisplay extends StatelessWidget {
     if (question.type == QuestionType.lastStanding) {
       return StandingDisplay(state: state, question: question, unit: unit, file: _file);
     }
-    if (question.type == QuestionType.progressingReveal && round == null) {
-      return _RevealDisplay(state: state, question: question, unit: unit, file: _file);
+    if (question.type == QuestionType.progressingReveal) {
+      final reveal = _RevealDisplay(state: state, question: question, unit: unit, file: _file);
+      if (round == null) return reveal;
+      // Teams answering on their devices: the hints stay, the teams' row goes
+      // below them and grows once answers are shown.
+      return Column(
+        children: [
+          Expanded(flex: 5, child: reveal),
+          SizedBox(height: unit * 1.5),
+          _roundBox(
+            round.revealed.isEmpty,
+            _AnswerRoundDisplay(
+              state: state,
+              round: round,
+              unit: unit,
+              places: question.byCloseness ? closenessPlaces(state) : const {},
+              backgroundImage: _file(round.spec.backgroundImage) == null ? null : FileImage(_file(round.spec.backgroundImage)!),
+            ),
+          ),
+        ],
+      );
     }
     final strip =
         question.pictureStrip && round == null && question.type == QuestionType.progressingReveal && question.hasInformationImages;
+    // Matching and put in order: the question as tall as its text, the
+    // pieces get the rest; the teams' row stays small until answers show.
+    final pieces = question.type == QuestionType.matching || question.type == QuestionType.ordering;
+    Widget questionBox(Widget card) => pieces ? ConstrainedBox(constraints: BoxConstraints(maxHeight: unit * 28), child: card) : Expanded(flex: 3, child: card);
     return Column(
       children: [
         if (question.description != null)
@@ -530,10 +553,8 @@ class QuestionDisplay extends StatelessWidget {
               label: Text(question.description!, style: TextStyle(fontSize: unit * 2.4)),
             ),
           ),
-        Expanded(
-          // Matching gives the room to its pieces.
-          flex: question.type == QuestionType.matching || question.type == QuestionType.ordering ? 2 : 3,
-          child: Container(
+        questionBox(
+          Container(
             width: double.infinity,
             padding: EdgeInsets.all(unit * 2),
             decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 3)),
@@ -566,7 +587,7 @@ class QuestionDisplay extends StatelessWidget {
                   child: Text(
                     question.text,
                     textAlign: TextAlign.center,
-                    maxLines: image == null ? 6 : 8,
+                    maxLines: pieces ? 3 : (image == null ? 6 : 8),
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: unit * 4.5),
                   ),
@@ -581,7 +602,7 @@ class QuestionDisplay extends StatelessWidget {
             flex: 7,
             child: Padding(
               padding: EdgeInsets.only(top: unit * 1.5),
-              child: _MatchingBoard(question: question, unit: unit, file: _file),
+              child: _MatchingBoard(question: question, unit: unit, file: _file, placed: state.revealed),
             ),
           ),
         // Put in order: the entries, mixed up, then put in place.
@@ -609,9 +630,9 @@ class QuestionDisplay extends StatelessWidget {
         if (question.type == QuestionType.topAnswers && (round == null || state.feudRevealed.isNotEmpty))
           Expanded(flex: 4, child: _TopAnswersBoard(state: state, question: question, unit: unit))
         else if (round != null)
-          Expanded(
-            flex: 3,
-            child: _AnswerRoundDisplay(
+          _roundBox(
+            pieces && round.revealed.isEmpty,
+            _AnswerRoundDisplay(
               state: state,
               round: round,
               unit: unit,
@@ -687,6 +708,11 @@ class QuestionDisplay extends StatelessWidget {
     );
   }
 
+
+  /// The teams' answers below the question: room to show them, or while
+  /// nothing is shown yet ([compact]) just the clock and who is done.
+  Widget _roundBox(bool compact, Widget child) =>
+      compact ? SizedBox(height: unit * (state.roundTeams.length > 6 ? 21 : 12.5), child: child) : Expanded(flex: 3, child: child);
 
   static String _feudValue(Question question, int index) {
     final value = question.percentages.elementAtOrNull(index) ?? 0;
@@ -1073,24 +1099,32 @@ class _ConnectionsDisplay extends StatelessWidget {
 /// The two sides of a matching question: the left items in their order, the
 /// right ones shuffled. Every picture of a row gets the same square, and the
 /// texts one size, small enough for the longest word to fit.
+///
+/// As the solution is revealed ([placed] pairs), each right item slides under
+/// its partner; the ones still to come close up behind.
 class _MatchingBoard extends StatelessWidget {
-  const _MatchingBoard({required this.question, required this.unit, required this.file});
+  const _MatchingBoard({required this.question, required this.unit, required this.file, this.placed = 0});
 
   final Question question;
   final double unit;
   final File? Function(String? name) file;
+  final int placed;
 
   @override
   Widget build(BuildContext context) {
     final matching = question.matching ?? const Matching();
+    final n = matching.pairs.length;
     final numbers = matching.rightNumbers(question.id);
-    final right = [for (var i = 0; i < matching.pairs.length; i++) (numbers[i], matching.pairs[i].right)]
-      ..sort((a, b) => a.$1.compareTo(b.$1));
+    // Pair indices of the right items in the order they are shown.
+    final shuffled = List<int>.generate(n, (i) => i)..sort((a, b) => numbers[a].compareTo(numbers[b]));
+    final done = placed.clamp(0, n);
+    final waiting = [for (final pair in shuffled) if (pair >= done) pair];
+    int slotOf(int pair) => pair < done ? pair : done + waiting.indexOf(pair);
     final top = [for (final pair in matching.pairs) pair.left];
-    final bottom = [for (final (_, side) in right) side];
+    final bottom = [for (final pair in matching.pairs) pair.right];
     return LayoutBuilder(
       builder: (context, box) {
-        final inner = box.maxWidth / (top.isEmpty ? 1 : top.length) - 2 * (_margin + _padding);
+        final inner = box.maxWidth / (n == 0 ? 1 : n) - 2 * (_margin + _padding);
         // One text size for the whole board, small enough that no word is
         // broken in the middle.
         var fontSize = [...top, ...bottom].any((side) => side.image != null) ? unit * 2.8 : unit * 3.6;
@@ -1111,9 +1145,9 @@ class _MatchingBoard extends StatelessWidget {
         if (widest > inner * 0.92 && widest > 0) fontSize *= inner * 0.92 / widest;
         return Column(
           children: [
-            Expanded(child: _row(top, fontSize, context)),
+            Expanded(child: _row(top, fontSize, context, slotOf: (pair) => pair, done: done)),
             SizedBox(height: unit * 1.5),
-            Expanded(child: _row(bottom, fontSize, context)),
+            Expanded(child: _row(bottom, fontSize, context, slotOf: slotOf, done: done)),
           ],
         );
       },
@@ -1123,7 +1157,8 @@ class _MatchingBoard extends StatelessWidget {
   double get _margin => unit * 0.6;
   double get _padding => unit;
 
-  Widget _row(List<MatchSide> sides, double fontSize, BuildContext context) {
+  /// One side of the board; [sides] by pair, each in the slot [slotOf] says.
+  Widget _row(List<MatchSide> sides, double fontSize, BuildContext context, {required int Function(int pair) slotOf, required int done}) {
     final scheme = Theme.of(context).colorScheme;
     final pictures = sides.any((side) => side.image != null);
     final texts = sides.any((side) => side.text.isNotEmpty);
@@ -1131,29 +1166,50 @@ class _MatchingBoard extends StatelessWidget {
       builder: (context, box) {
         final margin = _margin;
         final padding = _padding;
-        final inner = box.maxWidth / sides.length - 2 * (margin + padding);
+        final width = box.maxWidth / (sides.isEmpty ? 1 : sides.length);
+        // The border that marks the pair put together last takes room too.
+        final border = unit * 0.3;
+        final inner = width - 2 * (margin + padding + border);
         final textHeight = texts ? fontSize * 1.3 * 2 + unit * 0.6 : 0.0;
-        final square = pictures ? (box.maxHeight - 2 * padding - textHeight).clamp(0.0, inner).toDouble() : 0.0;
-        return Row(
+        final square = pictures ? (box.maxHeight - 2 * (padding + border) - textHeight).clamp(0.0, inner).toDouble() : 0.0;
+        // The pair put together last moves over the others.
+        final paintOrder = [for (var i = 0; i < sides.length; i++) if (i != done - 1) i, if (done > 0 && done <= sides.length) done - 1];
+        return Stack(
           children: [
-            for (final side in sides)
-              Expanded(
-                child: Container(
+            for (final pair in paintOrder)
+              AnimatedPositioned(
+                key: ValueKey(pair),
+                duration: const Duration(milliseconds: 900),
+                curve: Curves.easeInOutCubic,
+                left: slotOf(pair) * width,
+                top: 0,
+                width: width,
+                height: box.maxHeight,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
                   margin: EdgeInsets.symmetric(horizontal: margin),
                   padding: EdgeInsets.all(padding),
-                  decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 2)),
+                  decoration: BoxDecoration(
+                    color: pair == done - 1
+                        ? scheme.primaryContainer
+                        : pair < done
+                        ? scheme.secondaryContainer
+                        : scheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(unit * 2),
+                    border: Border.all(color: pair == done - 1 ? scheme.primary : Colors.transparent, width: border),
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (pictures)
                         SizedBox.square(
                           dimension: square,
-                          child: file(side.image) != null
+                          child: file(sides[pair].image) != null
                               ? ClipRRect(
                                   borderRadius: BorderRadius.circular(unit * 1.2),
-                                  child: Image.file(file(side.image)!, fit: BoxFit.cover),
+                                  child: Image.file(file(sides[pair].image)!, fit: BoxFit.cover),
                                 )
-                              : side.image != null
+                              : sides[pair].image != null
                               ? Icon(Icons.image_outlined, size: square * 0.5, color: scheme.outline)
                               : null,
                         ),
@@ -1165,7 +1221,7 @@ class _MatchingBoard extends StatelessWidget {
                             child: Padding(
                               padding: EdgeInsets.only(top: pictures ? unit * 0.6 : 0),
                               child: Text(
-                                side.text,
+                                sides[pair].text,
                                 textAlign: TextAlign.center,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -1349,7 +1405,7 @@ class _AnswerRoundDisplay extends StatelessWidget {
                 spacing: unit * 1.5,
                 runSpacing: unit * 1.5,
                 children: [
-                  for (final team in state.teams)
+                  for (final team in state.roundTeams)
                     Builder(builder: (context) {
                       final answer = round.answers[team.id];
                       final done = answer?.locked == true || (!round.open && answer != null && !answer.isEmpty);

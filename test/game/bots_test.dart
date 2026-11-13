@@ -20,12 +20,14 @@ void main() {
     return state;
   }
 
-  test('a bot answers a round on the devices and locks in', () {
+  test('a bot answers a round on the devices, and locks in where the scoring goes by time', () {
     final game = orderingGame();
-    final state = play(reduce(fixtureState(), const OpenQuestion(orderingRound), game).state, game, 'red');
+    final state = play(reduce(fixtureState(), const OpenQuestion(orderingRound), game, now: 0).state, game, 'red');
     final answer = state.answerRound!.answers['red']!;
     expect(answer.order!.toSet(), {0, 1, 2, 3});
-    expect(answer.locked, isTrue);
+    expect(answer.locked, isFalse);
+    final racing = play(reduce(fixtureState(), const OpenQuestion(race), fixtureGame(), now: 0).state, fixtureGame(), 'red');
+    expect(racing.answerRound!.answers['red']!.locked, isTrue);
     expect(state.answerRound!.answers['blue'], isNull);
   });
 
@@ -62,5 +64,30 @@ void main() {
     final moves = [for (var i = 0; i < 50; i++) botMove(open, fixtureGame(), 'red', random)];
     expect(moves.whereType<Buzz>(), isNotEmpty);
     expect(moves.where((m) => m == null), isNotEmpty);
+  });
+
+  test('a round only some teams answer: the others can neither answer nor lock, and nobody waits for them', () {
+    final game = fixtureGame();
+    var s = reduce(fixtureState(), const OpenQuestion(race), game).state;
+    s = reduce(s, const OpenAnswers(CompanionSpec(kind: CompanionKind.text, timerSeconds: 60), teams: ['blue']), game, now: 0).state;
+    final round = s.answerRound!;
+    expect(round.teams, ['blue']);
+    expect(s.roundTeams.map((t) => t.id), ['blue']);
+    expect(reduce(s, const SubmitAnswer('red', PlayerAnswer(text: 'x')), game).accepted, isFalse);
+    expect(reduce(s, const LockAnswer('red'), game).accepted, isFalse);
+    expect(botMove(s, game, 'red', Random(1)), isNull);
+    s = reduce(s, const SubmitAnswer('blue', PlayerAnswer(text: 'Bohemian Rhapsody 1200')), game).state;
+    s = reduce(s, const LockAnswer('blue'), game, now: 1000).state;
+    // Blue was the only one to wait for.
+    expect(s.answerRound!.open, isFalse);
+    s = reduce(s, const RevealAnswers(), game).state;
+    expect(s.answerRound!.revealed, ['blue']);
+
+    final red = PublicView(publicView(s, game, teamId: 'red'));
+    expect((red.takesPart('red'), red.takesPart('blue')), (false, true));
+    final json = AnswerRound.fromJson(s.answerRound!.toJson());
+    expect(json.teams, ['blue']);
+    final command = Command.fromJson(const OpenAnswers(CompanionSpec(kind: CompanionKind.text), teams: ['red']).toJson())! as OpenAnswers;
+    expect(command.teams, ['red']);
   });
 }

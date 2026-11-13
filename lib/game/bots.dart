@@ -27,12 +27,13 @@ Command? botMove(SessionState state, GameContent? game, String teamId, Random ra
 
   final round = state.answerRound;
   if (round != null && round.open) {
+    if (!round.takesPart(teamId)) return null;
     final answer = round.answers[teamId];
     if (answer == null || answer.isEmpty) {
       final made = botAnswer(round.spec, random);
       return made == null ? null : SubmitAnswer(teamId, made);
     }
-    return answer.locked || !round.spec.lockable ? null : LockAnswer(teamId);
+    return answer.locked || !canLockIn(state, game) ? null : LockAnswer(teamId);
   }
 
   if (buzzersOpen(state, game) && !state.buzzQueue.contains(teamId) && random.nextDouble() < 0.3) return Buzz(teamId);

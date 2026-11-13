@@ -152,7 +152,7 @@
   "noTimer": "Kein Timer",
   "timer": "Timer",
   "teamsCanLockIn": "Teams dürfen früher einloggen",
-  "lockInOnText": "Einloggen stoppt die Zeit des Teams; die gebrauchte Zeit wird gemerkt",
+  "lockInOnText": "Einloggen stoppt die Zeit des Teams; die gebrauchte Zeit wird gemerkt. Nur bei Wertung nach Reihenfolge, Schnellste zuerst",
   "lockInOffText": "Jede Antwort zählt so, wie sie ist, wenn die Zeit um ist oder du die Runde beendest",
   "musicCount": "{count, plural, =1{1 Musikstück} other{{count} Musikstücke}}",
   "effectCount": "{count, plural, =1{1 Effekt} other{{count} Effekte}}",
@@ -712,7 +712,6 @@
   "yourAnswer": "Eure Antwort",
   "slideToAnswer": "Schieben zum Antworten",
   "dragIntoOrder": "In die richtige Reihenfolge ziehen",
-  "thisOrderIsRight": "Diese Reihenfolge stimmt",
   "foundOfFour": "{count} von 4 gefunden",
   "mistakeCount": "{count, plural, =1{1 Fehler} other{{count} Fehler}}",
   "yourPairs": "Eure Paare",
@@ -898,5 +897,12 @@
   "testDevices": "Testgeräte",
   "bot": "Bot",
   "allBots": "Alle als Bots",
-  "noBots": "Keine Bots"
+  "noBots": "Keine Bots",
+  "whoAnswers": "Wer antwortet",
+  "notes": "Notizen",
+  "roundForOtherTeams": "Diese Runde ist für andere Teams",
+  "nextPair": "Nächstes Paar",
+  "moreTime": "Mehr Zeit",
+  "noTimeLimit": "Ohne Zeitlimit",
+  "notesText": "Ausgewählte Teams bekommen ein Notizfeld auf ihren Geräten, zusätzlich zu ihrer Antwort, z. B. für eine Bonus-Schätzung. Du liest die Notizen hier."
 }

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/game/game.dart';
 
 import 'connections_fixture.dart';
+import 'fixture.dart';
 
 void main() {
   const teams = [Team(id: 'red', name: 'Red'), Team(id: 'blue', name: 'Blue')];
@@ -210,8 +211,9 @@ void main() {
   group('locking in, for every companion screen', () {
     test('the time of locking in is kept, and cleared when unlocked', () {
       var now = 50000;
-      final h = SessionHost(initial: const SessionState(gameId: 'cg', teams: teams), game: connectionsGame(), clock: () => now);
-      h.dispatch(const OpenQuestion(puzzle));
+      // Scored fastest first, the kind of question where teams lock in.
+      final h = SessionHost(initial: fixtureState(), game: fixtureGame(), clock: () => now);
+      h.dispatch(const OpenQuestion(race));
       h.dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.text, timerSeconds: 30)));
       h.dispatch(const SubmitAnswer('red', PlayerAnswer(text: 'Paris')), sender: red);
       now += 12300;

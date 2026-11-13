@@ -19,7 +19,7 @@ const List<String> _protocolVersions = ['2025-06-18', '2025-03-26', '2024-11-05'
 /// websites out is the check of the `Origin` and `Host` headers below: a page
 /// in a browser cannot pretend to be a local program.
 class McpServer {
-  McpServer(this.tools, {this.name = 'quiz-studio', this.version = '2.0.0'});
+  McpServer(this.tools, {this.name = 'quiz-studio', this.version = '2.0.1'});
 
   final GameTools tools;
   final String name;

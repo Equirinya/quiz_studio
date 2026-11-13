@@ -510,12 +510,27 @@ Future<void> openConnectDevices(BuildContext context, SessionConnection connecti
             sessionId: connection.sessionId,
             teams: connection.state.value?.teams ?? const [],
             lanEndpoints: endpoints,
-            onTestDevices: connection.isPresenting
-                ? () => navigator.push(MaterialPageRoute(builder: (_) => TestDevicesPage(connection: connection)))
-                : null,
+            onTestDevices: connection.isPresenting ? () => openTestDevices(navigator, connection) : null,
           ),
     ),
   );
+}
+
+/// Every team's phone, to test the show: in a window of their own where the
+/// computer can open one, otherwise as a page here.
+Future<void> openTestDevices(NavigatorState navigator, SessionConnection connection) async {
+  final access = connection.windowAccess;
+  if (PresenterWindow.supported && access != null) {
+    try {
+      await PresenterWindow.open(
+        PresenterWindowArgs(sessionId: connection.sessionId, endpoint: access.endpoint, token: access.token, devices: true),
+      );
+      return;
+    } catch (_) {
+      // No second window here; the page will do.
+    }
+  }
+  navigator.push(MaterialPageRoute(builder: (_) => TestDevicesPage(connection: connection)));
 }
 
 /// Makes this device the presenter: it runs the show and displays it.

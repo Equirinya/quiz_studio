@@ -639,7 +639,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get lockInOnText =>
-      'Einloggen stoppt die Zeit des Teams; die gebrauchte Zeit wird gemerkt';
+      'Einloggen stoppt die Zeit des Teams; die gebrauchte Zeit wird gemerkt. Nur bei Wertung nach Reihenfolge, Schnellste zuerst';
 
   @override
   String get lockInOffText =>
@@ -2690,9 +2690,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dragIntoOrder => 'In die richtige Reihenfolge ziehen';
 
   @override
-  String get thisOrderIsRight => 'Diese Reihenfolge stimmt';
-
-  @override
   String foundOfFour(int count) {
     return '$count von 4 gefunden';
   }
@@ -3376,4 +3373,26 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noBots => 'Keine Bots';
+
+  @override
+  String get whoAnswers => 'Wer antwortet';
+
+  @override
+  String get notes => 'Notizen';
+
+  @override
+  String get roundForOtherTeams => 'Diese Runde ist für andere Teams';
+
+  @override
+  String get nextPair => 'Nächstes Paar';
+
+  @override
+  String get moreTime => 'Mehr Zeit';
+
+  @override
+  String get noTimeLimit => 'Ohne Zeitlimit';
+
+  @override
+  String get notesText =>
+      'Ausgewählte Teams bekommen ein Notizfeld auf ihren Geräten, zusätzlich zu ihrer Antwort, z. B. für eine Bonus-Schätzung. Du liest die Notizen hier.';
 }

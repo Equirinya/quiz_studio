@@ -298,7 +298,8 @@ final Map<String, dynamic> _questionFields = {
     'type': 'object',
     'description': 'ordering only: the entries in the RIGHT order, first to last; the devices and the big screen show '
         'them shuffled. Each entry is a text, a picture (a name from upload_media) or both, with an optional "value" it '
-        'is sorted by (a year, a size), revealed as the entry is put in place.',
+        'is sorted by (a year, a size), revealed as the entry is put in place. Adding one needs "items"; on '
+        'update_question "items" replaces all entries and "scoring" alone changes only the scoring.',
     'properties': {
       'items': {
         'type': 'array',
@@ -319,7 +320,6 @@ final Map<String, dynamic> _questionFields = {
             'every two entries the right way round, so one misplaced entry costs little. exact: all or nothing.',
       },
     },
-    'required': ['items'],
   },
   'values': {
     'type': 'array',
@@ -802,21 +802,32 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
   if (ordering != null) {
     if (effective != QuestionType.ordering) throw const ToolError('"ordering" is for ordering questions.');
     final items = ordering['items'];
-    final parsed = [
-      if (items is List)
-        for (final item in items)
-          if (item is Map) OrderItem.fromMap({...item, if (item['image'] == '') 'image': null}),
-    ];
-    if (items is! List || parsed.length != items.length || parsed.length < 2 || parsed.any((i) => i.isEmpty)) {
-      throw const ToolError('"ordering.items" needs at least two entries, each with a "text" or an "image".');
+    final scoring = ordering['scoring'];
+    if (items == null && scoring == null) throw const ToolError('"ordering" needs "items", "scoring" or both.');
+    if (items != null || !partial) {
+      // Numbers are fine as values and texts: 1969 is "1969".
+      String? plain(Object? v) => v is num ? (v % 1 == 0 ? v.toInt().toString() : '$v') : v as String?;
+      final parsed = [
+        if (items is List)
+          for (final item in items)
+            if (item is Map && item.values.every((v) => v == null || v is String || v is num))
+              OrderItem.fromMap({'text': plain(item['text']), 'image': item['image'] == '' ? null : item['image'], 'value': plain(item['value'])}),
+      ];
+      if (items is! List || parsed.length != items.length || parsed.length < 2 || parsed.any((i) => i.isEmpty)) {
+        throw const ToolError('"ordering.items" needs at least two entries, each with a "text" or an "image".');
+      }
+      data['ordering'] = Ordering(items: parsed).toMap();
     }
-    final scoring = ordering['scoring'] ?? OrderScoring.places.name;
-    if (!OrderScoring.values.any((s) => s.name == scoring)) throw const ToolError('"ordering.scoring" must be places, pairs or exact.');
-    data['ordering'] = Ordering(items: parsed).toMap();
-    data['orderScoring'] = scoring;
+    if (scoring != null && !OrderScoring.values.any((s) => s.name == scoring)) {
+      throw const ToolError('"ordering.scoring" must be places, pairs or exact.');
+    }
+    // Left out on an update, the scoring stays as it was.
+    if (scoring != null || !partial) data['orderScoring'] = scoring ?? OrderScoring.places.name;
   }
-  if (!partial && effective == QuestionType.ordering && ordering == null) {
-    throw const ToolError('An ordering question needs "ordering" with its items in the right order.');
+  // A new ordering question, or one changed into one, needs its entries.
+  final becomesOrdering = effective == QuestionType.ordering && (!partial || (type != null && existingType != type));
+  if (becomesOrdering && data['ordering'] == null) {
+    throw const ToolError('An ordering question needs "ordering" with its "items" in the right order.');
   }
 
   final top = take<Map<dynamic, dynamic>>('topAnswers');

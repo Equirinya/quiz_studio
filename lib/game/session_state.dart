@@ -225,6 +225,8 @@ class SessionState {
     this.scoreLog = const [],
     this.standing,
     this.rapidSteps = const {},
+    this.notesTeams = const [],
+    this.notes = const {},
   });
 
   /// Incremented on every accepted command; lets a client drop stale updates.
@@ -322,6 +324,20 @@ class SessionState {
   /// A Fragenhagel being played: what happened on each item, by its index.
   final Map<int, RapidStep> rapidSteps;
 
+  /// Teams whose devices show a notes field during this question, e.g. the
+  /// two last-placed estimating for a bonus; apart from any answer round.
+  final List<String> notesTeams;
+
+  /// What those teams wrote, by team id; only the gamemaster reads it.
+  final Map<String, String> notes;
+
+  /// The teams that answer in the current answer round: all of them,
+  /// unless the gamemaster chose some.
+  List<Team> get roundTeams {
+    final round = answerRound;
+    return round == null || round.teams.isEmpty ? teams : [for (final team in teams) if (round.teams.contains(team.id)) team];
+  }
+
   Team? team(String id) {
     for (final team in teams) {
       if (team.id == id) return team;
@@ -359,6 +375,8 @@ class SessionState {
     List<ScoreChange>? scoreLog,
     Object? standing = _unset,
     Map<int, RapidStep>? rapidSteps,
+    List<String>? notesTeams,
+    Map<String, String>? notes,
   }) => SessionState(
     seq: seq ?? this.seq,
     gameId: identical(gameId, _unset) ? this.gameId : gameId as String?,
@@ -389,6 +407,8 @@ class SessionState {
     scoreLog: scoreLog ?? this.scoreLog,
     standing: identical(standing, _unset) ? this.standing : standing as StandingPlay?,
     rapidSteps: rapidSteps ?? this.rapidSteps,
+    notesTeams: notesTeams ?? this.notesTeams,
+    notes: notes ?? this.notes,
   );
 
   Map<String, dynamic> toJson() => {
@@ -421,6 +441,8 @@ class SessionState {
     if (scoreLog.isNotEmpty) 'scoreLog': [for (final change in scoreLog) change.toJson()],
     if (standing != null) 'standing': standing!.toJson(),
     if (rapidSteps.isNotEmpty) 'rapidSteps': {for (final MapEntry(:key, :value) in rapidSteps.entries) '$key': value.toJson()},
+    if (notesTeams.isNotEmpty) 'notesTeams': notesTeams,
+    if (notes.isNotEmpty) 'notes': notes,
   };
 
   factory SessionState.fromJson(Map<String, dynamic> json) => SessionState(
@@ -460,5 +482,7 @@ class SessionState {
       for (final MapEntry(:key, :value) in (json['rapidSteps'] as Map? ?? const {}).entries)
         if (int.tryParse('$key') != null) int.parse('$key'): RapidStep.fromJson(value),
     },
+    notesTeams: [for (final id in json['notesTeams'] as List? ?? const []) '$id'],
+    notes: {for (final MapEntry(:key, :value) in (json['notes'] as Map? ?? const {}).entries) '$key': '$value'},
   );
 }
