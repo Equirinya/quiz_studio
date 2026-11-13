@@ -78,3 +78,36 @@ GameContent matchingGame() => GameContent.assemble(
         },
       },
     );
+
+const orderingRound = QuestionRef('o', 'years');
+
+/// A put-in-order question: events by year, one only as a picture.
+GameContent orderingGame({String scoring = 'places'}) => GameContent.assemble(
+      id: 'game',
+      game: {'name': 'History'},
+      groups: {
+        'g': {'name': 'Round', 'categoryGroupIndex': 0},
+      },
+      categories: {
+        'o': {'name': 'Timeline', 'categoryGroup': 'g', 'categoryIndex': 0},
+      },
+      questions: {
+        'o': {
+          'years': {
+            'type': 'ordering',
+            'question': 'Oldest first!',
+            'pointsPlus': 60,
+            'companion': {'timer': 60, 'lock': true},
+            'ordering': {
+              'scoring': scoring,
+              'items': [
+                {'text': 'Moon landing', 'value': '1969'},
+                {'text': 'Fall of the Berlin Wall', 'value': '1989'},
+                {'text': '', 'image': 'iphone.png', 'value': '2007'},
+                {'text': 'Pokémon Go', 'value': '2016'},
+              ],
+            },
+          },
+        },
+      },
+    );

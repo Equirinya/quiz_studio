@@ -217,7 +217,8 @@ Map<String, dynamic> _visibleQuestion(SessionState state, Question question, Gam
         if (question.text.trim().isNotEmpty) view['lead'] = question.text;
       }
     case QuestionType.matching:
-      // The pairs travel in the answer round, without their pairing.
+    case QuestionType.ordering:
+      // The pieces travel in the answer round, mixed up.
       break;
     case QuestionType.lastStanding:
       // Whose turn, who is out, and the prompt of this turn without its answer.

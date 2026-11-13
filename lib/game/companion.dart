@@ -4,6 +4,8 @@ library;
 
 import 'dart:math';
 
+import 'ordering.dart';
+
 /// The kinds of input a team's device can offer.
 enum CompanionKind {
   whiteboard("Whiteboard"),
@@ -115,7 +117,8 @@ List<String> _strings(Object? v) => [
 ///   options:    choice: what to pick from · order: the items, in the RIGHT
 ///                order · match: the left-hand items
 ///   targets:     match: the right-hand items, aligned with `options`
-///   optionImages, targetImages:  match: a picture (media file) per item, or
+///   scoring:     order: see [OrderScoring]; absent = places
+///   optionImages, targetImages:  match, order: a picture (media file) per item, or
 ///                null; the devices get them shrunk, as "round pictures"
 ///   lock:        whether teams may lock their answer in before the time is
 ///                up, which records when they did; absent = true
@@ -146,6 +149,7 @@ class CompanionSpec {
     this.optionImages = const [],
     this.targetImages = const [],
     this.multiple = false,
+    this.orderScoring = OrderScoring.places,
   });
 
   final CompanionKind kind;
@@ -169,6 +173,9 @@ class CompanionSpec {
 
   /// Choice: teams may pick several answers.
   final bool multiple;
+
+  /// Order: how a team's order is scored.
+  final OrderScoring orderScoring;
 
   /// Every picture of this screen, for sending to the devices.
   List<String> get pictures => {...optionImages.nonNulls, ...targetImages.nonNulls}.toList();
@@ -203,6 +210,7 @@ class CompanionSpec {
       optionImages: _images(stored['optionImages']),
       targetImages: _images(stored['targetImages']),
       multiple: kind == CompanionKind.choice && stored['multiple'] == true,
+      orderScoring: OrderScoring.fromName(stored['scoring']),
     );
   }
 
@@ -230,6 +238,7 @@ class CompanionSpec {
         if (optionImages.any((name) => name != null)) 'optionImages': optionImages,
         if (targetImages.any((name) => name != null)) 'targetImages': targetImages,
         if (multiple) 'multiple': true,
+        if (kind == CompanionKind.order && orderScoring != OrderScoring.places) 'scoring': orderScoring.name,
       };
 
   /// The same screen with the groups of a Connections question.
@@ -242,6 +251,7 @@ class CompanionSpec {
         optionImages: optionImages,
         targetImages: targetImages,
         multiple: multiple,
+        orderScoring: orderScoring,
       );
 
   /// The same screen with [rows] lines to fill in (at most 20).
@@ -265,6 +275,7 @@ class CompanionSpec {
     optionImages: optionImages,
     targetImages: targetImages,
     multiple: multiple,
+        orderScoring: orderScoring,
   );
 
   CompanionSpec withOptions(List<String> options) => CompanionSpec(
@@ -287,6 +298,7 @@ class CompanionSpec {
         optionImages: optionImages,
         targetImages: targetImages,
         multiple: multiple,
+        orderScoring: orderScoring,
       );
 
   /// The slider's range, with defaults where the editor left a gap.
@@ -355,7 +367,10 @@ class CompanionSpec {
       if (unit != null) 'unit': unit,
       if (kind == CompanionKind.choice) 'options': options,
       if (multiple) 'multiple': true,
-      if (kind == CompanionKind.order) 'items': shuffled(options, 'order'),
+      if (kind == CompanionKind.order) 'items': [
+        for (final item in shuffled(options, 'order'))
+          {...item, 'img': ?optionImages.elementAtOrNull(item['i'] as int)},
+      ],
       if (kind == CompanionKind.match) 'options': options,
       if (kind == CompanionKind.match) 'items': [
         for (final item in shuffled(targets, 'match'))
@@ -653,14 +668,16 @@ bool? autoVerdict(CompanionSpec spec, PlayerAnswer? answer, {List<bool> choiceCo
   }
 }
 
-/// "Put in order" and "match pairs": how many items a team got in the right
-/// place, out of how many. Null for other kinds or without an answer.
+/// "Put in order" and "match pairs": how much of a team's answer is right,
+/// out of how much: items in the right place, or for an order scored by
+/// pairs, pairs the right way round. Null for other kinds or without an
+/// answer.
 ({int right, int of})? partialScore(CompanionSpec spec, PlayerAnswer? answer) {
-  final list = switch (spec.kind) {
-    CompanionKind.order => answer?.order,
-    CompanionKind.match => answer?.pairs,
-    _ => null,
-  };
+  if (spec.kind == CompanionKind.order) {
+    final order = answer?.order;
+    return order == null ? null : orderScore(order, spec.options.length, spec.orderScoring);
+  }
+  final list = spec.kind == CompanionKind.match ? answer?.pairs : null;
   if (list == null) return null;
   final total = spec.options.length;
   var right = 0;

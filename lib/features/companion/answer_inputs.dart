@@ -73,6 +73,12 @@ class _CompanionInputState extends State<CompanionInput> {
       _Item(((entry as Map)['i'] as num).toInt(), context.l10n.deviceLabel(entry['t'] as String)),
   ];
 
+  // order: each item's picture name and raw label, by original index
+  late final Map<int, (String?, String)> _orderRaw = {
+    for (final entry in widget.spec['items'] as List? ?? const [])
+      ((entry as Map)['i'] as num).toInt(): (entry['img'] is String ? entry['img'] as String : null, '${entry['t']}'),
+  };
+
   // choice and match: the options (match: the left-hand items)
   late final List<String> _left = [for (final option in (widget.spec['options'] as List? ?? const []).cast<String>()) context.l10n.deviceLabel(option)];
 
@@ -242,7 +248,7 @@ class _CompanionInputState extends State<CompanionInput> {
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: ListTile(
                         leading: CircleAvatar(child: Text("${i + 1}")),
-                        title: Text(item.text),
+                        title: _orderTitle(item),
                         trailing: enabled
                             ? ReorderableDragStartListener(index: i, child: const Icon(Icons.drag_handle))
                             : const Icon(Icons.lock_outline),
@@ -315,6 +321,25 @@ class _CompanionInputState extends State<CompanionInput> {
 
 /// One answer to pick: letter and text, filled in once picked, and still
 /// filled in after the answer is locked.
+extension on _CompanionInputState {
+  /// An entry to sort: its picture, once it has arrived, and its text; a
+  /// picture alone needs no name beside it.
+  Widget _orderTitle(_Item item) {
+    final (name, raw) = _orderRaw[item.index] ?? (null, '');
+    final bytes = name == null ? null : widget.pictures[name];
+    if (bytes == null) return Text(item.text);
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.memory(bytes, width: 56, height: 56, fit: BoxFit.cover),
+        ),
+        if (!Matching.isPictureName(raw)) ...[const SizedBox(width: 12), Expanded(child: Text(item.text))],
+      ],
+    );
+  }
+}
+
 class _ChoiceTile extends StatelessWidget {
   const _ChoiceTile({
     required this.letter,

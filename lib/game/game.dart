@@ -2,6 +2,7 @@
 /// Nothing in here may import Flutter or Firebase.
 library;
 
+export 'bots.dart';
 export 'cards.dart';
 export 'commands.dart';
 export 'companion.dart';
@@ -10,6 +11,7 @@ export 'content.dart';
 export 'content_text.dart';
 export 'map_layout.dart';
 export 'matching.dart';
+export 'ordering.dart';
 export 'public_view.dart';
 export 'last_standing.dart';
 export 'rapid_fire.dart';

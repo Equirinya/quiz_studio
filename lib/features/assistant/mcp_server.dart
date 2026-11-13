@@ -133,7 +133,7 @@ class McpServer {
               'Pictures, sounds and videos are uploaded with upload_media from files on this computer. '
               'Leave sounds and music alone unless the user asks for them. '
               'A question has a format ("type": free, abcd, progressingReveal, feud, topAnswers, connections, '
-              'rapidFire/Fragenhagel, matching, lastStanding/last team standing) and, separately, a way of scoring: '
+              'rapidFire/Fragenhagel, matching, ordering/put in order, lastStanding/last team standing) and, separately, a way of scoring: '
               'fixed points, bets ("wager": teams bet their points; "amountBet": teams bet how many they can do), by order '
               '("rankStep"), or by closeness ("rankStep" with "closest"). The add_question fields describe each, with examples.',
         });

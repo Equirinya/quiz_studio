@@ -5,6 +5,7 @@ import 'companion.dart';
 import 'content.dart';
 import 'last_standing.dart';
 import 'matching.dart';
+import 'ordering.dart';
 import 'rapid_fire.dart';
 import 'top_answers.dart';
 
@@ -62,6 +63,13 @@ String questionAsText(Question q) {
         String side(MatchSide s) => [if (s.text.isNotEmpty) s.text, if (s.image != null) '[picture]'].join(' ');
         out.writeln('  ${side(pair.left)} = ${side(pair.right)}');
       }
+    case QuestionType.ordering:
+      final entries = q.ordering ?? const Ordering();
+      out.writeln('  Right order, scored by ${entries.scoring.name}:');
+      for (final (i, item) in entries.items.indexed) {
+        final shown = [if (item.text.isNotEmpty) item.text, if (item.image != null) '[picture]'].join(' ');
+        out.writeln('  ${i + 1}. $shown${item.value.trim().isEmpty ? '' : ' – ${item.value}'}');
+      }
     case QuestionType.lastStanding:
       final standing = q.lastStanding ?? const LastStanding();
       out.writeln('  Turns: ${standing.order.uiString}');
@@ -73,7 +81,7 @@ String questionAsText(Question q) {
     case QuestionType.unsupported:
       break;
   }
-  final companion = q.type == QuestionType.rapidFire || q.type == QuestionType.matching || q.type == QuestionType.topAnswers ? null : q.companion;
+  final companion = q.type == QuestionType.rapidFire || q.type == QuestionType.matching || q.type == QuestionType.ordering || q.type == QuestionType.topAnswers ? null : q.companion;
   if (companion != null && q.type == QuestionType.connections) {
     final timer = companion.timerSeconds == null ? '' : ', ${companion.timerSeconds} s';
     out.writeln('  ${companion.mistakes} mistakes allowed$timer');

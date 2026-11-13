@@ -64,7 +64,7 @@ const Map<String, dynamic> _string = {'type': 'string'};
 final Map<String, dynamic> _questionFields = {
   'type': {
     'type': 'string',
-    'enum': ['free', 'abcd', 'progressingReveal', 'feud', 'connections', 'rapidFire', 'matching', 'topAnswers', 'lastStanding'],
+    'enum': ['free', 'abcd', 'progressingReveal', 'topAnswers', 'feud', 'matching', 'ordering', 'connections', 'rapidFire', 'lastStanding'],
     'description':
         'free: plain question. abcd: 2 to 9 answer options (A, B, C, ...). progressingReveal: hints revealed one by one. '
         'feud ("Survey duel"): a survey; the team that buzzed uncovers answers until its third strike, then the other '
@@ -75,12 +75,17 @@ final Map<String, dynamic> _questionFields = {
         'device; each group found is worth a quarter of pointsPlus. '
         'rapidFire ("Fragenhagel"): many short questions in a row inside this one, see "rapidFire"; pointsPlus is '
         'per item. matching: pairs the teams put back together on their devices, see "pairs". '
+        'ordering ("Put in order", "sort by year", German "Sortieren"): entries every team sorts on its device; the '
+        'big screen shows them mixed up and then puts them in place one by one, each with what it is sorted by, see '
+        '"ordering". Example: {"type": "ordering", "question": "Oldest first!", "ordering": {"items": [{"text": "Moon '
+        'landing", "value": "1969"}, {"text": "Fall of the Berlin Wall", "value": "1989"}, {"text": "First iPhone", '
+        '"value": "2007"}]}}. '
         'lastStanding ("Last team standing", also "last man standing", an elimination round, German "Wer bleibt übrig"): '
         'one player per team takes turns in a fixed order; a wrong answer puts the team out and the last team left gets '
         'pointsPlus, see "lastStanding". Minimal example: {"type": "lastStanding", "question": "Name a Disney film", '
         '"pointsPlus": 300}. '
         'Bets are not a type: for a bet question use "wager" or "amountBet" on a free (or abcd, progressingReveal, '
-        'matching) question.',
+        'matching, ordering) question.',
   },
   'question': {'type': 'string', 'description': 'The question as shown to the audience.'},
   'answerHint': {'type': 'string', 'description': 'The answer or notes; only the gamemaster sees this.'},
@@ -102,8 +107,8 @@ final Map<String, dynamic> _questionFields = {
         'A bet question ("Teams bet their points", German "Einsatz"/"Wetten"; e.g. a final question). Set true and '
         'teams bet their own points instead of playing for fixed points: before the question is shown each '
         'team bets, a right answer wins the bet and a wrong one loses it (pointsMinus is then not used). A team may bet up '
-        'to its score, or up to pointsPlus (at least $kMinBetLimit) if it has less. For free, abcd, progressingReveal and '
-        'matching questions only. Example: {"type": "free", "question": "Final: which year ...?", "pointsPlus": 500, '
+        'to its score, or up to pointsPlus (at least $kMinBetLimit) if it has less. For free, abcd, progressingReveal, '
+        'matching and ordering questions only. Example: {"type": "free", "question": "Final: which year ...?", "pointsPlus": 500, '
         '"wager": true}.',
   },
   'amountBet': {
@@ -128,7 +133,7 @@ final Map<String, dynamic> _questionFields = {
         '"By order" scoring, e.g. for answers ranked by speed: the first team gets pointsPlus, each after it '
         'this many points less (never below 0); wrong answers lose pointsMinus. The order is the order teams lock in a right '
         'answer on their devices, or the order the gamemaster taps them in (e.g. charades on stage). null switches it off. '
-        'For free, abcd, progressingReveal and matching questions; not together with "wager" or "amountBet". With '
+        'For free, abcd, progressingReveal, matching and ordering questions; not together with "wager" or "amountBet". With '
         '"closest": true the places go by closeness instead, see there.',
   },
   'closest': {
@@ -289,6 +294,33 @@ final Map<String, dynamic> _questionFields = {
       'properties': {'left': _string, 'right': _string, 'leftImage': _string, 'rightImage': _string},
     },
   },
+  'ordering': {
+    'type': 'object',
+    'description': 'ordering only: the entries in the RIGHT order, first to last; the devices and the big screen show '
+        'them shuffled. Each entry is a text, a picture (a name from upload_media) or both, with an optional "value" it '
+        'is sorted by (a year, a size), revealed as the entry is put in place.',
+    'properties': {
+      'items': {
+        'type': 'array',
+        'minItems': 2,
+        'items': {
+          'type': 'object',
+          'properties': {
+            'text': _string,
+            'image': {'type': 'string', 'description': 'Optional picture, a name from upload_media.'},
+            'value': {'type': 'string', 'description': 'What it is sorted by, e.g. "1969" or "8,849 m".'},
+          },
+        },
+      },
+      'scoring': {
+        'type': 'string',
+        'enum': ['places', 'pairs', 'exact'],
+        'description': 'places (default): a share of pointsPlus for every entry in its right place. pairs: a share for '
+            'every two entries the right way round, so one misplaced entry costs little. exact: all or nothing.',
+      },
+    },
+    'required': ['items'],
+  },
   'values': {
     'type': 'array',
     'items': {'type': 'number'},
@@ -314,11 +346,12 @@ final Map<String, dynamic> _questionFields = {
     'type': 'object',
     'description':
         'Optional screen on the teams\' own devices while the question is open. For connections, '
-        'matching and topAnswers the screen comes from the question; only timer, lock (and mistakes) apply.',
+        'matching, ordering and topAnswers the screen comes from the question; only timer, lock (and mistakes) apply. '
+        'For sorting or matching use the ordering or matching question type, not a companion.',
     'properties': {
       'kind': {
         'type': 'string',
-        'enum': ['whiteboard', 'text', 'number', 'slider', 'choice', 'order', 'match', 'list'],
+        'enum': ['whiteboard', 'text', 'number', 'slider', 'choice', 'list'],
       },
       'timer': {'type': 'integer', 'description': 'Seconds until answers lock; leave out for no timer.'},
       'background': {
@@ -334,8 +367,6 @@ final Map<String, dynamic> _questionFields = {
       'unit': {'type': 'string'},
       'solution': {'type': 'number', 'description': 'number and slider: the right value.'},
       'tolerance': {'type': 'number', 'description': 'number and slider: how far from the solution still counts as right.'},
-      'options': {'type': 'array', 'items': _string, 'description': 'order: the items in the RIGHT order. match: the left-hand items.'},
-      'targets': {'type': 'array', 'items': _string, 'description': 'match: right-hand items, aligned with options.'},
       'lock': {'type': 'boolean', 'description': 'Whether teams may lock in before the time is up. Default true.'},
       'multiple': {
         'type': 'boolean',
@@ -573,7 +604,7 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
   final wager = take<bool>('wager');
   if (wager != null) {
     if (wager && !effective.wagerable) {
-      throw const ToolError('"wager" is for free, abcd, progressingReveal and matching questions.');
+      throw const ToolError('"wager" is for free, abcd, progressingReveal, matching and ordering questions.');
     }
     data['wager'] = wager;
     if (wager) {
@@ -603,7 +634,7 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     final step = args['rankStep'];
     if (step != null) {
       if (step is! num || step < 0) throw const ToolError('"rankStep" must be 0 or more, or null.');
-      if (!effective.wagerable) throw const ToolError('"rankStep" is for free, abcd, progressingReveal and matching questions.');
+      if (!effective.wagerable) throw const ToolError('"rankStep" is for free, abcd, progressingReveal, matching and ordering questions.');
       if (wager == true || args['amountBet'] != null) throw const ToolError('Use only one of "wager", "amountBet" and "rankStep".');
       data['wager'] = false;
       data['amountBet'] = null;
@@ -767,6 +798,27 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     throw const ToolError('A matching question needs "pairs".');
   }
 
+  final ordering = take<Map<dynamic, dynamic>>('ordering');
+  if (ordering != null) {
+    if (effective != QuestionType.ordering) throw const ToolError('"ordering" is for ordering questions.');
+    final items = ordering['items'];
+    final parsed = [
+      if (items is List)
+        for (final item in items)
+          if (item is Map) OrderItem.fromMap({...item, if (item['image'] == '') 'image': null}),
+    ];
+    if (items is! List || parsed.length != items.length || parsed.length < 2 || parsed.any((i) => i.isEmpty)) {
+      throw const ToolError('"ordering.items" needs at least two entries, each with a "text" or an "image".');
+    }
+    final scoring = ordering['scoring'] ?? OrderScoring.places.name;
+    if (!OrderScoring.values.any((s) => s.name == scoring)) throw const ToolError('"ordering.scoring" must be places, pairs or exact.');
+    data['ordering'] = Ordering(items: parsed).toMap();
+    data['orderScoring'] = scoring;
+  }
+  if (!partial && effective == QuestionType.ordering && ordering == null) {
+    throw const ToolError('An ordering question needs "ordering" with its items in the right order.');
+  }
+
   final top = take<Map<dynamic, dynamic>>('topAnswers');
   if (top != null) {
     if (effective != QuestionType.topAnswers) throw const ToolError('"topAnswers" is for topAnswers questions.');
@@ -817,6 +869,11 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
       if (spec.timerSeconds != null) 'timer': spec.timerSeconds,
       if (!spec.lockable) 'lock': false,
     };
+  } else if (companion != null && effective == QuestionType.ordering) {
+    if (companion is! Map) throw const ToolError('"companion" must be an object.');
+    // The entries come from "ordering"; the screen keeps only its timer and lock.
+    final spec = CompanionSpec.fromMap({...companion, 'kind': CompanionKind.order.name})!;
+    data['companion'] = {if (spec.timerSeconds != null) 'timer': spec.timerSeconds, if (!spec.lockable) 'lock': false};
   } else if (companion != null && effective == QuestionType.topAnswers) {
     if (companion is! Map) throw const ToolError('"companion" must be an object.');
     // The screen follows from the mode; only its timer and lock are kept.
@@ -830,11 +887,8 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     if (spec == null || spec.kind == CompanionKind.connections) {
       throw const ToolError('"companion" needs a known "kind"; for word groups use the connections question type instead.');
     }
-    if ((spec.kind == CompanionKind.order || spec.kind == CompanionKind.match) && spec.options.length < 2) {
-      throw const ToolError('This companion screen needs at least two "options".');
-    }
-    if (spec.kind == CompanionKind.match && spec.targets.length != spec.options.length) {
-      throw const ToolError('"targets" needs one entry per entry of "options".');
+    if (spec.kind == CompanionKind.order || spec.kind == CompanionKind.match) {
+      throw const ToolError('Sorting and matching are question types of their own: use type "ordering" or "matching".');
     }
     data['companion'] = spec.toMap();
     // Teams answer on their devices; a buzzer would only get in the way.
@@ -890,6 +944,7 @@ Map<String, dynamic> describeQuestion(Question q) => {
           if (pair.right.image != null) 'rightImage': pair.right.image,
         },
     ],
+  if (q.type == QuestionType.ordering && q.ordering != null) 'ordering': q.ordering!.toMap(),
   if (q.type == QuestionType.topAnswers && q.topAnswers != null) 'topAnswers': q.topAnswers!.toMap(),
   if (q.companion != null && q.type != QuestionType.rapidFire)
     'companion': switch (q.type) {
@@ -898,7 +953,7 @@ Map<String, dynamic> describeQuestion(Question q) => {
         q.companion!.toMap()
           ..remove('options')
           ..remove('targets'),
-      QuestionType.topAnswers => {
+      QuestionType.topAnswers || QuestionType.ordering => {
         if (q.companion!.timerSeconds != null) 'timer': q.companion!.timerSeconds,
         if (!q.companion!.lockable) 'lock': false,
       },

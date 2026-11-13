@@ -390,6 +390,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'connections': 'Wortgruppen',
       'rapidFire': 'Fragenhagel',
       'matching': 'Zuordnen',
+      'ordering': 'Sortieren',
       'topAnswers': 'Top-Antworten',
       'lastStanding': 'Wer bleibt übrig',
       'other': 'Nicht unterstützt',
@@ -1321,7 +1322,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get matchingEditorText =>
-      'Schreib jedes Paar so, wie es zusammengehört; die Teams bekommen die rechte Seite gemischt. Eine Seite kann Text, Bild oder beides sein. Bilder erscheinen auf dem großen Bildschirm mit einem Buchstaben oder einer Zahl, die auch auf den Geräten steht.';
+      'Schreib jedes Paar so, wie es zusammengehört; die Teams bekommen die rechte Seite gemischt. Eine Seite kann Text, Bild oder beides sein. Ein Bild ohne Text bekommt auf den Geräten einen Namen wie „Bild 3“.';
 
   @override
   String get matchLeft => 'Links';
@@ -3302,4 +3303,77 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get pickSeveralText =>
       'Für Fragen mit mehreren richtigen Antworten: Richtig ist nur, wer genau die richtigen wählt';
+
+  @override
+  String get explainOrdering =>
+      'Sortieren: Einträge wie Erfindungen, Filme oder Städte, die jedes Team auf seinem Gerät ordnet, z. B. nach Jahr. Der große Bildschirm zeigt sie gemischt und setzt sie dann einzeln an ihren Platz.';
+
+  @override
+  String get orderingEditorText =>
+      'Schreib die Einträge in der richtigen Reihenfolge, vom ersten bis zum letzten; zum Umsortieren ziehen. Jeder kann Text, Bild oder beides sein, dazu das, wonach sortiert wird (ein Jahr, eine Größe). Das erscheint, sobald der Eintrag an seinem Platz landet.';
+
+  @override
+  String get orderEntry => 'Eintrag';
+
+  @override
+  String get orderValue => 'Sortiert nach (optional)';
+
+  @override
+  String get orderValueHint => 'z. B. 1969';
+
+  @override
+  String get removeEntry => 'Eintrag entfernen';
+
+  @override
+  String get addEntry => 'Eintrag hinzufügen';
+
+  @override
+  String get orderScoringTitle => 'Punkte für';
+
+  @override
+  String orderScoring(String rule) {
+    String _temp0 = intl.Intl.selectLogic(rule, {
+      'exact': 'Nur ganz richtig',
+      'pairs': 'Pro Paar',
+      'other': 'Pro Platz',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String orderScoringText(String rule) {
+    String _temp0 = intl.Intl.selectLogic(rule, {
+      'exact': 'Alle Punkte nur für die exakte Reihenfolge, sonst keine.',
+      'pairs':
+          'Anteil für je zwei Einträge in der richtigen Reihenfolge. Ein verrutschter Eintrag kostet nur wenig.',
+      'other': 'Anteil für jeden Eintrag am richtigen Platz.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get rightOrder => 'Richtige Reihenfolge';
+
+  @override
+  String get placeNext => 'Nächster Platz';
+
+  @override
+  String partialPairs(int right, int total) {
+    return '$right von $total Paaren richtig';
+  }
+
+  @override
+  String get testOnThisComputer => 'Auf diesem Computer testen';
+
+  @override
+  String get testDevices => 'Testgeräte';
+
+  @override
+  String get bot => 'Bot';
+
+  @override
+  String get allBots => 'Alle als Bots';
+
+  @override
+  String get noBots => 'Keine Bots';
 }

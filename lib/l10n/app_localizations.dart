@@ -779,7 +779,7 @@ abstract class AppLocalizations {
   /// No description provided for @questionTypeName.
   ///
   /// In en, this message translates to:
-  /// **'{type, select, free{Free Question} abcd{ABCD} progressingReveal{Progressing Reveal} feud{Survey duel} connections{Word groups} rapidFire{Fragenhagel} matching{Matching} topAnswers{Top answers} lastStanding{Last team standing} other{Unsupported}}'**
+  /// **'{type, select, free{Free Question} abcd{ABCD} progressingReveal{Progressing Reveal} feud{Survey duel} connections{Word groups} rapidFire{Fragenhagel} matching{Matching} ordering{Put in order} topAnswers{Top answers} lastStanding{Last team standing} other{Unsupported}}'**
   String questionTypeName(String type);
 
   /// No description provided for @boardTypeName.
@@ -2087,7 +2087,7 @@ abstract class AppLocalizations {
   /// No description provided for @matchingEditorText.
   ///
   /// In en, this message translates to:
-  /// **'Write each pair the way it belongs together; the teams get the right side mixed up. A side can be a text, a picture or both. Pictures appear on the big screen with a letter or number, which the devices show.'**
+  /// **'Write each pair the way it belongs together; the teams get the right side mixed up. A side can be a text, a picture or both. A picture without text gets a name on the devices, such as \"Picture 3\".'**
   String get matchingEditorText;
 
   /// No description provided for @matchLeft.
@@ -5383,6 +5383,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'For questions with more than one right answer: right only when a team picks exactly the right ones'**
   String get pickSeveralText;
+
+  /// No description provided for @explainOrdering.
+  ///
+  /// In en, this message translates to:
+  /// **'Put in order: entries such as inventions, films or cities that every team sorts on its device, e.g. by year. The big screen shows them mixed up, then puts them in place one by one.'**
+  String get explainOrdering;
+
+  /// No description provided for @orderingEditorText.
+  ///
+  /// In en, this message translates to:
+  /// **'Write the entries in the right order, first to last; drag them to change it. Each can be a text, a picture or both, plus what it\'s sorted by (a year, a size), which appears as the entry is put in place.'**
+  String get orderingEditorText;
+
+  /// No description provided for @orderEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Entry'**
+  String get orderEntry;
+
+  /// No description provided for @orderValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorted by (optional)'**
+  String get orderValue;
+
+  /// No description provided for @orderValueHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 1969'**
+  String get orderValueHint;
+
+  /// No description provided for @removeEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove entry'**
+  String get removeEntry;
+
+  /// No description provided for @addEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Add entry'**
+  String get addEntry;
+
+  /// No description provided for @orderScoringTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Points for'**
+  String get orderScoringTitle;
+
+  /// No description provided for @orderScoring.
+  ///
+  /// In en, this message translates to:
+  /// **'{rule, select, exact{Exact order} pairs{Per pair} other{Per place}}'**
+  String orderScoring(String rule);
+
+  /// No description provided for @orderScoringText.
+  ///
+  /// In en, this message translates to:
+  /// **'{rule, select, exact{All points for the exact order, none otherwise.} pairs{A share for every two entries the right way round. One entry in the wrong spot costs only a little.} other{A share for every entry in its right place.}}'**
+  String orderScoringText(String rule);
+
+  /// No description provided for @rightOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Right order'**
+  String get rightOrder;
+
+  /// No description provided for @placeNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Place next'**
+  String get placeNext;
+
+  /// No description provided for @partialPairs.
+  ///
+  /// In en, this message translates to:
+  /// **'{right} of {total} pairs right'**
+  String partialPairs(int right, int total);
+
+  /// No description provided for @testOnThisComputer.
+  ///
+  /// In en, this message translates to:
+  /// **'Test on this computer'**
+  String get testOnThisComputer;
+
+  /// No description provided for @testDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Test devices'**
+  String get testDevices;
+
+  /// No description provided for @bot.
+  ///
+  /// In en, this message translates to:
+  /// **'Bot'**
+  String get bot;
+
+  /// No description provided for @allBots.
+  ///
+  /// In en, this message translates to:
+  /// **'All bots'**
+  String get allBots;
+
+  /// No description provided for @noBots.
+  ///
+  /// In en, this message translates to:
+  /// **'No bots'**
+  String get noBots;
 }
 
 class _AppLocalizationsDelegate

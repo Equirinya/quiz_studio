@@ -371,6 +371,9 @@ class _QuestionCardState extends State<QuestionCard> {
   late bool _expanded = widget.initiallyExpanded;
   late bool _showLabel = (widget.question.description ?? '').isNotEmpty;
 
+  /// Put in order: how it is scored, shown at once while the write is queued.
+  late OrderScoring _orderScoring = widget.question.ordering?.scoring ?? OrderScoring.places;
+
   /// Survey duel and Word groups never take points away, nor does a lost bet
   /// of points cost more than the bet.
   bool get _hasMinus =>
@@ -385,7 +388,7 @@ class _QuestionCardState extends State<QuestionCard> {
     final companion = _q.companion;
     final l10n = context.l10n;
     final devices = switch (_q.type) {
-      QuestionType.connections || QuestionType.matching => null,
+      QuestionType.connections || QuestionType.matching || QuestionType.ordering => null,
       QuestionType.rapidFire || QuestionType.topAnswers => companion == null ? null : l10n.onTheDevices,
       _ => companion == null ? null : l10n.kindOnTheDevices(l10n.inline(l10n.companionKind(companion.kind))),
     };
@@ -446,6 +449,23 @@ class _QuestionCardState extends State<QuestionCard> {
             _Scoring.points => l10n.scoringPointsText(_q.pointsPlus > kMinBetLimit ? _q.pointsPlus : kMinBetLimit),
             _Scoring.amount => l10n.scoringAmountText,
           }, style: theme.textTheme.bodySmall),
+          const SizedBox(height: 12),
+        ],
+        // Put in order: what a share of the points is for.
+        if (_q.type == QuestionType.ordering) ...[
+          Text(l10n.orderScoringTitle, style: theme.textTheme.labelLarge),
+          const SizedBox(height: 6),
+          SegmentedButton<OrderScoring>(
+            showSelectedIcon: false,
+            segments: [for (final by in OrderScoring.values) ButtonSegment(value: by, label: Text(l10n.orderScoring(by.name)))],
+            selected: {_orderScoring},
+            onSelectionChanged: (picked) {
+              setState(() => _orderScoring = picked.single);
+              _save({'orderScoring': picked.single.name});
+            },
+          ),
+          const SizedBox(height: 6),
+          Text(l10n.orderScoringText(_orderScoring.name), style: theme.textTheme.bodySmall),
           const SizedBox(height: 12),
         ],
         if (scoring == _Scoring.amount) ...[
@@ -540,10 +560,13 @@ class _QuestionCardState extends State<QuestionCard> {
   /// sections with how it is played.
   Widget _arrange(bool wide, bool roomy, Widget? typeSettings, Widget typeContent) {
     final theme = Theme.of(context);
-    // A Fragenhagel, matching and top answers bring their own settings.
+    // A Fragenhagel, matching, put in order and top answers bring their own settings.
     final answering =
         typeSettings ??
-        (_q.type == QuestionType.rapidFire || _q.type == QuestionType.matching || _q.type == QuestionType.topAnswers
+        (_q.type == QuestionType.rapidFire ||
+                _q.type == QuestionType.matching ||
+                _q.type == QuestionType.ordering ||
+                _q.type == QuestionType.topAnswers
             ? null
             : CompanionEditor(key: ValueKey('companion-${_q.type}'), gameId: widget.gameId, question: _q, save: _save));
     final main = Column(
@@ -552,9 +575,12 @@ class _QuestionCardState extends State<QuestionCard> {
         FillDropdown<QuestionType>(
           label: context.l10n.type,
           value: _q.type,
+          leadingIcon: Icon(questionTypeIcon(_q.type)),
           entries: [
+            // In the order of [QuestionType]: one answer, lists, puzzles, rounds.
             for (final type in QuestionType.values)
-              if (type != QuestionType.unsupported || _q.type == type) DropdownMenuEntry(value: type, label: context.l10n.questionType(type)),
+              if (type != QuestionType.unsupported || _q.type == type)
+                DropdownMenuEntry(value: type, label: context.l10n.questionType(type), leadingIcon: Icon(questionTypeIcon(type))),
           ],
           onSelected: (type) {
             if (type != null && type != QuestionType.unsupported) _save({'type': type.name});

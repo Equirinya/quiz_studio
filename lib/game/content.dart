@@ -9,6 +9,7 @@ library;
 import 'cards.dart';
 import 'companion.dart';
 import 'matching.dart';
+import 'ordering.dart';
 import 'top_answers.dart';
 import 'rapid_fire.dart';
 import 'last_standing.dart';
@@ -270,24 +271,27 @@ const int kMinAbcdAnswers = 2;
 const int kMaxAbcdAnswers = 9;
 
 enum QuestionType {
+  // In the order the editor offers them: one answer, lists, puzzles on the
+  // devices, then whole rounds.
   free("Free Question"),
   abcd("ABCD"),
   progressingReveal("Progressing Reveal"),
+  topAnswers("Top answers"),
   feud("Survey duel"),
+  matching("Matching"),
+  ordering("Put in order"),
   connections("Word groups"),
   rapidFire("Fragenhagel"),
-  matching("Matching"),
-  topAnswers("Top answers"),
   lastStanding("Last team standing"),
   unsupported("Unsupported");
 
   /// Played only on the teams' own devices: without them there is nothing
   /// to answer with.
-  bool get needsDevices => this == connections || this == matching;
+  bool get needsDevices => this == connections || this == matching || this == ordering;
 
   /// Can be played with bets: one right-or-wrong answer per team. The
   /// types that share out points by their own rules can't.
-  bool get wagerable => this == free || this == abcd || this == progressingReveal || this == matching;
+  bool get wagerable => this == free || this == abcd || this == progressingReveal || this == matching || this == ordering;
 
   const QuestionType(this.uiString);
 
@@ -355,6 +359,7 @@ class Question {
     this.connectionGroups = const [],
     this.rapidFire,
     this.matching,
+    this.ordering,
     this.topAnswers,
     this.lastStanding,
     this.sounds = MusicConfig.empty,
@@ -471,6 +476,9 @@ class Question {
   /// matching: its pairs, in the right pairing. Stored as `matching`.
   final Matching? matching;
 
+  /// ordering: its entries, in the right order. Stored as `ordering`.
+  final Ordering? ordering;
+
   /// topAnswers: the list and how teams answer. Stored as `topAnswers`.
   final TopAnswers? topAnswers;
 
@@ -516,7 +524,12 @@ class Question {
           ? ConnectionGroup.listFrom(data['connections'])
           : const [],
       rapidFire: QuestionType.fromString(data['type']) == QuestionType.rapidFire ? RapidFire.fromMap(data['rapidFire']) : null,
-      matching: QuestionType.fromString(data['type']) == QuestionType.matching ? Matching.fromMap(data['matching']) : null,
+      matching: QuestionType.fromString(data['type']) == QuestionType.matching
+          ? Matching.fromMap(data['matching'], companion: data['companion'])
+          : null,
+      ordering: QuestionType.fromString(data['type']) == QuestionType.ordering
+          ? Ordering.fromMap(data['ordering'], companion: data['companion'], scoring: data['orderScoring'])
+          : null,
       topAnswers: QuestionType.fromString(data['type']) == QuestionType.topAnswers ? TopAnswers.fromMap(data['topAnswers']) : null,
       lastStanding:
           QuestionType.fromString(data['type']) == QuestionType.lastStanding ? LastStanding.fromMap(data['lastStanding']) : null,
@@ -545,6 +558,21 @@ class Question {
         // The devices show the pictures too, shrunk.
         optionImages: [for (final pair in pairs.pairs) pair.left.image],
         targetImages: [for (final pair in pairs.pairs) pair.right.image],
+      );
+    }
+    if (type == QuestionType.ordering) {
+      // Always on the teams' devices, the entries in the right order; the
+      // `companion` map holds the timer and whether teams may lock in.
+      final entries = ordering ?? const Ordering();
+      final stored = data['companion'] is Map ? Map<String, dynamic>.from(data['companion'] as Map) : <String, dynamic>{};
+      final spec = CompanionSpec.fromMap({...stored, 'kind': CompanionKind.order.name});
+      return CompanionSpec(
+        kind: CompanionKind.order,
+        timerSeconds: spec?.timerSeconds,
+        lockable: spec?.lockable ?? true,
+        options: [for (var i = 0; i < entries.items.length; i++) entries.label(i, id)],
+        optionImages: [for (final item in entries.items) item.image],
+        orderScoring: entries.scoring,
       );
     }
     if (type == QuestionType.rapidFire) {
@@ -583,7 +611,7 @@ class Question {
   bool get buzzerable => switch (type) {
     // Teams that bet on an amount show it, they don't buzz.
     QuestionType.free => !noBuzzer && amountBet == null,
-    QuestionType.connections || QuestionType.matching || QuestionType.lastStanding => false,
+    QuestionType.connections || QuestionType.matching || QuestionType.ordering || QuestionType.lastStanding => false,
     QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
     QuestionType.topAnswers => topAnswers?.onDevices != true,
     _ => true,
@@ -620,6 +648,8 @@ class Question {
         QuestionType.connections => kConnectionsGroups,
         // One step per item; the last one ends the round.
         QuestionType.rapidFire => rapidFire?.items.length ?? 0,
+        // One step per entry put in its place.
+        QuestionType.ordering => ordering?.items.length ?? 0,
         _ => 0,
       };
 
@@ -633,6 +663,7 @@ class Question {
         ...?rapidFire?.mediaPaths,
         ...?lastStanding?.mediaPaths,
         ...?matching?.mediaPaths,
+        ...?ordering?.mediaPaths,
         ...sounds.mediaPaths,
       ];
 }

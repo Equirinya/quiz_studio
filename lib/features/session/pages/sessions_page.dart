@@ -20,6 +20,7 @@ import 'package:quiz_show/features/player/pages/join_session_page.dart';
 import 'package:quiz_show/features/player/pages/player_page.dart' show LinkStatusIcon;
 import 'package:quiz_show/features/session/session_client.dart';
 import 'package:quiz_show/features/session/session_links.dart';
+import 'package:quiz_show/features/session/pages/test_devices_page.dart';
 import 'package:quiz_show/features/session/pages/connect_devices_page.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
@@ -505,7 +506,14 @@ Future<void> openConnectDevices(BuildContext context, SessionConnection connecti
   navigator.push(
     MaterialPageRoute(
       builder: (_) =>
-          ConnectDevicesPage(sessionId: connection.sessionId, teams: connection.state.value?.teams ?? const [], lanEndpoints: endpoints),
+          ConnectDevicesPage(
+            sessionId: connection.sessionId,
+            teams: connection.state.value?.teams ?? const [],
+            lanEndpoints: endpoints,
+            onTestDevices: connection.isPresenting
+                ? () => navigator.push(MaterialPageRoute(builder: (_) => TestDevicesPage(connection: connection)))
+                : null,
+          ),
     ),
   );
 }

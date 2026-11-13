@@ -104,9 +104,19 @@ class FieldGrid extends StatelessWidget {
 
 /// A [DropdownMenu] as wide as the space it gets, e.g. a cell of a [FieldGrid].
 class FillDropdown<T> extends StatelessWidget {
-  const FillDropdown({super.key, required this.label, required this.value, required this.entries, required this.onSelected});
+  const FillDropdown({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.entries,
+    required this.onSelected,
+    this.leadingIcon,
+  });
 
   final String label;
+
+  /// Shown in front of the selection, e.g. the icon of the chosen entry.
+  final Widget? leadingIcon;
   final T value;
   final List<DropdownMenuEntry<T>> entries;
   final ValueChanged<T?> onSelected;
@@ -119,6 +129,7 @@ class FillDropdown<T> extends StatelessWidget {
         key: ValueKey(value),
         width: box.maxWidth,
         label: Text(label),
+        leadingIcon: leadingIcon,
         initialSelection: value,
         dropdownMenuEntries: entries,
         onSelected: onSelected,

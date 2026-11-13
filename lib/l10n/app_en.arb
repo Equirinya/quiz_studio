@@ -147,7 +147,7 @@
   "creditsPartOfApp": "Part of the app",
   "creditsPublicDomain": "(public domain)",
   "creditsIntro": "The sounds that come with Quiz Studio were made for it or are free to use in any project (CC0). Tap a source to see where it is from.",
-  "questionTypeName": "{type, select, free{Free Question} abcd{ABCD} progressingReveal{Progressing Reveal} feud{Survey duel} connections{Word groups} rapidFire{Fragenhagel} matching{Matching} topAnswers{Top answers} lastStanding{Last team standing} other{Unsupported}}",
+  "questionTypeName": "{type, select, free{Free Question} abcd{ABCD} progressingReveal{Progressing Reveal} feud{Survey duel} connections{Word groups} rapidFire{Fragenhagel} matching{Matching} ordering{Put in order} topAnswers{Top answers} lastStanding{Last team standing} other{Unsupported}}",
   "@questionTypeName": {
     "placeholders": {
       "type": {
@@ -709,7 +709,7 @@
   },
   "addPrompt": "Add prompt",
   "onlyWithDevices": "Only playable with the teams' own devices: every team needs a phone or tablet connected (Setup, then Connect devices). Without them there is nothing to answer with.",
-  "matchingEditorText": "Write each pair the way it belongs together; the teams get the right side mixed up. A side can be a text, a picture or both. Pictures appear on the big screen with a letter or number, which the devices show.",
+  "matchingEditorText": "Write each pair the way it belongs together; the teams get the right side mixed up. A side can be a text, a picture or both. A picture without text gets a name on the devices, such as \"Picture 3\".",
   "matchLeft": "Left",
   "matchBelongsTo": "Belongs to",
   "removePair": "Remove pair",
@@ -1888,5 +1888,26 @@
   "@placeN": {"placeholders": {"place": {"type": "String"}}},
   "statusRapidIntro": "Question open · read it out first",
   "pickSeveral": "Teams can pick several",
-  "pickSeveralText": "For questions with more than one right answer: right only when a team picks exactly the right ones"
+  "pickSeveralText": "For questions with more than one right answer: right only when a team picks exactly the right ones",
+  "explainOrdering": "Put in order: entries such as inventions, films or cities that every team sorts on its device, e.g. by year. The big screen shows them mixed up, then puts them in place one by one.",
+  "orderingEditorText": "Write the entries in the right order, first to last; drag them to change it. Each can be a text, a picture or both, plus what it's sorted by (a year, a size), which appears as the entry is put in place.",
+  "orderEntry": "Entry",
+  "orderValue": "Sorted by (optional)",
+  "orderValueHint": "e.g. 1969",
+  "removeEntry": "Remove entry",
+  "addEntry": "Add entry",
+  "orderScoringTitle": "Points for",
+  "orderScoring": "{rule, select, exact{Exact order} pairs{Per pair} other{Per place}}",
+  "@orderScoring": {"placeholders": {"rule": {"type": "String"}}},
+  "orderScoringText": "{rule, select, exact{All points for the exact order, none otherwise.} pairs{A share for every two entries the right way round. One entry in the wrong spot costs only a little.} other{A share for every entry in its right place.}}",
+  "@orderScoringText": {"placeholders": {"rule": {"type": "String"}}},
+  "rightOrder": "Right order",
+  "placeNext": "Place next",
+  "partialPairs": "{right} of {total} pairs right",
+  "@partialPairs": {"placeholders": {"right": {"type": "int"}, "total": {"type": "int"}}},
+  "testOnThisComputer": "Test on this computer",
+  "testDevices": "Test devices",
+  "bot": "Bot",
+  "allBots": "All bots",
+  "noBots": "No bots"
 }

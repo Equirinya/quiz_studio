@@ -490,6 +490,40 @@ void main() {
       expect(matchingRead['companion'], {'kind': 'match', 'timer': 60});
     });
 
+    test('a put-in-order question, read back as it was given; sorting is no longer a companion screen', () async {
+      final ordering = {
+        'items': [
+          {'text': 'Moon landing', 'value': '1969'},
+          {'text': 'Fall of the Berlin Wall', 'value': '1989'},
+          {'text': '', 'image': 'iphone.png'},
+        ],
+        'scoring': 'pairs',
+      };
+      await tools.call('add_question', {
+        'gameId': 'g',
+        'categoryId': 'c1',
+        'type': 'ordering',
+        'question': 'Oldest first!',
+        'pointsPlus': 300,
+        'ordering': ordering,
+        'companion': {'timer': 45},
+      });
+      final question = (await backend.loadGame('g')).groups.single.categories.single.questions.last;
+      expect(question.ordering!.scoring, OrderScoring.pairs);
+      expect(question.companion!.timerSeconds, 45);
+      final read = (await described()).firstWhere((q) => q['type'] == 'ordering');
+      expect(read['ordering'], ordering);
+      expect(read['companion'], {'timer': 45});
+
+      for (final args in [
+        {'type': 'ordering', 'question': 'No entries'},
+        {'type': 'ordering', 'question': 'One', 'ordering': {'items': [{'text': 'a'}]}},
+        {'type': 'free', 'question': 'Old way', 'companion': {'kind': 'order', 'options': ['a', 'b']}},
+      ]) {
+        await expectLater(tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', ...args}), throwsA(isA<ToolError>()), reason: '$args');
+      }
+    });
+
     test('a top answers question and an estimate with a range, read back as they were given', () async {
       final top = {
         'mode': 'typed',

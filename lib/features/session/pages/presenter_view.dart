@@ -10,6 +10,7 @@ import 'package:quiz_show/features/companion/connections.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/session/boards/map_board.dart';
 import 'package:quiz_show/features/session/boards/wheel_board.dart';
+import 'package:quiz_show/features/session/pages/ordering_display.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/pages/standing_display.dart';
 import 'package:quiz_show/features/session/pages/video_card.dart';
@@ -531,7 +532,7 @@ class QuestionDisplay extends StatelessWidget {
           ),
         Expanded(
           // Matching gives the room to its pieces.
-          flex: question.type == QuestionType.matching ? 2 : 3,
+          flex: question.type == QuestionType.matching || question.type == QuestionType.ordering ? 2 : 3,
           child: Container(
             width: double.infinity,
             padding: EdgeInsets.all(unit * 2),
@@ -581,6 +582,15 @@ class QuestionDisplay extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.only(top: unit * 1.5),
               child: _MatchingBoard(question: question, unit: unit, file: _file),
+            ),
+          ),
+        // Put in order: the entries, mixed up, then put in place.
+        if (question.type == QuestionType.ordering)
+          Expanded(
+            flex: 7,
+            child: Padding(
+              padding: EdgeInsets.only(top: unit * 1.5),
+              child: OrderingBoard(state: state, question: question, unit: unit, file: _file),
             ),
           ),
         if (strip)

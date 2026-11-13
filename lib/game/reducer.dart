@@ -284,7 +284,8 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       final focus = delta > 0 ? revealed : (s.imageFocus > revealed ? revealed : s.imageFocus);
       // Teams keep playing while groups come up; their time runs on.
       return _ok(s.copyWith(revealed: revealed, imageFocus: question.type == QuestionType.progressingReveal ? focus : null), [
-        if (question.type == QuestionType.connections && delta > 0) const SoundEffect(effectReveal),
+        if ((question.type == QuestionType.connections || question.type == QuestionType.ordering) && delta > 0)
+          const SoundEffect(effectReveal),
       ]);
 
     case ImageFocus(:final delta):

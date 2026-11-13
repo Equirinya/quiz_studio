@@ -26,6 +26,7 @@ import 'package:quiz_show/features/player/pages/player_page.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/pages/session_setup_page.dart';
 import 'package:quiz_show/features/session/pages/sessions_page.dart';
+import 'package:quiz_show/features/session/pages/test_devices_page.dart';
 import 'package:quiz_show/features/session/session_client.dart';
 import 'package:quiz_show/features/settings/account_page.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
@@ -1480,6 +1481,187 @@ void main() {
       SubmitAnswer('red', PlayerAnswer(pairs: [0, 1, 2, 3, 4, 5, 6, 7, 9, 8])),
     ], game: game);
     await shot('matching_controller_ten');
+  });
+
+  /// Inventions to put in order, oldest first; with [pictures] each gets one.
+  GameContent timelineGame({bool pictures = false}) {
+    final root = Directory.systemTemp.createTempSync('quiz_timeline');
+    Directory('${root.path}/timeline').createSync();
+    const entries = [
+      ('Printing press', '1450'),
+      ('Steam engine', '1712'),
+      ('Telephone', '1876'),
+      ('Light bulb', '1879'),
+      ('Television', '1927'),
+      ('World Wide Web', '1989'),
+    ];
+    String picture(int i) {
+      final image = img.Image(width: 160 + i * 20, height: 140);
+      img.fill(image, color: img.ColorRgb8(200 - i * 25, 90 + i * 25, 120 + i * 15));
+      img.fillCircle(image, x: image.width ~/ 2, y: 70, radius: 40, color: img.ColorRgb8(255, 255, 255));
+      File('${root.path}/timeline/e$i.png').writeAsBytesSync(img.encodePng(image));
+      return 'e$i.png';
+    }
+
+    MediaService.instance.debugRoot = root;
+    return GameContent.assemble(
+      id: 'timeline',
+      game: {'name': 'Inventions'},
+      groups: {
+        'g': {'name': 'Round', 'categoryGroupIndex': 0},
+      },
+      categories: {
+        'c': {'name': 'Inventions', 'categoryGroup': 'g', 'categoryIndex': 0},
+      },
+      questions: {
+        'c': {
+          'q': {
+            'type': 'ordering',
+            'question': 'Put the inventions in order, oldest first.',
+            'pointsPlus': 300,
+            'ordering': {
+              'scoring': 'pairs',
+              'items': [
+                for (final (i, (text, year)) in entries.indexed)
+                  {'text': text, 'value': year, if (pictures) 'image': picture(i)},
+              ],
+            },
+          },
+        },
+      },
+    );
+  }
+
+  const timeline = QuestionRef('c', 'q');
+
+  testWidgets('ordering: big screen while the teams sort', (tester) async {
+    await screen(tester, const [OpenQuestion(timeline), SubmitAnswer('red', PlayerAnswer(order: [0, 1, 2, 3, 5, 4]))], game: timelineGame());
+    await shot('ordering_presenter');
+  });
+
+  testWidgets('ordering: big screen, three in place', (tester) async {
+    await screen(tester, const [OpenQuestion(timeline), LockAnswers(), Reveal(1), Reveal(1), Reveal(1)], game: timelineGame());
+    await tester.pump(const Duration(seconds: 2));
+    await shot('ordering_presenter_three');
+  });
+
+  testWidgets('ordering: big screen, halfway through a step', (tester) async {
+    await screen(tester, const [OpenQuestion(timeline), LockAnswers(), Reveal(1)], game: timelineGame());
+    await tester.pump(const Duration(seconds: 2));
+    host.dispatch(const Reveal(1));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 450));
+    await shot('ordering_presenter_moving');
+  });
+
+  testWidgets('ordering: big screen with pictures, all in place', (tester) async {
+    final game = timelineGame(pictures: true);
+    await cachePictures(tester, game);
+    await screen(tester, [const OpenQuestion(timeline), const LockAnswers(), for (var i = 0; i < 6; i++) const Reveal(1)], game: game);
+    await tester.pump(const Duration(seconds: 2));
+    await shot('ordering_presenter_pictures');
+  });
+
+  testWidgets('ordering: big screen with pictures, mixed up', (tester) async {
+    final game = timelineGame(pictures: true);
+    await cachePictures(tester, game);
+    await screen(tester, const [OpenQuestion(timeline)], game: game);
+    await shot('ordering_presenter_pictures_mixed');
+  });
+
+  testWidgets('ordering: controller, two in place', (tester) async {
+    await phone(tester, const [
+      OpenQuestion(timeline),
+      SubmitAnswer('red', PlayerAnswer(order: [0, 1, 2, 3, 5, 4])),
+      LockAnswers(),
+      Reveal(1),
+      Reveal(1),
+    ], game: timelineGame());
+    await shot('ordering_controller');
+  });
+
+  testWidgets('ordering: controller while the teams sort', (tester) async {
+    await phone(tester, const [OpenQuestion(timeline)], game: timelineGame());
+    await shot('ordering_controller_open');
+  });
+
+  testWidgets('test devices: every phone on this computer, one team as a bot', (tester) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    host = SessionHost(initial: fixtureState(), game: timelineGame());
+    final connection = SessionConnection.local(host, game: timelineGame());
+    addTearDown(connection.dispose);
+    host.dispatch(const OpenQuestion(timeline));
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: TestDevicesPage(connection: connection),
+    ));
+    await tester.pump();
+    await tester.tap(find.byType(Switch).last);
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 700));
+    }
+    expect(host.state.answerRound!.answers['blue']?.locked, isTrue);
+    expect(host.state.answerRound!.answers['red'], isNull);
+    await shot('test_devices');
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('editor: put in order', (tester) async {
+    await questionCard(tester, 'editor_question_ordering', {
+      'type': 'ordering',
+      'question': 'Put the inventions in order, oldest first.',
+      'ordering': {
+        'scoring': 'pairs',
+        'items': [
+          {'text': 'Printing press', 'value': '1450'},
+          {'text': 'Telephone', 'value': '1876'},
+          {'text': 'World Wide Web', 'value': '1989'},
+        ],
+      },
+    });
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.pump(const Duration(milliseconds: 300));
+    await shot('editor_question_ordering_scoring');
+  });
+
+  testWidgets('editor: the type menu', (tester) async {
+    await questionCard(tester, 'editor_type_menu_closed', {'type': 'ordering', 'question': 'Oldest first'});
+    await tester.tap(find.byType(DropdownMenu<QuestionType>));
+    await tester.pump(const Duration(milliseconds: 500));
+    await shot('editor_type_menu');
+  });
+
+  testWidgets('companion: order with pictures', (tester) async {
+    final game = timelineGame(pictures: true);
+    tester.view.physicalSize = const Size(412, 892);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    host = SessionHost(initial: fixtureState(), game: game);
+    addTearDown(host.dispose);
+    host.dispatch(const OpenQuestion(timeline));
+    final pictures = <String, Uint8List>{
+      for (final name in game.mediaPaths) name: MediaService.instance.localFile(game.id, name).readAsBytesSync(),
+    };
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: Scaffold()));
+      for (final bytes in pictures.values) {
+        await precacheImage(MemoryImage(bytes), tester.element(find.byType(Scaffold).first));
+      }
+    });
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      home: Scaffold(
+        body: SafeArea(
+          child: PlayerView(view: PublicView(host.publicState), teamId: 'red', send: (_) {}, onLeave: () {}, pictures: pictures),
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+    await shot('companion_order_pictures');
   });
 
   testWidgets('presenter: picture strip and music bars', (tester) async {

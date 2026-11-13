@@ -52,12 +52,25 @@ class Matching {
 
   final List<MatchPair> pairs;
 
-  static Matching fromMap(Object? stored) => Matching(
+  /// [stored] as saved; a question that was a free question with "match
+  /// pairs" on the devices brings its pairs along ([companion]).
+  static Matching fromMap(Object? stored, {Object? companion}) {
+    final old = stored is Map ? null : CompanionSpec.fromMap(companion);
+    if (old?.kind == CompanionKind.match) {
+      return Matching(
         pairs: [
-          if (stored is Map && stored['pairs'] is List)
-            for (final pair in stored['pairs'] as List) MatchPair.fromMap(pair),
+          for (final (i, left) in old!.options.indexed)
+            MatchPair(left: MatchSide(text: left), right: MatchSide(text: old.targets.elementAtOrNull(i) ?? '')),
         ],
       );
+    }
+    return Matching(
+      pairs: [
+        if (stored is Map && stored['pairs'] is List)
+          for (final pair in stored['pairs'] as List) MatchPair.fromMap(pair),
+      ],
+    );
+  }
 
   Map<String, dynamic> toMap() => {
         'pairs': [for (final pair in pairs) pair.toMap()],

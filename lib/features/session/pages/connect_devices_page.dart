@@ -11,7 +11,11 @@ import 'package:quiz_show/l10n/l10n.dart';
 /// The codes other devices scan to join: one per team for the players'
 /// phones, and one for a second controller.
 class ConnectDevicesPage extends StatefulWidget {
-  const ConnectDevicesPage({super.key, required this.sessionId, required this.teams, this.lanEndpoints = const []});
+  const ConnectDevicesPage({super.key, required this.sessionId, required this.teams, this.lanEndpoints = const [], this.onTestDevices});
+
+  /// On the presenting device: opens every team's phone on this computer,
+  /// to try the show out without devices.
+  final VoidCallback? onTestDevices;
 
   final String sessionId;
   final List<Team> teams;
@@ -35,7 +39,13 @@ class _ConnectDevicesPageState extends State<ConnectDevicesPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.connectDevices)),
+      appBar: AppBar(
+        title: Text(context.l10n.connectDevices),
+        actions: [
+          if (widget.onTestDevices != null)
+            TextButton.icon(onPressed: widget.onTestDevices, icon: const Icon(Icons.devices), label: Text(context.l10n.testOnThisComputer)),
+        ],
+      ),
       body: FutureBuilder(
         future: _links,
         builder: (context, snapshot) {

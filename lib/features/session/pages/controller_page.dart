@@ -458,6 +458,8 @@ class _NowPanel extends StatelessWidget {
               );
             },
           ),
+        // Put in order: the solution, ticked off as the big screen places it.
+        if (q.type == QuestionType.ordering) _OrderingPanel(state: state, question: q),
         if (q.type == QuestionType.topAnswers) _TopAnswersPanel(state: state, question: q, send: send),
         // Nothing on the devices: the gamemaster rates each team here.
         if (round == null && !state.waitingForBets && (q.ranked || q.amountBet != null || (q.noBuzzer && q.companion == null)))
@@ -1196,18 +1198,24 @@ class _ActionPad extends StatelessWidget {
     // otherwise they show the teams' answers one by one.
     final canReveal = q != null && q.maxReveal > 0 && state.current != null;
     final round = state.answerRound;
-    final answerSteps = !canReveal && round != null;
+    // Put in order: answering closes first, then the entries go in place
+    // one by one, then the teams' answers come up.
+    final ordering = q?.type == QuestionType.ordering;
+    final placing = ordering && canReveal && state.revealed < q.maxReveal;
+    final answerSteps = round != null && (!canReveal || (ordering && !placing));
     final rapid = q?.type == QuestionType.rapidFire;
     // A Fragenhagel goes back as far as its question alone (-1), taking back
     // what was scored on the way.
-    final Command? back = answerSteps
-        ? (round.revealed.isEmpty ? null : RevealAnswer(round.revealed.last, show: false))
+    final Command? back = answerSteps && round.revealed.isNotEmpty
+        ? RevealAnswer(round.revealed.last, show: false)
+        : answerSteps && !ordering
+        ? null
         : canReveal && state.revealed > (rapid ? -1 : 0)
         ? const Reveal(-1)
         : null;
     // Showing answers starts by closing the answering on every device, so
     // the gamemaster can then show them in any order.
-    final closeFirst = answerSteps && round.open && round.revealed.isEmpty;
+    final closeFirst = (answerSteps && round.open && round.revealed.isEmpty) || (placing && round != null && round.open);
     // While bets are placed this button ends the betting, then starts the
     // question once the bets have been shown.
     final betting = state.waitingForBets;
@@ -1320,6 +1328,8 @@ class _ActionPad extends StatelessWidget {
                     ? context.l10n.solution
                     : q?.type == QuestionType.connections
                     ? context.l10n.revealGroup
+                    : placing
+                    ? context.l10n.placeNext
                     : context.l10n.reveal,
                 Icons.navigate_next,
                 next,
@@ -1329,6 +1339,49 @@ class _ActionPad extends StatelessWidget {
               small(queued ? context.l10n.nextTeam : context.l10n.reopen, queued ? Icons.skip_next : Icons.undo, pass),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Put in order on the controller: the right order with what each entry is
+/// sorted by, the ones on the big screen already ticked.
+class _OrderingPanel extends StatelessWidget {
+  const _OrderingPanel({required this.state, required this.question});
+
+  final SessionState state;
+  final Question question;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final items = (question.ordering ?? const Ordering()).items;
+    final spec = question.companion;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(context.l10n.rightOrder, style: theme.textTheme.labelLarge),
+          for (final (i, item) in items.indexed)
+            Row(
+              children: [
+                Icon(
+                  i < state.revealed ? Icons.check_circle : Icons.radio_button_unchecked,
+                  size: 18,
+                  color: i < state.revealed ? theme.colorScheme.primary : theme.colorScheme.outline,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    "${i + 1}. ${context.l10n.deviceLabel(spec?.options.elementAtOrNull(i) ?? item.text)}"
+                    "${item.value.trim().isEmpty ? '' : '  ·  ${item.value.trim()}'}",
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -2157,7 +2210,9 @@ class _AnswersPanel extends StatelessWidget {
     final scheme = theme.colorScheme;
     final spec = round.spec;
     final closest = closestTeams(spec, round.answers);
-    final solution = switch (spec.kind) {
+    // Matching and put in order show the solution above already.
+    final ownSolution = question.type == QuestionType.matching || question.type == QuestionType.ordering;
+    final solution = ownSolution ? null : switch (spec.kind) {
       CompanionKind.number || CompanionKind.slider => spec.solution == null ? null : formatNumber(spec.solution!, unit: spec.unit),
       CompanionKind.order => spec.options.map(context.l10n.deviceLabel).join("  →  "),
       CompanionKind.match => [
@@ -2258,7 +2313,14 @@ class _AnswersPanel extends StatelessWidget {
                             Text(context.l10n.placeN(context.l10n.ordinal(place + 1)), style: theme.textTheme.labelMedium?.copyWith(color: scheme.outline)),
                           if (verdict == null && (partial != null || suggestion != null))
                             Text(
-                              partial != null ? context.l10n.partialRight(partial.right, partial.of) : (suggestion! ? context.l10n.looksRight : context.l10n.looksWrong),
+                              partial != null
+                                  ? switch (spec.orderScoring) {
+                                      _ when spec.kind != CompanionKind.order => context.l10n.partialRight(partial.right, partial.of),
+                                      OrderScoring.exact => partial.right == partial.of ? context.l10n.looksRight : context.l10n.looksWrong,
+                                      OrderScoring.pairs => context.l10n.partialPairs(partial.right, partial.of),
+                                      OrderScoring.places => context.l10n.partialRight(partial.right, partial.of),
+                                    }
+                                  : (suggestion! ? context.l10n.looksRight : context.l10n.looksWrong),
                               style: theme.textTheme.labelMedium?.copyWith(color: scheme.outline),
                             ),
                         ],

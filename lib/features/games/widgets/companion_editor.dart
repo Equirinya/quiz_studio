@@ -352,8 +352,8 @@ List<CompanionKind> companionKindsFor(QuestionType type, {CompanionKind? current
         CompanionKind.text,
         CompanionKind.number,
         CompanionKind.slider,
-        CompanionKind.order,
-        CompanionKind.match,
+        // Put in order and match pairs are question types of their own now;
+        // older questions keep theirs (see below).
         CompanionKind.list,
       ],
     QuestionType.feud => const [CompanionKind.whiteboard, CompanionKind.text, CompanionKind.list],
@@ -380,6 +380,11 @@ String answeringSummary(AppLocalizations l10n, Question question) {
       ?timer(companion?.timerSeconds),
     ],
     QuestionType.matching => [l10n.onTheDevicesShort, ?timer(companion?.timerSeconds)],
+    QuestionType.ordering => [
+      l10n.onTheDevicesShort,
+      ?timer(companion?.timerSeconds),
+      l10n.orderScoring((question.ordering?.scoring ?? OrderScoring.places).name),
+    ],
     QuestionType.connections => [
       l10n.onTheDevicesShort,
       ?timer(companion?.timerSeconds),

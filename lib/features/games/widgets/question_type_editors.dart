@@ -21,8 +21,25 @@ String questionTypeExplanation(AppLocalizations l10n, QuestionType type) => swit
       QuestionType.connections => l10n.explainConnections,
       QuestionType.rapidFire => l10n.explainRapidFire,
       QuestionType.matching => l10n.explainMatching,
+      QuestionType.ordering => l10n.explainOrdering,
       QuestionType.lastStanding => l10n.explainLastStanding,
       QuestionType.unsupported => l10n.explainUnsupported,
+    };
+
+/// The icon of a question type, in the type menu and wherever the type is
+/// named in short.
+IconData questionTypeIcon(QuestionType type) => switch (type) {
+      QuestionType.free => Icons.chat_bubble_outline,
+      QuestionType.abcd => Icons.grid_view,
+      QuestionType.progressingReveal => Icons.visibility_outlined,
+      QuestionType.topAnswers => Icons.format_list_numbered,
+      QuestionType.feud => Icons.bar_chart,
+      QuestionType.matching => Icons.link,
+      QuestionType.ordering => Icons.swap_vert,
+      QuestionType.connections => Icons.apps,
+      QuestionType.rapidFire => Icons.bolt,
+      QuestionType.lastStanding => Icons.emoji_events_outlined,
+      QuestionType.unsupported => Icons.block,
     };
 
 /// The inputs that only one question type has.
@@ -61,6 +78,7 @@ class QuestionTypeEditor extends StatelessWidget {
       QuestionType.connections => place(null, _ConnectionsEditor(question: question, save: save)),
       QuestionType.rapidFire => _RapidFireEditor(gameId: gameId, question: question, save: save, layout: place),
       QuestionType.matching => _MatchingEditor(gameId: gameId, question: question, save: save, layout: place),
+      QuestionType.ordering => _OrderingEditor(gameId: gameId, question: question, save: save, layout: place),
       QuestionType.topAnswers => _TopAnswersEditor(question: question, save: save, layout: place),
       QuestionType.lastStanding => _StandingEditor(gameId: gameId, question: question, save: save, layout: place),
       QuestionType.unsupported => place(null, const SizedBox.shrink()),
@@ -999,6 +1017,177 @@ class _MatchingEditorState extends State<_MatchingEditor> {
             onPressed: () => _change(() => _rows.add(_MatchRow(const MatchPair()))),
             icon: const Icon(Icons.add),
             label: Text(context.l10n.addPair),
+          ),
+        ),
+      ],
+    ));
+  }
+}
+
+class _OrderRow {
+  _OrderRow(OrderItem item)
+      : text = TextEditingController(text: item.text),
+        value = TextEditingController(text: item.value),
+        image = item.image;
+
+  final TextEditingController text;
+  final TextEditingController value;
+  String? image;
+
+  OrderItem get item => OrderItem(text: text.text, image: image, value: value.text);
+
+  void dispose() {
+    text.dispose();
+    value.dispose();
+  }
+}
+
+/// Put in order: the entries in the right order, each a text, a picture or
+/// both, with what it is sorted by; plus the time and how it is scored.
+class _OrderingEditor extends StatefulWidget {
+  const _OrderingEditor({required this.gameId, required this.question, required this.save, required this.layout});
+
+  final String gameId;
+  final Question question;
+  final SaveQuestion save;
+  final TypeEditorLayout layout;
+
+  @override
+  State<_OrderingEditor> createState() => _OrderingEditorState();
+}
+
+class _OrderingEditorState extends State<_OrderingEditor> {
+  late final Ordering _stored = widget.question.ordering ?? const Ordering();
+  late final List<_OrderRow> _rows = [
+    for (final item in _stored.items) _OrderRow(item),
+    // A new question starts with three empty entries to fill in.
+    if (_stored.items.isEmpty) for (var i = 0; i < 3; i++) _OrderRow(const OrderItem()),
+  ];
+  late int? _timer = widget.question.companion?.timerSeconds;
+  late bool _lock = widget.question.companion?.lockable ?? true;
+
+  @override
+  void dispose() {
+    for (final row in _rows) {
+      row.dispose();
+    }
+    super.dispose();
+  }
+
+  // The "put in order" screen of a former free question is replaced. How
+  // it is scored is set in the scoring section, stored on its own.
+  void _write() => widget.save({
+        'ordering': Ordering(items: [for (final row in _rows) row.item]).toMap(),
+        'companion': {'timer': _timer, 'lock': _lock},
+      });
+
+  void _change(VoidCallback change) {
+    setState(change);
+    _write();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final settings = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FieldGrid(minWidth: 170, children: [TimerDropdown(seconds: _timer, onChanged: (seconds) => _change(() => _timer = seconds))]),
+        LockInSwitch(value: _lock, onChanged: (on) => _change(() => _lock = on)),
+      ],
+    );
+    return widget.layout(settings, Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(l10n.orderingEditorText, style: theme.textTheme.bodySmall),
+        const SizedBox(height: 4),
+        ReorderableListView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          // onReorderItem replaces this from Flutter 3.41 on; kept for older SDKs in CI.
+          // ignore: deprecated_member_use
+          onReorder: (from, to) => _change(() {
+            if (to > from) to -= 1;
+            _rows.insert(to, _rows.removeAt(from));
+          }),
+          children: [
+            for (final (i, row) in _rows.indexed)
+              Padding(
+                key: ObjectKey(row),
+                padding: const EdgeInsets.only(top: 12),
+                child: Row(
+                  children: [
+                    ReorderableDragStartListener(
+                      index: i,
+                      child: SizedBox(
+                        width: 44,
+                        child: Row(
+                          children: [
+                            Icon(Icons.drag_indicator, size: 18, color: theme.colorScheme.outline),
+                            Text("${i + 1}", style: theme.textTheme.titleMedium),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, box) {
+                          final entry = Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: row.text,
+                                  decoration: InputDecoration(labelText: l10n.orderEntry, isDense: true),
+                                  onChanged: (_) => _write(),
+                                ),
+                              ),
+                              MediaButton(
+                                gameId: widget.gameId,
+                                kind: MediaKind.image,
+                                name: row.image,
+                                onChanged: (name) => _change(() => row.image = name),
+                              ),
+                            ],
+                          );
+                          final value = TextField(
+                            controller: row.value,
+                            decoration: InputDecoration(labelText: l10n.orderValue, hintText: l10n.orderValueHint, isDense: true),
+                            onChanged: (_) => _write(),
+                          );
+                          // On a phone the value goes below the entry.
+                          if (box.maxWidth < 420) return Column(children: [entry, const SizedBox(height: 6), value]);
+                          return Row(
+                            children: [
+                              Expanded(flex: 3, child: entry),
+                              const SizedBox(width: 12),
+                              Expanded(flex: 2, child: value),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      tooltip: l10n.removeEntry,
+                      onPressed: () => _change(() {
+                        final removed = _rows.removeAt(i);
+                        WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => _change(() => _rows.add(_OrderRow(const OrderItem()))),
+            icon: const Icon(Icons.add),
+            label: Text(l10n.addEntry),
           ),
         ),
       ],

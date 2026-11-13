@@ -385,6 +385,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'connections': 'Word groups',
       'rapidFire': 'Fragenhagel',
       'matching': 'Matching',
+      'ordering': 'Put in order',
       'topAnswers': 'Top answers',
       'lastStanding': 'Last team standing',
       'other': 'Unsupported',
@@ -1314,7 +1315,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get matchingEditorText =>
-      'Write each pair the way it belongs together; the teams get the right side mixed up. A side can be a text, a picture or both. Pictures appear on the big screen with a letter or number, which the devices show.';
+      'Write each pair the way it belongs together; the teams get the right side mixed up. A side can be a text, a picture or both. A picture without text gets a name on the devices, such as \"Picture 3\".';
 
   @override
   String get matchLeft => 'Left';
@@ -3282,4 +3283,77 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get pickSeveralText =>
       'For questions with more than one right answer: right only when a team picks exactly the right ones';
+
+  @override
+  String get explainOrdering =>
+      'Put in order: entries such as inventions, films or cities that every team sorts on its device, e.g. by year. The big screen shows them mixed up, then puts them in place one by one.';
+
+  @override
+  String get orderingEditorText =>
+      'Write the entries in the right order, first to last; drag them to change it. Each can be a text, a picture or both, plus what it\'s sorted by (a year, a size), which appears as the entry is put in place.';
+
+  @override
+  String get orderEntry => 'Entry';
+
+  @override
+  String get orderValue => 'Sorted by (optional)';
+
+  @override
+  String get orderValueHint => 'e.g. 1969';
+
+  @override
+  String get removeEntry => 'Remove entry';
+
+  @override
+  String get addEntry => 'Add entry';
+
+  @override
+  String get orderScoringTitle => 'Points for';
+
+  @override
+  String orderScoring(String rule) {
+    String _temp0 = intl.Intl.selectLogic(rule, {
+      'exact': 'Exact order',
+      'pairs': 'Per pair',
+      'other': 'Per place',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String orderScoringText(String rule) {
+    String _temp0 = intl.Intl.selectLogic(rule, {
+      'exact': 'All points for the exact order, none otherwise.',
+      'pairs':
+          'A share for every two entries the right way round. One entry in the wrong spot costs only a little.',
+      'other': 'A share for every entry in its right place.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get rightOrder => 'Right order';
+
+  @override
+  String get placeNext => 'Place next';
+
+  @override
+  String partialPairs(int right, int total) {
+    return '$right of $total pairs right';
+  }
+
+  @override
+  String get testOnThisComputer => 'Test on this computer';
+
+  @override
+  String get testDevices => 'Test devices';
+
+  @override
+  String get bot => 'Bot';
+
+  @override
+  String get allBots => 'All bots';
+
+  @override
+  String get noBots => 'No bots';
 }
