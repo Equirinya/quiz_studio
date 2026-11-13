@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:quiz_show/l10n/l10n.dart';
 
 /// Asks for one line of text. Returns null when cancelled or left empty.
-Future<String?> promptText(BuildContext context, {required String title, String initial = '', String? label}) {
+/// Asks for a text. [multiline] gives room for several lines, entered with
+/// Enter; saving is then only by the button.
+Future<String?> promptText(BuildContext context, {required String title, String initial = '', String? label, bool multiline = false}) {
   final controller = TextEditingController(text: initial);
   return showDialog<String>(
     context: context,
@@ -17,8 +19,11 @@ Future<String?> promptText(BuildContext context, {required String title, String 
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: InputDecoration(labelText: label),
-          onSubmitted: (_) => submit(),
+          minLines: multiline ? 3 : 1,
+          maxLines: multiline ? 8 : 1,
+          keyboardType: multiline ? TextInputType.multiline : null,
+          decoration: InputDecoration(labelText: label, alignLabelWithHint: multiline),
+          onSubmitted: multiline ? null : (_) => submit(),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.cancel)),

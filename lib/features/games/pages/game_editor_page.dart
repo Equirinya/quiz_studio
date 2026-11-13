@@ -267,7 +267,7 @@ class _GroupCard extends StatelessWidget {
   }
 
   Future<void> _editDisplayText(BuildContext context) async {
-    final text = await promptText(context, title: context.l10n.displayText, initial: group.text ?? '', label: context.l10n.shownOnBoard);
+    final text = await promptText(context, title: context.l10n.displayText, initial: group.text ?? '', label: context.l10n.shownOnBoard, multiline: true);
     if (text == null || !context.mounted) return;
     await guarded(context, () => _repo.updateGroup(game.id, group.id, {'text': text}));
   }

@@ -2147,6 +2147,7 @@ class _AnswersSheetState extends State<_AnswersSheet> {
     final automatic = round == null || question == null ? const <Command>[] : autoRating(state, round, question);
     final estimates = round == null || question == null || round.spec.solution == null ? const <EstimateScoring>[] : EstimateScoring.values;
     final answering = state.roundTeams;
+    final unlimited = round != null && round.open && round.endsAtMillis == null;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -2213,12 +2214,14 @@ class _AnswersSheetState extends State<_AnswersSheet> {
             heading(l10n.moreTime),
             Wrap(
               children: [
-                action("+30 s", Icons.more_time, () => send(const ExtendAnswers(30))),
-                action("+1 min", Icons.more_time, () => send(const ExtendAnswers(60))),
+                // A round running without a limit has all the time already;
+                // +30 s would put a limit on it instead.
+                action("+30 s", Icons.more_time, unlimited ? null : () => send(const ExtendAnswers(30))),
+                action("+1 min", Icons.more_time, unlimited ? null : () => send(const ExtendAnswers(60))),
                 action(
                   l10n.noTimeLimit,
                   Icons.all_inclusive,
-                  round.open && round.endsAtMillis == null ? null : () => send(const ExtendAnswers(null)),
+                  unlimited ? null : () => send(const ExtendAnswers(null)),
                 ),
               ],
             ),

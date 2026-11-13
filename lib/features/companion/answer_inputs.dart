@@ -365,6 +365,7 @@ class _CompanionInputState extends State<CompanionInput> {
               (item.index, rightPictures[item.index] != null && Matching.isPictureName(rawRight[item.index] ?? '') ? '' : item.text),
           ],
           enabled: enabled,
+          pairs: widget.teamAnswer?.pairs,
           onChanged: (pairs) => _emit(PlayerAnswer(pairs: pairs)),
         );
 

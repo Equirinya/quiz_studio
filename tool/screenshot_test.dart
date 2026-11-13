@@ -537,6 +537,31 @@ void main() {
     await shot('reveal_presenter_answering');
   });
 
+  testWidgets('presenter: a display board with text over several lines', (tester) async {
+    final game = GameContent.assemble(
+      id: 'game',
+      game: {'name': 'Display'},
+      groups: {
+        'g': {
+          'name': 'Finale',
+          'categoryGroupType': 'category_display',
+          'categoryGroupIndex': 0,
+          'text': 'Biopics im Filmstudio\nWer kennt unsere Zuschauerzahlen?\nRunde 3 von 5',
+        },
+      },
+      categories: {
+        'c': {'name': 'Biopics', 'categoryGroup': 'g', 'categoryIndex': 0, 'active': true},
+      },
+      questions: {
+        'c': {
+          'q': {'type': 'free', 'question': 'Q', 'pointsPlus': 100},
+        },
+      },
+    );
+    await screen(tester, const [SelectGroup('g')], game: game);
+    await shot('display_board_lines');
+  });
+
   testWidgets('presenter: confetti', (tester) async {
     await screen(tester, const [AdjustPoints('red', 900), AdjustPoints('blue', 700)]);
     tester.state<ScreenEffectLayerState>(find.byType(ScreenEffectLayer)).play(screenEffectConfetti);

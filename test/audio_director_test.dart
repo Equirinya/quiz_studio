@@ -125,10 +125,21 @@ void main() {
     expect(backend.log, ['asset sounds/buzzers/buzzer.wav', 'asset sounds/effects/right_answer/voice_correct_male.mp3']);
   });
 
-  test('the music volume follows the session', () {
+  test('the music volume follows the session, on a curve that gets quiet fast', () {
     host.dispatch(const SetMusicVolume(40));
-    expect(backend.log, ['volume 0.4']);
+    expect(backend.log, ['volume ${sliderGain(40)}']);
     expect(host.state.musicVolume, 40);
+  });
+
+  test('the sliders run in decibels: full at the top, a hundredth at the bottom, silent at zero', () {
+    expect(sliderGain(100), 1);
+    expect(sliderGain(0), 0);
+    expect(sliderGain(50), closeTo(0.1, 1e-9));
+    expect(sliderGain(5), lessThan(0.02));
+    expect(sliderGain(1), closeTo(0.01, 0.001));
+    for (var i = 1; i <= 100; i++) {
+      expect(sliderGain(i), greaterThan(sliderGain(i - 1)));
+    }
   });
 
   test('a slot the game has no music for plays the music that comes with the app', () {

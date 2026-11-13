@@ -376,7 +376,7 @@ class _PlayerViewState extends State<PlayerView> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(child: _input(team)),
+                  Expanded(key: _inputKey, child: _input(team)),
                   const SizedBox(width: 12),
                   SizedBox(
                     width: 228,
@@ -409,7 +409,7 @@ class _PlayerViewState extends State<PlayerView> {
                 ?questionText,
                 ?_countdown(top: 6),
                 const SizedBox(height: 6),
-                Expanded(child: _input(team)),
+                Expanded(key: _inputKey, child: _input(team)),
                 const SizedBox(height: 6),
                 _lockButton(team),
                 const SizedBox(height: 4),
@@ -502,6 +502,7 @@ class _PlayerViewState extends State<PlayerView> {
           if (questionText != null) Padding(padding: const EdgeInsets.only(top: 12), child: questionText),
           ?_countdown(top: 12),
           Expanded(
+            key: _inputKey,
             child: Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Center(child: _input(team))),
           ),
           _lockButton(team),
@@ -530,6 +531,11 @@ class _PlayerViewState extends State<PlayerView> {
       child: RoundCountdown(openedAt: view.answersOpenedAt, endsAt: endsAt),
     );
   }
+
+  /// Keeps the answer's place when lines above it come and go (the question
+  /// line shows up once the answer is locked), or the input would be built
+  /// anew and a matching board would lose its pairs.
+  static const Key _inputKey = ValueKey('answer-input');
 
   /// Kept alive across the round, so the answer stays on screen after it is
   /// locked.

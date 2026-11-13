@@ -23,7 +23,13 @@ class MatchInput extends StatefulWidget {
     this.enabled = true,
     this.leftImages = const [],
     this.rightImages = const {},
+    this.pairs,
   });
+
+  /// The team's answer as the session has it: where this screen starts (a
+  /// phone that comes back, or a locked answer shown again) and what it
+  /// follows when another phone of the team moves something.
+  final List<int>? pairs;
 
   /// A picture per left-hand item, where it has one and it has arrived.
   final List<ImageProvider?> leftImages;
@@ -49,6 +55,29 @@ class MatchInput extends StatefulWidget {
 
 class _MatchInputState extends State<MatchInput> {
   late final List<int> _pairs = List.filled(widget.left.length, -1);
+
+  /// What this screen sent last, so the session echoing it back is not
+  /// mistaken for another phone's move.
+  final List<String> _sent = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _follow(widget.pairs);
+  }
+
+  @override
+  void didUpdateWidget(MatchInput old) {
+    super.didUpdateWidget(old);
+    _follow(widget.pairs);
+  }
+
+  void _follow(List<int>? pairs) {
+    if (pairs == null || pairs.length != _pairs.length || _sent.contains(pairs.join(','))) return;
+    if (pairs.join(',') == _pairs.join(',')) return;
+    _pairs.setAll(0, pairs);
+    _selected = null;
+  }
 
   /// The answer picked up by a tap, waiting for a tap on its slot.
   int? _selected;
@@ -94,6 +123,8 @@ class _MatchInputState extends State<MatchInput> {
       _selected = null;
     });
     HapticFeedback.selectionClick();
+    _sent.add(_pairs.join(','));
+    if (_sent.length > 8) _sent.removeAt(0);
     widget.onChanged(List.of(_pairs));
   }
 

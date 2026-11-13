@@ -417,11 +417,20 @@ class _BoardGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     if (group.type == BoardType.display) {
-      return Center(
-        child: Text(
-          group.text ?? group.name,
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: unit * 7),
+      // Line by line as written; a long text gets smaller rather than cut off.
+      return LayoutBuilder(
+        builder: (context, box) => Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: SizedBox(
+              width: box.maxWidth,
+              child: Text(
+                group.text ?? group.name,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: unit * 7, height: 1.2),
+              ),
+            ),
+          ),
         ),
       );
     }

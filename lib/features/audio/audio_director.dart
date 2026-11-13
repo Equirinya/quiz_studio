@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:quiz_show/game/game.dart';
 
@@ -34,6 +35,18 @@ abstract class AudioBackend {
 
   Future<void> dispose();
 }
+
+/// How loud a volume slider at [percent] plays, 0 to 1. Ears hear loudness
+/// in decibels, so the slider runs along those: each step down takes off the
+/// same share, 100 % is full and 1 % is 40 dB quieter, about a hundredth.
+/// A straight line would still be loud at 5 %.
+double sliderGain(int percent) {
+  if (percent <= 0) return 0;
+  if (percent >= 100) return 1;
+  return pow(10, (percent / 100 - 1) * _sliderRangeDb / 20).toDouble();
+}
+
+const double _sliderRangeDb = 40;
 
 /// Turns the session's state and one-shot effects into sound on the
 /// presenting device. Other devices stay silent.
@@ -108,14 +121,14 @@ class AudioDirector {
       backend.setMedia(media, playback);
     }
 
-    final volume = state.musicVolume / 100;
+    final volume = sliderGain(state.musicVolume);
     if (volume != _volume) {
       _volume = volume;
       backend.setMusicVolume(volume);
     }
 
     // At most half as loud as the device plays: it only keeps speakers awake.
-    final ambienceVolume = state.ambienceVolume / 200;
+    final ambienceVolume = sliderGain(state.ambienceVolume) / 2;
     if (ambienceVolume != _ambienceVolume) {
       _ambienceVolume = ambienceVolume;
       backend.setAmbienceVolume(ambienceVolume);

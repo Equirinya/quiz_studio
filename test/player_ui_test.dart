@@ -7,6 +7,7 @@ import 'package:quiz_show/features/player/widgets/buzzer_button.dart';
 import 'package:quiz_show/game/game.dart';
 
 import 'game/fixture.dart';
+import 'game/rapid_fixture.dart';
 
 /// A player's phone fed from a local host, with its commands going back in
 /// under the player's own (restricted) sender.
@@ -192,6 +193,59 @@ void main() {
     expect(order.toSet(), {0, 1, 2});
     // The device got them shuffled, so "as shown" is not the right order.
     expect(order, isNot([0, 1, 2]));
+  });
+
+  testWidgets('matching keeps the team\'s pairs on screen once locked, and follows another phone', (tester) async {
+    final films = matchingGame();
+    host.dispose();
+    host = SessionHost(initial: fixtureState(), game: films);
+    host
+      ..dispatch(const OpenQuestion(matchingRound))
+      // No time limit: then the question line shows up above the board on locking.
+      ..dispatch(const ExtendAnswers(null));
+    expect(host.state.answerRound!.endsAtMillis, isNull);
+    const red = Sender(Role.player, teamId: 'red');
+    // An upright phone.
+    tester.view
+      ..physicalSize = const Size(390, 844)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    // The phone as it really is: with its own team's answer in the view.
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: StreamBuilder<SessionState>(
+          stream: host.states,
+          builder: (context, _) => PlayerView(
+            view: PublicView(publicView(host.state, films, teamId: 'red')),
+            teamId: 'red',
+            send: (command) => host.dispatch(command, sender: red),
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    // 1985 onto the first film.
+    await tester.tap(find.text('1985'));
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.add_rounded).first);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(host.state.answerRound!.answers['red']!.pairs, [0, -1, -1, -1]);
+    expect(find.text('1 / 4'), findsOneWidget);
+
+    // Another phone of the team adds 1993 to the second.
+    host.dispatch(const SubmitAnswer('red', PlayerAnswer(pairs: [0, 1, -1, -1])), sender: red);
+    await tester.pump();
+    expect(find.text('2 / 4'), findsOneWidget);
+
+    // The gamemaster locks all: the pairs stay, the rest goes.
+    host.dispatch(const LockAnswers());
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('2 / 4'), findsOneWidget);
+    expect(find.text('1985'), findsOneWidget);
+    expect(find.text('1993'), findsOneWidget);
+    expect(find.text('1977'), findsNothing);
+    host.dispatch(const ClearAnswers());
   });
 
   testWidgets('a removed team is told so', (tester) async {

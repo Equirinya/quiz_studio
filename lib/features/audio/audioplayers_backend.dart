@@ -84,6 +84,7 @@ class AudioplayersBackend implements AudioBackend {
       } else if (path != _mediaPath) {
         _mediaPath = path;
         await _media.setSource(DeviceFileSource(path));
+        await _media.setVolume(1);
         if (playback == MediaPlayback.playing) await _media.resume();
       } else if (playback == MediaPlayback.playing) {
         await _media.resume();
@@ -93,12 +94,22 @@ class AudioplayersBackend implements AudioBackend {
     });
   }
 
+  /// A sound played once, at full volume, on a player of its own that is
+  /// let go when the sound ends (or after two minutes at the latest), so a
+  /// long show does not pile up players.
   void _once(Source source) {
     final player = AudioPlayer();
     _guard(() async {
-      await player.play(source);
-      await player.onPlayerComplete.first.timeout(const Duration(minutes: 2), onTimeout: () {});
-      await player.dispose();
+      try {
+        // Set every time: the system may otherwise start a new sound at the
+        // volume of another of this app's sounds, such as the quiet noise.
+        await player.play(source, volume: 1);
+        await player.onPlayerComplete.first.timeout(const Duration(minutes: 2));
+      } on TimeoutException {
+        // Played long enough.
+      } finally {
+        await player.dispose();
+      }
     });
   }
 

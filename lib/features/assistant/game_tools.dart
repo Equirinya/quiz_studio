@@ -482,7 +482,7 @@ final List<ToolSpec> gameToolSpecs = [
           'type': 'string',
           'enum': ['wheel', 'map', 'display'],
         },
-        'text': {'type': 'string', 'description': 'display boards: text shown on the board. "" removes it.'},
+        'text': {'type': 'string', 'description': 'display boards: text shown on the board; line breaks (\\n) start new lines. "" removes it.'},
         'color': {'type': 'string', 'description': 'Board colour as #RRGGBB. "" goes back to the theme\'s.'},
         'accentColor': {'type': 'string', 'description': 'Accent colour as #RRGGBB. "" goes back to the theme\'s.'},
         'splitPointFields': {'type': 'boolean', 'description': 'wheel only: split a point field when a value appears twice.'},
