@@ -7,6 +7,10 @@ class FakePort implements BuzzerPort {
   bool plugged = true;
   bool isOpen = false;
   bool failReads = false;
+
+  /// The port is there but the user may not open it, as on Linux outside
+  /// the dialout group.
+  bool denied = false;
   int opens = 0;
   final StringBuffer _incoming = StringBuffer();
 
@@ -18,6 +22,7 @@ class FakePort implements BuzzerPort {
   @override
   bool open(String name) {
     opens++;
+    if (denied) throw BuzzerPortDenied(name);
     isOpen = plugged;
     return plugged;
   }

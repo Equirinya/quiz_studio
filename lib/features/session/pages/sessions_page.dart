@@ -795,7 +795,7 @@ class _PresentPageState extends State<PresentPage> {
             top: 8,
             child: ValueListenableBuilder<BuzzerStatus>(
               valueListenable: Buzzers.instance.link.status,
-              builder: (context, status, _) => Buzzers.instance.wanted.value && (status == BuzzerStatus.disconnected || status == BuzzerStatus.silent)
+              builder: (context, status, _) => Buzzers.instance.wanted.value && (status == BuzzerStatus.disconnected || status == BuzzerStatus.noPermission || status == BuzzerStatus.silent)
                   ? Chip(
                       avatar: Icon(Icons.usb_off, size: 18, color: Theme.of(context).colorScheme.error),
                       label: Text(context.l10n.buzzerBoxRetrying),

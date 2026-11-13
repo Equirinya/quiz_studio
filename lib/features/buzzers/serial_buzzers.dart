@@ -18,8 +18,18 @@ class LibSerialBuzzerPort implements BuzzerPort {
   bool open(String name) {
     close();
     final port = SerialPort(name);
-    if (!port.openReadWrite()) {
+    var opened = false;
+    int? errno;
+    try {
+      opened = port.openReadWrite();
+      if (!opened) errno = SerialPort.lastError?.errorCode;
+    } on SerialPortError catch (error) {
+      errno = error.errorCode;
+    }
+    if (!opened) {
       port.dispose();
+      // EACCES or EPERM: the device is there, the user may not use it.
+      if (errno == 13 || errno == 1) throw BuzzerPortDenied(name);
       return false;
     }
     final config = port.config
@@ -123,10 +133,7 @@ class Buzzers {
 
   void _connect(SharedPreferences prefs) {
     var port = prefs.getString('serial_port');
-    if (port == null) {
-      final ports = link.availablePorts;
-      if (ports.length == 1) port = ports.single;
-    }
+    port ??= preferredBuzzerPort(link.availablePorts);
     link.use(port);
   }
 

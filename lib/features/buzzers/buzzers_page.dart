@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:quiz_show/core/theme.dart';
 import 'package:quiz_show/features/audio/team_sounds.dart';
@@ -550,6 +551,9 @@ class _ConnectionCard extends StatelessWidget {
   final BuzzerLink link;
   final ValueChanged<String?> onPort;
 
+  /// Puts the user into the group that may use serial ports on Linux.
+  static const grantSerialAccess = r'sudo usermod -aG dialout $USER';
+
   static String _duration(int millis) {
     final seconds = millis ~/ 1000;
     if (seconds < 60) return "$seconds s";
@@ -582,6 +586,7 @@ class _ConnectionCard extends StatelessWidget {
           l10n.notConnectedShort,
           l10n.boxDisconnectedText,
         ),
+      BuzzerStatus.noPermission => (Icons.lock_outline, l10n.boxNoPermission, l10n.boxNoPermissionText),
       BuzzerStatus.notConfigured => (Icons.usb, l10n.choosePort, l10n.rememberedOnDevice),
       BuzzerStatus.unsupported => (Icons.usb_off, l10n.noSerialPorts, ""),
     };
@@ -613,6 +618,10 @@ class _ConnectionCard extends StatelessWidget {
               ),
             ],
           ),
+          if (status == BuzzerStatus.noPermission) ...[
+            const SizedBox(height: 12),
+            const _CommandBox(command: _ConnectionCard.grantSerialAccess),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -634,6 +643,38 @@ class _ConnectionCard extends StatelessWidget {
                 onPressed: link.portName == null ? null : link.reconnect,
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A shell command to copy, for a one-time setup step outside the app.
+class _CommandBox extends StatelessWidget {
+  const _CommandBox({required this.command});
+
+  final String command;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.only(left: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: SelectableText(command, style: const TextStyle(fontFamily: 'monospace'))),
+          IconButton(
+            tooltip: context.l10n.copyCommand,
+            icon: const Icon(Icons.copy),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: command));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.commandCopied)));
+            },
           ),
         ],
       ),

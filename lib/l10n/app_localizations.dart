@@ -5192,6 +5192,30 @@ abstract class AppLocalizations {
   /// **'Trying again every few seconds. Plug the box in; nothing needs to be pressed here.'**
   String get boxDisconnectedText;
 
+  /// No description provided for @boxNoPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to use the port'**
+  String get boxNoPermission;
+
+  /// No description provided for @boxNoPermissionText.
+  ///
+  /// In en, this message translates to:
+  /// **'Linux lets only members of the \"dialout\" group use serial ports. Run this once in a terminal, then log out and back in. The box then connects by itself.'**
+  String get boxNoPermissionText;
+
+  /// No description provided for @copyCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy command'**
+  String get copyCommand;
+
+  /// No description provided for @commandCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Command copied'**
+  String get commandCopied;
+
   /// No description provided for @choosePort.
   ///
   /// In en, this message translates to:
