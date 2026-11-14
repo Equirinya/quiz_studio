@@ -3238,6 +3238,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Trying again every few seconds. Plug the box in; nothing needs to be pressed here.';
 
   @override
+  String get boxNoPermission => 'No permission to use the port';
+
+  @override
+  String get boxNoPermissionText =>
+      'Linux lets only members of the \"dialout\" group use serial ports. Run this once in a terminal, then log out and back in. The box then connects by itself.';
+
+  @override
+  String get copyCommand => 'Copy command';
+
+  @override
+  String get commandCopied => 'Command copied';
+
+  @override
   String get choosePort => 'Choose the port of the buzzer box';
 
   @override

@@ -19,6 +19,26 @@ abstract class BuzzerPort {
   void close();
 }
 
+/// Thrown by [BuzzerPort.open] when the port exists but this user may not
+/// open it, as on Linux before the user is in the `dialout` group.
+class BuzzerPortDenied implements Exception {
+  const BuzzerPortDenied(this.port);
+
+  final String port;
+
+  @override
+  String toString() => 'No permission to open $port';
+}
+
+/// The port to use when none was chosen: the only one, or else the only one
+/// that looks like a USB serial adapter. Linux also lists built-in ports such
+/// as /dev/ttyS4, which are never the buzzer box.
+String? preferredBuzzerPort(List<String> ports) {
+  if (ports.length == 1) return ports.single;
+  final usb = ports.where((port) => port.contains('ttyUSB') || port.contains('ttyACM')).toList();
+  return usb.length == 1 ? usb.single : null;
+}
+
 enum BuzzerStatus {
   /// This device has no serial ports to offer.
   unsupported,
@@ -28,6 +48,10 @@ enum BuzzerStatus {
 
   /// The port cannot be opened; retrying.
   disconnected,
+
+  /// The port is there but this user may not open it; retrying, so it
+  /// connects by itself once the permission is granted.
+  noPermission,
 
   /// The port is open but nothing has arrived for a while; retrying.
   silent,
@@ -152,13 +176,16 @@ class BuzzerLink {
   void _tryOpen() {
     _lastAttempt = _clock();
     var opened = false;
+    var denied = false;
     try {
       opened = _port!.open(_portName!);
+    } on BuzzerPortDenied {
+      denied = true;
     } catch (_) {
       opened = false;
     }
     if (!opened) {
-      status.value = BuzzerStatus.disconnected;
+      status.value = denied ? BuzzerStatus.noPermission : BuzzerStatus.disconnected;
       return;
     }
     _open = true;

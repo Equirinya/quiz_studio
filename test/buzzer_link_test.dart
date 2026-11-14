@@ -175,6 +175,31 @@ void main() {
     expect(port.opens, opens);
   });
 
+  test('a port the user may not open says so, and connects once allowed', () {
+    link.use(null);
+    port.denied = true;
+    link.use('/dev/ttyUSB0');
+    expect(link.status.value, BuzzerStatus.noPermission);
+    run(5000);
+    expect(link.status.value, BuzzerStatus.noPermission);
+
+    port.denied = false;
+    run(2500);
+    port.send('0:999\n');
+    run(10);
+    expect(link.status.value, BuzzerStatus.connected);
+    expect(presses, [0]);
+  });
+
+  test('without a chosen port, the only USB serial port is taken', () {
+    expect(preferredBuzzerPort(['COM3']), 'COM3');
+    expect(preferredBuzzerPort(['/dev/ttyS4', '/dev/ttyUSB0']), '/dev/ttyUSB0');
+    expect(preferredBuzzerPort(['/dev/ttyS0', '/dev/ttyACM0']), '/dev/ttyACM0');
+    expect(preferredBuzzerPort(['/dev/ttyUSB0', '/dev/ttyUSB1']), isNull);
+    expect(preferredBuzzerPort(['COM1', 'COM3']), isNull);
+    expect(preferredBuzzerPort([]), isNull);
+  });
+
   test('a device without serial ports says so', () {
     final none = BuzzerLink(null);
     none.use('COM1');

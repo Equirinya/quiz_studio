@@ -3257,6 +3257,19 @@ class AppLocalizationsDe extends AppLocalizations {
       'Neuer Versuch alle paar Sekunden. Steck die Box ein; hier musst du nichts drücken.';
 
   @override
+  String get boxNoPermission => 'Kein Zugriff auf den Port';
+
+  @override
+  String get boxNoPermissionText =>
+      'Unter Linux dürfen nur Mitglieder der Gruppe \"dialout\" serielle Ports benutzen. Führ das einmal im Terminal aus, dann ab- und wieder anmelden. Danach verbindet sich die Box von selbst.';
+
+  @override
+  String get copyCommand => 'Befehl kopieren';
+
+  @override
+  String get commandCopied => 'Befehl kopiert';
+
+  @override
   String get choosePort => 'Port der Buzzer-Box wählen';
 
   @override
