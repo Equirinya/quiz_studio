@@ -1850,6 +1850,11 @@ class _EffectsSheetState extends State<_EffectsSheet> {
                 label: Text(context.l10n.spotlight),
                 onPressed: () => send(const ScreenEffect(screenEffectSpotlight)),
               ),
+              ActionChip(
+                avatar: const Icon(Icons.fast_forward_outlined, size: 18),
+                label: Text(context.l10n.fastForward),
+                onPressed: () => send(const ScreenEffect(screenEffectFastForward)),
+              ),
             ],
           ),
           const SizedBox(height: 8),

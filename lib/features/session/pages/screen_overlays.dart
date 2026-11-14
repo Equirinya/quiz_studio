@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
@@ -438,6 +439,7 @@ class ScreenEffectLayerState extends State<ScreenEffectLayer> with TickerProvide
   late final AnimationController _balloons = AnimationController(vsync: this, duration: const Duration(milliseconds: 8500));
   late final AnimationController _stars = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200));
   late final AnimationController _spotlight = AnimationController(vsync: this, duration: const Duration(milliseconds: 4500));
+  late final AnimationController _tape = AnimationController(vsync: this, duration: TapeSmear.duration);
   StreamSubscription<Effect>? _sub;
   int _seed = 0;
 
@@ -468,6 +470,9 @@ class ScreenEffectLayerState extends State<ScreenEffectLayer> with TickerProvide
         _stars.forward(from: 0);
       case screenEffectSpotlight:
         _spotlight.forward(from: 0);
+      case screenEffectFastForward:
+        setState(() => _seed++);
+        _tape.forward(from: 0);
     }
   }
 
@@ -480,6 +485,7 @@ class ScreenEffectLayerState extends State<ScreenEffectLayer> with TickerProvide
     _balloons.dispose();
     _stars.dispose();
     _spotlight.dispose();
+    _tape.dispose();
     super.dispose();
   }
 
@@ -514,6 +520,11 @@ class ScreenEffectLayerState extends State<ScreenEffectLayer> with TickerProvide
                     ),
                   )
                 : const SizedBox(),
+          ),
+          // Over all the others, so the tape smears them along with the screen.
+          AnimatedBuilder(
+            animation: _tape,
+            builder: (context, _) => _tape.isAnimating ? TapeSmear(progress: _tape.value, seed: _seed) : const SizedBox(),
           ),
           AnimatedBuilder(
             animation: _flash,
@@ -802,4 +813,189 @@ class SpotlightPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(SpotlightPainter old) => old.progress != progress;
+}
+
+/// A video tape on fast forward, over the whole screen: the picture itself
+/// is cut into rows that slide sideways and smear, the colours slip apart,
+/// and bars of static roll up through it with a bright tracking line.
+///
+/// Everything works on what lies underneath ([BackdropFilter]), so nothing
+/// on screen has to be captured first and no shader is needed; with
+/// [progress] at 0 or 1 it is fully gone again.
+class TapeSmear extends StatelessWidget {
+  const TapeSmear({super.key, required this.progress, required this.seed});
+
+  /// 0 at the start of the effect, 1 at its end.
+  final double progress;
+  final int seed;
+
+  /// How long the whole thing takes; the picture jumps 25 times a second.
+  static const duration = Duration(milliseconds: 2600);
+
+  static double _smooth(double edge0, double edge1, double x) {
+    final t = ((x - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
+    return t * t * (3 - 2 * t);
+  }
+
+  /// How strong the effect is at [progress]: it kicks in fast and settles.
+  static double strengthAt(double progress) =>
+      _smooth(0, 0.07, progress) * (1 - _smooth(0.78, 1, progress));
+
+  @override
+  Widget build(BuildContext context) {
+    final strength = strengthAt(progress);
+    if (strength <= 0) return const SizedBox();
+    return LayoutBuilder(builder: (context, constraints) {
+      final size = constraints.biggest;
+      if (!size.isFinite || size.isEmpty) return const SizedBox();
+      final w = size.width;
+      final h = size.height;
+      final frame = (progress * duration.inMilliseconds / 40).floor();
+      // The rows change shape a few times a second, the jitter every frame.
+      final layout = Random(seed * 7919 + frame ~/ 3);
+      final jitter = Random(seed * 104729 + frame);
+      // Where the band of static is, rolling up the screen.
+      final roll = (progress * 1.7 + (seed % 7) / 7) % 1.0;
+      final trackY = h * (1.15 - roll * 1.3);
+      final zone = h * 0.09;
+      final dy = (jitter.nextDouble() - 0.5) * h * 0.012 * strength;
+
+      final rows = <Widget>[];
+      var y = 0.0;
+      while (y < h) {
+        final rowHeight = h * (0.012 + layout.nextDouble() * 0.06);
+        final mid = y + rowHeight / 2;
+        // Near the static band the rows tear apart, elsewhere they wobble.
+        final near = (1 - (mid - trackY).abs() / zone).clamp(0.0, 1.0);
+        final wave = sin(mid / h * 9 + progress * 26) * 0.012;
+        final tear = (jitter.nextDouble() - 0.3) * (0.012 + near * 0.09);
+        // The head switch at the very bottom of a tape picture.
+        final bottom = mid > h * 0.95 ? 0.05 : 0.0;
+        final dx = (wave + tear + bottom) * w * strength;
+        final smear = (1 + layout.nextDouble() * 3.5 + near * 14) * strength;
+        rows.add(Positioned(
+          left: 0,
+          right: 0,
+          top: y,
+          height: rowHeight + 0.5,
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.compose(
+                outer: ImageFilter.blur(sigmaX: smear, sigmaY: 0, tileMode: TileMode.clamp),
+                inner: ImageFilter.matrix(Matrix4.translationValues(dx, dy, 0).storage),
+              ),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ));
+        y += rowHeight;
+      }
+
+      // The colours slip apart: the red channel one way, the blue the other.
+      // Lightening with the shifted channel and then darkening with it
+      // leaves exactly the shifted channel, on light and dark screens alike;
+      // [strength] eases both in and out.
+      final slip = w * 0.0045 * strength * (1 + jitter.nextDouble());
+      List<double> only(int channel, {required bool rest}) => [
+            for (var row = 0; row < 4; row++)
+              for (var col = 0; col < 5; col++)
+                if (row == 3)
+                  col == 3 ? 1 : 0
+                else if (row == channel)
+                  col == channel ? strength : (col == 4 && rest ? 255 * (1 - strength) : 0)
+                else
+                  col == 4 && rest ? 255 : 0,
+          ];
+      Widget slipped(int channel, double by) => Positioned.fill(
+            child: ClipRect(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  for (final (rest, mode) in [(false, BlendMode.lighten), (true, BlendMode.darken)])
+                    BackdropFilter(
+                      blendMode: mode,
+                      filter: ImageFilter.compose(
+                        outer: ColorFilter.matrix(only(channel, rest: rest)),
+                        inner: ImageFilter.matrix(Matrix4.translationValues(by, 0, 0).storage),
+                      ),
+                      child: const SizedBox.expand(),
+                    ),
+                ],
+              ),
+            ),
+          );
+
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          ...rows,
+          slipped(0, slip),
+          slipped(2, -slip),
+          CustomPaint(
+            painter: _TapeNoisePainter(seed: seed * 31 + frame, strength: strength, trackY: trackY, zone: zone),
+          ),
+        ],
+      );
+    });
+  }
+}
+
+/// The static on top of the tape picture: specks everywhere, a dense bar of
+/// snow around [trackY] with a bright line through it, and faint scan lines.
+class _TapeNoisePainter extends CustomPainter {
+  _TapeNoisePainter({required this.seed, required this.strength, required this.trackY, required this.zone});
+
+  final int seed;
+  final double strength;
+  final double trackY;
+  final double zone;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final random = Random(seed);
+    final w = size.width;
+    final h = size.height;
+    // A washed-out picture, as tapes are.
+    canvas.drawRect(Offset.zero & size, Paint()..color = Colors.white.withValues(alpha: 0.05 * strength));
+    final lines = Paint()..color = Colors.black.withValues(alpha: 0.12 * strength);
+    final pitch = max(3.0, h / 240);
+    for (var y = 0.0; y < h; y += pitch) {
+      canvas.drawRect(Rect.fromLTWH(0, y, w, pitch / 3), lines);
+    }
+    final speck = Paint();
+    final unit = h / 400;
+    void specks(int count, double top, double height, double alpha) {
+      for (var i = 0; i < count; i++) {
+        final light = random.nextDouble();
+        speck.color = Color.lerp(Colors.black, Colors.white, light)!.withValues(alpha: alpha * (0.3 + random.nextDouble() * 0.7) * strength);
+        canvas.drawRect(
+          Rect.fromLTWH(
+            random.nextDouble() * w,
+            top + random.nextDouble() * height,
+            unit * (1 + random.nextDouble() * random.nextDouble() * 40),
+            unit * (0.6 + random.nextDouble()),
+          ),
+          speck,
+        );
+      }
+    }
+
+    specks(500, 0, h, 0.35);
+    specks(1800, trackY - zone, zone * 2, 0.8);
+    // The bright tracking line, with a soft glow and a dark edge under it.
+    final lineY = trackY + zone * 0.35;
+    canvas
+      ..drawRect(
+        Rect.fromLTWH(0, lineY - unit * 3, w, unit * 6),
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.35 * strength)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, unit * 3),
+      )
+      ..drawRect(Rect.fromLTWH(0, lineY - unit * 0.6, w, unit * 1.2), Paint()..color = Colors.white.withValues(alpha: 0.85 * strength))
+      ..drawRect(Rect.fromLTWH(0, lineY + unit * 2, w, unit * 2), Paint()..color = Colors.black.withValues(alpha: 0.3 * strength));
+  }
+
+  @override
+  bool shouldRepaint(_TapeNoisePainter old) =>
+      old.seed != seed || old.strength != strength || old.trackY != trackY || old.zone != zone;
 }

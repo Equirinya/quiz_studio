@@ -3250,6 +3250,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get spotlight => 'Spotlight';
 
   @override
+  String get fastForward => 'Band vorspulen';
+
+  @override
   String get editTitle => 'Titel bearbeiten';
 
   @override

@@ -5294,6 +5294,12 @@ abstract class AppLocalizations {
   /// **'Spotlight'**
   String get spotlight;
 
+  /// No description provided for @fastForward.
+  ///
+  /// In en, this message translates to:
+  /// **'Tape fast forward'**
+  String get fastForward;
+
   /// No description provided for @editTitle.
   ///
   /// In en, this message translates to:
