@@ -3375,4 +3375,53 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notesText =>
       'Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here.';
+
+  @override
+  String get inviteToSession => 'Invite';
+
+  @override
+  String inviteToSessionTitle(String name) {
+    return 'Invite to \"$name\"';
+  }
+
+  @override
+  String get inviteToSessionText =>
+      'Whoever opens this link while signed in can control the show from their own device, and the session appears in their list. Only you can present it.';
+
+  @override
+  String get newInviteLink => 'New link';
+
+  @override
+  String get newInviteLinkText =>
+      'The current link stops working. People who already joined stay in.';
+
+  @override
+  String get invitedPeople => 'Invited';
+
+  @override
+  String get nobodyInvitedYet => 'Nobody has joined with the link yet.';
+
+  @override
+  String get removeFromSession => 'Remove from session';
+
+  @override
+  String get removeFromSessionText =>
+      'They can no longer see or control this session. With the current link they can join again, so make a new link if they should not.';
+
+  @override
+  String get sharedWithYou => 'Shared with you';
+
+  @override
+  String get invitedBy => 'Invited by';
+
+  @override
+  String get leaveSession => 'Leave session';
+
+  @override
+  String leaveSessionText(String name) {
+    return '\"$name\" disappears from your list until you are invited again.';
+  }
+
+  @override
+  String get noLongerInvited => 'You no longer have access to this session.';
 }

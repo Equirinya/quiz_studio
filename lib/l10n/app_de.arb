@@ -904,5 +904,19 @@
   "nextPair": "Nächstes Paar",
   "moreTime": "Mehr Zeit",
   "noTimeLimit": "Ohne Zeitlimit",
-  "notesText": "Ausgewählte Teams bekommen ein Notizfeld auf ihren Geräten, zusätzlich zu ihrer Antwort, z. B. für eine Bonus-Schätzung. Du liest die Notizen hier."
+  "notesText": "Ausgewählte Teams bekommen ein Notizfeld auf ihren Geräten, zusätzlich zu ihrer Antwort, z. B. für eine Bonus-Schätzung. Du liest die Notizen hier.",
+  "inviteToSession": "Einladen",
+  "inviteToSessionTitle": "Zu „{name}“ einladen",
+  "inviteToSessionText": "Wer diesen Link angemeldet öffnet, kann die Show von seinem eigenen Gerät aus steuern und sieht die Session in seiner Liste. Präsentieren kannst nur du.",
+  "newInviteLink": "Neuer Link",
+  "newInviteLinkText": "Der jetzige Link funktioniert dann nicht mehr. Wer schon beigetreten ist, bleibt dabei.",
+  "invitedPeople": "Eingeladen",
+  "nobodyInvitedYet": "Mit dem Link ist noch niemand beigetreten.",
+  "removeFromSession": "Aus der Session entfernen",
+  "removeFromSessionText": "Die Person kann diese Session dann nicht mehr sehen oder steuern. Mit dem jetzigen Link kann sie wieder beitreten – erstelle also einen neuen Link, wenn sie das nicht soll.",
+  "sharedWithYou": "Mit dir geteilt",
+  "invitedBy": "Eingeladen von",
+  "leaveSession": "Session verlassen",
+  "leaveSessionText": "„{name}“ verschwindet aus deiner Liste, bis du wieder eingeladen wirst.",
+  "noLongerInvited": "Du hast keinen Zugriff mehr auf diese Session."
 }

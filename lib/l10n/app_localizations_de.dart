@@ -3395,4 +3395,54 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get notesText =>
       'Ausgewählte Teams bekommen ein Notizfeld auf ihren Geräten, zusätzlich zu ihrer Antwort, z. B. für eine Bonus-Schätzung. Du liest die Notizen hier.';
+
+  @override
+  String get inviteToSession => 'Einladen';
+
+  @override
+  String inviteToSessionTitle(String name) {
+    return 'Zu „$name“ einladen';
+  }
+
+  @override
+  String get inviteToSessionText =>
+      'Wer diesen Link angemeldet öffnet, kann die Show von seinem eigenen Gerät aus steuern und sieht die Session in seiner Liste. Präsentieren kannst nur du.';
+
+  @override
+  String get newInviteLink => 'Neuer Link';
+
+  @override
+  String get newInviteLinkText =>
+      'Der jetzige Link funktioniert dann nicht mehr. Wer schon beigetreten ist, bleibt dabei.';
+
+  @override
+  String get invitedPeople => 'Eingeladen';
+
+  @override
+  String get nobodyInvitedYet => 'Mit dem Link ist noch niemand beigetreten.';
+
+  @override
+  String get removeFromSession => 'Aus der Session entfernen';
+
+  @override
+  String get removeFromSessionText =>
+      'Die Person kann diese Session dann nicht mehr sehen oder steuern. Mit dem jetzigen Link kann sie wieder beitreten – erstelle also einen neuen Link, wenn sie das nicht soll.';
+
+  @override
+  String get sharedWithYou => 'Mit dir geteilt';
+
+  @override
+  String get invitedBy => 'Eingeladen von';
+
+  @override
+  String get leaveSession => 'Session verlassen';
+
+  @override
+  String leaveSessionText(String name) {
+    return '„$name“ verschwindet aus deiner Liste, bis du wieder eingeladen wirst.';
+  }
+
+  @override
+  String get noLongerInvited =>
+      'Du hast keinen Zugriff mehr auf diese Session.';
 }

@@ -5527,6 +5527,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here.'**
   String get notesText;
+
+  /// No description provided for @inviteToSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get inviteToSession;
+
+  /// No description provided for @inviteToSessionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite to \"{name}\"'**
+  String inviteToSessionTitle(String name);
+
+  /// No description provided for @inviteToSessionText.
+  ///
+  /// In en, this message translates to:
+  /// **'Whoever opens this link while signed in can control the show from their own device, and the session appears in their list. Only you can present it.'**
+  String get inviteToSessionText;
+
+  /// No description provided for @newInviteLink.
+  ///
+  /// In en, this message translates to:
+  /// **'New link'**
+  String get newInviteLink;
+
+  /// No description provided for @newInviteLinkText.
+  ///
+  /// In en, this message translates to:
+  /// **'The current link stops working. People who already joined stay in.'**
+  String get newInviteLinkText;
+
+  /// No description provided for @invitedPeople.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited'**
+  String get invitedPeople;
+
+  /// No description provided for @nobodyInvitedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody has joined with the link yet.'**
+  String get nobodyInvitedYet;
+
+  /// No description provided for @removeFromSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from session'**
+  String get removeFromSession;
+
+  /// No description provided for @removeFromSessionText.
+  ///
+  /// In en, this message translates to:
+  /// **'They can no longer see or control this session. With the current link they can join again, so make a new link if they should not.'**
+  String get removeFromSessionText;
+
+  /// No description provided for @sharedWithYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with you'**
+  String get sharedWithYou;
+
+  /// No description provided for @invitedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited by'**
+  String get invitedBy;
+
+  /// No description provided for @leaveSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave session'**
+  String get leaveSession;
+
+  /// No description provided for @leaveSessionText.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" disappears from your list until you are invited again.'**
+  String leaveSessionText(String name);
+
+  /// No description provided for @noLongerInvited.
+  ///
+  /// In en, this message translates to:
+  /// **'You no longer have access to this session.'**
+  String get noLongerInvited;
 }
 
 class _AppLocalizationsDelegate

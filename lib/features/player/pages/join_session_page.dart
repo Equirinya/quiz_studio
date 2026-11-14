@@ -63,6 +63,8 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
 
   Future<void> _join(String raw) async {
     if (_busy) return;
+    final invite = SessionInviteLink.tryParse(raw);
+    if (invite != null) return _acceptInvite(invite);
     final link = SessionJoinLink.tryParse(raw);
     if (link == null) {
       setState(() => _error = context.l10n.notASessionCode);
@@ -93,6 +95,33 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
       MaterialPageRoute(
         builder: (_) =>
             link.role == Role.player ? PlayerPage(link: link) : ControlPage(sessionId: link.sessionId, title: context.l10n.session, joinLink: link),
+      ),
+    );
+  }
+
+  /// An invite to help run someone's show: joins as a controller and puts the
+  /// session in this user's list.
+  Future<void> _acceptInvite(SessionInviteLink invite) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await SessionRepository.instance.acceptInvite(invite).timeout(const Duration(seconds: 10));
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = context.l10n.couldNotJoinSession;
+        });
+      }
+      return;
+    }
+    await RecentSessions.remember(invite.joinLink);
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => ControlPage(sessionId: invite.sessionId, title: context.l10n.session, joinLink: invite.joinLink),
       ),
     );
   }

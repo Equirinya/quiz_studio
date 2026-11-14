@@ -9,6 +9,7 @@ import 'package:quiz_show/core/widgets/near_mouse.dart';
 import 'package:quiz_show/features/audio/audio_director.dart';
 import 'package:quiz_show/features/audio/audioplayers_backend.dart';
 import 'package:quiz_show/features/audio/team_sounds.dart';
+import 'package:quiz_show/features/auth/widgets/user_name.dart';
 import 'package:quiz_show/features/buzzers/buzzer_link.dart';
 import 'package:quiz_show/features/buzzers/buzzers_page.dart';
 import 'package:quiz_show/features/buzzers/serial_buzzers.dart';
@@ -24,6 +25,7 @@ import 'package:quiz_show/features/session/pages/test_devices_page.dart';
 import 'package:quiz_show/features/session/pages/connect_devices_page.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
+import 'package:quiz_show/features/session/pages/session_invite_sheet.dart';
 import 'package:quiz_show/features/session/pages/session_setup_page.dart';
 import 'package:quiz_show/features/session/presenter_window.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
@@ -40,6 +42,7 @@ class SessionsPage extends StatefulWidget {
 
 class _SessionsPageState extends State<SessionsPage> {
   late final Stream<List<SessionSummary>> _sessions = SessionRepository.instance.watchMySessions();
+  late final Stream<List<SessionSummary>> _invited = SessionRepository.instance.watchInvitedSessions();
   late final Stream<List<GameSummary>> _games = GameRepository.instance.watchMyGames().asBroadcastStream();
   List<GameSummary> _playable = const [];
   StreamSubscription<List<GameSummary>>? _gamesSub;
@@ -108,6 +111,39 @@ class _SessionsPageState extends State<SessionsPage> {
     );
   }
 
+  void _invite(SessionSummary session) =>
+      showSessionInviteSheet(context, sessionId: session.id, title: sessionTitle(session, _gameNames, context.l10n));
+
+  /// Someone else's session: controlled with the membership the invite made.
+  Future<void> _controlInvited(SessionSummary session) async {
+    final title = sessionTitle(session, _gameNames, context.l10n);
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    SessionJoinLink? link;
+    try {
+      link = await _repo.invitedControllerLink(session.id);
+    } catch (_) {}
+    if (!mounted) return;
+    if (link == null) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.noLongerInvited)));
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ControlPage(sessionId: session.id, title: title, joinLink: link)),
+    );
+  }
+
+  Future<void> _leave(SessionSummary session) async {
+    final sure = await confirm(
+      context,
+      title: context.l10n.leaveSession,
+      message: context.l10n.leaveSessionText(sessionTitle(session, _gameNames, context.l10n)),
+      action: context.l10n.leave,
+    );
+    if (!sure || !mounted) return;
+    await guarded(context, () => _repo.leaveInvited(session.id));
+  }
+
   Future<void> _delete(SessionSummary session) async {
     final sure = await confirm(
       context,
@@ -147,14 +183,23 @@ class _SessionsPageState extends State<SessionsPage> {
           if (snapshot.hasError) return Center(child: Text(context.l10n.couldNotLoadSessions));
           final sessions = snapshot.data;
           if (sessions == null) return const Center(child: CupertinoActivityIndicator());
-          return SessionsList(
-            sessions: sessions,
-            gameNames: _gameNames,
-            onControl: _control,
-            onPresent: _present,
-            onChangeGame: _changeGame,
-            onDelete: _delete,
-            onSetUp: _setUp,
+          // Where the rules do not know invites yet this query fails; the
+          // user's own sessions still show.
+          return StreamBuilder<List<SessionSummary>>(
+            stream: _invited,
+            builder: (context, invited) => SessionsList(
+              sessions: sessions,
+              invitedSessions: invited.data ?? const [],
+              gameNames: _gameNames,
+              onControl: _control,
+              onPresent: _present,
+              onChangeGame: _changeGame,
+              onDelete: _delete,
+              onSetUp: _setUp,
+              onInvite: _invite,
+              onControlInvited: _controlInvited,
+              onLeave: _leave,
+            ),
           );
         },
       ),
@@ -173,6 +218,10 @@ class SessionsList extends StatelessWidget {
     required this.onChangeGame,
     required this.onDelete,
     this.onSetUp,
+    this.invitedSessions = const [],
+    this.onInvite,
+    this.onControlInvited,
+    this.onLeave,
   });
 
   final List<SessionSummary> sessions;
@@ -185,10 +234,18 @@ class SessionsList extends StatelessWidget {
   /// Opens the teams and buzzers before the show; hidden when null.
   final ValueChanged<SessionSummary>? onSetUp;
 
+  /// Sessions someone else hosts and invited the user to.
+  final List<SessionSummary> invitedSessions;
+
+  /// Shares the invite link; hidden when null.
+  final ValueChanged<SessionSummary>? onInvite;
+  final ValueChanged<SessionSummary>? onControlInvited;
+  final ValueChanged<SessionSummary>? onLeave;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (sessions.isEmpty) {
+    if (sessions.isEmpty && invitedSessions.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -245,6 +302,7 @@ class SessionsList extends StatelessWidget {
                         onSelected: (action) => action(),
                         itemBuilder: (context) => [
                           PopupMenuItem(value: () => onChangeGame(session), child: Text(context.l10n.changeGame)),
+                          if (onInvite != null) PopupMenuItem(value: () => onInvite!(session), child: Text(context.l10n.inviteToSession)),
                           PopupMenuItem(value: () => onDelete(session), child: Text(context.l10n.delete)),
                         ],
                       ),
@@ -281,6 +339,64 @@ class SessionsList extends StatelessWidget {
                           tooltip: context.l10n.setUpTeamsAndBuzzers,
                         ),
                       ],
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        if (invitedSessions.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+            child: Text(context.l10n.sharedWithYou, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
+          ),
+        for (final session in invitedSessions)
+          Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          sessionTitle(session, gameNames, context.l10n),
+                          style: theme.textTheme.titleMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (onLeave != null)
+                        PopupMenuButton<VoidCallback>(
+                          onSelected: (action) => action(),
+                          itemBuilder: (context) => [
+                            PopupMenuItem(value: () => onLeave!(session), child: Text(context.l10n.leaveSession)),
+                          ],
+                        ),
+                    ],
+                  ),
+                  if (session.host != null)
+                    DefaultTextStyle.merge(
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      child: Row(
+                        children: [
+                          Text('${context.l10n.invitedBy} '),
+                          Flexible(child: UserName(session.host!)),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                          onPressed: onControlInvited == null ? null : () => onControlInvited!(session),
+                          icon: const Icon(Icons.tune),
+                          label: Text(context.l10n.control),
+                        ),
+                      ),
                       const SizedBox(width: 8),
                     ],
                   ),
