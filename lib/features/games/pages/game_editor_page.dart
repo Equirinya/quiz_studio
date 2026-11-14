@@ -7,6 +7,7 @@ import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/pages/category_editor_page.dart';
 import 'package:quiz_show/features/games/pages/game_access_page.dart';
 import 'package:quiz_show/features/games/pages/map_editor_page.dart';
+import 'package:quiz_show/features/games/pages/script_editor_page.dart';
 import 'package:quiz_show/features/games/widgets/cards_dialog.dart';
 import 'package:quiz_show/features/games/widgets/group_colors_dialog.dart';
 import 'package:quiz_show/features/games/widgets/settings_strip.dart';
@@ -156,6 +157,14 @@ class _GameEditorViewState extends State<GameEditorView> {
             cards: game.cards,
             save: (cards) => guarded(context, () => _repo.updateGame(game.id, {'cards': cards})),
           ),
+        ),
+      if (canEditStructure)
+        SettingTile(
+          icon: Icons.description_outlined,
+          title: context.l10n.script,
+          summary: GameScript.of(game).hasTextFor(game) ? context.l10n.scriptSummary : context.l10n.noneYet,
+          isSet: GameScript.of(game).hasTextFor(game),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ScriptEditorPage(gameId: game.id))),
         ),
       if (data.role == GameRole.admin)
         SettingTile(

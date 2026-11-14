@@ -3473,10 +3473,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get stopTimer => 'Timer stoppen';
 
   @override
-  String get notesText =>
-      'Ausgewählte Teams bekommen ein Notizfeld auf ihren Geräten, zusätzlich zu ihrer Antwort, z. B. für eine Bonus-Schätzung. Du liest die Notizen hier.';
-
-  @override
   String get inviteToSession => 'Einladen';
 
   @override
@@ -3525,4 +3521,66 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get noLongerInvited =>
       'Du hast keinen Zugriff mehr auf diese Session.';
+
+  @override
+  String get notesText =>
+      'Ausgewählte Teams bekommen ein Notizfeld auf ihren Geräten, zusätzlich zu ihrer Antwort, z. B. für eine Bonus-Schätzung. Du liest die Notizen hier.';
+
+  @override
+  String get script => 'Skript';
+
+  @override
+  String get scriptSummary => 'Deine Notizen für die Show';
+
+  @override
+  String get scriptExplain =>
+      'Deine Notizen für die Show, zum Lesen auf dem Controller. Die Linien zwischen den Abschnitten folgen dem Spiel: Was du unter eine Frage schreibst, bleibt bei ihr. Formatieren mit den Knöpfen oben oder per **fett**, *kursiv*, # Überschrift oder - Punkt.';
+
+  @override
+  String get scriptWriteHere => 'Hier schreiben …';
+
+  @override
+  String get scriptIntro => 'Anfang';
+
+  @override
+  String scriptCategory(String name) {
+    return 'Kategorie: $name';
+  }
+
+  @override
+  String scriptQuestion(String name) {
+    return 'Frage: $name';
+  }
+
+  @override
+  String get scriptBold => 'Fett';
+
+  @override
+  String get scriptItalic => 'Kursiv';
+
+  @override
+  String get scriptHeading => 'Überschrift';
+
+  @override
+  String get scriptSubheading => 'Zwischenüberschrift';
+
+  @override
+  String get scriptBullet => 'Aufzählungspunkt';
+
+  @override
+  String get scriptColour => 'Farbe';
+
+  @override
+  String get scriptClearFormat => 'Formatierung entfernen';
+
+  @override
+  String get scriptNotSaved =>
+      'Nicht gespeichert. Prüfe die Verbindung; der Text bleibt hier.';
+
+  @override
+  String get scriptToCurrent => 'Aktuell';
+
+  @override
+  String get scriptEmpty =>
+      'Noch kein Skript. Schreib es im Spiel-Editor unter Skript.';
 }

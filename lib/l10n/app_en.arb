@@ -1939,7 +1939,6 @@
   "moreTime": "More time",
   "noTimeLimit": "No time limit",
   "stopTimer": "Stop timer",
-  "notesText": "Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here.",
   "inviteToSession": "Invite",
   "inviteToSessionTitle": "Invite to \"{name}\"",
   "@inviteToSessionTitle": {
@@ -1967,5 +1966,25 @@
       }
     }
   },
-  "noLongerInvited": "You no longer have access to this session."
+  "noLongerInvited": "You no longer have access to this session.",
+  "notesText": "Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here.",
+  "script": "Script",
+  "scriptSummary": "Your notes for the show",
+  "scriptExplain": "Your notes for the show, read on the controller. The lines between the sections follow the game: what you write under a question stays with it. Format with the buttons above, or type **bold**, *italic*, # heading or - point.",
+  "scriptWriteHere": "Write here…",
+  "scriptIntro": "Start",
+  "scriptCategory": "Category: {name}",
+  "@scriptCategory": {"placeholders": {"name": {"type": "String"}}},
+  "scriptQuestion": "Question: {name}",
+  "@scriptQuestion": {"placeholders": {"name": {"type": "String"}}},
+  "scriptBold": "Bold",
+  "scriptItalic": "Italic",
+  "scriptHeading": "Heading",
+  "scriptSubheading": "Subheading",
+  "scriptBullet": "Bullet point",
+  "scriptColour": "Colour",
+  "scriptClearFormat": "Clear formatting",
+  "scriptNotSaved": "Not saved. Check the connection; the text stays here.",
+  "scriptToCurrent": "Current",
+  "scriptEmpty": "No script yet. Write it in the game editor under Script."
 }

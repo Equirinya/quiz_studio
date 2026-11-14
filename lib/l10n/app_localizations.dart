@@ -5666,12 +5666,6 @@ abstract class AppLocalizations {
   /// **'Stop timer'**
   String get stopTimer;
 
-  /// No description provided for @notesText.
-  ///
-  /// In en, this message translates to:
-  /// **'Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here.'**
-  String get notesText;
-
   /// No description provided for @inviteToSession.
   ///
   /// In en, this message translates to:
@@ -5755,6 +5749,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You no longer have access to this session.'**
   String get noLongerInvited;
+
+  /// No description provided for @notesText.
+  ///
+  /// In en, this message translates to:
+  /// **'Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here.'**
+  String get notesText;
+
+  /// No description provided for @script.
+  ///
+  /// In en, this message translates to:
+  /// **'Script'**
+  String get script;
+
+  /// No description provided for @scriptSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Your notes for the show'**
+  String get scriptSummary;
+
+  /// No description provided for @scriptExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Your notes for the show, read on the controller. The lines between the sections follow the game: what you write under a question stays with it. Format with the buttons above, or type **bold**, *italic*, # heading or - point.'**
+  String get scriptExplain;
+
+  /// No description provided for @scriptWriteHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Write here…'**
+  String get scriptWriteHere;
+
+  /// No description provided for @scriptIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get scriptIntro;
+
+  /// No description provided for @scriptCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category: {name}'**
+  String scriptCategory(String name);
+
+  /// No description provided for @scriptQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Question: {name}'**
+  String scriptQuestion(String name);
+
+  /// No description provided for @scriptBold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold'**
+  String get scriptBold;
+
+  /// No description provided for @scriptItalic.
+  ///
+  /// In en, this message translates to:
+  /// **'Italic'**
+  String get scriptItalic;
+
+  /// No description provided for @scriptHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Heading'**
+  String get scriptHeading;
+
+  /// No description provided for @scriptSubheading.
+  ///
+  /// In en, this message translates to:
+  /// **'Subheading'**
+  String get scriptSubheading;
+
+  /// No description provided for @scriptBullet.
+  ///
+  /// In en, this message translates to:
+  /// **'Bullet point'**
+  String get scriptBullet;
+
+  /// No description provided for @scriptColour.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour'**
+  String get scriptColour;
+
+  /// No description provided for @scriptClearFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear formatting'**
+  String get scriptClearFormat;
+
+  /// No description provided for @scriptNotSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved. Check the connection; the text stays here.'**
+  String get scriptNotSaved;
+
+  /// No description provided for @scriptToCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get scriptToCurrent;
+
+  /// No description provided for @scriptEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No script yet. Write it in the game editor under Script.'**
+  String get scriptEmpty;
 }
 
 class _AppLocalizationsDelegate

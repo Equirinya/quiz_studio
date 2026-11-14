@@ -8,6 +8,7 @@ import 'package:quiz_show/features/games/widgets/cards_dialog.dart' show CardThu
 import 'package:quiz_show/features/session/pages/session_setup_page.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
+import 'package:quiz_show/features/session/widgets/script_sheet.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/features/session/widgets/score_pop.dart';
 import 'package:quiz_show/game/game.dart';
@@ -97,6 +98,7 @@ class _ControllerViewState extends State<ControllerView> {
               onBoard: _openBoard,
               onEffects: _openEffects,
               onAnswers: _openAnswers,
+              onScript: _openScript,
               onSetup: _openSetup,
             ),
           ],
@@ -205,6 +207,22 @@ class _ControllerViewState extends State<ControllerView> {
   void _openEffects() => _sheet((context, state, game) => _EffectsSheet(state: state, game: game, send: _send));
 
   void _openAnswers() => _sheet((context, state, game) => _AnswersSheet(state: state, game: game, send: _send));
+
+  /// Where the script was left, per game, for [ScriptSheet.lastOffset].
+  final _scriptOffsets = <String, double>{};
+
+  void _openScript() => _sheet(
+    (context, state, game) => game == null
+        ? SizedBox(height: 120, child: Center(child: Text(context.l10n.sessionHasNoGame)))
+        : ScriptSheet(
+            key: ValueKey(game.id),
+            game: game,
+            current: state.current,
+            groupId: state.groupId,
+            lastOffset: _scriptOffsets[game.id],
+            onScrolled: (offset) => _scriptOffsets[game.id] = offset,
+          ),
+  );
 
   // The same setup as before the show, from the session list.
   void _openSetup() => _sheet((context, state, game) {
@@ -1547,6 +1565,7 @@ class _SheetRow extends StatelessWidget {
     required this.onBoard,
     required this.onEffects,
     required this.onAnswers,
+    required this.onScript,
     required this.onSetup,
   });
 
@@ -1559,6 +1578,7 @@ class _SheetRow extends StatelessWidget {
   final VoidCallback onBoard;
   final VoidCallback onEffects;
   final VoidCallback onAnswers;
+  final VoidCallback onScript;
   final VoidCallback onSetup;
 
   @override
@@ -1580,7 +1600,11 @@ class _SheetRow extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Badge(isLabelVisible: dot, smallSize: 8, child: Icon(icon, size: 20)),
-                Text(label, style: const TextStyle(fontSize: 12)),
+                // One line, smaller if need be: five tabs share a phone's width.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1, style: const TextStyle(fontSize: 12))),
+                ),
               ],
             ),
           ),
@@ -1594,6 +1618,7 @@ class _SheetRow extends StatelessWidget {
           tab(context.l10n.tabBoard, Icons.grid_view_rounded, onBoard, highlight: boardSuggested),
           tab(context.l10n.tabEffects, Icons.auto_awesome_outlined, onEffects, dot: effectsActive),
           tab(context.l10n.tabAnswers, Icons.draw_outlined, onAnswers, dot: answersActive),
+          tab(context.l10n.script, Icons.description_outlined, onScript),
           tab(context.l10n.tabSetup, Icons.settings_outlined, onSetup),
         ],
       ),
