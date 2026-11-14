@@ -396,6 +396,10 @@ class Question {
   /// counts for the types in [QuestionType.wagerable]; see [betting].
   final bool wager;
 
+  /// Bets of points: a team may bet at most the points it has, nothing when
+  /// it has none. Stored as `betOwnPoints`; see `maxBet`.
+  bool get betOwnPoints => data['betOwnPoints'] == true;
+
   /// Whether this question is played with bets of points.
   bool get betting => wager && type.wagerable && amountBet == null;
 
@@ -437,6 +441,27 @@ class Question {
 
   /// Whether this question is scored "by order"; see [rankStep].
   bool get ranked => rankStep != null && !closest && type.wagerable && !hasBets;
+
+  /// By order or by closeness: the points of each place as written, first
+  /// place first ("400, 200, 100, 100"), instead of [pointsPlus] and
+  /// [rankStep]; places after the last get nothing. Stored as `placePoints`.
+  List<int> get placeList => [
+        if (data['placePoints'] is List)
+          for (final value in data['placePoints'] as List)
+            if (value is num && value >= 0) value.toInt(),
+      ];
+
+  /// By order: the fastest right team gets the first place's points, every
+  /// other right team a share by how long it took (twice as long, half the
+  /// points), so teams close together get about the same. Needs the times
+  /// of the teams' devices; without them the places count. Stored as
+  /// `byTime`.
+  bool get byTime => ranked && data['byTime'] == true;
+
+  /// Last team standing scored by places: the winner first, then the teams
+  /// in the reverse order they went out, each place as [placePoints] has it,
+  /// instead of the winner taking all.
+  bool get standingByPlaces => type == QuestionType.lastStanding && (rankStep != null || placeList.isNotEmpty);
 
   /// How long the question runs, in seconds, when the teams' devices have no
   /// screen of their own for it (that screen has its own timer). Stored as
@@ -484,7 +509,7 @@ class Question {
 
   /// Whether this question can only be played with the teams' devices.
   bool get needsDevices => type.needsDevices ||
-      (type == QuestionType.rapidFire && rapidFire?.mode == RapidMode.devices) ||
+      (type == QuestionType.rapidFire && rapidFire?.mode.onDevices == true) ||
       (type == QuestionType.topAnswers && topAnswers?.onDevices == true);
 
   final MusicConfig sounds;
@@ -576,8 +601,13 @@ class Question {
       );
     }
     if (type == QuestionType.rapidFire) {
-      // Right or wrong for each statement; a fresh round for every item.
-      return rapidFire?.mode == RapidMode.devices ? const CompanionSpec(kind: CompanionKind.choice, options: rapidChoices) : null;
+      // Right or wrong for each statement, or a whiteboard for each item; a
+      // fresh round for every item.
+      return switch (rapidFire?.mode) {
+        RapidMode.devices => const CompanionSpec(kind: CompanionKind.choice, options: rapidChoices),
+        RapidMode.whiteboard => const CompanionSpec(kind: CompanionKind.whiteboard),
+        _ => null,
+      };
     }
     if (type == QuestionType.topAnswers) {
       // On the devices: one line per answer on the list. The `companion` map
@@ -612,7 +642,7 @@ class Question {
     // Teams that bet on an amount show it, they don't buzz.
     QuestionType.free => !noBuzzer && amountBet == null,
     QuestionType.connections || QuestionType.matching || QuestionType.ordering || QuestionType.lastStanding => false,
-    QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
+    QuestionType.rapidFire => rapidFire?.mode.onDevices != true,
     QuestionType.topAnswers => topAnswers?.onDevices != true,
     _ => true,
   };
@@ -623,7 +653,7 @@ class Question {
   bool get defaultJudging => switch (type) {
         // Last team standing goes by turns, rated with the turn buttons.
         QuestionType.feud || QuestionType.connections || QuestionType.lastStanding => false,
-        QuestionType.rapidFire => rapidFire?.mode != RapidMode.devices,
+        QuestionType.rapidFire => rapidFire?.mode.onDevices != true,
         // Buzzing for an answer on the list: Wrong as usual, Right by
         // picking the answer the team named.
         QuestionType.topAnswers => topAnswers?.onDevices != true,
@@ -709,6 +739,11 @@ class Category {
 
   /// Cards offered while one of this category's questions is open.
   List<CueCard> get cards => CueCard.listFrom(data['cards']);
+
+  /// ARGB, as stored: the colours the big screen takes on while one of its
+  /// questions is open, instead of its board's.
+  int? get color => data['color'] is int ? data['color'] as int : null;
+  int? get accentColor => data['accentColor'] is int ? data['accentColor'] as int : null;
 }
 
 /// How a category group is shown on the presenter.

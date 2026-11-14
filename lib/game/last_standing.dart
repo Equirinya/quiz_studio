@@ -87,7 +87,11 @@ List<String> turnOrder(List<Team> teams, TurnOrder order) {
 /// it opened, and every turn so far. Everything else follows from those, so
 /// taking a turn back is just dropping it.
 class StandingPlay {
-  const StandingPlay({required this.order, this.turns = const []});
+  const StandingPlay({required this.order, this.turns = const [], this.started = true});
+
+  /// False while only the question is up, to be read out before the first
+  /// team and prompt come.
+  final bool started;
 
   /// Team ids in turn order.
   final List<String> order;
@@ -117,7 +121,7 @@ class StandingPlay {
 
   /// The team whose turn it is; null once it is decided.
   String? get current {
-    if (finished || order.isEmpty) return null;
+    if (!started || finished || order.isEmpty) return null;
     final gone = <String>{};
     var at = 0;
     for (final (_, result) in turns) {
@@ -141,8 +145,11 @@ class StandingPlay {
 
   StandingPlay withoutLastTurn() => StandingPlay(order: order, turns: turns.sublist(0, turns.length - 1));
 
+  StandingPlay withStarted(bool started) => StandingPlay(order: order, turns: turns, started: started);
+
   /// Without [teamId], e.g. when the team leaves the session.
   StandingPlay without(String teamId) => StandingPlay(
+    started: started,
     order: [...order]..remove(teamId),
     turns: [
       for (final turn in turns)
@@ -151,6 +158,7 @@ class StandingPlay {
   );
 
   Map<String, dynamic> toJson() => {
+    if (!started) 'started': false,
     'order': order,
     'turns': [
       for (final (team, result) in turns) {'team': team, 'result': result.name},
@@ -160,6 +168,7 @@ class StandingPlay {
   static StandingPlay? fromJson(Object? json) {
     if (json is! Map) return null;
     return StandingPlay(
+      started: json['started'] != false,
       order: [for (final id in json['order'] as List? ?? const []) '$id'],
       turns: [
         for (final turn in json['turns'] as List? ?? const [])

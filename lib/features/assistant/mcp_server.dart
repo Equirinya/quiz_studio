@@ -134,8 +134,11 @@ class McpServer {
               'Leave sounds and music alone unless the user asks for them. '
               'A question has a format ("type": free, abcd, progressingReveal, feud, topAnswers, connections, '
               'rapidFire/Fragenhagel, matching, ordering/put in order, lastStanding/last team standing) and, separately, a way of scoring: '
-              'fixed points, bets ("wager": teams bet their points; "amountBet": teams bet how many they can do), by order '
-              '("rankStep"), or by closeness ("rankStep" with "closest"). The add_question fields describe each, with examples.',
+              'fixed points, bets ("wager": teams bet their points, "betOwnPoints" caps a bet at the team\'s score; '
+              '"amountBet": teams bet how many they can do), by order ("rankStep", "byTime" for fastest first by time), '
+              'or by closeness ("rankStep" with "closest"); "placePoints" (e.g. [400, 200, 100, 100]) sets the points '
+              'of each place instead of the step, also for lastStanding by places. Categories and groups can have '
+              'their own colours. The add_question fields describe each, with examples.',
         });
       case 'ping':
         return result(<String, dynamic>{});

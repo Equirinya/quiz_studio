@@ -216,7 +216,8 @@ Map<String, dynamic> _visibleQuestion(SessionState state, Question question, Gam
       view['itemCount'] = rapid?.items.length ?? 0;
       view['itemIndex'] = state.revealed;
       // The item becomes the question; the question itself stays above it.
-      if (item != null) {
+      // An item without text of its own is read out; the question stays.
+      if (item != null && item.question.trim().isNotEmpty) {
         view['text'] = item.question;
         if (question.text.trim().isNotEmpty) view['lead'] = question.text;
       }
@@ -233,7 +234,8 @@ Map<String, dynamic> _visibleQuestion(SessionState state, Question question, Gam
           'out': play.out,
           'current': ?play.current,
           'winner': ?play.winner,
-          'prompt': ?question.lastStanding?.itemAt(play.item)?.question,
+          // Nothing before the question was read out.
+          if (play.started) 'prompt': ?question.lastStanding?.itemAt(play.item)?.question,
         };
       }
     case QuestionType.free:

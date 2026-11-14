@@ -161,10 +161,12 @@ const int kMinBetLimit = 100;
 
 /// The most [team] may bet on [question]: for an amount, the question's
 /// highest number; for points, its points, or the question's points (at
-/// least [kMinBetLimit]) when it has fewer.
+/// least [kMinBetLimit]) when it has fewer; with [Question.betOwnPoints]
+/// only ever its own points.
 int maxBet(Team team, Question question) {
   final amount = question.amountBet;
   if (amount != null) return amount.max;
+  if (question.betOwnPoints) return team.points > 0 ? team.points : 0;
   final floor = question.pointsPlus > kMinBetLimit ? question.pointsPlus : kMinBetLimit;
   return team.points > floor ? team.points : floor;
 }

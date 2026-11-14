@@ -30,11 +30,14 @@ class RapidFireDisplay extends StatelessWidget {
     final done = state.revealed.clamp(0, total);
     final item = rapid.itemAt(state.revealed);
     final image = file(item?.image);
-    final round = state.answerRound;
     final flux = rapid.progress == ProgressStyle.flux;
     // Before the first item only the question itself is up, to be read out.
     final intro = state.revealed < 0;
     final heading = question.text.trim();
+    // An item without text of its own is read out: the question itself
+    // stays in its place, with the item's picture if it has one.
+    final own = item != null && item.question.trim().isNotEmpty;
+    final text = own ? item.question : heading;
 
     final Key itemKey = intro ? const ValueKey('intro') : item == null ? const ValueKey('done') : ValueKey('item-$done');
     final card = Container(
@@ -77,14 +80,19 @@ class RapidFireDisplay extends StatelessWidget {
             : Row(
                 key: itemKey,
                 mainAxisAlignment: MainAxisAlignment.center,
+                // The picture as big as the box lets it be.
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (image != null)
-                    Flexible(
+                    Expanded(
+                      flex: 3,
                       child: Padding(
-                        padding: EdgeInsets.only(right: unit * 3),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(unit * 2),
-                          child: Image.file(image, fit: BoxFit.contain),
+                        padding: EdgeInsets.only(right: text.isEmpty ? 0 : unit * 3),
+                        child: FittedBox(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(unit * 2),
+                            child: Image.file(image),
+                          ),
                         ),
                       ),
                     ),
@@ -99,15 +107,19 @@ class RapidFireDisplay extends StatelessWidget {
                         radius: unit * 0.4,
                       ),
                     ),
-                  Flexible(
-                    child: Text(
-                      item.question,
-                      textAlign: TextAlign.center,
-                      maxLines: 5,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: unit * 6),
+                  if (image == null || text.isNotEmpty)
+                    Flexible(
+                      flex: 2,
+                      child: Center(
+                        child: Text(
+                          text,
+                          textAlign: TextAlign.center,
+                          maxLines: 5,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: unit * 6),
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               ),
       ),
@@ -156,7 +168,7 @@ class RapidFireDisplay extends StatelessWidget {
     return Column(
       children: [
         // The question itself stays above its items.
-        if (!intro && item != null && heading.isNotEmpty)
+        if (!intro && own && heading.isNotEmpty)
           Padding(
             padding: EdgeInsets.only(bottom: unit * 2),
             child: Text(
@@ -201,29 +213,6 @@ class RapidFireDisplay extends StatelessWidget {
             ],
           ),
         ),
-        // Devices mode: who has made up their mind, but not what they picked.
-        if (round != null && item != null)
-          Padding(
-            padding: EdgeInsets.only(top: unit * 2),
-            child: Wrap(
-              alignment: WrapAlignment.center,
-              spacing: unit * 1.5,
-              children: [
-                for (final team in state.teams)
-                  Chip(
-                    avatar: Icon(
-                      round.answers[team.id]?.locked == true
-                          ? Icons.lock
-                          : round.answers[team.id]?.choice != null
-                              ? Icons.edit
-                              : Icons.hourglass_empty,
-                      size: unit * 2.8,
-                    ),
-                    label: Text(team.name, style: TextStyle(fontSize: unit * 2.6)),
-                  ),
-              ],
-            ),
-          ),
         if (!flux && rapid.progress != ProgressStyle.off)
           Padding(
             padding: EdgeInsets.only(top: unit * 3),

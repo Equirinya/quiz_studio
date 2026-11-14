@@ -180,4 +180,35 @@ void main() {
       expect([for (final q in questions) q.id], ['a', 'b', 'c'], reason: '12 × 20 = 240 sits between 200 and 300');
     });
   });
+
+  group('places as listed, and by time', () {
+    test('the points of each place as written; after the last, nothing', () {
+      final question = scoringGame().question(listed)!;
+      expect([for (var place = 0; place < 6; place++) placePoints(question, place)], [400, 200, 100, 100, 0, 0]);
+      final s = play(const [OpenQuestion(listed), PlaceTeam('green'), PlaceTeam('red'), PlaceTeam('blue')]);
+      expect({for (final team in s.teams) team.id: pointsDue(s, question, team.id)}, {'green': 400, 'red': 200, 'blue': 100});
+    });
+
+    test('by time: the fastest gets it all, the others a share by how long they took', () {
+      var s = play(const [OpenQuestion(byTimeRound)], now: 0);
+      s = play(const [SubmitAnswer('blue', PlayerAnswer(text: 'Yesterday')), LockAnswer('blue')], from: s, now: 10000);
+      // Close behind: nearly as much.
+      s = play(const [SubmitAnswer('red', PlayerAnswer(text: 'Yesterday')), LockAnswer('red')], from: s, now: 11000);
+      // Twice as long: half.
+      s = play(const [SubmitAnswer('green', PlayerAnswer(text: 'Yesterday')), LockAnswer('green')], from: s, now: 20000);
+      s = play(const [RateAnswer('red', correct: true), RateAnswer('blue', correct: true), RateAnswer('green', correct: true)], from: s);
+      final question = scoringGame().question(byTimeRound)!;
+      expect(question.byTime, isTrue);
+      expect({for (final team in s.teams) team.id: pointsDue(s, question, team.id)}, {'blue': 600, 'red': 545, 'green': 300});
+      // A wrong answer still costs, by time or not.
+      s = play(const [RateAnswer('green', correct: false)], from: s);
+      expect(pointsDue(s, question, 'green'), -50);
+    });
+
+    test('by time needs the times: put in order by hand, the places count', () {
+      final question = scoringGame().question(byTimeRound)!;
+      final s = play(const [OpenQuestion(byTimeRound), PlaceTeam('green'), PlaceTeam('red')], now: 0);
+      expect({for (final team in s.teams) team.id: pointsDue(s, question, team.id)}, {'green': 600, 'red': 500, 'blue': null});
+    });
+  });
 }

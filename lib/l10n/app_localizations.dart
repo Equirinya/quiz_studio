@@ -821,7 +821,7 @@ abstract class AppLocalizations {
   /// No description provided for @rapidModeName.
   ///
   /// In en, this message translates to:
-  /// **'{mode, select, buzzer{Teams buzz} other{Right or wrong on the teams\' devices}}'**
+  /// **'{mode, select, buzzer{Teams buzz} whiteboard{Whiteboard on the devices} other{Right or wrong on the devices}}'**
   String rapidModeName(String mode);
 
   /// No description provided for @progressStyleName.
@@ -1243,6 +1243,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Own colours'**
   String get ownColours;
+
+  /// No description provided for @boardsColours.
+  ///
+  /// In en, this message translates to:
+  /// **'The board\'s colours'**
+  String get boardsColours;
+
+  /// No description provided for @useBoardsColours.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the board\'s colours'**
+  String get useBoardsColours;
 
   /// No description provided for @textOnBoard.
   ///
@@ -1724,6 +1736,72 @@ abstract class AppLocalizations {
   /// **'Less per place'**
   String get lessPerPlace;
 
+  /// No description provided for @pointsByPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Points by place'**
+  String get pointsByPlace;
+
+  /// No description provided for @pointsByPlaceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 400, 200, 100, 100 – instead of the rule'**
+  String get pointsByPlaceHint;
+
+  /// No description provided for @byTimeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'By time'**
+  String get byTimeTitle;
+
+  /// No description provided for @byTimeText.
+  ///
+  /// In en, this message translates to:
+  /// **'The fastest right team gets the first place\'s points, the others a share by how long they took: twice as long, half the points. Teams close together get about the same. Needs the teams\' devices; teams you put in order by hand go by their places.'**
+  String get byTimeText;
+
+  /// No description provided for @winnerTakesAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Winner takes all'**
+  String get winnerTakesAll;
+
+  /// No description provided for @betOwnPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'At most their own points'**
+  String get betOwnPoints;
+
+  /// No description provided for @betOwnPointsText.
+  ///
+  /// In en, this message translates to:
+  /// **'A team can bet everything it has, but no more; a team without points bets nothing.'**
+  String get betOwnPointsText;
+
+  /// No description provided for @standingIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the question is on the big screen: read it out, then start with the first team.'**
+  String get standingIntro;
+
+  /// No description provided for @startTurns.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the turns'**
+  String get startTurns;
+
+  /// No description provided for @byPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'By places'**
+  String get byPlaces;
+
+  /// No description provided for @standingPlacesText.
+  ///
+  /// In en, this message translates to:
+  /// **'The winner gets the first place\'s points, then the teams in the reverse order they went out.'**
+  String get standingPlacesText;
+
   /// No description provided for @highestBet.
   ///
   /// In en, this message translates to:
@@ -1865,7 +1943,7 @@ abstract class AppLocalizations {
   /// No description provided for @explainRapidFire.
   ///
   /// In en, this message translates to:
-  /// **'Fragenhagel: many short questions right after one another. Teams buzz, or judge statements right or wrong on their devices; each item can have a picture and a sound.'**
+  /// **'Fragenhagel: many short questions right after one another. Teams buzz, judge statements right or wrong on their devices, or answer on a whiteboard; each item can have a picture and a sound.'**
   String get explainRapidFire;
 
   /// No description provided for @explainMatching.
@@ -1994,6 +2072,18 @@ abstract class AppLocalizations {
   /// **'On the devices'**
   String get onTheDevicesShort;
 
+  /// No description provided for @rightOrWrongShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Right or wrong'**
+  String get rightOrWrongShort;
+
+  /// No description provided for @whiteboardShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Whiteboard'**
+  String get whiteboardShort;
+
   /// No description provided for @progressOnBigScreen.
   ///
   /// In en, this message translates to:
@@ -2005,6 +2095,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Each item is a statement. Every team picks right or wrong on its device; when you move on, a right pick gets the points.'**
   String get rapidDevicesText;
+
+  /// No description provided for @rapidWhiteboardText.
+  ///
+  /// In en, this message translates to:
+  /// **'Every team writes or draws its answer to each item on a whiteboard on its device. Rate each one right or wrong; when you move on, the points follow.'**
+  String get rapidWhiteboardText;
 
   /// No description provided for @rapidBuzzText.
   ///
@@ -3446,6 +3542,12 @@ abstract class AppLocalizations {
   /// **'Teams pick right or wrong on their devices'**
   String get statusRapidDevices;
 
+  /// No description provided for @statusRapidWhiteboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Teams answer on their whiteboards · rate each one'**
+  String get statusRapidWhiteboard;
+
   /// No description provided for @statusAmountBet.
   ///
   /// In en, this message translates to:
@@ -4303,6 +4405,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No colour'**
   String get noColour;
+
+  /// No description provided for @customColour.
+  ///
+  /// In en, this message translates to:
+  /// **'Own colour'**
+  String get customColour;
 
   /// No description provided for @useThisColour.
   ///
@@ -5521,6 +5629,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No time limit'**
   String get noTimeLimit;
+
+  /// No description provided for @stopTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop timer'**
+  String get stopTimer;
 
   /// No description provided for @notesText.
   ///

@@ -586,7 +586,8 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
         SegmentedButton<RapidMode>(
           segments: [
             ButtonSegment(value: RapidMode.buzzer, icon: const Icon(Icons.notifications_active_outlined), label: Text(context.l10n.teamsBuzz)),
-            ButtonSegment(value: RapidMode.devices, icon: const Icon(Icons.tablet_android), label: Text(context.l10n.onTheDevicesShort)),
+            ButtonSegment(value: RapidMode.devices, icon: const Icon(Icons.rule), label: Text(context.l10n.rightOrWrongShort)),
+            ButtonSegment(value: RapidMode.whiteboard, icon: const Icon(Icons.draw_outlined), label: Text(context.l10n.whiteboardShort)),
           ],
           selected: {_mode},
           onSelectionChanged: (selected) => _change(() => _mode = selected.first),
@@ -602,9 +603,11 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
         ),
         const SizedBox(height: 8),
         Text(
-          devices
-              ? context.l10n.rapidDevicesText
-              : context.l10n.rapidBuzzText,
+          switch (_mode) {
+            RapidMode.devices => context.l10n.rapidDevicesText,
+            RapidMode.whiteboard => context.l10n.rapidWhiteboardText,
+            RapidMode.buzzer => context.l10n.rapidBuzzText,
+          },
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],

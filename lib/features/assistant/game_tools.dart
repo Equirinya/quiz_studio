@@ -107,7 +107,8 @@ final Map<String, dynamic> _questionFields = {
         'A bet question ("Teams bet their points", German "Einsatz"/"Wetten"; e.g. a final question). Set true and '
         'teams bet their own points instead of playing for fixed points: before the question is shown each '
         'team bets, a right answer wins the bet and a wrong one loses it (pointsMinus is then not used). A team may bet up '
-        'to its score, or up to pointsPlus (at least $kMinBetLimit) if it has less. For free, abcd, progressingReveal, '
+        'to its score, or up to pointsPlus (at least $kMinBetLimit) if it has less; with "betOwnPoints" only up to its '
+        'own score. For free, abcd, progressingReveal, '
         'matching and ordering questions only. Example: {"type": "free", "question": "Final: which year ...?", "pointsPlus": 500, '
         '"wager": true}.',
   },
@@ -126,6 +127,24 @@ final Map<String, dynamic> _questionFields = {
       'max': {'type': 'integer', 'minimum': 1, 'description': 'Highest number a team may bet; default $kDefaultAmountMax.'},
     },
   },
+  'betOwnPoints': {
+    'type': 'boolean',
+    'description': 'With "wager": a team may bet at most the points it has (a team without points bets nothing), '
+        'instead of at least pointsPlus. The slider on its phone goes up to its score.',
+  },
+  'placePoints': {
+    'type': ['array', 'null'],
+    'items': {'type': 'integer', 'minimum': 0},
+    'description': 'With "rankStep" (by order, by closeness, or lastStanding by places): the points of each place as '
+        'written, first place first, instead of pointsPlus less rankStep a place; places after the last get 0. '
+        'Example: [400, 200, 100, 100]. null or [] goes back to the rule.',
+  },
+  'byTime': {
+    'type': 'boolean',
+    'description': 'With "rankStep" (by order) on a question answered on the teams\' devices: the fastest right team '
+        'gets the first place\'s points, every other right team a share by how long it took (twice as long, half the '
+        'points), so teams close together get about the same. Teams the gamemaster puts in order by hand count by place.',
+  },
   'rankStep': {
     'type': ['integer', 'null'],
     'minimum': 0,
@@ -134,7 +153,9 @@ final Map<String, dynamic> _questionFields = {
         'this many points less (never below 0); wrong answers lose pointsMinus. The order is the order teams lock in a right '
         'answer on their devices, or the order the gamemaster taps them in (e.g. charades on stage). null switches it off. '
         'For free, abcd, progressingReveal, matching and ordering questions; not together with "wager" or "amountBet". With '
-        '"closest": true the places go by closeness instead, see there.',
+        '"closest": true the places go by closeness instead, see there. On lastStanding it scores by places instead of '
+        'the winner taking all: the winner first, then the teams in the reverse order they went out. See also '
+        '"placePoints" and "byTime".',
   },
   'closest': {
     'type': 'boolean',
@@ -196,7 +217,9 @@ final Map<String, dynamic> _questionFields = {
   'lastStanding': {
     'type': 'object',
     'description': 'lastStanding only: the turn order and optional prompts, one per turn (e.g. "Does this star have a '
-        'biopic?": one star each). Without items every turn answers the question itself (e.g. "Name a Disney film").',
+        'biopic?": one star each). Without items every turn answers the question itself (e.g. "Name a Disney film"). '
+        'In the show only the question is shown first, for the gamemaster to read out; then the turns start. The '
+        'winner gets pointsPlus, or with "rankStep"/"placePoints" every team gets points by its place.',
     'properties': {
       'order': {
         'type': 'string',
@@ -223,10 +246,11 @@ final Map<String, dynamic> _questionFields = {
     'properties': {
       'mode': {
         'type': 'string',
-        'enum': ['buzzer', 'devices'],
+        'enum': ['buzzer', 'devices', 'whiteboard'],
         'description':
             'buzzer (default): teams buzz, the gamemaster judges, a right answer moves on. devices: each '
-            'item is a statement every team marks right or wrong on its own device.',
+            'item is a statement every team marks right or wrong on its own device. whiteboard: every team writes or '
+            'draws its answer to each item on its device and the gamemaster rates it.',
       },
       'progress': {
         'type': 'string',
@@ -239,8 +263,12 @@ final Map<String, dynamic> _questionFields = {
         'items': {
           'type': 'object',
           'properties': {
-            'question': {'type': 'string', 'description': 'The question, or in devices mode the statement.'},
-            'answer': {'type': 'string', 'description': 'buzzer mode: the answer, for the gamemaster.'},
+            'question': {
+              'type': 'string',
+              'description': 'The question, or in devices mode the statement. "" for an item the gamemaster reads out: '
+                  'the big screen and the phones then show the question itself (with the item\'s picture, if any).',
+            },
+            'answer': {'type': 'string', 'description': 'buzzer and whiteboard mode: the answer, for the gamemaster.'},
             'true': {'type': 'boolean', 'description': 'devices mode: whether the statement is right. Default true.'},
             'hint': {
               'type': 'string',
@@ -360,7 +388,11 @@ final Map<String, dynamic> _questionFields = {
         'description': 'whiteboard only. image: draw on backgroundImage, e.g. a map to mark.',
       },
       'backgroundImage': {'type': 'string', 'description': 'whiteboard with image background: a name from upload_media.'},
-      'listRows': {'type': 'integer', 'description': 'whiteboard with list background, and list: how many lines.'},
+      'listRows': {
+        'type': 'integer',
+        'minimum': 1,
+        'description': 'whiteboard with list background, and list: how many lines; a typed list up to 100, a whiteboard up to 20.',
+      },
       'min': {'type': 'number'},
       'max': {'type': 'number'},
       'step': {'type': 'number'},
@@ -418,13 +450,18 @@ final List<ToolSpec> gameToolSpecs = [
   ),
   ToolSpec(
     'update_category',
-    'Renames a category or switches it in or out of play.',
+    'Renames a category, switches it in or out of play, or gives it its own colours.',
     _object(
       {
         'gameId': _string,
         'categoryId': _string,
         'name': _string,
         'active': {'type': 'boolean', 'description': 'Inactive categories stay in the editor but are not played.'},
+        'color': {
+          'type': 'string',
+          'description': 'Colour as #RRGGBB the big screen takes on while one of its questions is open, and its column on the board. "" goes back to the board\'s.',
+        },
+        'accentColor': {'type': 'string', 'description': 'Accent colour as #RRGGBB. "" goes back to the board\'s.'},
       },
       ['gameId', 'categoryId'],
     ),
@@ -442,8 +479,9 @@ final List<ToolSpec> gameToolSpecs = [
         'The format is "type" (free, abcd, progressingReveal, feud, topAnswers, connections, rapidFire, matching, '
         'lastStanding), each with its own field (see "type"). How it is scored is a separate choice, one at a time: '
         'fixed points (default: pointsPlus/pointsMinus); "wager" (teams bet their points); "amountBet" (teams bet how '
-        'many they can do); "rankStep" (by order or speed); "rankStep" with "closest" (by closeness, for number or '
-        'slider estimates). The field descriptions have examples.',
+        'many they can do); "rankStep" (by order or speed, optionally "byTime"); "rankStep" with "closest" (by closeness, '
+        'for number or slider estimates); "placePoints" lists the points of each place instead of the step. The field '
+        'descriptions have examples.',
     _object({'gameId': _string, 'categoryId': _string, ..._questionFields}, ['gameId', 'categoryId', 'question']),
   ),
   ToolSpec(
@@ -634,7 +672,9 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     final step = args['rankStep'];
     if (step != null) {
       if (step is! num || step < 0) throw const ToolError('"rankStep" must be 0 or more, or null.');
-      if (!effective.wagerable) throw const ToolError('"rankStep" is for free, abcd, progressingReveal, matching and ordering questions.');
+      if (!effective.wagerable && effective != QuestionType.lastStanding) {
+        throw const ToolError('"rankStep" is for free, abcd, progressingReveal, matching, ordering and lastStanding questions.');
+      }
       if (wager == true || args['amountBet'] != null) throw const ToolError('Use only one of "wager", "amountBet" and "rankStep".');
       data['wager'] = false;
       data['amountBet'] = null;
@@ -660,6 +700,18 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     }
     data['closest'] = closest ? true : null;
   }
+  final ownPoints = take<bool>('betOwnPoints');
+  if (ownPoints != null) data['betOwnPoints'] = ownPoints ? true : null;
+  if (args.containsKey('placePoints')) {
+    final places = args['placePoints'];
+    if (places != null && (places is! List || places.any((p) => p is! num || p < 0))) {
+      throw const ToolError('"placePoints" must be a list of points, 0 or more, first place first; or null.');
+    }
+    final list = [for (final p in (places as List?) ?? const []) (p as num).round()];
+    data['placePoints'] = list.isEmpty ? null : list;
+  }
+  final byTime = take<bool>('byTime');
+  if (byTime != null) data['byTime'] = byTime ? true : null;
   if (args.containsKey('timer')) {
     final timer = args['timer'];
     if (timer != null && (timer is! num || timer < 1)) throw const ToolError('"timer" must be a number of seconds, or null.');
@@ -736,7 +788,7 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
   if (rapid != null) {
     if (effective != QuestionType.rapidFire) throw const ToolError('"rapidFire" is for rapidFire questions.');
     final mode = rapid['mode'] ?? RapidMode.buzzer.name;
-    if (!RapidMode.values.any((m) => m.name == mode)) throw const ToolError('"mode" must be buzzer or devices.');
+    if (!RapidMode.values.any((m) => m.name == mode)) throw const ToolError('"mode" must be buzzer, devices or whiteboard.');
     final progress = rapid['progress'] ?? ProgressStyle.bar.name;
     if (!ProgressStyle.values.any((p) => p.name == progress)) throw ToolError('Unknown "progress" "$progress".');
     final items = rapid['items'];
@@ -934,6 +986,9 @@ Map<String, dynamic> describeQuestion(Question q) => {
   if (q.amountBet != null) 'amountBet': q.amountBet!.toMap(),
   if (q.rankStep != null) 'rankStep': q.rankStep,
   if (q.closest) 'closest': true,
+  if (q.placeList.isNotEmpty) 'placePoints': q.placeList,
+  if (q.data['byTime'] == true) 'byTime': true,
+  if (q.betOwnPoints) 'betOwnPoints': true,
   if (q.data['timer'] is num) 'timer': q.data['timer'],
   if (q.type == QuestionType.abcd) ...{'answers': q.answers, 'correct': q.answersCorrect},
   if (q.type == QuestionType.progressingReveal || q.type == QuestionType.feud) 'information': q.information,
@@ -1016,6 +1071,8 @@ Map<String, dynamic> describeGame(GameContent game) => {
               'name': category.name,
               'active': category.active,
               if (category.cards.isNotEmpty) 'cards': _describeCards(category.cards),
+              if (category.color != null) 'color': _hex(category.color!),
+              if (category.accentColor != null) 'accentColor': _hex(category.accentColor!),
               ..._describeSounds(category.sounds),
               'questions': [for (final question in category.questions) describeQuestion(question)],
             },
@@ -1115,11 +1172,21 @@ class GameTools {
       case 'update_category':
         final gameId = _arg(args, 'gameId');
         final category = await _category(gameId, _arg(args, 'categoryId'));
+        int? color(String key) {
+          final value = args[key] as String;
+          if (value.isEmpty) return null;
+          final hex = RegExp(r'^#?([0-9a-fA-F]{6})$').firstMatch(value)?.group(1);
+          if (hex == null) throw ToolError('"$key" must look like #1A2B3C.');
+          return 0xff000000 | int.parse(hex, radix: 16);
+        }
+
         final data = <String, dynamic>{
           if (args['name'] is String) 'name': args['name'],
           if (args['active'] is bool) 'active': args['active'],
+          if (args['color'] is String) 'color': color('color'),
+          if (args['accentColor'] is String) 'accentColor': color('accentColor'),
         };
-        if (data.isEmpty) throw const ToolError('Nothing to change: give "name" or "active".');
+        if (data.isEmpty) throw const ToolError('Nothing to change: give "name", "active" or a colour.');
         await backend.updateCategory(gameId, category.id, data);
         onActivity?.call('Changed category "${data['name'] ?? category.name}"');
         return {'ok': true};

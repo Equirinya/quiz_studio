@@ -51,7 +51,7 @@ String questionAsText(Question q) {
     case QuestionType.rapidFire:
       final rapid = q.rapidFire ?? const RapidFire();
       final devices = rapid.mode == RapidMode.devices;
-      out.writeln(devices ? '  Right or wrong on the teams\' devices' : '  Teams buzz');
+      out.writeln('  ${rapid.mode.uiString}');
       for (final (i, item) in rapid.items.indexed) {
         final media = [if (item.image != null) 'picture', if (item.music != null) 'sound'];
         final solution = devices ? (item.isTrue ? 'right' : 'wrong') : item.answer;

@@ -220,7 +220,7 @@ class _CompanionEditorState extends State<CompanionEditor> {
               FillDropdown<int>(
                 label: context.l10n.rows,
                 value: _listRows,
-                entries: [for (var rows = 2; rows <= 12; rows++) DropdownMenuEntry(value: rows, label: "$rows")],
+                entries: [for (final rows in {...listRowChoices(kind ?? CompanionKind.list), _listRows}.toList()..sort()) DropdownMenuEntry(value: rows, label: "$rows")],
                 onSelected: (value) => _change(() => _listRows = value ?? 5),
               ),
           ],

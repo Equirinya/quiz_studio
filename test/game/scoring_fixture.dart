@@ -5,6 +5,8 @@ import 'fixture.dart';
 const raced = QuestionRef('c1', 'raced');
 const mime = QuestionRef('c1', 'mime');
 const nearest = QuestionRef('c1', 'guess');
+const byTimeRound = QuestionRef('c1', 'timed');
+const listed = QuestionRef('c1', 'listed');
 
 /// The fixture game with two "by order" questions: one typed on the devices,
 /// one with nothing on them (e.g. charades on stage).
@@ -31,6 +33,19 @@ GameContent scoringGame() {
           'companion': {'kind': 'text', 'timer': 60},
         },
         'mime': {'type': 'free', 'question': 'Charades', 'noBuzzer': true, 'pointsPlus': 300, 'rankStep': 100},
+        // Fastest first, the others by how long they took.
+        'timed': {
+          'type': 'free',
+          'question': 'Which song is it?',
+          'noBuzzer': true,
+          'pointsPlus': 600,
+          'pointsMinus': 50,
+          'rankStep': 100,
+          'byTime': true,
+          'companion': {'kind': 'text', 'timer': 60},
+        },
+        // Places as listed.
+        'listed': {'type': 'free', 'question': 'Pantomime', 'noBuzzer': true, 'pointsPlus': 300, 'rankStep': 100, 'placePoints': [400, 200, 100, 100]},
         'guess': {
           'type': 'free',
           'question': 'How tall is the Eiffel Tower?',

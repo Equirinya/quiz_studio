@@ -11,12 +11,28 @@ Future<void> showGroupColorsDialog(
   required CategoryGroup group,
   required void Function(int? color, int? accentColor) save,
 }) =>
-    showDialog<void>(context: context, builder: (_) => _GroupColorsDialog(group: group, save: save));
+    showColorsDialog(context, color: group.color, accentColor: group.accentColor, save: save);
+
+/// Picks two colours, [color] and [accentColor] as they are now (ARGB, null
+/// for the default ones). [save] gets nulls to go back to [resetLabel]'s.
+Future<void> showColorsDialog(
+  BuildContext context, {
+  required int? color,
+  required int? accentColor,
+  required void Function(int? color, int? accentColor) save,
+  String? resetLabel,
+}) =>
+    showDialog<void>(
+      context: context,
+      builder: (_) => _GroupColorsDialog(color: color, accentColor: accentColor, save: save, resetLabel: resetLabel),
+    );
 
 class _GroupColorsDialog extends StatefulWidget {
-  const _GroupColorsDialog({required this.group, required this.save});
+  const _GroupColorsDialog({required this.color, required this.accentColor, required this.save, this.resetLabel});
 
-  final CategoryGroup group;
+  final int? color;
+  final int? accentColor;
+  final String? resetLabel;
   final void Function(int? color, int? accentColor) save;
 
   @override
@@ -24,8 +40,8 @@ class _GroupColorsDialog extends StatefulWidget {
 }
 
 class _GroupColorsDialogState extends State<_GroupColorsDialog> {
-  late Color? _color = widget.group.color == null ? null : Color(widget.group.color!);
-  late Color? _accent = widget.group.accentColor == null ? null : Color(widget.group.accentColor!);
+  late Color? _color = widget.color == null ? null : Color(widget.color!);
+  late Color? _accent = widget.accentColor == null ? null : Color(widget.accentColor!);
 
   void _save() {
     final scheme = Theme.of(context).colorScheme;
@@ -72,7 +88,7 @@ class _GroupColorsDialogState extends State<_GroupColorsDialog> {
             widget.save(null, null);
             Navigator.of(context).pop();
           },
-          child: Text(context.l10n.useAppColours),
+          child: Text(widget.resetLabel ?? context.l10n.useAppColours),
         ),
         FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.done)),
       ],

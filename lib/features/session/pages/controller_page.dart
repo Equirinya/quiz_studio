@@ -330,6 +330,7 @@ String _status(AppLocalizations l10n, SessionState state, Question? question) {
       }
       if (question?.type == QuestionType.rapidFire && state.revealed < 0) return l10n.statusRapidIntro;
       if (question?.rapidFire?.mode == RapidMode.devices) return l10n.statusRapidDevices;
+      if (question?.rapidFire?.mode == RapidMode.whiteboard) return l10n.statusRapidWhiteboard;
       if (question?.amountBet != null) return l10n.statusAmountBet;
       return question?.buzzerable == false ? l10n.statusOpenNoBuzzers : l10n.statusOpenWaiting;
     case Phase.buzzered:
@@ -427,6 +428,22 @@ class _NowPanel extends StatelessWidget {
             padding: const EdgeInsets.only(top: 8),
             child: RoundCountdown(openedAt: timer.openedAtMillis, endsAt: timer.endsAtMillis, hostClock: hostClock),
           ),
+        // A clock for any question, set up with one or not; the devices'
+        // rounds have their own buttons for more time.
+        if (round == null && !state.waitingForBets)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                ActionChip(avatar: const Icon(Icons.more_time, size: 18), label: const Text("+30 s"), onPressed: () => send(const SetTimer(30))),
+                ActionChip(avatar: const Icon(Icons.more_time, size: 18), label: const Text("+1 min"), onPressed: () => send(const SetTimer(60))),
+                if (state.timer != null)
+                  ActionChip(avatar: const Icon(Icons.timer_off_outlined, size: 18), label: Text(l10n.stopTimer), onPressed: () => send(const SetTimer(null))),
+              ],
+            ),
+          ),
         const SizedBox(height: 8),
         Text(q.text, style: theme.textTheme.titleMedium),
         if (q.answerHint != null)
@@ -438,7 +455,7 @@ class _NowPanel extends StatelessWidget {
             child: Text(q.answerHint!, style: theme.textTheme.bodyLarge?.copyWith(color: scheme.onTertiaryContainer)),
           ),
         const SizedBox(height: 8),
-        if (q.type == QuestionType.rapidFire) _RapidPanel(state: state, question: q),
+        if (q.type == QuestionType.rapidFire) _RapidPanel(state: state, question: q, send: send),
         if (q.type == QuestionType.lastStanding) _StandingPanel(state: state, question: q, send: send),
         // Matching: the solution, as the big screen names the pieces.
         if (q.type == QuestionType.matching)
@@ -882,6 +899,23 @@ class _StandingPanel extends StatelessWidget {
     final current = play.current == null ? null : state.team(play.current!);
     final winner = play.winner == null ? null : state.team(play.winner!);
     final out = play.out;
+    if (!play.started) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(context.l10n.standingIntro, style: theme.textTheme.bodyLarge),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              onPressed: () => send(const StartTurns()),
+              icon: const Icon(Icons.play_arrow),
+              label: Text(context.l10n.startTurns),
+            ),
+          ],
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -956,10 +990,11 @@ class _StandingPanel extends StatelessWidget {
 /// Fragenhagel: every item with its answer for the gamemaster, the one being
 /// asked highlighted; in devices mode what each team has picked for it.
 class _RapidPanel extends StatelessWidget {
-  const _RapidPanel({required this.state, required this.question});
+  const _RapidPanel({required this.state, required this.question, required this.send});
 
   final SessionState state;
   final Question question;
+  final void Function(Command) send;
 
   @override
   Widget build(BuildContext context) {
@@ -967,6 +1002,7 @@ class _RapidPanel extends StatelessWidget {
     final scheme = theme.colorScheme;
     final rapid = question.rapidFire ?? const RapidFire();
     final devices = rapid.mode == RapidMode.devices;
+    final whiteboard = rapid.mode == RapidMode.whiteboard;
     final round = state.answerRound;
     if (rapid.items.isEmpty) return Text(context.l10n.rapidNoItems, style: TextStyle(color: scheme.outline));
     final answering = state.phase == Phase.buzzered && state.buzzQueue.isNotEmpty ? state.team(state.buzzQueue.first) : null;
@@ -1075,10 +1111,102 @@ class _RapidPanel extends StatelessWidget {
                       ],
                     ),
                   ),
+                if (whiteboard && i == state.revealed && round != null)
+                  _RapidBoards(state: state, round: round, send: send),
               ],
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Whiteboard Fragenhagel: each team's drawing for the item being asked, to
+/// rate right or wrong and to put on the big screen.
+class _RapidBoards extends StatelessWidget {
+  const _RapidBoards({required this.state, required this.round, required this.send});
+
+  final SessionState state;
+  final AnswerRound round;
+  final void Function(Command) send;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (round.open)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.lock_outline, size: 18),
+                label: Text(context.l10n.lockAll),
+                onPressed: () => send(const LockAnswers()),
+              ),
+            ),
+          for (final team in state.roundTeams)
+            Builder(
+              builder: (context) {
+                final answer = round.answers[team.id];
+                final shown = round.revealed.contains(team.id);
+                final verdict = state.results.verdicts[team.id];
+                return Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.fromLTRB(8, 4, 0, 4),
+                  decoration: BoxDecoration(
+                    color: shown ? scheme.secondaryContainer : scheme.surface,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 90,
+                        child: Row(
+                          children: [
+                            Icon(answer?.locked == true || !round.open ? Icons.lock : Icons.lock_open, size: 14, color: scheme.outline),
+                            const SizedBox(width: 4),
+                            Expanded(child: Text(team.name, style: theme.textTheme.labelLarge, overflow: TextOverflow.ellipsis)),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 96),
+                            child: AnswerView(spec: round.spec, answer: answer, fontSize: 14),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: shown ? context.l10n.takeOffScreen : context.l10n.showOnScreen,
+                        icon: Icon(shown ? Icons.visibility : Icons.visibility_outlined),
+                        color: shown ? scheme.primary : null,
+                        onPressed: () => send(RevealAnswer(team.id, show: !shown)),
+                      ),
+                      IconButton(
+                        tooltip: context.l10n.rapidRight,
+                        icon: Icon(verdict == true ? Icons.check_circle : Icons.check_circle_outline),
+                        color: verdict == true ? Colors.green : null,
+                        onPressed: () => send(RateAnswer(team.id, correct: verdict == true ? null : true)),
+                      ),
+                      IconButton(
+                        tooltip: context.l10n.rapidWrong,
+                        icon: Icon(verdict == false ? Icons.cancel : Icons.cancel_outlined),
+                        color: verdict == false ? scheme.error : null,
+                        onPressed: () => send(RateAnswer(team.id, correct: verdict == false ? null : false)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 }
@@ -1238,8 +1366,12 @@ class _ActionPad extends StatelessWidget {
     // While bets are placed this button ends the betting, then starts the
     // question once the bets have been shown.
     final betting = state.waitingForBets;
+    // Last team standing: the question is read out first, then Next starts the turns.
+    final startTurns = q?.type == QuestionType.lastStanding && state.standing?.started == false;
     final Command? next = betting
         ? (state.placingBets ? const CloseBets() : const StartQuestion())
+        : startTurns
+        ? const StartTurns()
         : closeFirst
         ? const LockAnswers()
         : answerSteps

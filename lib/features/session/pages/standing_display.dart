@@ -29,6 +29,22 @@ class StandingDisplay extends StatelessWidget {
     final winner = play.winner == null ? null : state.team(play.winner!);
     final picture = winner == null ? file(item?.image) : null;
     final out = play.out;
+    // Before the first turn only the question is up, big, to be read out.
+    if (!play.started) {
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(unit * 3),
+        decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 3)),
+        alignment: Alignment.center,
+        child: Text(
+          question.text,
+          textAlign: TextAlign.center,
+          maxLines: 6,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: unit * 7, fontWeight: FontWeight.w600),
+        ),
+      );
+    }
     return Column(
       children: [
         // The question stays up, small, above what this turn is about.

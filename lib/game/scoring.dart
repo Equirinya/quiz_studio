@@ -38,10 +38,44 @@ int pointsIfWrong(SessionState state, Question question, String teamId) {
   return question.betting ? betting.betOf(teamId) : question.pointsMinus;
 }
 
-/// "By order": the points for place [place] (0 = first).
+/// "By order": the points for place [place] (0 = first): as listed for the
+/// question, or the question's points less [Question.rankStep] a place.
 int placePoints(Question question, int place) {
+  final list = question.placeList;
+  if (list.isNotEmpty) return place < list.length ? list[place] : 0;
   final points = question.pointsPlus - place * (question.rankStep ?? 0);
   return points < 0 ? 0 : points;
+}
+
+/// Shorter than this counts as this, so a lightning-fast first team does
+/// not leave everyone else with next to nothing.
+const double _minSeconds = 1;
+
+/// [Question.byTime]: what [teamId] gets by how long it took against the
+/// fastest right team; null without its time.
+int? timePoints(SessionState state, Question question, String teamId, List<String> right) {
+  final round = state.answerRound;
+  if (round == null) return null;
+  double? seconds(String id) {
+    final taken = round.answers[id]?.secondsTaken(round);
+    return taken == null ? null : (taken < _minSeconds ? _minSeconds : taken);
+  }
+
+  final own = seconds(teamId);
+  final times = [for (final id in right) ?seconds(id)];
+  if (own == null || times.isEmpty) return null;
+  final fastest = times.reduce((a, b) => a < b ? a : b);
+  return (placePoints(question, 0) * fastest / own).round();
+}
+
+/// Last team standing by places, once it is decided: each team's place, the
+/// winner 0, then the teams in the reverse order they went out.
+Map<String, int> standingPlaces(SessionState state) {
+  final play = state.standing;
+  if (play == null || !play.finished) return const {};
+  return {
+    for (final (place, teamId) in [?play.winner, ...play.out.reversed].indexed) teamId: place,
+  };
 }
 
 /// "By order": the teams rated right, in their order: first the ones the
@@ -104,8 +138,13 @@ int? pointsDue(SessionState state, Question question, String teamId) {
     if (place != null) return placePoints(question, place);
   }
   if (question.ranked) {
-    final place = rightInOrder(state).indexOf(teamId);
-    if (place >= 0) return placePoints(question, place);
+    final right = rightInOrder(state);
+    final place = right.indexOf(teamId);
+    if (place >= 0) return (question.byTime ? timePoints(state, question, teamId, right) : null) ?? placePoints(question, place);
+  }
+  if (question.standingByPlaces) {
+    final place = standingPlaces(state)[teamId];
+    if (place != null) return placePoints(question, place);
   }
   if (verdict == true) return pointsIfRight(state, question, teamId);
   return null;

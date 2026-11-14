@@ -19,6 +19,7 @@ import 'package:quiz_show/features/session/widgets/score_pop.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/game/game.dart';
 import 'package:quiz_show/features/session/pages/rapid_fire_display.dart';
+import 'package:quiz_show/features/session/pages/round_display.dart';
 import 'package:quiz_show/l10n/l10n.dart';
 
 /// What the audience sees: scores, the board, and the open question as far
@@ -46,13 +47,16 @@ class PresenterView extends StatelessWidget {
         }
         final group = game.group(state.groupId) ?? game.groups.firstOrNull;
         final base = Theme.of(context);
-        // A group may bring its own colours; the whole screen follows them.
-        final theme = group?.color == null
+        // A group may bring its own colours, and a category its own while one
+        // of its questions is open; the whole screen follows them.
+        final category = state.current == null ? null : game.category(state.current!.categoryId);
+        final (seed, accent) = category?.color != null ? (category!.color, category.accentColor) : (group?.color, group?.accentColor);
+        final theme = seed == null
             ? base
             : ThemeData(
                 colorScheme: ColorScheme.fromSeed(
-                  seedColor: Color(group!.color!),
-                  tertiary: group.accentColor == null ? null : Color(group.accentColor!),
+                  seedColor: Color(seed),
+                  tertiary: accent == null ? null : Color(accent),
                   brightness: base.brightness,
                 ),
               );
@@ -172,10 +176,21 @@ class _Scores extends StatelessWidget {
       if (popOrder.contains(change.teamId)) break;
       popOrder.insert(0, change.teamId);
     }
-    return Wrap(
+    return LayoutBuilder(builder: (context, constraints) {
+    // More teams than fit on one line: flatter boxes, name and points side
+    // by side, so the rows take less of the screen.
+    final count = state.teams.length;
+    final compact = count > ((constraints.maxWidth + unit) / (unit * 23)).floor();
+    final width = unit * (compact ? 18 : 22);
+    // Even rows: sixteen teams are two rows of eight, not seven, seven and two.
+    final fits = max(1, ((constraints.maxWidth + unit) / (width + unit)).floor());
+    final perRow = (count / (count / fits).ceil()).ceil();
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: perRow * (width + unit)),
+      child: Wrap(
       alignment: WrapAlignment.center,
       spacing: unit,
-      runSpacing: unit,
+      runSpacing: unit * (compact ? 0.8 : 1),
       children: [
         for (final team in state.teams)
           Builder(
@@ -192,27 +207,48 @@ class _Scores extends StatelessWidget {
               final text = own == null ? null : onTeamColor(color);
               final box = AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: unit * 22,
-                height: unit * (bets == null ? 12 : 14),
+                width: width,
+                height: unit * (compact ? (bets == null ? 6.5 : 9) : (bets == null ? 12 : 14)),
                 decoration: BoxDecoration(
                   color: color,
                   borderRadius: BorderRadius.circular(unit * 2),
                   border: own != null && position == 0 ? Border.all(color: scheme.onSurface, width: unit * 0.5) : null,
                 ),
                 alignment: Alignment.center,
+                padding: compact ? EdgeInsets.symmetric(horizontal: unit * 1.5) : null,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      team.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: unit * 2.2, color: text),
-                    ),
-                    Text(
-                      team.points.toString(),
-                      style: TextStyle(fontSize: unit * 4.5, fontWeight: FontWeight.w600, color: text),
-                    ),
+                    if (compact)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              team.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: unit * 2.2, color: text),
+                            ),
+                          ),
+                          SizedBox(width: unit),
+                          Text(
+                            team.points.toString(),
+                            style: TextStyle(fontSize: unit * 3.6, fontWeight: FontWeight.w600, color: text),
+                          ),
+                        ],
+                      )
+                    else ...[
+                      Text(
+                        team.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: unit * 2.2, color: text),
+                      ),
+                      Text(
+                        team.points.toString(),
+                        style: TextStyle(fontSize: unit * 4.5, fontWeight: FontWeight.w600, color: text),
+                      ),
+                    ],
                     if (bets != null)
                       Row(
                         mainAxisSize: MainAxisSize.min,
@@ -247,7 +283,9 @@ class _Scores extends StatelessWidget {
             },
           ),
       ],
+      ),
     );
+    });
   }
 }
 
@@ -415,7 +453,6 @@ class _BoardGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     if (group.type == BoardType.display) {
       // Line by line as written; a long text gets smaller rather than cut off.
       return LayoutBuilder(
@@ -442,7 +479,10 @@ class _BoardGrid extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: unit * 0.6),
-              child: Column(
+              // A category with its own colours shows them on its column.
+              child: Builder(builder: (context) {
+                final scheme = categoryScheme(category, Theme.of(context).colorScheme);
+                return Column(
                 children: [
                   SizedBox(
                     height: unit * 8,
@@ -483,13 +523,23 @@ class _BoardGrid extends StatelessWidget {
                       ),
                     ),
                 ],
-              ),
+              );
+              }),
             ),
           ),
       ],
     );
   }
 }
+
+/// [base], or the colours of [category] where it has its own.
+ColorScheme categoryScheme(Category category, ColorScheme base) => category.color == null
+    ? base
+    : ColorScheme.fromSeed(
+        seedColor: Color(category.color!),
+        tertiary: category.accentColor == null ? null : Color(category.accentColor!),
+        brightness: base.brightness,
+      );
 
 /// The open question as far as it is revealed. [unit] is a hundredth of the
 /// screen's height.
@@ -509,219 +559,200 @@ class QuestionDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    // Progressing reveal can swap the question's image for a revealed one.
-    final focused = question.type == QuestionType.progressingReveal && state.imageFocus > 0
-        ? question.informationImages.elementAtOrNull(state.imageFocus - 1)
-        : null;
-    final image = _file(focused) ?? _file(question.image);
     final round = state.answerRound;
-    if (question.type == QuestionType.connections) {
-      return _ConnectionsDisplay(state: state, question: question, unit: unit);
-    }
-    if (question.type == QuestionType.rapidFire) {
-      return RapidFireDisplay(state: state, question: question, unit: unit, file: _file);
-    }
-    if (question.type == QuestionType.lastStanding) {
-      return StandingDisplay(state: state, question: question, unit: unit, file: _file);
-    }
-    if (question.type == QuestionType.progressingReveal) {
-      final reveal = _RevealDisplay(state: state, question: question, unit: unit, file: _file);
-      if (round == null) return reveal;
-      // Teams answering on their devices: the hints stay, the teams' row goes
-      // below them and grows once answers are shown.
-      return Column(
-        children: [
-          Expanded(flex: 5, child: reveal),
-          SizedBox(height: unit * 1.5),
-          _roundBox(
-            round.revealed.isEmpty,
-            _AnswerRoundDisplay(
-              state: state,
-              round: round,
-              unit: unit,
-              places: question.byCloseness ? closenessPlaces(state) : const {},
-              backgroundImage: _file(round.spec.backgroundImage) == null ? null : FileImage(_file(round.spec.backgroundImage)!),
-            ),
+    // Every kind of question in the same frame: its own display, below it
+    // one small line of who is answering on the devices, and the answers
+    // the gamemaster shows popping up over it all.
+    final main = switch (question.type) {
+      QuestionType.connections => _ConnectionsDisplay(state: state, question: question, unit: unit),
+      QuestionType.rapidFire => RapidFireDisplay(state: state, question: question, unit: unit, file: _file),
+      QuestionType.lastStanding => StandingDisplay(state: state, question: question, unit: unit, file: _file),
+      QuestionType.progressingReveal => _RevealDisplay(state: state, question: question, unit: unit, file: _file),
+      _ => _standard(context, round),
+    };
+    // Connections shows each team's progress itself.
+    final strip = round != null && question.type != QuestionType.connections;
+    final shown = round != null && round.revealed.any((id) => state.team(id) != null);
+    final background = round == null ? null : _file(round.spec.backgroundImage);
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Column(
+            children: [
+              Expanded(child: main),
+              if (strip)
+                Padding(
+                  padding: EdgeInsets.only(top: unit * 1.5),
+                  child: RoundStatusStrip(state: state, round: round, unit: unit),
+                ),
+            ],
           ),
-        ],
-      );
-    }
-    final strip =
-        question.pictureStrip && round == null && question.type == QuestionType.progressingReveal && question.hasInformationImages;
+        ),
+        Positioned.fill(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(scale: Tween(begin: 0.92, end: 1.0).animate(animation), child: child),
+            ),
+            child: !shown
+                ? const SizedBox(key: ValueKey('no-answers'))
+                : Container(
+                    key: const ValueKey('answers'),
+                    padding: EdgeInsets.all(unit * 1.5),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(unit * 3),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: unit * 4)],
+                    ),
+                    child: ShownAnswers(
+                      state: state,
+                      round: round,
+                      unit: unit,
+                      places: question.byCloseness ? closenessPlaces(state) : const {},
+                      backgroundImage: background == null ? null : FileImage(background),
+                    ),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// The question in its box, and below it what belongs to its kind: the
+  /// ABCD answers, the survey, the pieces to match or put in order, the
+  /// top answers. Without anything below, the question gets all the room.
+  Widget _standard(BuildContext context, AnswerRound? round) {
+    final scheme = Theme.of(context).colorScheme;
+    final image = _file(question.image);
     // Matching and put in order: the question as tall as its text, the
-    // pieces get the rest; the teams' row stays small until answers show.
+    // pieces get the rest.
     final pieces = question.type == QuestionType.matching || question.type == QuestionType.ordering;
-    Widget questionBox(Widget card) => pieces ? ConstrainedBox(constraints: BoxConstraints(maxHeight: unit * 28), child: card) : Expanded(flex: 3, child: card);
+    final (body, flex) = switch (question.type) {
+      QuestionType.abcd when question.answers.isNotEmpty => (
+          _Tiles(
+            unit: unit,
+            // Up to four answers two by two, more three by three.
+            columns: question.answers.length <= 4 ? 2 : 3,
+            tiles: [
+              for (final (i, answer) in question.answers.indexed)
+                (
+                  label: String.fromCharCode(0x41 + i),
+                  text: answer,
+                  shown: i < state.revealed,
+                  mark: state.revealed > question.answers.length ? question.answersCorrect.elementAtOrNull(i) ?? false : null,
+                ),
+            ],
+          ),
+          2,
+        ),
+      QuestionType.feud => (
+          Column(
+            children: [
+              SizedBox(
+                height: unit * 6,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [for (var i = 0; i < state.wrongAttempts; i++) Icon(Icons.close, color: scheme.error, size: unit * 6)],
+                ),
+              ),
+              Expanded(
+                child: _Tiles(
+                  unit: unit,
+                  columns: question.information.length <= 5 ? 1 : 2,
+                  tiles: [
+                    for (final (i, information) in question.information.indexed)
+                      (
+                        // The value is part of what gets uncovered.
+                        label: state.feudRevealed.contains(i) ? _feudValue(question, i) : "",
+                        text: information,
+                        shown: state.feudRevealed.contains(i),
+                        mark: null,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          3,
+        ),
+      QuestionType.matching => (_MatchingBoard(question: question, unit: unit, file: _file, placed: state.revealed), 7),
+      QuestionType.ordering => (OrderingBoard(state: state, question: question, unit: unit, file: _file), 7),
+      // Top answers: the list takes over once its first answer is uncovered.
+      QuestionType.topAnswers when round == null || state.feudRevealed.isNotEmpty => (
+          _TopAnswersBoard(state: state, question: question, unit: unit),
+          4,
+        ),
+      _ => (null, 0),
+    };
+    final card = Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(unit * 2),
+      decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 3)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        // The picture as big as the box lets it be.
+        crossAxisAlignment: pieces ? CrossAxisAlignment.center : CrossAxisAlignment.stretch,
+        children: [
+          if (image != null)
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: EdgeInsets.only(right: question.text.trim().isEmpty ? 0 : unit * 2),
+                child: FittedBox(
+                  child: ClipRRect(borderRadius: BorderRadius.circular(unit * 2), child: Image.file(image)),
+                ),
+              ),
+            ),
+          if (question.hasMusic)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.only(right: unit * 2),
+                // Bars that dance while the sound plays and stand still otherwise.
+                child: MiniMusicVisualizer(
+                  animate: state.media == MediaPlayback.playing,
+                  color: scheme.primary,
+                  width: unit * 1.5,
+                  height: unit * 5,
+                  radius: unit * 0.4,
+                ),
+              ),
+            ),
+          if (image == null || question.text.trim().isNotEmpty)
+            Flexible(
+              flex: 2,
+              child: Center(
+                child: Text(
+                  question.text,
+                  textAlign: TextAlign.center,
+                  maxLines: pieces ? 3 : (body == null ? 8 : 6),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: unit * 4.5),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
     return Column(
       children: [
         if (question.description != null)
           Padding(
             padding: EdgeInsets.only(bottom: unit),
-            child: Chip(
-              label: Text(question.description!, style: TextStyle(fontSize: unit * 2.4)),
-            ),
+            child: Chip(label: Text(question.description!, style: TextStyle(fontSize: unit * 2.4))),
           ),
-        questionBox(
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(unit * 2),
-            decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 3)),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (image != null)
-                  Flexible(
-                    child: Padding(
-                      padding: EdgeInsets.only(right: unit * 2),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(unit * 2),
-                        child: Image.file(image, fit: BoxFit.contain),
-                      ),
-                    ),
-                  ),
-                if (question.hasMusic)
-                  Padding(
-                    padding: EdgeInsets.only(right: unit * 2),
-                    // Bars that dance while the sound plays and stand still otherwise.
-                    child: MiniMusicVisualizer(
-                      animate: state.media == MediaPlayback.playing,
-                      color: scheme.primary,
-                      width: unit * 1.5,
-                      height: unit * 5,
-                      radius: unit * 0.4,
-                    ),
-                  ),
-                Flexible(
-                  child: Text(
-                    question.text,
-                    textAlign: TextAlign.center,
-                    maxLines: pieces ? 3 : (image == null ? 6 : 8),
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: unit * 4.5),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        // Matching: the pieces to put together.
-        if (question.type == QuestionType.matching)
-          Expanded(
-            flex: 7,
-            child: Padding(
-              padding: EdgeInsets.only(top: unit * 1.5),
-              child: _MatchingBoard(question: question, unit: unit, file: _file, placed: state.revealed),
-            ),
-          ),
-        // Put in order: the entries, mixed up, then put in place.
-        if (question.type == QuestionType.ordering)
-          Expanded(
-            flex: 7,
-            child: Padding(
-              padding: EdgeInsets.only(top: unit * 1.5),
-              child: OrderingBoard(state: state, question: question, unit: unit, file: _file),
-            ),
-          ),
-        if (strip)
-          Padding(
-            padding: EdgeInsets.only(top: unit * 1.5),
-            child: _PictureStrip(
-              unit: unit,
-              files: [for (final name in question.informationImages) _file(name)],
-              names: question.informationImages,
-              revealed: state.revealed,
-              focus: state.imageFocus,
-            ),
-          ),
-        SizedBox(height: unit * 2),
-        // Top answers: the list takes over once its first answer is uncovered.
-        if (question.type == QuestionType.topAnswers && (round == null || state.feudRevealed.isNotEmpty))
-          Expanded(flex: 4, child: _TopAnswersBoard(state: state, question: question, unit: unit))
-        else if (round != null)
-          _roundBox(
-            pieces && round.revealed.isEmpty,
-            _AnswerRoundDisplay(
-              state: state,
-              round: round,
-              unit: unit,
-              places: question.byCloseness ? closenessPlaces(state) : const {},
-              backgroundImage: _file(round.spec.backgroundImage) == null ? null : FileImage(_file(round.spec.backgroundImage)!),
-            ),
-          )
+        if (pieces && image == null)
+          ConstrainedBox(constraints: BoxConstraints(maxHeight: unit * 28), child: card)
         else
-          switch (question.type) {
-            QuestionType.abcd => Expanded(
-              flex: 2,
-              child: _Tiles(
-                unit: unit,
-                // Up to four answers two by two, more three by three.
-                columns: question.answers.length <= 4 ? 2 : 3,
-                tiles: [
-                  for (final (i, answer) in question.answers.indexed)
-                    (
-                      label: String.fromCharCode(0x41 + i),
-                      text: answer,
-                      shown: i < state.revealed,
-                      mark: state.revealed > question.answers.length ? question.answersCorrect.elementAtOrNull(i) ?? false : null,
-                    ),
-                ],
-              ),
-            ),
-            // Pictures only: the strip above says it all.
-            QuestionType.progressingReveal when strip && question.information.every((text) => text.trim().isEmpty) =>
-              const SizedBox(),
-            QuestionType.progressingReveal => Expanded(
-              flex: 2,
-              child: _Tiles(
-                unit: unit,
-                tiles: [
-                  for (final (i, information) in question.information.indexed)
-                    (label: "${i + 1}", text: information, shown: i < state.revealed, mark: null),
-                ],
-              ),
-            ),
-            QuestionType.feud => Expanded(
-              flex: 3,
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: unit * 6,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [for (var i = 0; i < state.wrongAttempts; i++) Icon(Icons.close, color: scheme.error, size: unit * 6)],
-                    ),
-                  ),
-                  Expanded(
-                    child: _Tiles(
-                      unit: unit,
-                      columns: question.information.length <= 5 ? 1 : 2,
-                      tiles: [
-                        for (final (i, information) in question.information.indexed)
-                          (
-                            // The value is part of what gets uncovered.
-                            label: state.feudRevealed.contains(i) ? _feudValue(question, i) : "",
-                            text: information,
-                            shown: state.feudRevealed.contains(i),
-                            mark: null,
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _ => const Spacer(),
-          },
+          Expanded(flex: body == null ? 1 : (pieces ? 3 : 3), child: card),
+        if (body != null)
+          Expanded(
+            flex: flex,
+            child: Padding(padding: EdgeInsets.only(top: unit * 1.5), child: body),
+          ),
       ],
     );
   }
-
-
-  /// The teams' answers below the question: room to show them, or while
-  /// nothing is shown yet ([compact]) just the clock and who is done.
-  Widget _roundBox(bool compact, Widget child) =>
-      compact ? SizedBox(height: unit * (state.roundTeams.length > 6 ? 21 : 12.5), child: child) : Expanded(flex: 3, child: child);
 
   static String _feudValue(Question question, int index) {
     final value = question.percentages.elementAtOrNull(index) ?? 0;
@@ -956,9 +987,15 @@ class _TopAnswersBoard extends StatelessWidget {
                   duration: const Duration(milliseconds: 350),
                   transitionBuilder: (child, animation) => FadeTransition(
                     opacity: animation,
-                    child: ScaleTransition(scale: Tween(begin: 0.6, end: 1.0).animate(animation), child: child),
+                    child: ScaleTransition(
+                      alignment: Alignment.centerLeft,
+                      scale: Tween(begin: 0.6, end: 1.0).animate(animation),
+                      child: child,
+                    ),
                   ),
-                  layoutBuilder: (current, previous) => Stack(alignment: Alignment.center, children: [...previous, ?current]),
+                  // Every answer starts at the same place, however many
+                  // teams found it.
+                  layoutBuilder: (current, previous) => Stack(alignment: Alignment.centerLeft, children: [...previous, ?current]),
                   child: shown
                       ? Text(
                           items[i].answer.split(RegExp(r'[/|;]')).first.trim(),
@@ -1057,10 +1094,8 @@ class _ConnectionsDisplay extends StatelessWidget {
         ),
         if (round != null) ...[
           SizedBox(height: unit * 1.5),
-          Wrap(
-            alignment: WrapAlignment.center,
+          OneRow(
             spacing: unit * 1.5,
-            runSpacing: unit,
             children: [
               for (final team in state.teams)
                 Builder(builder: (context) {
@@ -1375,229 +1410,3 @@ class _Tiles extends StatelessWidget {
     );
   }
 }
-
-/// An answer round on the big screen: who is still writing, how much time is
-/// left, and the answers the gamemaster has shown so far, each with its
-/// ruling once there is one.
-class _AnswerRoundDisplay extends StatelessWidget {
-  const _AnswerRoundDisplay({required this.state, required this.round, required this.unit, this.places = const {}, this.backgroundImage});
-
-  final ImageProvider? backgroundImage;
-
-  /// By closeness: each team's place, 0 = first.
-  final Map<String, int> places;
-
-  final SessionState state;
-  final AnswerRound round;
-  final double unit;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final shown = [
-      for (final teamId in round.revealed)
-        if (state.team(teamId) != null) state.team(teamId)!,
-    ];
-    return Column(
-      children: [
-        // The presenter runs the show, so the deadline is on its own clock.
-        if (round.open && round.endsAtMillis != null)
-          Padding(
-            padding: EdgeInsets.only(bottom: unit * 1.5),
-            child: RoundCountdown(openedAt: round.openedAtMillis, endsAt: round.endsAtMillis!, hostClock: true, height: unit * 1.6),
-          ),
-        if (shown.isEmpty)
-          Expanded(
-            child: Center(
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: unit * 1.5,
-                runSpacing: unit * 1.5,
-                children: [
-                  for (final team in state.roundTeams)
-                    Builder(builder: (context) {
-                      final answer = round.answers[team.id];
-                      final done = answer?.locked == true || (!round.open && answer != null && !answer.isEmpty);
-                      final writing = answer != null && !answer.isEmpty;
-                      return Container(
-                        padding: EdgeInsets.symmetric(horizontal: unit * 3, vertical: unit * 1.5),
-                        decoration: BoxDecoration(
-                          color: done ? scheme.primaryContainer : scheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(unit * 2),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              done
-                                  ? Icons.lock
-                                  : writing
-                                      ? Icons.edit
-                                      : Icons.hourglass_empty,
-                              size: unit * 3.5,
-                              color: done ? scheme.onPrimaryContainer : scheme.outline,
-                            ),
-                            SizedBox(width: unit * 1.5),
-                            Text(team.name, style: TextStyle(fontSize: unit * 3.2, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      );
-                    }),
-                ],
-              ),
-            ),
-          )
-        else
-          Expanded(
-            // More than six answers go on two rows, so each stays readable.
-            child: Column(
-              children: [
-                for (final row in _rowsOf(shown, shown.length > 6 ? (shown.length / 2).ceil() : shown.length))
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: shown.length > 6 ? unit * 0.4 : 0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (final team in row)
-                            Expanded(
-                              child: Builder(
-                                builder: (context) {
-                                  final verdict = state.results.verdicts[team.id];
-                                  // Shown once it is on the scoreboard, not while it is being rated.
-                                  final awarded = state.results.given[team.id];
-                                  final place = verdict == null ? places[team.id] : null;
-                                  final medal = place == null ? null : _placeColors.elementAtOrNull(place);
-                                  final took = round.answers[team.id]?.secondsTaken(round);
-                                  return Container(
-                                    margin: EdgeInsets.symmetric(horizontal: unit * 0.8),
-                                    padding: EdgeInsets.all(unit * 1.5),
-                                    decoration: BoxDecoration(
-                                      color: scheme.surfaceContainerHigh,
-                                      borderRadius: BorderRadius.circular(unit * 2),
-                                      border: Border.all(
-                                        width: unit * 0.5,
-                                        color: verdict == null
-                                            ? (medal ?? Colors.transparent)
-                                            : verdict
-                                            ? Colors.green
-                                            : scheme.error,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Flexible(
-                                              child: Text(
-                                                team.name,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(fontSize: unit * 2.8, fontWeight: FontWeight.w700, color: scheme.primary),
-                                              ),
-                                            ),
-                                            if (took != null)
-                                              Text(
-                                                "  ${took.toStringAsFixed(1)} s",
-                                                style: TextStyle(fontSize: unit * 2.2, color: scheme.outline),
-                                              ),
-                                            if (place != null) ...[
-                                              SizedBox(width: unit),
-                                              _PlaceBadge(place: place, color: medal, unit: unit),
-                                              if (awarded != null && awarded != 0)
-                                                Text(
-                                                  " +$awarded",
-                                                  style: TextStyle(fontSize: unit * 2.6, fontWeight: FontWeight.w700),
-                                                ),
-                                            ],
-                                            if (verdict != null) ...[
-                                              SizedBox(width: unit),
-                                              Icon(
-                                                verdict ? Icons.check_circle : Icons.cancel,
-                                                size: unit * 3.2,
-                                                color: verdict ? Colors.green : scheme.error,
-                                              ),
-                                              if (awarded != null && awarded != 0)
-                                                Text(
-                                                  " ${awarded > 0 ? "+" : ""}$awarded",
-                                                  style: TextStyle(fontSize: unit * 2.6, fontWeight: FontWeight.w700),
-                                                ),
-                                            ],
-                                          ],
-                                        ),
-                                        SizedBox(height: unit),
-                                        Expanded(
-                                          child: Center(
-                                            child: FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              child: ConstrainedBox(
-                                                constraints: BoxConstraints(maxWidth: unit * 60),
-                                                child: SizedBox(
-                                                  // Wide enough to fill the tile; an upright
-                                                  // board is scaled down to its height.
-                                                  width: round.kind == CompanionKind.whiteboard
-                                                      ? unit * 60 * (drawingAspect(round.answers[team.id]?.drawing) < 1 ? 0.6 : 1)
-                                                      : null,
-                                                  child: AnswerView(
-                                                    spec: round.spec,
-                                                    answer: round.answers[team.id],
-                                                    fontSize: unit * 3.4,
-                                                    backgroundImage: backgroundImage,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          // The last row keeps the same tile width.
-                          for (var k = row.length; k < (shown.length > 6 ? (shown.length / 2).ceil() : shown.length); k++)
-                            const Expanded(child: SizedBox()),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// [items] in rows of [perRow].
-/// Gold, silver and bronze for the first three places.
-const _placeColors = [Color(0xFFE0B526), Color(0xFFA8B0B8), Color(0xFFC07A3E)];
-
-/// "1st", "2nd", … on a round badge, in the place's colour from the podium.
-class _PlaceBadge extends StatelessWidget {
-  const _PlaceBadge({required this.place, required this.color, required this.unit});
-
-  final int place;
-  final Color? color;
-  final double unit;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: unit * 1.2, vertical: unit * 0.3),
-      decoration: BoxDecoration(color: color ?? scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(unit * 2)),
-      child: Text(
-        context.l10n.ordinal(place + 1),
-        style: TextStyle(fontSize: unit * 2.4, fontWeight: FontWeight.w800, color: color == null ? scheme.onSurface : Colors.black87),
-      ),
-    );
-  }
-}
-
-List<List<T>> _rowsOf<T>(List<T> items, int perRow) => [
-  for (var start = 0; start < items.length; start += perRow)
-    items.sublist(start, start + perRow > items.length ? items.length : start + perRow),
-];

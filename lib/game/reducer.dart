@@ -147,7 +147,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
         answerRound: companion == null || opened.hasBets ? null : _newRound(companion, now),
         // Last team standing: the turn order is fixed as it opens.
         standing: opened.type == QuestionType.lastStanding
-            ? StandingPlay(order: turnOrder(s.teams, opened.lastStanding?.order ?? TurnOrder.teams))
+            ? StandingPlay(order: turnOrder(s.teams, opened.lastStanding?.order ?? TurnOrder.teams), started: false)
             : null,
         betting: opened.hasBets ? const Betting() : null,
         timer: opened.hasBets ? null : _timerFor(opened, now),
@@ -183,7 +183,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       // A list to fill in gets a line for every one the boldest team bet.
       if (companion != null && question.amountBet != null) {
         final most = s.betting!.bets.values.fold(0, (a, b) => a > b ? a : b);
-        if (most > companion.listRows) companion = companion.withListRows(most > 20 ? 20 : most);
+        if (most > companion.listRows) companion = companion.withListRows(most);
       }
       return _ok(
         s.copyWith(
@@ -197,6 +197,20 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
     case JudgeBet(:final teamId, :final reached):
       if (question?.amountBet == null || s.betting == null) return _no(s);
       return _reduce(s, RateAnswer(teamId, correct: reached), game, now: now);
+
+    case SetTimer(:final seconds):
+      final timer = s.timer;
+      if (question == null || now == null || (seconds != null && seconds <= 0)) return _no(s);
+      if (seconds == null) return timer == null ? _no(s) : _ok(s.copyWith(timer: null));
+      // Running: the time goes on top. Up or none yet: a fresh clock.
+      final running = timer != null && timer.running && timer.endsAtMillis > now;
+      return _ok(
+        s.copyWith(
+          timer: running
+              ? QuestionTimer(openedAtMillis: timer.openedAtMillis, endsAtMillis: timer.endsAtMillis + seconds * 1000)
+              : QuestionTimer(openedAtMillis: now, endsAtMillis: now + seconds * 1000),
+        ),
+      );
 
     case TimeUp():
       final timer = s.timer;
@@ -290,10 +304,9 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       // A Fragenhagel goes back as far as the question itself (-1).
       if (revealed < (rapid ? -1 : 0) || revealed > question.maxReveal) return _no(s);
       if (rapid) {
-        final devices = question.rapidFire?.mode == RapidMode.devices;
         if (delta < 0) return _ok(_rapidBack(s, question, revealed, now));
         // On the devices an item is scored as the gamemaster moves on.
-        final scored = devices && s.revealed >= 0 ? _scoreRapidItem(s, question) : s;
+        final scored = _scoreRapidItem(s, question);
         final finished = revealed >= question.maxReveal;
         return _ok(_rapidAt(scored, question, revealed, now), [SoundEffect(finished ? effectFanfare : effectNextItem)]);
       }
@@ -673,20 +686,33 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       if (question == null || play == null || play.current == null) return _no(s);
       final next = play.withTurn(result);
       final winner = next.winner;
-      // The last team left wins, and its points go up at once.
+      // The last team left wins, and its points go up at once; by places,
+      // everyone's do once it is decided.
       var after = s.copyWith(standing: next);
-      if (winner != null) after = _give(after.copyWith(results: after.results.rated(winner, true)), question);
+      if (winner != null) after = after.copyWith(results: after.results.rated(winner, true));
+      if (winner != null || (question.standingByPlaces && next.finished)) after = _give(after, question);
       return _ok(after, [
         SoundEffect(result == StandingResult.right ? effectAnswerCorrect : effectAnswerWrong),
         if (winner != null) const SoundEffect(effectFanfare),
       ]);
 
+    case StartTurns():
+      final play = s.standing;
+      if (question == null || play == null || play.started) return _no(s);
+      return _ok(s.copyWith(standing: play.withStarted(true)));
+
     case UndoTurn():
       final play = s.standing;
+      // Before the first turn: back to the question alone.
+      if (question != null && play != null && play.started && play.turns.isEmpty) {
+        return _ok(s.copyWith(standing: play.withStarted(false)));
+      }
       if (question == null || play == null || play.turns.isEmpty) return _no(s);
       final back = s.copyWith(standing: play.withoutLastTurn());
-      // A winner that is no longer one gives its points back.
-      return _ok(play.winner == null ? back : _give(back.copyWith(results: back.results.rated(play.winner!, null)), question));
+      // A winner that is no longer one gives its points back, and by places
+      // so does everyone.
+      if (!play.finished) return _ok(back);
+      return _ok(_give(play.winner == null ? back : back.copyWith(results: back.results.rated(play.winner!, null)), question));
 
     case ClearAnswers():
       if (s.answerRound == null) return _no(s);
@@ -770,7 +796,13 @@ SessionState _give(SessionState s, Question question) {
 /// that were made count even when "Give points" was not pressed.
 SessionState _givenBeforeClosing(SessionState s, GameContent? game) {
   final question = s.current == null ? null : game?.question(s.current!);
-  return question == null ? s : _give(s, question);
+  if (question == null) return s;
+  // A Fragenhagel scores item by item. Whiteboards already rated still
+  // count when it is closed on its last item.
+  if (question.type == QuestionType.rapidFire) {
+    return question.rapidFire?.mode == RapidMode.whiteboard ? _scoreRapidItem(s, question) : s;
+  }
+  return _give(s, question);
 }
 
 Reduction _ok(SessionState state, [List<Effect> effects = const []]) => Reduction(state.copyWith(seq: state.seq + 1), effects: effects);
@@ -820,6 +852,8 @@ SessionState _rapidAt(SessionState s, Question question, int index, int? now) {
     media: music == null ? MediaPlayback.stopped : MediaPlayback.playing,
     music: music == null ? _keepTimer : null,
     answerRound: companion == null || !asking ? null : _newRound(companion, now),
+    // Whiteboard ratings are for one item only.
+    results: const Results(),
   );
 }
 
@@ -846,9 +880,26 @@ SessionState _rapidBack(SessionState s, Question question, int index, int? now) 
     }
   }
   final back = _rapidAt(s.copyWith(teams: teams, rapidSteps: kept), question, index, now);
-  final picks = s.rapidSteps[index]?.picks ?? const {};
+  final step = s.rapidSteps[index] ?? const RapidStep();
+  final picks = step.picks;
   final round = back.answerRound;
-  if (round == null || picks.isEmpty) return back;
+  if (round == null || (picks.isEmpty && step.drawings.isEmpty)) return back;
+  if (question.rapidFire?.mode == RapidMode.whiteboard) {
+    // The drawings come back, rated as they were.
+    var results = back.results;
+    for (final MapEntry(key: teamId, value: pick) in picks.entries) {
+      if (back.team(teamId) != null) results = results.rated(teamId, pick == 0);
+    }
+    return back.copyWith(
+      results: results,
+      answerRound: round.copyWith(
+        answers: {
+          for (final MapEntry(key: teamId, value: drawing) in step.drawings.entries)
+            if (back.team(teamId) != null) teamId: PlayerAnswer(drawing: drawing),
+        },
+      ),
+    );
+  }
   return back.copyWith(
     answerRound: round.copyWith(
       answers: {
@@ -859,14 +910,27 @@ SessionState _rapidBack(SessionState s, Question question, int index, int? now) 
   );
 }
 
-/// Devices mode: the item being asked is scored, each team that picked gets
-/// the question's points for a right pick and loses its minus points for a
-/// wrong one.
+/// On the devices, the item being asked is scored: each team that picked
+/// gets the question's points for a right pick and loses its minus points
+/// for a wrong one. On the whiteboard the gamemaster's ratings count.
 SessionState _scoreRapidItem(SessionState s, Question question) {
   final item = question.rapidFire?.itemAt(s.revealed);
   final round = s.answerRound;
   if (item == null || round == null) return s;
   var scored = s;
+  if (question.rapidFire?.mode == RapidMode.whiteboard) {
+    for (final team in s.teams) {
+      final right = s.results.verdicts[team.id];
+      final drawing = round.answers[team.id]?.drawing;
+      if (right != null) scored = _rapidScore(scored, team.id, right ? question.pointsPlus : -question.pointsMinus);
+      // Unrated drawings are kept too, for going back.
+      if (right == null && drawing == null) continue;
+      final step = scored.rapidSteps[s.revealed] ?? const RapidStep();
+      scored = scored.copyWith(rapidSteps: {...scored.rapidSteps, s.revealed: step.withAnswer(team.id, right: right, drawing: drawing)});
+    }
+    return scored;
+  }
+  if (question.rapidFire?.mode != RapidMode.devices) return s;
   for (final team in s.teams) {
     final choice = round.answers[team.id]?.choice;
     if (choice == null) continue;

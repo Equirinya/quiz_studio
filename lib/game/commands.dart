@@ -81,6 +81,8 @@ sealed class Command {
       'startQuestion' => const StartQuestion(),
       'judgeBet' => JudgeBet(j['teamId'] as String, reached: j['reached'] as bool?),
       'timeUp' => const TimeUp(),
+      'startTurns' => const StartTurns(),
+      'setTimer' => SetTimer((j['seconds'] as num?)?.toInt()),
       'reopenQuestion' => const ReopenQuestion(),
       'reveal' => Reveal((j['delta'] as num).toInt()),
       'imageFocus' => ImageFocus((j['delta'] as num).toInt()),
@@ -504,6 +506,26 @@ class JudgeBet extends Command {
   String get type => 'judgeBet';
   @override
   Map<String, dynamic> get _args => {'teamId': teamId, 'reached': reached};
+}
+
+/// The open question's own clock, for any question, set up with a timer or
+/// not: [seconds] more on it while it runs, or a fresh one from now; null
+/// takes it away.
+class SetTimer extends Command {
+  const SetTimer(this.seconds);
+  final int? seconds;
+  @override
+  String get type => 'setTimer';
+  @override
+  Map<String, dynamic> get _args => {'seconds': seconds};
+}
+
+/// Last team standing: after the question was read out, the first team's
+/// turn and prompt come up.
+class StartTurns extends Command {
+  const StartTurns();
+  @override
+  String get type => 'startTurns';
 }
 
 /// The open question's own timer has run out. Sent by the host's clock.

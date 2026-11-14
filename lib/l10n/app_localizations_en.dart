@@ -463,7 +463,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String rapidModeName(String mode) {
     String _temp0 = intl.Intl.selectLogic(mode, {
       'buzzer': 'Teams buzz',
-      'other': 'Right or wrong on the teams\' devices',
+      'whiteboard': 'Whiteboard on the devices',
+      'other': 'Right or wrong on the devices',
     });
     return '$_temp0';
   }
@@ -793,6 +794,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ownColours => 'Own colours';
 
   @override
+  String get boardsColours => 'The board\'s colours';
+
+  @override
+  String get useBoardsColours => 'Use the board\'s colours';
+
+  @override
   String get textOnBoard => 'Text on the board';
 
   @override
@@ -1084,6 +1091,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get lessPerPlace => 'Less per place';
 
   @override
+  String get pointsByPlace => 'Points by place';
+
+  @override
+  String get pointsByPlaceHint =>
+      'e.g. 400, 200, 100, 100 – instead of the rule';
+
+  @override
+  String get byTimeTitle => 'By time';
+
+  @override
+  String get byTimeText =>
+      'The fastest right team gets the first place\'s points, the others a share by how long they took: twice as long, half the points. Teams close together get about the same. Needs the teams\' devices; teams you put in order by hand go by their places.';
+
+  @override
+  String get winnerTakesAll => 'Winner takes all';
+
+  @override
+  String get betOwnPoints => 'At most their own points';
+
+  @override
+  String get betOwnPointsText =>
+      'A team can bet everything it has, but no more; a team without points bets nothing.';
+
+  @override
+  String get standingIntro =>
+      'Only the question is on the big screen: read it out, then start with the first team.';
+
+  @override
+  String get startTurns => 'Start the turns';
+
+  @override
+  String get byPlaces => 'By places';
+
+  @override
+  String get standingPlacesText =>
+      'The winner gets the first place\'s points, then the teams in the reverse order they went out.';
+
+  @override
   String get highestBet => 'Highest bet';
 
   @override
@@ -1160,7 +1205,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get explainRapidFire =>
-      'Fragenhagel: many short questions right after one another. Teams buzz, or judge statements right or wrong on their devices; each item can have a picture and a sound.';
+      'Fragenhagel: many short questions right after one another. Teams buzz, judge statements right or wrong on their devices, or answer on a whiteboard; each item can have a picture and a sound.';
 
   @override
   String get explainMatching =>
@@ -1259,11 +1304,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onTheDevicesShort => 'On the devices';
 
   @override
+  String get rightOrWrongShort => 'Right or wrong';
+
+  @override
+  String get whiteboardShort => 'Whiteboard';
+
+  @override
   String get progressOnBigScreen => 'Progress on the big screen';
 
   @override
   String get rapidDevicesText =>
       'Each item is a statement. Every team picks right or wrong on its device; when you move on, a right pick gets the points.';
+
+  @override
+  String get rapidWhiteboardText =>
+      'Every team writes or draws its answer to each item on a whiteboard on its device. Rate each one right or wrong; when you move on, the points follow.';
 
   @override
   String get rapidBuzzText =>
@@ -2140,6 +2195,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusRapidDevices => 'Teams pick right or wrong on their devices';
 
   @override
+  String get statusRapidWhiteboard =>
+      'Teams answer on their whiteboards · rate each one';
+
+  @override
   String get statusAmountBet => 'Teams go for the number they bet';
 
   @override
@@ -2632,6 +2691,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noColour => 'No colour';
+
+  @override
+  String get customColour => 'Own colour';
 
   @override
   String get useThisColour => 'Use this colour';
@@ -3371,6 +3433,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noTimeLimit => 'No time limit';
+
+  @override
+  String get stopTimer => 'Stop timer';
 
   @override
   String get notesText =>

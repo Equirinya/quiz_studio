@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:quiz_show/core/widgets/dialogs.dart';
+import 'package:quiz_show/features/games/widgets/group_colors_dialog.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/widgets/cards_dialog.dart';
 import 'package:quiz_show/features/games/widgets/companion_editor.dart';
@@ -189,6 +190,22 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
                         save: (cards) => guarded(context, () => _repo.updateCategory(widget.gameId, category.id, {'cards': cards})),
                       ),
                     ),
+                    SettingTile(
+                      icon: Icons.palette_outlined,
+                      title: context.l10n.colours,
+                      summary: category.color == null ? context.l10n.boardsColours : context.l10n.ownColours,
+                      isSet: category.color != null,
+                      onTap: () => showColorsDialog(
+                        context,
+                        color: category.color,
+                        accentColor: category.accentColor,
+                        resetLabel: context.l10n.useBoardsColours,
+                        save: (color, accent) => guarded(
+                          context,
+                          () => _repo.updateCategory(widget.gameId, category.id, {'color': color, 'accentColor': accent}),
+                        ),
+                      ),
+                    ),
                     if (_canShare(snapshot.data!, category))
                       SettingTile(
                         icon: Icons.person_add_alt,
@@ -284,6 +301,15 @@ class _QuestionCardState extends State<QuestionCard> {
       ? _Scoring.ranked
       : _Scoring.fixed;
   late final TextEditingController _rankStep = TextEditingController(text: (widget.question.rankStep ?? 100).toString());
+  late final TextEditingController _placeList = TextEditingController(text: widget.question.placeList.join(", "));
+  late bool _byTime = widget.question.data['byTime'] == true;
+  late bool _betOwnPoints = widget.question.betOwnPoints;
+
+  /// "400, 200, 100" as a list; null when empty, so the rule counts.
+  static List<int>? _parsePlaces(String text) {
+    final values = [for (final part in text.split(RegExp(r'[,;\s]+'))) if (int.tryParse(part) case final value? when value >= 0) value];
+    return values.isEmpty ? null : values;
+  }
   late final TextEditingController _betPrompt = TextEditingController(text: widget.question.amountBet?.prompt ?? '');
   late final TextEditingController _betMax = TextEditingController(text: (widget.question.amountBet?.max ?? kDefaultAmountMax).toString());
 
@@ -291,7 +317,7 @@ class _QuestionCardState extends State<QuestionCard> {
   _Scoring get _effectiveScoring => switch (_scoring) {
     _Scoring.amount when _q.type == QuestionType.free => _Scoring.amount,
     _Scoring.points || _Scoring.amount when _q.type.wagerable => _Scoring.points,
-    _Scoring.ranked when _q.type.wagerable => _Scoring.ranked,
+    _Scoring.ranked when _q.type.wagerable || _q.type == QuestionType.lastStanding => _Scoring.ranked,
     _Scoring.closest when _closable => _Scoring.closest,
     _ => _Scoring.fixed,
   };
@@ -339,7 +365,7 @@ class _QuestionCardState extends State<QuestionCard> {
   @override
   void dispose() {
     _flush();
-    for (final controller in [_text, _description, _hint, _plus, _minus, _betPrompt, _betMax, _rankStep]) {
+    for (final controller in [_text, _description, _hint, _plus, _minus, _betPrompt, _betMax, _rankStep, _placeList]) {
       controller.dispose();
     }
     super.dispose();
@@ -451,6 +477,23 @@ class _QuestionCardState extends State<QuestionCard> {
           }, style: theme.textTheme.bodySmall),
           const SizedBox(height: 12),
         ],
+        // Last team standing: the winner alone, or everyone by places.
+        if (_q.type == QuestionType.lastStanding) ...[
+          SegmentedButton<_Scoring>(
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(value: _Scoring.fixed, label: Text(l10n.winnerTakesAll)),
+              ButtonSegment(value: _Scoring.ranked, label: Text(l10n.byPlaces)),
+            ],
+            selected: {scoring},
+            onSelectionChanged: (picked) => _setScoring(picked.single),
+          ),
+          if (scoring == _Scoring.ranked) ...[
+            const SizedBox(height: 6),
+            Text(l10n.standingPlacesText, style: theme.textTheme.bodySmall),
+          ],
+          const SizedBox(height: 12),
+        ],
         // Put in order: what a share of the points is for.
         if (_q.type == QuestionType.ordering) ...[
           Text(l10n.orderScoringTitle, style: theme.textTheme.labelLarge),
@@ -468,6 +511,18 @@ class _QuestionCardState extends State<QuestionCard> {
           Text(l10n.orderScoringText(_orderScoring.name), style: theme.textTheme.bodySmall),
           const SizedBox(height: 12),
         ],
+        if (scoring == _Scoring.points)
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: Text(l10n.betOwnPoints),
+            subtitle: Text(l10n.betOwnPointsText),
+            value: _betOwnPoints,
+            onChanged: (on) {
+              setState(() => _betOwnPoints = on == true);
+              _save({'betOwnPoints': on == true ? true : null});
+            },
+          ),
         if (scoring == _Scoring.amount) ...[
           TextField(
             controller: _betPrompt,
@@ -519,13 +574,32 @@ class _QuestionCardState extends State<QuestionCard> {
               ),
           ],
         ),
-        if (_byPlace)
+        if (_byPlace) ...[
+          const SizedBox(height: 8),
+          TextField(
+            controller: _placeList,
+            decoration: InputDecoration(labelText: l10n.pointsByPlace, hintText: l10n.pointsByPlaceHint, isDense: true),
+            onChanged: (text) => _save({'placePoints': _parsePlaces(text)}),
+          ),
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               "${[for (var place = 0; place < 4; place++) placePoints(_q, place)].join(" · ")} …",
               style: theme.textTheme.bodyMedium,
             ),
+          ),
+        ],
+        // Fastest first: the others by how long they took.
+        if (scoring == _Scoring.ranked && _q.type.wagerable)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.byTimeTitle),
+            subtitle: Text(l10n.byTimeText),
+            value: _byTime,
+            onChanged: (on) {
+              setState(() => _byTime = on);
+              _save({'byTime': on ? true : null});
+            },
           ),
       ],
     );

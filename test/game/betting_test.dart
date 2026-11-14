@@ -314,5 +314,49 @@ void main() {
         host.dispose();
       });
     });
+
+    test('any question can be given a clock while it runs, more time on top, or none', () {
+      final open = play(const [OpenQuestion(buzzed), CloseBets(), StartQuestion()], now: 0);
+      expect(open.timer, isNull);
+      final started = play(const [SetTimer(30)], from: open, now: 1000);
+      expect((started.timer!.openedAtMillis, started.timer!.endsAtMillis), (1000, 31000));
+      final more = play(const [SetTimer(60)], from: started, now: 5000);
+      expect(more.timer!.endsAtMillis, 91000, reason: 'on top while it runs');
+      // Once up, a fresh one from now.
+      final up = reduce(more, const TimeUp(), bettingGame()).state;
+      expect(play(const [SetTimer(30)], from: up, now: 100000).timer!.endsAtMillis, 130000);
+      expect(play(const [SetTimer(null)], from: more, now: 6000).timer, isNull);
+      expect(accepts(play(const [CloseQuestion()], from: open), const SetTimer(30)), isFalse, reason: 'no question, no clock');
+      expect(mayIssue(const Sender(Role.player, teamId: 'red'), const SetTimer(30)), isFalse);
+    });
+
+    test('the host ends a clock started during the question', () {
+      fakeAsync((async) {
+        var clock = 0;
+        final host = SessionHost(initial: bettingState(), game: bettingGame(), clock: () => clock);
+        final effects = <Effect>[];
+        host.effects.listen(effects.add);
+        host
+          ..dispatch(const OpenQuestion(buzzed))
+          ..dispatch(const CloseBets())
+          ..dispatch(const StartQuestion())
+          ..dispatch(const SetTimer(30));
+        clock = 30000;
+        async.elapse(const Duration(seconds: 30));
+        expect(host.state.timer!.running, isFalse);
+        expect(effects.whereType<SoundEffect>().map((e) => e.key), contains(effectTimesUp));
+        host.dispose();
+      });
+    });
+  });
+
+  test('bets of points up to the own points only, when the question says so', () {
+    final open = Question.fromMap('q', const {'type': 'free', 'question': 'Bet', 'pointsPlus': 300, 'wager': true});
+    final own = Question.fromMap('q', const {'type': 'free', 'question': 'Bet', 'pointsPlus': 300, 'wager': true, 'betOwnPoints': true});
+    const rich = Team(id: 'r', name: 'R', points: 800);
+    const poor = Team(id: 'p', name: 'P', points: 40);
+    const broke = Team(id: 'b', name: 'B', points: -20);
+    expect([for (final team in [rich, poor, broke]) maxBet(team, open)], [800, 300, 300]);
+    expect([for (final team in [rich, poor, broke]) maxBet(team, own)], [800, 40, 0]);
   });
 }

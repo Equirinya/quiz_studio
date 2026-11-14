@@ -132,4 +132,72 @@ void main() {
       expect(((view['answerRound'] as Map)['spec'] as Map)['options'], rapidChoices);
     });
   });
+
+  group('on the whiteboard', () {
+    test('each item gets a fresh whiteboard on the devices, no buzzers', () {
+      final s = play(const [OpenQuestion(boardRound), Reveal(1)]);
+      expect(s.answerRound!.spec.kind, CompanionKind.whiteboard);
+      expect(buzzersOpen(s, game), isFalse);
+      expect(game.question(boardRound)!.needsDevices, isTrue);
+      expect(apply(s, const Judge(correct: true)).accepted, isFalse);
+    });
+
+    test('moving on scores the ratings; the next item starts unrated', () {
+      var s = play(const [
+        OpenQuestion(boardRound),
+        Reveal(1),
+        SubmitAnswer('red', PlayerAnswer(drawing: 'red-cat')),
+        SubmitAnswer('blue', PlayerAnswer(drawing: 'blue-cat')),
+        RateAnswer('red', correct: true),
+        RateAnswer('blue', correct: false),
+        Reveal(1),
+      ]);
+      expect((points(s, 'red'), points(s, 'blue')), (10, -5));
+      expect(s.results.verdicts, isEmpty);
+      expect(s.answerRound!.answers, isEmpty);
+      // Not rated: no points either way.
+      s = run(s, const [SubmitAnswer('red', PlayerAnswer(drawing: 'house')), Reveal(1)], game);
+      expect((points(s, 'red'), points(s, 'blue')), (10, -5));
+    });
+
+    test('going back takes the points back and gives the drawings and ratings back', () {
+      var s = play(const [
+        OpenQuestion(boardRound),
+        Reveal(1),
+        SubmitAnswer('red', PlayerAnswer(drawing: 'red-cat')),
+        SubmitAnswer('blue', PlayerAnswer(drawing: 'blue-cat')),
+        RateAnswer('red', correct: true),
+        Reveal(1),
+        Reveal(-1),
+      ]);
+      expect((points(s, 'red'), s.revealed), (0, 0));
+      expect(s.answerRound!.answers['red']!.drawing, 'red-cat');
+      expect(s.answerRound!.answers['blue']!.drawing, 'blue-cat');
+      expect(s.results.verdicts, {'red': true});
+      s = run(s, const [Reveal(1)], game);
+      expect(points(s, 'red'), 10);
+      // Survives being saved and loaded.
+      final loaded = SessionState.fromJson(s.toJson());
+      expect(loaded.rapidSteps[0]!.drawings, {'red': 'red-cat', 'blue': 'blue-cat'});
+    });
+
+    test('closing on an item still counts what was rated, once', () {
+      final s = play(const [
+        OpenQuestion(boardRound),
+        Reveal(1),
+        SubmitAnswer('red', PlayerAnswer(drawing: 'red-cat')),
+        RateAnswer('red', correct: true),
+        CloseQuestion(),
+      ]);
+      expect(points(s, 'red'), 10);
+    });
+  });
+
+  test('an item without text keeps the question itself on the phones', () {
+    final s = play(const [OpenQuestion(boardRound), Reveal(1), Reveal(1), Reveal(1)]);
+    expect(s.revealed, 2);
+    final question = publicView(s, game)['question'] as Map;
+    expect(question['text'], 'Draw it');
+    expect(question['lead'], isNull);
+  });
 }

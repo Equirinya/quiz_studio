@@ -128,6 +128,17 @@ List<String> _strings(Object? v) => [
 ///   groups:      connections: the four groups, easiest first. On the
 ///                question they are stored as `connections`; see
 ///                [Question.companion].
+/// The most lines a screen of [kind] can have: a typed list scrolls, so it
+/// can be long; lines drawn on a whiteboard have to fit it.
+int maxListRows(CompanionKind kind) => kind == CompanionKind.list ? 100 : 20;
+
+/// The line counts the editor offers for a screen of [kind].
+List<int> listRowChoices(CompanionKind kind) => [
+      for (var rows = 2; rows <= 12; rows++) rows,
+      for (final rows in const [15, 20, 30, 50, 100])
+        if (rows <= maxListRows(kind)) rows,
+    ];
+
 class CompanionSpec {
   const CompanionSpec({
     required this.kind,
@@ -195,7 +206,7 @@ class CompanionSpec {
       timerSeconds: timer != null && timer > 0 ? timer : null,
       background: whiteboardBackgrounds.contains(background) ? background as String : 'blank',
       backgroundImage: background == 'image' ? image : null,
-      listRows: (_num(stored['listRows'])?.round() ?? 5).clamp(1, 20),
+      listRows: (_num(stored['listRows'])?.round() ?? 5).clamp(1, maxListRows(kind)),
       min: _num(stored['min']),
       max: _num(stored['max']),
       step: _num(stored['step']),
@@ -254,13 +265,13 @@ class CompanionSpec {
         orderScoring: orderScoring,
       );
 
-  /// The same screen with [rows] lines to fill in (at most 20).
+  /// The same screen with [rows] lines to fill in (at most [maxListRows]).
   CompanionSpec withListRows(int rows) => CompanionSpec(
     kind: kind,
     timerSeconds: timerSeconds,
     background: background,
     backgroundImage: backgroundImage,
-    listRows: rows.clamp(1, 20),
+    listRows: rows.clamp(1, maxListRows(kind)),
     min: min,
     max: max,
     step: step,

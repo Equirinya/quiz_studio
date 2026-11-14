@@ -2,6 +2,7 @@ import 'package:quiz_show/game/game.dart';
 
 const buzzerRound = QuestionRef('r', 'buzz');
 const devicesRound = QuestionRef('r', 'devices');
+const boardRound = QuestionRef('r', 'board');
 
 /// One category with a Fragenhagel of each kind.
 GameContent rapidGame() => GameContent.assemble(
@@ -40,6 +41,21 @@ GameContent rapidGame() => GameContent.assemble(
               'items': [
                 {'question': 'The sun is a star', 'true': true},
                 {'question': 'Bats are birds', 'true': false},
+              ],
+            },
+          },
+          'board': {
+            'type': 'rapidFire',
+            'question': 'Draw it',
+            'pointsPlus': 10,
+            'pointsMinus': 5,
+            'rapidFire': {
+              'mode': 'whiteboard',
+              'items': [
+                {'question': 'A cat', 'answer': 'Four legs, whiskers', 'image': 'cat.png'},
+                {'question': 'A house'},
+                // Read out by the gamemaster: no text of its own.
+                {'answer': 'A dog', 'image': 'dog.png'},
               ],
             },
           },

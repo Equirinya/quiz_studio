@@ -468,6 +468,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String rapidModeName(String mode) {
     String _temp0 = intl.Intl.selectLogic(mode, {
       'buzzer': 'Teams buzzern',
+      'whiteboard': 'Whiteboard auf den Geräten',
       'other': 'Richtig/falsch auf den Geräten',
     });
     return '$_temp0';
@@ -798,6 +799,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get ownColours => 'Eigene Farben';
 
   @override
+  String get boardsColours => 'Farben vom Board';
+
+  @override
+  String get useBoardsColours => 'Farben vom Board verwenden';
+
+  @override
   String get textOnBoard => 'Text auf dem Board';
 
   @override
@@ -1090,6 +1097,43 @@ class AppLocalizationsDe extends AppLocalizations {
   String get lessPerPlace => 'Minus pro Platz';
 
   @override
+  String get pointsByPlace => 'Punkte pro Platz';
+
+  @override
+  String get pointsByPlaceHint => 'z. B. 400, 200, 100, 100 – statt der Regel';
+
+  @override
+  String get byTimeTitle => 'Nach Zeit';
+
+  @override
+  String get byTimeText =>
+      'Das schnellste richtige Team bekommt die Punkte für Platz 1, die anderen einen Anteil danach, wie lange sie gebraucht haben: doppelt so lange, halbe Punkte. Teams knapp hintereinander bekommen fast gleich viel. Geht nur mit den Geräten der Teams; Teams, die du von Hand in Reihenfolge bringst, zählen nach Platz.';
+
+  @override
+  String get winnerTakesAll => 'Sieger bekommt alles';
+
+  @override
+  String get betOwnPoints => 'Höchstens die eigenen Punkte';
+
+  @override
+  String get betOwnPointsText =>
+      'Ein Team kann alles setzen, was es hat, aber nicht mehr; ein Team ohne Punkte setzt nichts.';
+
+  @override
+  String get standingIntro =>
+      'Auf dem großen Bildschirm steht nur die Frage: lies sie vor, dann geht\'s mit dem ersten Team los.';
+
+  @override
+  String get startTurns => 'Runde starten';
+
+  @override
+  String get byPlaces => 'Nach Plätzen';
+
+  @override
+  String get standingPlacesText =>
+      'Der Sieger bekommt die Punkte für Platz 1, danach die Teams in umgekehrter Reihenfolge, in der sie rausgeflogen sind.';
+
+  @override
   String get highestBet => 'Höchster Einsatz';
 
   @override
@@ -1166,7 +1210,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get explainRapidFire =>
-      'Fragenhagel: viele kurze Fragen Schlag auf Schlag. Teams buzzern oder tippen auf ihren Geräten richtig oder falsch; jede Frage kann ein Bild und einen Sound haben.';
+      'Fragenhagel: viele kurze Fragen Schlag auf Schlag. Teams buzzern, tippen auf ihren Geräten richtig oder falsch oder antworten auf einem Whiteboard; jede Frage kann ein Bild und einen Sound haben.';
 
   @override
   String get explainMatching =>
@@ -1265,11 +1309,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get onTheDevicesShort => 'Auf den Geräten';
 
   @override
+  String get rightOrWrongShort => 'Richtig/falsch';
+
+  @override
+  String get whiteboardShort => 'Whiteboard';
+
+  @override
   String get progressOnBigScreen => 'Fortschritt auf dem großen Bildschirm';
 
   @override
   String get rapidDevicesText =>
       'Jede Frage ist eine Aussage. Jedes Team tippt auf seinem Gerät richtig oder falsch; sobald du weitermachst, gibt\'s für richtige Tipps die Punkte.';
+
+  @override
+  String get rapidWhiteboardText =>
+      'Jedes Team schreibt oder malt seine Antwort zu jeder Frage auf ein Whiteboard auf seinem Gerät. Bewerte jede richtig oder falsch; sobald du weitermachst, gibt\'s die Punkte.';
 
   @override
   String get rapidBuzzText =>
@@ -2157,6 +2211,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get statusRapidDevices => 'Teams tippen richtig oder falsch';
 
   @override
+  String get statusRapidWhiteboard =>
+      'Teams antworten auf ihren Whiteboards · bewerte jede Antwort';
+
+  @override
   String get statusAmountBet => 'Teams spielen auf ihre gewettete Zahl';
 
   @override
@@ -2652,6 +2710,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noColour => 'Keine Farbe';
+
+  @override
+  String get customColour => 'Eigene Farbe';
 
   @override
   String get useThisColour => 'Diese Farbe verwenden';
@@ -3391,6 +3452,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noTimeLimit => 'Ohne Zeitlimit';
+
+  @override
+  String get stopTimer => 'Timer stoppen';
 
   @override
   String get notesText =>

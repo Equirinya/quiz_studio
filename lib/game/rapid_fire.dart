@@ -9,11 +9,18 @@ enum RapidMode {
 
   /// Each item is a statement; every team picks right or wrong on its own
   /// device, scored when the gamemaster moves on.
-  devices("Right or wrong on the teams' devices");
+  devices("Right or wrong"),
+
+  /// Every team writes or draws its answer to each item on a whiteboard on
+  /// its device; the gamemaster rates them, scored when moving on.
+  whiteboard("Whiteboard");
 
   const RapidMode(this.uiString);
 
   final String uiString;
+
+  /// Whether the teams answer on their own devices, not by buzzing.
+  bool get onDevices => this != buzzer;
 
   static RapidMode fromName(Object? name) => RapidMode.values.where((m) => m.name == name).firstOrNull ?? RapidMode.buzzer;
 }
@@ -133,21 +140,33 @@ class RapidFire {
 /// on it, and on the devices what each team picked. Kept so that going back
 /// takes the points back and gives the picks back.
 class RapidStep {
-  const RapidStep({this.points = const {}, this.picks = const {}});
+  const RapidStep({this.points = const {}, this.picks = const {}, this.drawings = const {}});
 
   final Map<String, int> points;
 
-  /// Team id to the index of its pick in [rapidChoices].
+  /// Team id to the index of its pick in [rapidChoices]. On the whiteboard:
+  /// how the gamemaster rated it, 0 right and 1 wrong.
   final Map<String, int> picks;
 
-  RapidStep withPoints(String teamId, int delta) =>
-      RapidStep(points: {...points, teamId: (points[teamId] ?? 0) + delta}, picks: picks);
+  /// Whiteboard: team id to its drawing, to give it back on going back.
+  final Map<String, String> drawings;
 
-  RapidStep withPick(String teamId, int choice) => RapidStep(points: points, picks: {...picks, teamId: choice});
+  RapidStep withPoints(String teamId, int delta) =>
+      RapidStep(points: {...points, teamId: (points[teamId] ?? 0) + delta}, picks: picks, drawings: drawings);
+
+  RapidStep withPick(String teamId, int choice) => RapidStep(points: points, picks: {...picks, teamId: choice}, drawings: drawings);
+
+  /// Whiteboard: the team's drawing and how it was rated, where it was.
+  RapidStep withAnswer(String teamId, {bool? right, String? drawing}) => RapidStep(
+        points: points,
+        picks: right == null ? picks : {...picks, teamId: right ? 0 : 1},
+        drawings: drawing == null ? drawings : {...drawings, teamId: drawing},
+      );
 
   Map<String, dynamic> toJson() => {
         if (points.isNotEmpty) 'points': points,
         if (picks.isNotEmpty) 'picks': picks,
+        if (drawings.isNotEmpty) 'drawings': drawings,
       };
 
   static RapidStep fromJson(Object? json) {
@@ -156,6 +175,17 @@ class RapidStep {
             for (final MapEntry(:key, :value) in map.entries)
               if (value is num) '$key': value.toInt(),
         };
-    return json is Map ? RapidStep(points: ints(json['points']), picks: ints(json['picks'])) : const RapidStep();
+    final drawings = json is Map ? json['drawings'] : null;
+    return json is Map
+        ? RapidStep(
+            points: ints(json['points']),
+            picks: ints(json['picks']),
+            drawings: {
+              if (drawings is Map)
+                for (final MapEntry(:key, :value) in drawings.entries)
+                  if (value is String) '$key': value,
+            },
+          )
+        : const RapidStep();
   }
 }

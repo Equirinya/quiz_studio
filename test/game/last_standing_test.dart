@@ -29,6 +29,8 @@ GameContent standingGame({TurnOrder order = TurnOrder.teams}) => GameContent.ass
         ).toMap(),
       },
       'disney': {'type': 'lastStanding', 'question': 'Name a Disney film', 'pointsPlus': 200},
+      'byPlaces': {'type': 'lastStanding', 'question': 'Name a Pixar film', 'pointsPlus': 400, 'placePoints': [400, 200, 100]},
+      'byStep': {'type': 'lastStanding', 'question': 'Name a Marvel film', 'pointsPlus': 300, 'rankStep': 100},
     },
   },
 );
@@ -42,13 +44,15 @@ SessionState teams() => const SessionState(
   ],
 );
 
-SessionState play(List<Command> commands, {SessionState? from, GameContent? game}) {
+SessionState play(List<Command> commands, {SessionState? from, GameContent? game, bool intro = false}) {
   var state = from ?? teams();
   game ??= standingGame();
   for (final command in commands) {
     final result = reduce(state, command, game);
     if (!result.accepted) throw StateError('rejected: ${command.toJson()}');
     state = result.state;
+    // The question read out, straight on to the turns; see the test of it.
+    if (command is OpenQuestion && intro == false) state = reduce(state, const StartTurns(), game).state;
   }
   return state;
 }
@@ -116,5 +120,55 @@ void main() {
     expect(s.standing!.current, 'green');
     s = SessionState.fromJson(s.toJson());
     expect(s.standing!.turns.single, ('red', StandingResult.right));
+  });
+
+  group('by places', () {
+    int points(SessionState s, String id) => s.team(id)!.points;
+
+    test('the winner first, then the teams in the reverse order they went out', () {
+      var s = play(const [OpenQuestion(QuestionRef('c', 'byPlaces'))]);
+      // Red goes out first, then Blue: Green wins.
+      s = play(const [TakeTurn(StandingResult.out)], from: s);
+      expect((points(s, 'red'), points(s, 'blue'), points(s, 'green')), (100, 300, 200), reason: 'nothing before it is decided');
+      s = play(const [TakeTurn(StandingResult.out)], from: s);
+      expect(s.standing!.winner, 'green');
+      expect((points(s, 'green'), points(s, 'blue'), points(s, 'red')), (200 + 400, 300 + 200, 100 + 100));
+      // Undone: everything goes back.
+      s = play(const [UndoTurn()], from: s);
+      expect((points(s, 'red'), points(s, 'blue'), points(s, 'green')), (100, 300, 200));
+    });
+
+    test('by rule: the question\'s points, less the step for each place', () {
+      var s = play(const [OpenQuestion(QuestionRef('c', 'byStep'))]);
+      s = play(const [TakeTurn(StandingResult.out), TakeTurn(StandingResult.out)], from: s);
+      expect((points(s, 'green'), points(s, 'blue'), points(s, 'red')), (200 + 300, 300 + 200, 100 + 100));
+      // Closing gives nothing twice.
+      s = play(const [CloseQuestion()], from: s);
+      expect((points(s, 'green'), points(s, 'blue'), points(s, 'red')), (500, 500, 200));
+    });
+
+    test('without places the winner still takes it all', () {
+      var s = play(const [OpenQuestion(disney)]);
+      s = play(const [TakeTurn(StandingResult.out), TakeTurn(StandingResult.out)], from: s);
+      expect((points(s, 'green'), points(s, 'blue'), points(s, 'red')), (400, 300, 100));
+    });
+  });
+
+  test('first only the question, to be read out; Start brings the first team and prompt', () {
+    var s = play(const [OpenQuestion(biopics)], intro: true);
+    expect(s.standing!.started, isFalse);
+    expect(s.standing!.current, isNull);
+    expect(reduce(s, const TakeTurn(StandingResult.right), standingGame()).accepted, isFalse);
+    final view = publicView(s, standingGame())['question'] as Map;
+    expect((view['standing'] as Map).containsKey('prompt'), isFalse);
+    s = play(const [StartTurns()], from: s);
+    expect(s.standing!.current, 'red');
+    expect(((publicView(s, standingGame())['question'] as Map)['standing'] as Map)['prompt'], 'Freddie Mercury');
+    // Undo before the first turn: back to the question alone.
+    s = play(const [UndoTurn()], from: s);
+    expect(s.standing!.started, isFalse);
+    // Kept when stored; older stored play counts as started.
+    expect(StandingPlay.fromJson(s.standing!.toJson())!.started, isFalse);
+    expect(StandingPlay.fromJson({'order': ['red']})!.started, isTrue);
   });
 }

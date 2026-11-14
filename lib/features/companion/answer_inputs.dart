@@ -91,7 +91,7 @@ class _CompanionInputState extends State<CompanionInput> {
 
   // list: one field per answer
   late final List<TextEditingController> _lines = [
-    for (var i = 0; i < ((widget.spec['listRows'] as num?)?.toInt() ?? 5).clamp(1, 20); i++) TextEditingController(),
+    for (var i = 0; i < ((widget.spec['listRows'] as num?)?.toInt() ?? 5).clamp(1, maxListRows(CompanionKind.list)); i++) TextEditingController(),
   ];
 
   @override

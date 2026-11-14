@@ -203,7 +203,7 @@
       }
     }
   },
-  "rapidModeName": "{mode, select, buzzer{Teams buzz} other{Right or wrong on the teams' devices}}",
+  "rapidModeName": "{mode, select, buzzer{Teams buzz} whiteboard{Whiteboard on the devices} other{Right or wrong on the devices}}",
   "@rapidModeName": {
     "placeholders": {
       "mode": {
@@ -399,6 +399,8 @@
   "colours": "Colours",
   "appsColours": "The app's colours",
   "ownColours": "Own colours",
+  "boardsColours": "The board's colours",
+  "useBoardsColours": "Use the board's colours",
   "textOnBoard": "Text on the board",
   "splitPointFields": "Split point fields",
   "splitPointFieldsText": "When a value appears more than once in a ring",
@@ -579,6 +581,17 @@
   "eachMinus": "Each −",
   "ifWrongMinus": "If wrong −",
   "lessPerPlace": "Less per place",
+  "pointsByPlace": "Points by place",
+  "pointsByPlaceHint": "e.g. 400, 200, 100, 100 – instead of the rule",
+  "byTimeTitle": "By time",
+  "byTimeText": "The fastest right team gets the first place's points, the others a share by how long they took: twice as long, half the points. Teams close together get about the same. Needs the teams' devices; teams you put in order by hand go by their places.",
+  "winnerTakesAll": "Winner takes all",
+  "betOwnPoints": "At most their own points",
+  "betOwnPointsText": "A team can bet everything it has, but no more; a team without points bets nothing.",
+  "standingIntro": "Only the question is on the big screen: read it out, then start with the first team.",
+  "startTurns": "Start the turns",
+  "byPlaces": "By places",
+  "standingPlacesText": "The winner gets the first place's points, then the teams in the reverse order they went out.",
   "highestBet": "Highest bet",
   "musicAndEffects": "Music & effects",
   "theCategorys": "The category's",
@@ -602,7 +615,7 @@
   "explainFeud": "A duel over a survey: the team that buzzed uncovers answers until its third strike, then the other team may steal them all.",
   "explainTopAnswers": "Name the most popular answers: teams find answers on a list, by buzzing or on their devices, and get the points of each one.",
   "explainConnections": "Sixteen words in four groups of four. Every team solves it on its own device; each group found is worth a quarter of the points.",
-  "explainRapidFire": "Fragenhagel: many short questions right after one another. Teams buzz, or judge statements right or wrong on their devices; each item can have a picture and a sound.",
+  "explainRapidFire": "Fragenhagel: many short questions right after one another. Teams buzz, judge statements right or wrong on their devices, or answer on a whiteboard; each item can have a picture and a sound.",
   "explainMatching": "Matching: pairs of texts or pictures, e.g. films and their years. Every team puts them back together on its device; the big screen shows the pictures.",
   "explainLastStanding": "Last team standing: one player per team takes turns, e.g. naming films or saying whether a star has a biopic. A wrong answer puts the team out; the last team left gets the points.",
   "explainUnsupported": "This question type is not supported by this version of the app.",
@@ -673,8 +686,11 @@
   "pictureStripText": "Small pictures under the question, \"?\" for those still hidden",
   "teamsBuzz": "Teams buzz",
   "onTheDevicesShort": "On the devices",
+  "rightOrWrongShort": "Right or wrong",
+  "whiteboardShort": "Whiteboard",
   "progressOnBigScreen": "Progress on the big screen",
   "rapidDevicesText": "Each item is a statement. Every team picks right or wrong on its device; when you move on, a right pick gets the points.",
+  "rapidWhiteboardText": "Every team writes or draws its answer to each item on a whiteboard on its device. Rate each one right or wrong; when you move on, the points follow.",
   "rapidBuzzText": "Teams buzz for each item. A right answer gets the points and moves straight on to the next item.",
   "statementN": "Statement {n}",
   "@statementN": {
@@ -1124,6 +1140,7 @@
     }
   },
   "statusRapidDevices": "Teams pick right or wrong on their devices",
+  "statusRapidWhiteboard": "Teams answer on their whiteboards · rate each one",
   "statusAmountBet": "Teams go for the number they bet",
   "statusOpenNoBuzzers": "Question open · no buzzers",
   "statusOpenWaiting": "Question open · waiting for a buzz",
@@ -1494,6 +1511,7 @@
     }
   },
   "noColour": "No colour",
+  "customColour": "Own colour",
   "useThisColour": "Use this colour",
   "presenterWindowTitle": "Quiz Studio · Presenter",
   "reconnectingMainWindow": "Reconnecting to the main window…",
@@ -1915,5 +1933,6 @@
   "nextPair": "Next pair",
   "moreTime": "More time",
   "noTimeLimit": "No time limit",
+  "stopTimer": "Stop timer",
   "notesText": "Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here."
 }

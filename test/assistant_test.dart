@@ -655,6 +655,29 @@ void main() {
       expect(question.buzzerable, false);
     });
 
+    test('places as listed, by time, bets up to the own points, and last team standing by places', () async {
+      Future<Map> add(Map<String, dynamic> args) async {
+        await tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', ...args});
+        final game = await tools.call('get_game', {'gameId': 'g'}) as Map;
+        final questions = (((game['groups'] as List).single as Map)['categories'] as List).single['questions'] as List;
+        return questions.firstWhere((q) => q['question'] == args['question']) as Map;
+      }
+
+      final ranked = await add({'question': 'Fastest', 'pointsPlus': 400, 'rankStep': 100, 'placePoints': [400, 200, 100, 100], 'byTime': true});
+      expect(ranked['placePoints'], [400, 200, 100, 100]);
+      expect(ranked['byTime'], true);
+      final bet = await add({'question': 'Final', 'pointsPlus': 500, 'wager': true, 'betOwnPoints': true});
+      expect(bet['betOwnPoints'], true);
+      final standing = await add({'type': 'lastStanding', 'question': 'Name a Pixar film', 'pointsPlus': 300, 'rankStep': 100});
+      expect(standing['rankStep'], 100);
+      final question = (await backend.loadGame('g')).groups.single.categories.single.questions.firstWhere((q) => q.text == 'Name a Pixar film');
+      expect(question.standingByPlaces, isTrue);
+      await expectLater(
+        tools.call('add_question', {'gameId': 'g', 'categoryId': 'c1', 'question': 'x', 'placePoints': [100, -5]}),
+        throwsA(isA<ToolError>()),
+      );
+    });
+
     test('a Fragenhagel needs items, a matching question two pairs', () async {
       for (final args in <Map<String, dynamic>>[
         {'type': 'rapidFire', 'question': 'x'},
