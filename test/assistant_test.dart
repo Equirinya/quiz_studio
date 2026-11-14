@@ -96,6 +96,20 @@ class FakeBackend implements GameToolsBackend {
       questions[categoryId]!.remove(questionId);
 
   @override
+  Future<void> updateGame(String gameId, Map<String, dynamic> data) async {
+    final game = games[gameId]!;
+    data.forEach((key, value) {
+      // Dotted paths reach into maps, as in the database.
+      final path = key.split('.');
+      var target = game;
+      for (final part in path.take(path.length - 1)) {
+        target = target[part] = Map<String, dynamic>.from(target[part] as Map? ?? const {});
+      }
+      target[path.last] = value;
+    });
+  }
+
+  @override
   Future<void> updateGroup(String gameId, String groupId, Map<String, dynamic> data) async =>
       groups[gameId]![groupId]!.addAll(data);
 
@@ -701,6 +715,23 @@ void main() {
       final question = (await backend.loadGame('g')).groups.single.categories.single.questions.single;
       expect(question.informationImages, [name, '']);
       expect(question.companion!.backgroundImage, name);
+    });
+
+    test('the script, section by section', () async {
+      await tools.call('set_script', {'gameId': 'g', 'text': '# Welcome\n**Hello** {red}everyone{/}'});
+      await tools.call('set_script', {'gameId': 'g', 'categoryId': 'c1', 'text': 'Explain the rules'});
+      await tools.call('set_script', {'gameId': 'g', 'categoryId': 'c1', 'questionId': 'q1', 'text': 'Read slowly'});
+      final game = await backend.loadGame('g');
+      expect(GameScript.of(game).texts, {'intro': '# Welcome\n**Hello** {red}everyone{/}', 'c_c1': 'Explain the rules', 'q_q1': 'Read slowly'});
+      final described = await tools.call('get_game', {'gameId': 'g'}) as Map;
+      expect(described['script'], startsWith('# Welcome'));
+      final category = (described['groups'] as List).single['categories'].single as Map;
+      expect(category['script'], 'Explain the rules');
+      expect((category['questions'] as List).single['script'], 'Read slowly');
+      await tools.call('set_script', {'gameId': 'g', 'categoryId': 'c1', 'text': ''});
+      expect(GameScript.of(await backend.loadGame('g')).text('c_c1'), '');
+      await expectLater(tools.call('set_script', {'gameId': 'g', 'questionId': 'q1', 'text': 'x'}), throwsA(isA<ToolError>()));
+      await expectLater(tools.call('set_script', {'gameId': 'g', 'categoryId': 'nope', 'text': 'x'}), throwsA(isA<ToolError>()));
     });
 
     test('cards and sounds of a category', () async {

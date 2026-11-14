@@ -41,6 +41,9 @@ class RepositoryToolsBackend implements GameToolsBackend {
       _repo.addGroup(gameId, type, index, name: name);
 
   @override
+  Future<void> updateGame(String gameId, Map<String, dynamic> data) => _repo.updateGame(gameId, data);
+
+  @override
   Future<void> updateGroup(String gameId, String groupId, Map<String, dynamic> data) => _repo.updateGroup(gameId, groupId, data);
 
   @override

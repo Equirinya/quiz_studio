@@ -25,6 +25,10 @@ abstract class GameToolsBackend {
   Future<GameContent> loadGame(String gameId);
 
   Future<String> createGame(String name);
+
+  /// Changes fields of the game document; keys may be dotted paths such as
+  /// `script.intro`.
+  Future<void> updateGame(String gameId, Map<String, dynamic> data);
   Future<String> addGroup(String gameId, String name, BoardType type, int index);
   Future<void> updateGroup(String gameId, String groupId, Map<String, dynamic> data);
   Future<void> deleteGroup(String gameId, String groupId);
@@ -548,6 +552,24 @@ final List<ToolSpec> gameToolSpecs = [
     ),
   ),
   ToolSpec(
+    'set_script',
+    'Writes one section of the gamemaster\'s script: the long note the gamemaster reads on the controller during the '
+        'show (what to say, jokes, reminders). It has an intro before the first category and a section under each '
+        'category and each question; get_game shows them as "script". Give nothing for the intro, categoryId for a '
+        'category, or categoryId and questionId for a question. The text replaces the section; "" empties it. '
+        'Format, per line: "# " heading, "## " subheading, "- " bullet point; **bold**, *italic*, and colours as '
+        '{red}text{/} with ${ScriptColor.values.map((c) => c.name).join(', ')}.',
+    _object(
+      {
+        'gameId': _string,
+        'categoryId': _string,
+        'questionId': _string,
+        'text': _string,
+      },
+      ['gameId', 'text'],
+    ),
+  ),
+  ToolSpec(
     'upload_media',
     'Uploads a picture, sound or video from this computer (the one running the app) into the game and returns '
         'the name to use in image, music and similar fields. Only upload files the user pointed you to.',
@@ -994,9 +1016,13 @@ List<Map<String, dynamic>> _describeCards(List<CueCard> cards) => [
 
 String _hex(int argb) => '#${(argb & 0xffffff).toRadixString(16).padLeft(6, '0')}';
 
-Map<String, dynamic> describeGame(GameContent game) => {
+Map<String, dynamic> describeGame(GameContent game) {
+  final script = GameScript.of(game);
+  String? text(String key) => script.text(key).isEmpty ? null : script.text(key);
+  return {
   'id': game.id,
   'name': game.name,
+  'script': ?text(GameScript.introKey),
   'groups': [
     for (final group in game.groups)
       {
@@ -1017,12 +1043,20 @@ Map<String, dynamic> describeGame(GameContent game) => {
               'active': category.active,
               if (category.cards.isNotEmpty) 'cards': _describeCards(category.cards),
               ..._describeSounds(category.sounds),
-              'questions': [for (final question in category.questions) describeQuestion(question)],
+              'script': ?text(GameScript.categoryKey(category.id)),
+              'questions': [
+                for (final question in category.questions)
+                  {
+                    ...describeQuestion(question),
+                    'script': ?text(GameScript.questionKey(question.id)),
+                  },
+              ],
             },
         ],
       },
   ],
-};
+  };
+}
 
 /// Runs tools against a backend and keeps a short record of what was done,
 /// for the user to see.
@@ -1212,6 +1246,34 @@ class GameTools {
         }
         await backend.deleteGroup(gameId, group.id);
         onActivity?.call('Deleted group "${group.name}"');
+        return {'ok': true};
+
+      case 'set_script':
+        final gameId = _arg(args, 'gameId');
+        final value = args['text'];
+        if (value is! String) throw const ToolError('"text" is required.');
+        final categoryId = args['categoryId'] is String && (args['categoryId'] as String).isNotEmpty ? args['categoryId'] as String : null;
+        final questionId = args['questionId'] is String && (args['questionId'] as String).isNotEmpty ? args['questionId'] as String : null;
+        final game = await backend.loadGame(gameId);
+        final String key;
+        final String label;
+        if (questionId != null) {
+          if (categoryId == null) throw const ToolError('A question needs its categoryId too.');
+          final category = await _category(gameId, categoryId);
+          final question = category.questions.where((q) => q.id == questionId).firstOrNull;
+          if (question == null) throw ToolError('No question "$questionId" in category "${category.name}". Use get_game to see the ids.');
+          key = GameScript.questionKey(question.id);
+          label = 'question "${GameScript.questionTitle(question)}"';
+        } else if (categoryId != null) {
+          final category = await _category(gameId, categoryId);
+          key = GameScript.categoryKey(category.id);
+          label = 'category "${category.name}"';
+        } else {
+          key = GameScript.introKey;
+          label = 'the intro';
+        }
+        await backend.updateGame(gameId, GameScript.of(game).updateFor(key, value));
+        onActivity?.call('Wrote the script for $label');
         return {'ok': true};
 
       case 'set_cards':
