@@ -784,6 +784,7 @@ const String screenEffectFireworks = 'fireworks';
 const String screenEffectBalloons = 'balloons';
 const String screenEffectStars = 'stars';
 const String screenEffectSpotlight = 'spotlight';
+const String screenEffectFastForward = 'fastForward';
 const List<String> screenEffects = [
   screenEffectConfetti,
   screenEffectFlash,
@@ -791,6 +792,7 @@ const List<String> screenEffects = [
   screenEffectBalloons,
   screenEffectStars,
   screenEffectSpotlight,
+  screenEffectFastForward,
 ];
 
 /// Plays a one-shot animation over the screen, e.g. confetti.

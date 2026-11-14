@@ -279,4 +279,14 @@ void main() {
     await tester.pump();
     expect(inPresenter(find.byWidgetPredicate((w) => w is CustomPaint && w.painter is ConfettiPainter)), findsNothing);
   });
+
+  testWidgets('the tape fast forward smears the presenter and ends by itself', (tester) async {
+    await pumpBoth(tester);
+    await tap(tester, tab('Effects'));
+    await tap(tester, inSheet(find.text('Tape fast forward')));
+    expect(inPresenter(find.byType(TapeSmear)), findsOneWidget);
+    await tester.pump(TapeSmear.duration);
+    await tester.pump();
+    expect(inPresenter(find.byType(TapeSmear)), findsNothing);
+  });
 }

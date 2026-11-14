@@ -3305,6 +3305,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get spotlight => 'Spotlight';
 
   @override
+  String get fastForward => 'Tape fast forward';
+
+  @override
   String get editTitle => 'Edit title';
 
   @override
