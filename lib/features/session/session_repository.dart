@@ -99,12 +99,25 @@ class SessionRepository {
             for (final doc in snapshot.docs) _summary(doc.id, doc.data()),
           ]));
 
-  /// Sessions someone else hosts and invited the user to. Fails, rather
-  /// than showing anything wrong, where the rules do not know invites yet.
-  Stream<List<SessionSummary>> watchInvitedSessions() =>
-      _sessions.where('invited', arrayContains: _uid).snapshots().map((snapshot) => sortSessions([
-            for (final doc in snapshot.docs) _summary(doc.id, doc.data()),
-          ]));
+  /// Sessions someone else hosts and invited the user to. Asked only once
+  /// `config/app` says `invites: true`, that is once the rules know invites:
+  /// a query the rules turn down breaks every other listener of the Firestore
+  /// client on desktop ("Target id not found").
+  Stream<List<SessionSummary>> watchInvitedSessions() async* {
+    bool enabled;
+    try {
+      enabled = (await _db.collection('config').doc('app').get()).data()?['invites'] == true;
+    } catch (_) {
+      enabled = false;
+    }
+    if (!enabled) {
+      yield const [];
+      return;
+    }
+    yield* _sessions.where('invited', arrayContains: _uid).snapshots().map((snapshot) => sortSessions([
+          for (final doc in snapshot.docs) _summary(doc.id, doc.data()),
+        ]));
+  }
 
   Stream<SessionSummary?> watchSession(String sessionId) =>
       session(sessionId).snapshots().map((doc) => doc.data() == null ? null : _summary(doc.id, doc.data()!));
