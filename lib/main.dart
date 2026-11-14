@@ -101,7 +101,7 @@ class _HomePageState extends State<HomePage> {
     if (!mounted || IncomingLinks.instance.pending.value == null) return;
     final link = IncomingLinks.instance.take()!;
     final navigator = Navigator.of(context);
-    if (SessionJoinLink.tryParse(link) != null) {
+    if (SessionJoinLink.tryParse(link) != null || SessionInviteLink.tryParse(link) != null) {
       navigator.push(MaterialPageRoute(builder: (_) => JoinSessionPage(initialLink: link)));
     } else if (parseInviteLink(link) != null) {
       final gameId = await showJoinGameDialog(context, link: link);

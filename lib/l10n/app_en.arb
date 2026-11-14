@@ -1939,5 +1939,33 @@
   "moreTime": "More time",
   "noTimeLimit": "No time limit",
   "stopTimer": "Stop timer",
-  "notesText": "Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here."
+  "notesText": "Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here.",
+  "inviteToSession": "Invite",
+  "inviteToSessionTitle": "Invite to \"{name}\"",
+  "@inviteToSessionTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "inviteToSessionText": "Whoever opens this link while signed in can control the show from their own device, and the session appears in their list. Only you can present it.",
+  "newInviteLink": "New link",
+  "newInviteLinkText": "The current link stops working. People who already joined stay in.",
+  "invitedPeople": "Invited",
+  "nobodyInvitedYet": "Nobody has joined with the link yet.",
+  "removeFromSession": "Remove from session",
+  "removeFromSessionText": "They can no longer see or control this session. With the current link they can join again, so make a new link if they should not.",
+  "sharedWithYou": "Shared with you",
+  "invitedBy": "Invited by",
+  "leaveSession": "Leave session",
+  "leaveSessionText": "\"{name}\" disappears from your list until you are invited again.",
+  "@leaveSessionText": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noLongerInvited": "You no longer have access to this session."
 }

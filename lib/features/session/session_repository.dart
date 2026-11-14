@@ -11,11 +11,27 @@ import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/game/game.dart';
 
 class SessionSummary {
-  const SessionSummary({required this.id, required this.name, this.gameId, this.hostDevice, this.createdAtMillis, this.updatedAtMillis});
+  const SessionSummary({
+    required this.id,
+    required this.name,
+    this.gameId,
+    this.host,
+    this.invited = const [],
+    this.hostDevice,
+    this.createdAtMillis,
+    this.updatedAtMillis,
+  });
 
   final String id;
   final String name;
   final String? gameId;
+
+  /// The owner's uid.
+  final String? host;
+
+  /// The users who joined with the session's invite link: they control it
+  /// from their own devices and see it in their list.
+  final List<String> invited;
 
   /// The device presenting this session at the moment, if any.
   final String? hostDevice;
@@ -79,9 +95,16 @@ class SessionRepository {
   // ── sessions the user hosts ────────────────────────────────────────────────
 
   Stream<List<SessionSummary>> watchMySessions() =>
-      _sessions.where('host', isEqualTo: _uid).snapshots().map((snapshot) => [
+      _sessions.where('host', isEqualTo: _uid).snapshots().map((snapshot) => sortSessions([
             for (final doc in snapshot.docs) _summary(doc.id, doc.data()),
-          ]..sort((a, b) => (b.createdAtMillis ?? 0).compareTo(a.createdAtMillis ?? 0)));
+          ]));
+
+  /// Sessions someone else hosts and invited the user to. Fails, rather
+  /// than showing anything wrong, where the rules do not know invites yet.
+  Stream<List<SessionSummary>> watchInvitedSessions() =>
+      _sessions.where('invited', arrayContains: _uid).snapshots().map((snapshot) => sortSessions([
+            for (final doc in snapshot.docs) _summary(doc.id, doc.data()),
+          ]));
 
   Stream<SessionSummary?> watchSession(String sessionId) =>
       session(sessionId).snapshots().map((doc) => doc.data() == null ? null : _summary(doc.id, doc.data()!));
@@ -146,6 +169,8 @@ class SessionRepository {
     final players = <String, SessionJoinLink>{};
     for (final doc in existing.docs) {
       final teamId = doc.data()['teamId'];
+      // The invite link has a token of its own, which the QR codes leave alone.
+      if (isInviteToken(doc.data())) continue;
       if (doc.data()['role'] == 'controller') {
         controller ??= SessionJoinLink(sessionId: sessionId, token: doc.id, role: Role.controller);
       } else if (teamId is String) {
@@ -210,13 +235,15 @@ class SessionRepository {
 
   /// Joins someone else's session with a scanned link.
   Future<void> join(SessionJoinLink link, {String name = ''}) =>
-      session(link.sessionId).collection('members').doc(_uid).set({
+      session(link.sessionId).collection('members').doc(_uid).set(_memberData(link, name));
+
+  Map<String, Object?> _memberData(SessionJoinLink link, String name) => {
         'token': link.token,
         'role': link.role.name,
         'teamId': ?link.teamId,
         'name': name,
         'joinedAt': FieldValue.serverTimestamp(),
-      });
+      };
 
   Future<SessionMembership?> loadMembership(String sessionId) async {
     final data = (await session(sessionId).collection('members').doc(_uid).get()).data();
@@ -228,6 +255,70 @@ class SessionRepository {
   }
 
   Future<void> leave(String sessionId) => session(sessionId).collection('members').doc(_uid).delete();
+
+  // ── inviting ───────────────────────────────────────────────────────────────
+
+  /// The session's invite link, made on first use. With [renew] the old link
+  /// stops working; whoever joined with it stays in. Host only.
+  Future<SessionInviteLink> inviteLink(String sessionId, {bool renew = false}) async {
+    final tokens = session(sessionId).collection('tokens');
+    final existing = await tokens.where('invite', isEqualTo: true).get();
+    if (renew) {
+      for (final doc in existing.docs) {
+        await doc.reference.delete();
+      }
+    } else if (existing.docs.isNotEmpty) {
+      return SessionInviteLink(sessionId: sessionId, token: existing.docs.first.id);
+    }
+    final token = _randomId(20);
+    await tokens.doc(token).set({'role': Role.controller.name, 'invite': true, 'createdAt': FieldValue.serverTimestamp()});
+    return SessionInviteLink(sessionId: sessionId, token: token);
+  }
+
+  /// Joins as a controller with an invite and puts the session in the user's
+  /// list. Both go in one batch: the rules let a user add themselves to
+  /// `invited` only alongside a controller membership from an invite token.
+  ///
+  /// Where the rules do not allow that yet, it joins as a controller only and
+  /// returns false: the show can be controlled, but the session is not listed.
+  Future<bool> acceptInvite(SessionInviteLink link) async {
+    final batch = _db.batch()
+      ..set(session(link.sessionId).collection('members').doc(_uid), _memberData(link.joinLink, ''))
+      ..update(session(link.sessionId), {
+        'invited': FieldValue.arrayUnion([_uid]),
+      });
+    try {
+      await batch.commit();
+      return true;
+    } on FirebaseException catch (error) {
+      if (error.code != 'permission-denied') rethrow;
+      await join(link.joinLink);
+      return false;
+    }
+  }
+
+  /// Takes [uid] out of the session: off the list, and no longer a
+  /// controller. Host only.
+  Future<void> removeInvited(String sessionId, String uid) => _uninvite(sessionId, uid);
+
+  /// Takes the session off the user's own list and leaves it.
+  Future<void> leaveInvited(String sessionId) => _uninvite(sessionId, _uid);
+
+  Future<void> _uninvite(String sessionId, String uid) => (_db.batch()
+        ..delete(session(sessionId).collection('members').doc(uid))
+        ..update(session(sessionId), {
+          'invited': FieldValue.arrayRemove([uid]),
+        }))
+      .commit();
+
+  /// How the user controls a session they were invited to; null once they
+  /// are no longer a controller of it.
+  Future<SessionJoinLink?> invitedControllerLink(String sessionId) async {
+    final data = (await session(sessionId).collection('members').doc(_uid).get()).data();
+    final token = data?['token'];
+    if (data?['role'] != Role.controller.name || token is! String) return null;
+    return SessionJoinLink(sessionId: sessionId, token: token, role: Role.controller);
+  }
 
   // ── as a controller or player ──────────────────────────────────────────────
 
@@ -255,10 +346,24 @@ class SessionRepository {
       });
 }
 
+/// Newest first.
+List<SessionSummary> sortSessions(List<SessionSummary> sessions) =>
+    sessions..sort((a, b) => (b.createdAtMillis ?? 0).compareTo(a.createdAtMillis ?? 0));
+
+/// Whether a token document is the one behind the invite link rather than a
+/// QR code.
+bool isInviteToken(Map<String, dynamic> data) => data['invite'] == true;
+
+/// A session document as the list shows it.
+@visibleForTesting
+SessionSummary sessionSummaryOf(String id, Map<String, dynamic> data) => _summary(id, data);
+
 SessionSummary _summary(String id, Map<String, dynamic> data) => SessionSummary(
       id: id,
       name: data['name'] is String ? data['name'] as String : '',
       gameId: data['gameId'] as String?,
+      host: data['host'] is String ? data['host'] as String : null,
+      invited: [for (final uid in data['invited'] as List? ?? const []) if (uid is String) uid],
       hostDevice: data['hostDevice'] as String?,
       createdAtMillis: data['createdAt'] is Timestamp ? (data['createdAt'] as Timestamp).millisecondsSinceEpoch : null,
       updatedAtMillis: data['updatedAt'] is Timestamp ? (data['updatedAt'] as Timestamp).millisecondsSinceEpoch : null,

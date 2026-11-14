@@ -70,6 +70,37 @@ class SessionJoinLink {
   }
 }
 
+/// An invitation to help run a session: whoever opens it, signed in, becomes
+/// one of its controllers and finds the session in their own list. It rides
+/// on a controller token of its own, so the host can replace it without
+/// touching the QR codes.
+class SessionInviteLink {
+  const SessionInviteLink({required this.sessionId, required this.token});
+
+  final String sessionId;
+  final String token;
+
+  /// `quiz-studio://session/{sessionId}/invite/{token}`. Under `session/` so
+  /// the same app links open it; older versions reject it as not a code.
+  String get link => 'quiz-studio://session/$sessionId/invite/$token';
+
+  String get webLink => toWebLink(link);
+
+  /// How the invited device controls the session once it has joined.
+  SessionJoinLink get joinLink => SessionJoinLink(sessionId: sessionId, token: token, role: Role.controller);
+
+  /// Reads [link] or [webLink].
+  static SessionInviteLink? tryParse(String input) {
+    const prefix = 'quiz-studio://session/';
+    final text = toAppLink(input);
+    if (!text.startsWith(prefix)) return null;
+    final parts = text.substring(prefix.length).split('/');
+    final valid = RegExp(r'^[A-Za-z0-9_-]+$');
+    if (parts.length != 3 || parts[1] != 'invite' || !valid.hasMatch(parts[0]) || !valid.hasMatch(parts[2])) return null;
+    return SessionInviteLink(sessionId: parts[0], token: parts[2]);
+  }
+}
+
 /// Where a device sends its commands: straight into the local host when it is
 /// presenting, or over a transport when it is not.
 abstract class CommandSink {
