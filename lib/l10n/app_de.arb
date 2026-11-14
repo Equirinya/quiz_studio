@@ -904,5 +904,22 @@
   "nextPair": "Nächstes Paar",
   "moreTime": "Mehr Zeit",
   "noTimeLimit": "Ohne Zeitlimit",
-  "notesText": "Ausgewählte Teams bekommen ein Notizfeld auf ihren Geräten, zusätzlich zu ihrer Antwort, z. B. für eine Bonus-Schätzung. Du liest die Notizen hier."
+  "notesText": "Ausgewählte Teams bekommen ein Notizfeld auf ihren Geräten, zusätzlich zu ihrer Antwort, z. B. für eine Bonus-Schätzung. Du liest die Notizen hier.",
+  "script": "Skript",
+  "scriptSummary": "Deine Notizen für die Show",
+  "scriptExplain": "Deine Notizen für die Show, zum Lesen auf dem Controller. Die Linien zwischen den Abschnitten folgen dem Spiel: Was du unter eine Frage schreibst, bleibt bei ihr. Formatieren mit den Knöpfen oben oder per **fett**, *kursiv*, # Überschrift oder - Punkt.",
+  "scriptWriteHere": "Hier schreiben …",
+  "scriptIntro": "Anfang",
+  "scriptCategory": "Kategorie: {name}",
+  "scriptQuestion": "Frage: {name}",
+  "scriptBold": "Fett",
+  "scriptItalic": "Kursiv",
+  "scriptHeading": "Überschrift",
+  "scriptSubheading": "Zwischenüberschrift",
+  "scriptBullet": "Aufzählungspunkt",
+  "scriptColour": "Farbe",
+  "scriptClearFormat": "Formatierung entfernen",
+  "scriptNotSaved": "Nicht gespeichert. Prüfe die Verbindung; der Text bleibt hier.",
+  "scriptToCurrent": "Aktuell",
+  "scriptEmpty": "Noch kein Skript. Schreib es im Spiel-Editor unter Skript."
 }

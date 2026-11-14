@@ -3375,4 +3375,62 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notesText =>
       'Chosen teams get a notes field on their devices, next to whatever they answer, e.g. to estimate for a bonus. You read the notes here.';
+
+  @override
+  String get script => 'Script';
+
+  @override
+  String get scriptSummary => 'Your notes for the show';
+
+  @override
+  String get scriptExplain =>
+      'Your notes for the show, read on the controller. The lines between the sections follow the game: what you write under a question stays with it. Format with the buttons above, or type **bold**, *italic*, # heading or - point.';
+
+  @override
+  String get scriptWriteHere => 'Write here…';
+
+  @override
+  String get scriptIntro => 'Start';
+
+  @override
+  String scriptCategory(String name) {
+    return 'Category: $name';
+  }
+
+  @override
+  String scriptQuestion(String name) {
+    return 'Question: $name';
+  }
+
+  @override
+  String get scriptBold => 'Bold';
+
+  @override
+  String get scriptItalic => 'Italic';
+
+  @override
+  String get scriptHeading => 'Heading';
+
+  @override
+  String get scriptSubheading => 'Subheading';
+
+  @override
+  String get scriptBullet => 'Bullet point';
+
+  @override
+  String get scriptColour => 'Colour';
+
+  @override
+  String get scriptClearFormat => 'Clear formatting';
+
+  @override
+  String get scriptNotSaved =>
+      'Not saved. Check the connection; the text stays here.';
+
+  @override
+  String get scriptToCurrent => 'Current';
+
+  @override
+  String get scriptEmpty =>
+      'No script yet. Write it in the game editor under Script.';
 }
