@@ -860,30 +860,33 @@ class TapeSmear extends StatelessWidget {
       final zone = h * 0.09;
       final dy = (jitter.nextDouble() - 0.5) * h * 0.012 * strength;
 
+      // A few broad bands, not dozens of thin rows: every band reads the
+      // screen underneath once a frame, and on a laptop that is what makes
+      // the effect stutter. Only the bands near the static are blurred.
       final rows = <Widget>[];
       var y = 0.0;
       while (y < h) {
-        final rowHeight = h * (0.012 + layout.nextDouble() * 0.06);
+        final rowHeight = min(h - y, h * (0.07 + layout.nextDouble() * 0.11));
         final mid = y + rowHeight / 2;
         // Near the static band the rows tear apart, elsewhere they wobble.
         final near = (1 - (mid - trackY).abs() / zone).clamp(0.0, 1.0);
         final wave = sin(mid / h * 9 + progress * 26) * 0.012;
         final tear = (jitter.nextDouble() - 0.3) * (0.012 + near * 0.09);
         // The head switch at the very bottom of a tape picture.
-        final bottom = mid > h * 0.95 ? 0.05 : 0.0;
+        final bottom = mid > h * 0.92 ? 0.05 : 0.0;
         final dx = (wave + tear + bottom) * w * strength;
-        final smear = (1 + layout.nextDouble() * 3.5 + near * 14) * strength;
+        final shift = ImageFilter.matrix(Matrix4.translationValues(dx, dy, 0).storage);
+        final smear = (2 + near * 14) * strength;
         rows.add(Positioned(
           left: 0,
           right: 0,
           top: y,
           height: rowHeight + 0.5,
           child: ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.compose(
-                outer: ImageFilter.blur(sigmaX: smear, sigmaY: 0, tileMode: TileMode.clamp),
-                inner: ImageFilter.matrix(Matrix4.translationValues(dx, dy, 0).storage),
-              ),
+            child: BackdropFilter.grouped(
+              filter: near > 0.2
+                  ? ImageFilter.compose(outer: ImageFilter.blur(sigmaX: smear, sigmaY: 0, tileMode: TileMode.clamp), inner: shift)
+                  : shift,
               child: const SizedBox.expand(),
             ),
           ),
@@ -891,50 +894,39 @@ class TapeSmear extends StatelessWidget {
         y += rowHeight;
       }
 
-      // The colours slip apart: the red channel one way, the blue the other.
-      // Lightening with the shifted channel and then darkening with it
-      // leaves exactly the shifted channel, on light and dark screens alike;
-      // [strength] eases both in and out.
+      // The colours slip apart: the red channel, shifted, lightens the
+      // picture, so a red fringe runs along every edge. [strength] eases it.
       final slip = w * 0.0045 * strength * (1 + jitter.nextDouble());
-      List<double> only(int channel, {required bool rest}) => [
-            for (var row = 0; row < 4; row++)
-              for (var col = 0; col < 5; col++)
-                if (row == 3)
-                  col == 3 ? 1 : 0
-                else if (row == channel)
-                  col == channel ? strength : (col == 4 && rest ? 255 * (1 - strength) : 0)
-                else
-                  col == 4 && rest ? 255 : 0,
-          ];
-      Widget slipped(int channel, double by) => Positioned.fill(
-            child: ClipRect(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  for (final (rest, mode) in [(false, BlendMode.lighten), (true, BlendMode.darken)])
-                    BackdropFilter(
-                      blendMode: mode,
-                      filter: ImageFilter.compose(
-                        outer: ColorFilter.matrix(only(channel, rest: rest)),
-                        inner: ImageFilter.matrix(Matrix4.translationValues(by, 0, 0).storage),
-                      ),
-                      child: const SizedBox.expand(),
-                    ),
-                ],
-              ),
+      final slipped = Positioned.fill(
+        child: ClipRect(
+          child: BackdropFilter.grouped(
+            blendMode: BlendMode.lighten,
+            filter: ImageFilter.compose(
+              outer: ColorFilter.matrix([
+                strength, 0, 0, 0, 0, //
+                0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0,
+                0, 0, 0, 1, 0,
+              ]),
+              inner: ImageFilter.matrix(Matrix4.translationValues(slip, 0, 0).storage),
             ),
-          );
+            child: const SizedBox.expand(),
+          ),
+        ),
+      );
 
-      return Stack(
+      // One look at the screen for all the bands, where the renderer can share it.
+      return BackdropGroup(
+        child: Stack(
         fit: StackFit.expand,
         children: [
           ...rows,
-          slipped(0, slip),
-          slipped(2, -slip),
+          slipped,
           CustomPaint(
             painter: _TapeNoisePainter(seed: seed * 31 + frame, strength: strength, trackY: trackY, zone: zone),
           ),
         ],
+        ),
       );
     });
   }
