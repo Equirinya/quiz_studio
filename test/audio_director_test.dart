@@ -220,4 +220,32 @@ void main() {
     director.sync();
     expect(backend.log, ['music /game/bg.mp3']);
   });
+
+  test('a clip is started like the music but played by the big screen, so no sound plays for it', () async {
+    final clipHost = SessionHost(
+      initial: fixtureState(),
+      game: GameContent.assemble(
+        id: 'game',
+        game: {'name': 'Clips'},
+        groups: {'g1': {'name': 'Round 1', 'categoryGroupType': 'category_wheel', 'categoryGroupIndex': 0}},
+        categories: {'c1': {'name': 'Films', 'categoryGroup': 'g1', 'categoryIndex': 0, 'active': true}},
+        questions: {
+          'c1': {
+            'clip': {'type': 'free', 'question': 'Which film?', 'video': 'clip.mp4', 'music': 'song.mp3', 'pointsPlus': 100},
+          },
+        },
+      ),
+    );
+    final clipBackend = FakeBackend();
+    final clipDirector = AudioDirector(host: clipHost, backend: clipBackend, resolve: (gameId, name) => '/$gameId/$name');
+    const clip = QuestionRef('c1', 'clip');
+    expect(clipHost.game!.question(clip)!.mediaPaths, contains('clip.mp4'));
+    clipHost.dispatch(const OpenQuestion(clip));
+    expect(clipHost.dispatch(const SetMedia(MediaPlayback.playing)), isTrue);
+    expect(clipHost.state.media, MediaPlayback.playing);
+    expect(clipBackend.log.where((line) => line.startsWith('media /')), isEmpty);
+    expect(clipHost.dispatch(const SetMedia(MediaPlayback.paused)), isTrue);
+    await clipDirector.dispose();
+    await clipHost.dispose();
+  });
 }

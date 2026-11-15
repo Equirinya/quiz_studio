@@ -339,6 +339,7 @@ class Question {
     this.answerHint,
     this.image,
     this.music,
+    this.video,
     this.pointsPlus = 0,
     this.pointsMinus = 0,
     this.position,
@@ -377,6 +378,10 @@ class Question {
   final String? answerHint;
   final String? image;
   final String? music;
+
+  /// A clip shown in the question's picture box, started, paused and
+  /// stopped like [music]; it brings its own sound, so it plays instead.
+  final String? video;
   final int pointsPlus;
   final int pointsMinus;
 
@@ -528,6 +533,7 @@ class Question {
       answerHint: _str(data['answerHint']),
       image: _str(data['image']),
       music: _str(data['music']),
+      video: _str(data['video']),
       pointsPlus: _int(data['pointsPlus']),
       pointsMinus: _int(data['pointsMinus']),
       position: data['questionIndex'] is num ? (data['questionIndex'] as num).toInt() : null,
@@ -666,6 +672,13 @@ class Question {
   /// one, or the question's.
   String? musicAt(int revealed) => type == QuestionType.rapidFire ? (rapidFire?.itemAt(revealed)?.music ?? music) : music;
 
+  /// The clip to show at reveal counter [revealed]; while there is one the
+  /// question's sound stays off, as the clip brings its own.
+  String? videoAt(int revealed) => video;
+
+  /// Whether there is something to play at [revealed], sound or clip.
+  bool hasMediaAt(int revealed) => videoAt(revealed) != null || musicAt(revealed) != null;
+
   bool get hasInformationImages => informationImages.any((e) => e.isNotEmpty);
 
   /// Highest value of the session's reveal counter for this question. ABCD and
@@ -688,6 +701,7 @@ class Question {
   List<String> get mediaPaths => [
         ?image,
         ?music,
+        ?video,
         ...informationImages.where((e) => e.isNotEmpty),
         ...informationMusic.where((e) => e.isNotEmpty),
         ?companion?.backgroundImage,

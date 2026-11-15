@@ -1028,6 +1028,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'points': 'Teams bet their points',
       'amount': 'Teams bet how many they can do',
       'closest': 'By closeness: nearest first',
+      'timed': 'Fastest first: points by time',
       'other': 'By order: fastest first',
     });
     return '$_temp0';
@@ -3305,7 +3306,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get spotlight => 'Spotlight';
 
   @override
-  String get fastForward => 'Tape fast forward';
+  String get fastForward => 'Tape effect';
 
   @override
   String get editTitle => 'Edit title';
@@ -3315,6 +3316,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noMusic => 'No music';
+
+  @override
+  String get noVideo =>
+      'No video (plays like the music, in the picture\'s place)';
 
   @override
   String get firstItem => 'First item';
@@ -3563,4 +3568,24 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get scriptEmpty =>
       'No script yet. Write it in the game editor under Script.';
+
+  @override
+  String get scriptSearch => 'Search (Ctrl+F)';
+
+  @override
+  String get scriptSearchHint => 'Find in the script';
+
+  @override
+  String get scriptPreviousMatch => 'Previous (Shift+Enter)';
+
+  @override
+  String get scriptNextMatch => 'Next (Enter)';
+
+  @override
+  String get byTimeShort => 'by time';
+
+  @override
+  String byTimeSummary(int points) {
+    return 'Fastest +$points, the others by their time';
+  }
 }

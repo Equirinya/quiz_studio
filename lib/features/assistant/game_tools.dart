@@ -96,6 +96,12 @@ final Map<String, dynamic> _questionFields = {
   'label': {'type': 'string', 'description': 'Optional short badge shown on the question card, e.g. a sub-topic.'},
   'image': {'type': 'string', 'description': 'A picture shown with the question: a name from upload_media. "" removes it.'},
   'music': {'type': 'string', 'description': 'A sound played with the question: a name from upload_media. "" removes it.'},
+  'video': {
+    'type': 'string',
+    'description': 'A video clip (mp4, mov, webm, ...) shown in the picture\'s place on the big screen: a name from upload_media. '
+        'The gamemaster starts, pauses and stops it like the question\'s music; it brings its own sound, so music does not play '
+        'while it is set. "" removes it.',
+  },
   'pointsPlus': {
     'type': 'integer',
     'minimum': 0,
@@ -610,7 +616,7 @@ final List<ToolSpec> gameToolSpecs = [
   ToolSpec(
     'upload_media',
     'Uploads a picture, sound or video from this computer (the one running the app) into the game and returns '
-        'the name to use in image, music and similar fields. Only upload files the user pointed you to.',
+        'the name to use in image, music, video and similar fields. Only upload files the user pointed you to.',
     _object(
       {
         'gameId': _string,
@@ -647,7 +653,7 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
   if (hint != null) data['answerHint'] = hint;
   final label = take<String>('label');
   if (label != null) data['description'] = label;
-  for (final key in ['image', 'music']) {
+  for (final key in ['image', 'music', 'video']) {
     final name = take<String>(key);
     if (name != null) data[key] = name.isEmpty ? null : name;
   }
@@ -1049,6 +1055,7 @@ Map<String, dynamic> describeQuestion(Question q) => {
     },
   if (q.image != null) 'image': q.image,
   if (q.music != null) 'music': q.music,
+  if (q.video != null) 'video': q.video,
   ..._describeSounds(q.sounds),
 };
 

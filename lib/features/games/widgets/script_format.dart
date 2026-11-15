@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/game/game.dart';
@@ -57,13 +58,33 @@ TextSpan scriptSpan(String text, {required TextStyle base, required Brightness b
 class ScriptTextController extends TextEditingController {
   ScriptTextController({super.text});
 
+  /// Search matches, marked in the text; [current] stands out.
+  List<TextRange> _highlights = const [];
+  int? _current;
+
+  void setHighlights(List<TextRange> ranges, int? current) {
+    if (listEquals(ranges, _highlights) && current == _current) return;
+    _highlights = ranges;
+    _current = current;
+    notifyListeners();
+  }
+
   @override
   TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
     // While a word is being composed (IMEs), keep Flutter's own underline.
     if (withComposing && value.isComposingRangeValid) {
       return super.buildTextSpan(context: context, style: style, withComposing: withComposing);
     }
-    return scriptSpan(text, base: style ?? const TextStyle(), brightness: Theme.of(context).brightness, editing: true);
+    final span = scriptSpan(text, base: style ?? const TextStyle(), brightness: Theme.of(context).brightness, editing: true);
+    if (_highlights.isEmpty) return span;
+    final scheme = Theme.of(context).colorScheme;
+    return highlightSpan(
+      span,
+      _highlights,
+      current: _current,
+      mark: TextStyle(backgroundColor: scheme.tertiaryContainer, color: scheme.onTertiaryContainer),
+      currentMark: TextStyle(backgroundColor: scheme.tertiary, color: scheme.onTertiary),
+    );
   }
 
   /// Puts [before] and [after] around the selection, or the word typed next.
@@ -195,4 +216,38 @@ class ScriptText extends StatelessWidget {
       child: SelectableText.rich(scriptSpan(trimmed, base: base, brightness: theme.brightness)),
     );
   }
+}
+
+/// [span] with the text inside [ranges] (offsets into its plain text, in
+/// order, not overlapping) restyled with [mark], the one at [current] with
+/// [currentMark].
+TextSpan highlightSpan(TextSpan span, List<TextRange> ranges, {int? current, required TextStyle mark, required TextStyle currentMark}) {
+  var offset = 0;
+  InlineSpan walk(InlineSpan inline) {
+    if (inline is! TextSpan) {
+      offset += 1;
+      return inline;
+    }
+    final own = inline.text ?? '';
+    final start = offset;
+    offset += own.length;
+    final pieces = <InlineSpan>[];
+    var at = 0;
+    for (final (i, range) in ranges.indexed) {
+      final from = (range.start - start).clamp(at, own.length);
+      final to = (range.end - start).clamp(0, own.length);
+      if (to <= from) continue;
+      if (from > at) pieces.add(TextSpan(text: own.substring(at, from)));
+      pieces.add(TextSpan(text: own.substring(from, to), style: i == current ? currentMark : mark));
+      at = to;
+    }
+    if (at == 0) {
+      // Nothing marked in this span's own text.
+      return TextSpan(text: inline.text, style: inline.style, children: inline.children?.map(walk).toList());
+    }
+    if (at < own.length) pieces.add(TextSpan(text: own.substring(at)));
+    return TextSpan(style: inline.style, children: [...pieces, ...?inline.children?.map(walk)]);
+  }
+
+  return walk(span) as TextSpan;
 }

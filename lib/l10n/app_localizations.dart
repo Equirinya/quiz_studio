@@ -1631,7 +1631,7 @@ abstract class AppLocalizations {
   /// No description provided for @scoringRuleName.
   ///
   /// In en, this message translates to:
-  /// **'{rule, select, fixed{Fixed points} points{Teams bet their points} amount{Teams bet how many they can do} closest{By closeness: nearest first} other{By order: fastest first}}'**
+  /// **'{rule, select, fixed{Fixed points} points{Teams bet their points} amount{Teams bet how many they can do} closest{By closeness: nearest first} timed{Fastest first: points by time} other{By order: fastest first}}'**
   String scoringRuleName(String rule);
 
   /// No description provided for @scoringFixedText.
@@ -5429,7 +5429,7 @@ abstract class AppLocalizations {
   /// No description provided for @fastForward.
   ///
   /// In en, this message translates to:
-  /// **'Tape fast forward'**
+  /// **'Tape effect'**
   String get fastForward;
 
   /// No description provided for @editTitle.
@@ -5449,6 +5449,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No music'**
   String get noMusic;
+
+  /// No description provided for @noVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'No video (plays like the music, in the picture\'s place)'**
+  String get noVideo;
 
   /// No description provided for @firstItem.
   ///
@@ -5857,6 +5863,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No script yet. Write it in the game editor under Script.'**
   String get scriptEmpty;
+
+  /// No description provided for @scriptSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search (Ctrl+F)'**
+  String get scriptSearch;
+
+  /// No description provided for @scriptSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Find in the script'**
+  String get scriptSearchHint;
+
+  /// No description provided for @scriptPreviousMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous (Shift+Enter)'**
+  String get scriptPreviousMatch;
+
+  /// No description provided for @scriptNextMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Next (Enter)'**
+  String get scriptNextMatch;
+
+  /// No description provided for @byTimeShort.
+  ///
+  /// In en, this message translates to:
+  /// **'by time'**
+  String get byTimeShort;
+
+  /// No description provided for @byTimeSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Fastest +{points}, the others by their time'**
+  String byTimeSummary(int points);
 }
 
 class _AppLocalizationsDelegate

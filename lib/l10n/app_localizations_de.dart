@@ -1033,6 +1033,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'points': 'Teams setzen ihre Punkte',
       'amount': 'Teams wetten, wie viele sie schaffen',
       'closest': 'Nach Nähe: Nächste zuerst',
+      'timed': 'Schnellste zuerst: Punkte nach Zeit',
       'other': 'Nach Reihenfolge: Schnellste zuerst',
     });
     return '$_temp0';
@@ -3324,7 +3325,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get spotlight => 'Spotlight';
 
   @override
-  String get fastForward => 'Band vorspulen';
+  String get fastForward => 'Tape-Effekt';
 
   @override
   String get editTitle => 'Titel bearbeiten';
@@ -3334,6 +3335,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noMusic => 'Keine Musik';
+
+  @override
+  String get noVideo => 'Kein Video (läuft wie die Musik, anstelle des Bildes)';
 
   @override
   String get firstItem => 'Erste Frage';
@@ -3583,4 +3587,24 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get scriptEmpty =>
       'Noch kein Skript. Schreib es im Spiel-Editor unter Skript.';
+
+  @override
+  String get scriptSearch => 'Suchen (Strg+F)';
+
+  @override
+  String get scriptSearchHint => 'Im Skript suchen';
+
+  @override
+  String get scriptPreviousMatch => 'Vorheriger Treffer (Umschalt+Enter)';
+
+  @override
+  String get scriptNextMatch => 'Nächster Treffer (Enter)';
+
+  @override
+  String get byTimeShort => 'nach Zeit';
+
+  @override
+  String byTimeSummary(int points) {
+    return 'Schnellste +$points, die anderen nach ihrer Zeit';
+  }
 }

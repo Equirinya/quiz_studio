@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/widgets/script_format.dart';
@@ -63,6 +65,20 @@ class _ScriptEditorViewState extends State<ScriptEditorView> {
   String? _activeKey;
   bool _failed = false;
 
+  final _scroll = ScrollController();
+
+  /// Around each section's text field, to scroll to it.
+  final _fieldKeys = <String, GlobalKey>{};
+
+  // ── search ──
+  bool _searching = false;
+  final _query = TextEditingController();
+  final _searchFocus = FocusNode();
+
+  /// Every match, in document order: the section and where in its text.
+  List<({String key, TextRange range})> _matches = const [];
+  int _match = 0;
+
   static const _saveDelay = Duration(milliseconds: 800);
 
   ScriptTextController _controller(String key, GameScript script) => _controllers.putIfAbsent(key, () {
@@ -90,6 +106,8 @@ class _ScriptEditorViewState extends State<ScriptEditorView> {
   final _saving = <String, int>{};
 
   void _changed(String key) {
+    // Matches move as the text changes.
+    if (_searching) _findMatches();
     final text = _controllers[key]!.text;
     if (text == (_lastSaved[key] ?? GameScript.of(widget.game).text(key))) return;
     _pending.remove(key)?.cancel();
@@ -127,8 +145,93 @@ class _ScriptEditorViewState extends State<ScriptEditorView> {
     });
   }
 
+  void _openSearch() {
+    setState(() => _searching = true);
+    _query.selection = TextSelection(baseOffset: 0, extentOffset: _query.text.length);
+    _searchFocus.requestFocus();
+    _findMatches();
+  }
+
+  void _closeSearch() {
+    setState(() {
+      _searching = false;
+      _matches = const [];
+    });
+    for (final controller in _controllers.values) {
+      controller.setHighlights(const [], null);
+    }
+  }
+
+  /// Looks for the query in every section, ignoring case, and marks what it
+  /// finds; [jump] scrolls to the current match.
+  void _findMatches({bool jump = false}) {
+    final query = _query.text.toLowerCase();
+    final found = <({String key, TextRange range})>[];
+    if (query.isNotEmpty) {
+      for (final section in GameScript.sections(widget.game)) {
+        final text = (_controllers[section.key]?.text ?? GameScript.of(widget.game).text(section.key)).toLowerCase();
+        for (var at = text.indexOf(query); at >= 0; at = text.indexOf(query, at + query.length)) {
+          found.add((key: section.key, range: TextRange(start: at, end: at + query.length)));
+        }
+      }
+    }
+    setState(() {
+      _matches = found;
+      if (_match >= found.length) _match = 0;
+    });
+    _mark();
+    if (jump) _reveal();
+  }
+
+  void _mark() {
+    final script = GameScript.of(widget.game);
+    for (final section in GameScript.sections(widget.game)) {
+      final mine = [
+        for (final (i, match) in _matches.indexed)
+          if (match.key == section.key) (i, match.range),
+      ];
+      // Every section with a match needs its controller to show it.
+      if (mine.isEmpty && !_controllers.containsKey(section.key)) continue;
+      final current = mine.indexWhere((m) => m.$1 == _match);
+      _controller(section.key, script).setHighlights([for (final m in mine) m.$2], current < 0 ? null : current);
+    }
+  }
+
+  void _step(int by) {
+    if (_matches.isEmpty) return;
+    setState(() => _match = (_match + by) % _matches.length);
+    _mark();
+    _reveal();
+  }
+
+  /// Scrolls the current match to a third of the way down.
+  void _reveal() {
+    if (_matches.isEmpty) return;
+    final match = _matches[_match];
+    final editable = _findEditable(_fieldKeys[match.key]?.currentContext?.findRenderObject());
+    if (editable == null) return;
+    final caret = editable.getLocalRectForCaret(TextPosition(offset: match.range.start));
+    final target = RenderAbstractViewport.of(editable).getOffsetToReveal(editable, 0.3, rect: caret).offset;
+    final position = _scroll.position;
+    _scroll.animateTo(
+      target.clamp(position.minScrollExtent, position.maxScrollExtent),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  static RenderEditable? _findEditable(RenderObject? object) {
+    if (object == null || object is RenderEditable) return object as RenderEditable?;
+    RenderEditable? found;
+    object.visitChildren((child) => found ??= _findEditable(child));
+    return found;
+  }
+
   @override
   void dispose() {
+    _scroll.dispose();
+    _query.dispose();
+    _searchFocus.dispose();
     for (final key in [..._pending.keys]) {
       _flush(key);
     }
@@ -155,59 +258,111 @@ class _ScriptEditorViewState extends State<ScriptEditorView> {
     final theme = Theme.of(context);
     final script = GameScript.of(widget.game);
     final sections = GameScript.sections(widget.game);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.script)),
-      body: Column(
-        children: [
-          TextFieldTapRegion(child: _Toolbar(enabled: _activeKey != null, format: _format)),
-          if (_failed)
-            Container(
-              width: double.infinity,
-              color: theme.colorScheme.errorContainer,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(l10n.scriptNotSaved, style: TextStyle(color: theme.colorScheme.onErrorContainer)),
-            ),
-          const Divider(height: 1),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 160),
-              itemCount: sections.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-                    child: Text(l10n.scriptExplain, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                  );
-                }
-                final section = sections[index - 1];
-                return Column(
-                  key: ValueKey(section.key),
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ScriptDivider(section: section),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      child: TextField(
-                        controller: _controller(section.key, script),
-                        focusNode: _node(section.key),
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                        style: theme.textTheme.bodyLarge,
-                        decoration: InputDecoration.collapsed(
-                          hintText: _activeKey == section.key || section.kind == ScriptSectionKind.intro ? l10n.scriptWriteHere : null,
-                          hintStyle: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
+    final searchShortcuts = <ShortcutActivator, VoidCallback>{
+      const SingleActivator(LogicalKeyboardKey.keyF, control: true): _openSearch,
+      const SingleActivator(LogicalKeyboardKey.keyF, meta: true): _openSearch,
+      if (_searching) const SingleActivator(LogicalKeyboardKey.escape): _closeSearch,
+    };
+    return CallbackShortcuts(
+      bindings: searchShortcuts,
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          appBar: AppBar(
+            title: _searching ? _searchField(context) : Text(l10n.script),
+            actions: [
+              if (_searching) ...[
+                Center(
+                  child: Text(
+                    _matches.isEmpty ? '0/0' : '${_match + 1}/${_matches.length}',
+                    style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+                IconButton(tooltip: l10n.scriptPreviousMatch, icon: const Icon(Icons.keyboard_arrow_up), onPressed: _matches.isEmpty ? null : () => _step(-1)),
+                IconButton(tooltip: l10n.scriptNextMatch, icon: const Icon(Icons.keyboard_arrow_down), onPressed: _matches.isEmpty ? null : () => _step(1)),
+                IconButton(tooltip: l10n.close, icon: const Icon(Icons.close), onPressed: _closeSearch),
+              ] else
+                IconButton(tooltip: l10n.scriptSearch, icon: const Icon(Icons.search), onPressed: _openSearch),
+            ],
           ),
-        ],
+          body: Column(
+            children: [
+              TextFieldTapRegion(child: _Toolbar(enabled: _activeKey != null, format: _format)),
+              if (_failed)
+                Container(
+                  width: double.infinity,
+                  color: theme.colorScheme.errorContainer,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(l10n.scriptNotSaved, style: TextStyle(color: theme.colorScheme.onErrorContainer)),
+                ),
+              const Divider(height: 1),
+              Expanded(
+                // All of it laid out at once: with sections of very different
+                // lengths, a lazily built list guesses its length and the
+                // scrollbar jumps.
+                child: Scrollbar(
+                  controller: _scroll,
+                  child: SingleChildScrollView(
+                    controller: _scroll,
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 160),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                          child: Text(l10n.scriptExplain, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                        ),
+                        for (final section in sections) ...[
+                          ScriptDivider(key: ValueKey('divider ${section.key}'), section: section),
+                          Padding(
+                            key: _fieldKeys.putIfAbsent(section.key, GlobalKey.new),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            child: TextField(
+                              controller: _controller(section.key, script),
+                              focusNode: _node(section.key),
+                              maxLines: null,
+                              keyboardType: TextInputType.multiline,
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration.collapsed(
+                                hintText: _activeKey == section.key || section.kind == ScriptSectionKind.intro ? l10n.scriptWriteHere : null,
+                                hintStyle: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
+
+  Widget _searchField(BuildContext context) => CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.enter, shift: true): () => _step(-1),
+          const SingleActivator(LogicalKeyboardKey.escape): _closeSearch,
+        },
+        child: TextField(
+          controller: _query,
+          focusNode: _searchFocus,
+          autofocus: true,
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(hintText: context.l10n.scriptSearchHint, border: InputBorder.none),
+          onChanged: (_) {
+            _match = 0;
+            _findMatches(jump: true);
+          },
+          onSubmitted: (_) {
+            _step(1);
+            _searchFocus.requestFocus();
+          },
+        ),
+      );
 }
 
 class _Toolbar extends StatelessWidget {

@@ -13,9 +13,11 @@ const feud = QuestionRef('c3', 'feud');
 const race = QuestionRef('c3', 'race');
 
 /// Two groups: g1 (wheel) with c1 and c2, g2 (display) with c3.
-GameContent fixtureGame() => GameContent.assemble(
+/// [extra] goes onto the game document, e.g. a script.
+GameContent fixtureGame({Map<String, dynamic> extra = const {}}) => GameContent.assemble(
       id: 'game',
       game: {
+        ...extra,
         'name': 'Fixture',
         'musicBackground': 'bg.mp3',
         'musicEffects': {'musicEffectAnswerWrong': 'wrong.mp3', 'airhorn': 'horn.mp3'},

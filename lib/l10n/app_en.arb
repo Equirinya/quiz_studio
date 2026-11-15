@@ -542,7 +542,7 @@
   "music": "Music",
   "noOwnMedia": "No picture, music or sounds of its own",
   "rule": "Rule",
-  "scoringRuleName": "{rule, select, fixed{Fixed points} points{Teams bet their points} amount{Teams bet how many they can do} closest{By closeness: nearest first} other{By order: fastest first}}",
+  "scoringRuleName": "{rule, select, fixed{Fixed points} points{Teams bet their points} amount{Teams bet how many they can do} closest{By closeness: nearest first} timed{Fastest first: points by time} other{By order: fastest first}}",
   "@scoringRuleName": {
     "placeholders": {
       "rule": {
@@ -1893,10 +1893,11 @@
   "balloons": "Balloons",
   "stars": "Stars",
   "spotlight": "Spotlight",
-  "fastForward": "Tape fast forward",
+  "fastForward": "Tape effect",
   "editTitle": "Edit title",
   "noPicture": "No picture",
   "noMusic": "No music",
+  "noVideo": "No video (plays like the music, in the picture's place)",
   "firstItem": "First item",
   "rapidIntro": "The question first: read it out, then Next brings up item 1",
   "hintShown": "Hint: {hint}",
@@ -1986,5 +1987,16 @@
   "scriptClearFormat": "Clear formatting",
   "scriptNotSaved": "Not saved. Check the connection; the text stays here.",
   "scriptToCurrent": "Current",
-  "scriptEmpty": "No script yet. Write it in the game editor under Script."
+  "scriptEmpty": "No script yet. Write it in the game editor under Script.",
+  "scriptSearch": "Search (Ctrl+F)",
+  "scriptSearchHint": "Find in the script",
+  "scriptPreviousMatch": "Previous (Shift+Enter)",
+  "scriptNextMatch": "Next (Enter)",
+  "byTimeShort": "by time",
+  "byTimeSummary": "Fastest +{points}, the others by their time",
+  "@byTimeSummary": {
+    "placeholders": {
+      "points": {"type": "int"}
+    }
+  }
 }

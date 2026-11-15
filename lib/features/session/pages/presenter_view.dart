@@ -128,7 +128,14 @@ class PresenterView extends StatelessWidget {
                             unit: unit,
                           )
                         : question != null
-                        ? QuestionDisplay(gameId: game.id, state: state, question: question, unit: unit)
+                        ? QuestionDisplay(
+                            gameId: game.id,
+                            state: state,
+                            question: question,
+                            unit: unit,
+                            // Like video cards: only the screen of the show plays the clip.
+                            onVideoEnd: videoCards ? () => connection.send(const SetMedia(MediaPlayback.stopped)) : null,
+                          )
                         : group == null
                         ? const SizedBox()
                         : group.type == BoardType.wheel
@@ -544,12 +551,16 @@ ColorScheme categoryScheme(Category category, ColorScheme base) => category.colo
 /// The open question as far as it is revealed. [unit] is a hundredth of the
 /// screen's height.
 class QuestionDisplay extends StatelessWidget {
-  const QuestionDisplay({super.key, required this.gameId, required this.state, required this.question, required this.unit});
+  const QuestionDisplay({super.key, required this.gameId, required this.state, required this.question, required this.unit, this.onVideoEnd});
 
   final String gameId;
   final SessionState state;
   final Question question;
   final double unit;
+
+  /// Set on the screen that plays the question's clip, which tells when it
+  /// ran out; elsewhere the clip's place shows a still sign.
+  final VoidCallback? onVideoEnd;
 
   File? _file(String? name) {
     if (name == null || name.isEmpty || !MediaService.instance.ready) return null;
@@ -625,6 +636,9 @@ class QuestionDisplay extends StatelessWidget {
   Widget _standard(BuildContext context, AnswerRound? round) {
     final scheme = Theme.of(context).colorScheme;
     final image = _file(question.image);
+    final videoName = question.videoAt(state.revealed);
+    final video = _file(videoName);
+    final hasPicture = image != null || videoName != null;
     // Matching and put in order: the question as tall as its text, the
     // pieces get the rest.
     final pieces = question.type == QuestionType.matching || question.type == QuestionType.ordering;
@@ -694,7 +708,29 @@ class QuestionDisplay extends StatelessWidget {
         // The picture as big as the box lets it be.
         crossAxisAlignment: pieces ? CrossAxisAlignment.center : CrossAxisAlignment.stretch,
         children: [
-          if (image != null)
+          if (videoName != null)
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: EdgeInsets.only(right: question.text.trim().isEmpty ? 0 : unit * 2),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(unit * 2),
+                  child: video != null && onVideoEnd != null
+                      ? QuestionVideo(key: ValueKey(video.path), file: video, playback: state.media, onFinished: onVideoEnd!)
+                      : ColoredBox(
+                          color: scheme.surfaceContainerHighest,
+                          child: Center(
+                            child: Icon(
+                              state.media == MediaPlayback.playing ? Icons.play_circle_outline : Icons.movie_outlined,
+                              size: unit * 12,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            )
+          else if (image != null)
             Expanded(
               flex: 3,
               child: Padding(
@@ -704,7 +740,7 @@ class QuestionDisplay extends StatelessWidget {
                 ),
               ),
             ),
-          if (question.hasMusic)
+          if (question.hasMusic && videoName == null)
             Center(
               child: Padding(
                 padding: EdgeInsets.only(right: unit * 2),
@@ -718,7 +754,7 @@ class QuestionDisplay extends StatelessWidget {
                 ),
               ),
             ),
-          if (image == null || question.text.trim().isNotEmpty)
+          if (!hasPicture || question.text.trim().isNotEmpty)
             Flexible(
               flex: 2,
               child: Center(

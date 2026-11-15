@@ -285,7 +285,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
           phase: Phase.question,
           buzzQueue: const [],
           wrongAttempts: 0,
-          media: question.musicAt(s.revealed) != null ? MediaPlayback.playing : null,
+          media: question.hasMediaAt(s.revealed) ? MediaPlayback.playing : null,
         ),
       );
 
@@ -400,7 +400,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
         teams: _addPoints(s.teams, answering, top.pointsOf(index, question!.pointsPlus)),
         buzzQueue: const [],
         phase: all ? Phase.answerRevealed : Phase.question,
-        media: !all && question.musicAt(s.revealed) != null ? MediaPlayback.playing : null,
+        media: !all && question.hasMediaAt(s.revealed) ? MediaPlayback.playing : null,
       );
       return _ok(next, [const SoundEffect(effectAnswerCorrect), if (all) const SoundEffect(effectFanfare)]);
 
@@ -427,7 +427,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       if (playback == s.media) return _no(s);
       if (playback != MediaPlayback.stopped) {
         final listening = (s.phase == Phase.question || s.phase == Phase.buzzered) && !s.waitingForBets;
-        if (!listening || question?.musicAt(s.revealed) == null) return _no(s);
+        if (!listening || !(question?.hasMediaAt(s.revealed) ?? false)) return _no(s);
       }
       // The question's own sound and the background music never overlap.
       return _ok(s.copyWith(media: playback, music: playback == MediaPlayback.playing ? null : s.music));
@@ -833,7 +833,7 @@ SessionState _backToBoard(SessionState s) => s.copyWith(
 /// After a wrong answer: the next queued team is up, or the question reopens.
 SessionState _nextBuzzer(SessionState s, Question question) {
   if (s.buzzQueue.length > 1) return s.copyWith(buzzQueue: s.buzzQueue.sublist(1));
-  return s.copyWith(phase: Phase.question, buzzQueue: const [], media: question.musicAt(s.revealed) != null ? MediaPlayback.playing : null);
+  return s.copyWith(phase: Phase.question, buzzQueue: const [], media: question.hasMediaAt(s.revealed) ? MediaPlayback.playing : null);
 }
 
 /// A Fragenhagel at item [index]: everyone may answer again, the item's sound

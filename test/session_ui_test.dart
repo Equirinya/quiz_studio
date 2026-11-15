@@ -283,7 +283,7 @@ void main() {
   testWidgets('the tape fast forward smears the presenter and ends by itself', (tester) async {
     await pumpBoth(tester);
     await tap(tester, tab('Effects'));
-    await tap(tester, inSheet(find.text('Tape fast forward')));
+    await tap(tester, inSheet(find.text('Tape effect')));
     expect(inPresenter(find.byType(TapeSmear)), findsOneWidget);
     await tester.pump(TapeSmear.duration);
     await tester.pump();

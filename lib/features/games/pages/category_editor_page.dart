@@ -297,12 +297,13 @@ class _QuestionCardState extends State<QuestionCard> {
       ? _Scoring.points
       : widget.question.rankStep != null && widget.question.closest
       ? _Scoring.closest
+      : widget.question.rankStep != null && widget.question.data['byTime'] == true
+      ? _Scoring.timed
       : widget.question.rankStep != null
       ? _Scoring.ranked
       : _Scoring.fixed;
   late final TextEditingController _rankStep = TextEditingController(text: (widget.question.rankStep ?? 100).toString());
   late final TextEditingController _placeList = TextEditingController(text: widget.question.placeList.join(", "));
-  late bool _byTime = widget.question.data['byTime'] == true;
   late bool _betOwnPoints = widget.question.betOwnPoints;
 
   /// "400, 200, 100" as a list; null when empty, so the rule counts.
@@ -318,6 +319,8 @@ class _QuestionCardState extends State<QuestionCard> {
     _Scoring.amount when _q.type == QuestionType.free => _Scoring.amount,
     _Scoring.points || _Scoring.amount when _q.type.wagerable => _Scoring.points,
     _Scoring.ranked when _q.type.wagerable || _q.type == QuestionType.lastStanding => _Scoring.ranked,
+    _Scoring.timed when _q.type.wagerable => _Scoring.timed,
+    _Scoring.timed when _q.type == QuestionType.lastStanding => _Scoring.ranked,
     _Scoring.closest when _closable => _Scoring.closest,
     _ => _Scoring.fixed,
   };
@@ -335,8 +338,11 @@ class _QuestionCardState extends State<QuestionCard> {
     _save({
       'wager': scoring == _Scoring.points,
       'amountBet': scoring == _Scoring.amount ? _amountBet() : null,
-      'rankStep': scoring == _Scoring.ranked || scoring == _Scoring.closest ? (int.tryParse(_rankStep.text) ?? 100).clamp(0, 100000) : null,
+      'rankStep': scoring == _Scoring.ranked || scoring == _Scoring.closest || scoring == _Scoring.timed
+          ? (int.tryParse(_rankStep.text) ?? 100).clamp(0, 100000)
+          : null,
       'closest': scoring == _Scoring.closest ? true : null,
+      'byTime': scoring == _Scoring.timed ? true : null,
     });
   }
 
@@ -422,6 +428,7 @@ class _QuestionCardState extends State<QuestionCard> {
       _Scoring.points => l10n.teamsBetShort,
       _Scoring.amount => l10n.teamsBetHowManyShort,
       _Scoring.ranked => l10n.byOrderShort,
+      _Scoring.timed => l10n.byTimeShort,
       _Scoring.closest => l10n.byClosenessShort,
       _Scoring.fixed => null,
     };
@@ -438,6 +445,7 @@ class _QuestionCardState extends State<QuestionCard> {
       _Scoring.amount => "${l10n.betOnHowMany} · ${minus == null ? l10n.plusEach(plus) : l10n.plusMinusEach(plus, minus)}",
       _Scoring.ranked => [l10n.byOrderSummary(plus, _q.rankStep ?? 0), if (minus != null) l10n.wrongMinus(minus)].join(" · "),
       _Scoring.closest => l10n.byClosenessSummary(plus, _q.rankStep ?? 0),
+      _Scoring.timed => [l10n.byTimeSummary(plus), if (minus != null) l10n.wrongMinus(minus)].join(" · "),
     };
   }
 
@@ -471,6 +479,7 @@ class _QuestionCardState extends State<QuestionCard> {
           Text(switch (scoring) {
             _Scoring.fixed => l10n.scoringFixedText,
             _Scoring.ranked => l10n.scoringRankedText,
+            _Scoring.timed => l10n.byTimeText,
             _Scoring.closest => _q.companion?.solution == null ? l10n.scoringClosenessNoSolution : l10n.scoringClosenessText,
             _Scoring.points => l10n.scoringPointsText(_q.pointsPlus > kMinBetLimit ? _q.pointsPlus : kMinBetLimit),
             _Scoring.amount => l10n.scoringAmountText,
@@ -545,7 +554,7 @@ class _QuestionCardState extends State<QuestionCard> {
               switch (scoring) {
                 _Scoring.points => l10n.points,
                 _Scoring.amount => l10n.eachPlus,
-                _Scoring.ranked || _Scoring.closest => l10n.firstPlacePlus,
+                _Scoring.ranked || _Scoring.closest || _Scoring.timed => l10n.firstPlacePlus,
                 _Scoring.fixed when _q.type == QuestionType.rapidFire => l10n.eachItemPlus,
                 _Scoring.fixed when _q.type == QuestionType.lastStanding => l10n.winnerPlus,
                 _Scoring.fixed when _q.type == QuestionType.topAnswers => l10n.eachAnswerPlus,
@@ -589,18 +598,6 @@ class _QuestionCardState extends State<QuestionCard> {
             ),
           ),
         ],
-        // Fastest first: the others by how long they took.
-        if (scoring == _Scoring.ranked && _q.type.wagerable)
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.byTimeTitle),
-            subtitle: Text(l10n.byTimeText),
-            value: _byTime,
-            onChanged: (on) {
-              setState(() => _byTime = on);
-              _save({'byTime': on ? true : null});
-            },
-          ),
       ],
     );
   }
@@ -618,6 +615,8 @@ class _QuestionCardState extends State<QuestionCard> {
       children: [
         row(MediaKind.image, _q.image, context.l10n.noPicture, 'image'),
         row(MediaKind.audio, _q.music, context.l10n.noMusic, 'music'),
+        // Started from the controller like the music, in the picture's place.
+        row(MediaKind.video, _q.video, context.l10n.noVideo, 'video'),
         ListTile(
           contentPadding: const EdgeInsets.only(left: 8),
           leading: const Icon(Icons.queue_music),
@@ -821,6 +820,7 @@ enum _Scoring {
   points("Teams bet their points"),
   amount("Teams bet how many they can do"),
   ranked("By order: fastest first"),
+  timed("Fastest first, by time"),
   closest("By closeness: nearest first");
 
   const _Scoring(this.label);

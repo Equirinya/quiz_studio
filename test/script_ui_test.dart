@@ -81,16 +81,23 @@ void main() {
       tester.view.physicalSize = const Size(460, 1000);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
+      // Without a script there is no tab for it.
+      final empty = SessionConnection.local(SessionHost(initial: fixtureState()), game: fixtureGame());
+      addTearDown(empty.dispose);
+      await tester.pumpWidget(_app(Scaffold(body: ControllerView(connection: empty))));
+      await tester.pump();
+      expect(find.widgetWithText(TextButton, 'Script'), findsNothing);
+
       final host = SessionHost(initial: fixtureState());
-      final connection = SessionConnection.local(host, game: fixtureGame());
+      final connection = SessionConnection.local(host, game: fixtureGame(extra: {'script': {'intro': 'Good evening!'}}));
       addTearDown(connection.dispose);
-      await tester.pumpWidget(_app(Scaffold(body: ControllerView(connection: connection))));
+      await tester.pumpWidget(_app(Scaffold(body: ControllerView(key: UniqueKey(), connection: connection))));
       await tester.pump();
       await tester.tap(find.widgetWithText(TextButton, 'Script'));
       await tester.pumpAndSettle();
       expect(find.byType(ScriptSheet), findsOneWidget);
       expect(find.textContaining('Category: '), findsWidgets);
-      expect(find.textContaining('No script yet'), findsOneWidget);
+      expect(find.textContaining('Good evening!'), findsOneWidget);
     });
   });
 

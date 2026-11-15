@@ -98,7 +98,8 @@ class _ControllerViewState extends State<ControllerView> {
               onBoard: _openBoard,
               onEffects: _openEffects,
               onAnswers: _openAnswers,
-              onScript: _openScript,
+              // Only a script with something in it is worth a tab.
+              onScript: game != null && GameScript.of(game).hasTextFor(game) ? _openScript : null,
               onSetup: _openSetup,
             ),
           ],
@@ -1398,7 +1399,7 @@ class _ActionPad extends StatelessWidget {
         ? const Reveal(1)
         : null;
     final playing = state.media == MediaPlayback.playing;
-    final Command? sound = q != null && q.musicAt(state.revealed) != null && listening
+    final Command? sound = q != null && q.hasMediaAt(state.revealed) && listening
         ? SetMedia(playing ? MediaPlayback.paused : MediaPlayback.playing)
         : null;
     final queued = state.buzzQueue.length > 1;
@@ -1565,7 +1566,7 @@ class _SheetRow extends StatelessWidget {
     required this.onBoard,
     required this.onEffects,
     required this.onAnswers,
-    required this.onScript,
+    this.onScript,
     required this.onSetup,
   });
 
@@ -1578,7 +1579,8 @@ class _SheetRow extends StatelessWidget {
   final VoidCallback onBoard;
   final VoidCallback onEffects;
   final VoidCallback onAnswers;
-  final VoidCallback onScript;
+  /// Null hides the tab.
+  final VoidCallback? onScript;
   final VoidCallback onSetup;
 
   @override
@@ -1618,7 +1620,7 @@ class _SheetRow extends StatelessWidget {
           tab(context.l10n.tabBoard, Icons.grid_view_rounded, onBoard, highlight: boardSuggested),
           tab(context.l10n.tabEffects, Icons.auto_awesome_outlined, onEffects, dot: effectsActive),
           tab(context.l10n.tabAnswers, Icons.draw_outlined, onAnswers, dot: answersActive),
-          tab(context.l10n.script, Icons.description_outlined, onScript),
+          if (onScript case final onScript?) tab(context.l10n.script, Icons.description_outlined, onScript),
           tab(context.l10n.tabSetup, Icons.settings_outlined, onSetup),
         ],
       ),
@@ -2159,7 +2161,7 @@ class _EffectsSheetState extends State<_EffectsSheet> {
                 ),
             ],
           ),
-          if (question != null && question.hasMusic) ...[
+          if (question != null && question.hasMediaAt(state.revealed)) ...[
             header(context.l10n.questionSound),
             Wrap(
               spacing: 8,
