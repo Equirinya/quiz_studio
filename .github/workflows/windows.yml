@@ -1,0 +1,102 @@
+###necessary github action repository variables:
+#FLUTTER_VERSION
+#MSIX_PUBLISHER   optional: the Publisher from Partner Center (Product identity),
+#                 e.g. CN=12345678-ABCD-...; without it no .msix is built
+
+name: Windows Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  windows_build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      # The firebase submodule is private and not needed to build the app.
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          submodules: false
+
+      - name: Set up Flutter SDK
+        uses: flutter-actions/setup-flutter@v4
+        env:
+          FLUTTER_VERSION: ${{ vars.FLUTTER_VERSION }}
+        with:
+          channel: stable
+          version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Install Dependencies
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Parse Build Number and Name
+        id: version
+        run: |
+          $VERSION_LINE = (Get-Content pubspec.yaml | Select-String '^version:').ToString()
+          $VERSION = ($VERSION_LINE -split ' ')[1].Split('+')[0]
+          $BUILD_NUMBER = ($VERSION_LINE -split '\+')[1]
+          echo "VERSION=$VERSION" >> $env:GITHUB_ENV
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $env:GITHUB_ENV
+          echo "version=$VERSION" >> $env:GITHUB_OUTPUT
+
+      - name: Build Windows
+        run: |
+          # Downloads from GitHub's release servers time out now and then
+          # (504); try again a few times, waiting a bit longer each time.
+          for ($try = 1; $try -le 4; $try++) {
+            flutter build windows --release `
+              --build-number=$env:BUILD_NUMBER `
+              --build-name=$env:VERSION
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            if ($try -lt 4) {
+              Write-Output "Build failed (try $try of 4), trying again in $($try * 60) s"
+              Start-Sleep -Seconds ($try * 60)
+            }
+          }
+          exit 1
+
+      # The whole app folder, to unzip and run quiz_show.exe from anywhere.
+      - name: Zip the App
+        run: |
+          Compress-Archive -Path build/windows/x64/runner/Release/* `
+            -DestinationPath "QuizStudio-$env:VERSION-windows.zip"
+
+      # For the Microsoft Store, which signs it itself. msix_config in
+      # pubspec.yaml has the rest; --build-windows false reuses the build above.
+      - name: Build MSIX
+        if: ${{ vars.MSIX_PUBLISHER != '' }}
+        run: |
+          dart run msix:create --store --build-windows false `
+            --publisher "${{ vars.MSIX_PUBLISHER }}" `
+            --output-path . --output-name "QuizStudio-$env:VERSION"
+
+      - name: Keep the Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ steps.version.outputs.version }}
+          path: |
+            QuizStudio-*-windows.zip
+            QuizStudio-*.msix
+          if-no-files-found: error
+
+      # Same release as the Android workflow: v<version>, a draft until
+      # published by hand.
+      - name: Add to the GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $TAG_NAME = "v$env:VERSION"
+          $FILES = @(Get-ChildItem -Name "QuizStudio-*-windows.zip", "QuizStudio-*.msix" -ErrorAction SilentlyContinue)
+          if (gh release view "$TAG_NAME" 2>$null) {
+            gh release upload "$TAG_NAME" @FILES --clobber
+          } else {
+            gh release create "$TAG_NAME" @FILES `
+              --title "Release $TAG_NAME" `
+              --draft=true `
+              --generate-notes
+          }
