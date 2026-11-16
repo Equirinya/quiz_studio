@@ -832,6 +832,32 @@ class AppLocalizationsDe extends AppLocalizations {
       'Fragen ohne Beschriftung zeigen weiter ihre Punkte';
 
   @override
+  String get mapShowsOnQuestions => 'Auf den Fragen';
+
+  @override
+  String get mapLabelsPoints => 'Punkte';
+
+  @override
+  String get mapLabelsTitles => 'Punkte und Titel';
+
+  @override
+  String get mapLabelsLabels => 'Beschriftungen';
+
+  @override
+  String get mapLabelsPointsText => 'Jede Frage zeigt ihre Punkte';
+
+  @override
+  String get mapLabelsTitlesText =>
+      'Jede Frage in eigener Zeile mit kurzem Titel: die Frage selbst oder ein Name aus „Spielplan anordnen“';
+
+  @override
+  String get mapQuestionTitles => 'Titel auf dem Spielplan';
+
+  @override
+  String get mapQuestionTitlesText =>
+      'Gezeigt bei „Punkte und Titel“. Leer: die Frage selbst.';
+
+  @override
   String get deleteBoard => 'Board löschen';
 
   @override
@@ -1792,7 +1818,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get mapDragBubble =>
-      'Ziehen zum Verschieben. Mit − und + unten änderst du die Größe.';
+      'Ziehen zum Verschieben. Mit − und + unten änderst du die Größe, mit dem Stift benennst du die Fragen auf dem Spielplan.';
 
   @override
   String get mapDragSelected =>
@@ -3338,6 +3364,38 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noVideo => 'Kein Video (läuft wie die Musik, anstelle des Bildes)';
+
+  @override
+  String get media => 'Bilder, Ton und Video';
+
+  @override
+  String pictureN(int n) {
+    return 'Bild $n';
+  }
+
+  @override
+  String get addAnotherPicture => 'Weiteres Bild hinzufügen';
+
+  @override
+  String get morePicturesHint => 'Mehrere Bilder werden nebeneinander gezeigt';
+
+  @override
+  String get videoHint => 'Läuft wie die Musik, anstelle des Bildes';
+
+  @override
+  String uploadingPercent(int percent) {
+    return 'Wird hochgeladen… $percent %';
+  }
+
+  @override
+  String uploadingFile(Object name) {
+    return '$name wird hochgeladen';
+  }
+
+  @override
+  String uploadSizeOf(Object sent, Object total) {
+    return '$sent von $total';
+  }
 
   @override
   String get firstItem => 'Erste Frage';

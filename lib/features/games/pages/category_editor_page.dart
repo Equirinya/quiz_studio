@@ -10,7 +10,7 @@ import 'package:quiz_show/features/games/game_repository.dart';
 import 'package:quiz_show/features/games/widgets/cards_dialog.dart';
 import 'package:quiz_show/features/games/widgets/companion_editor.dart';
 import 'package:quiz_show/features/games/widgets/editor_section.dart';
-import 'package:quiz_show/features/games/widgets/media_button.dart';
+import 'package:quiz_show/features/games/widgets/media_set_fields.dart';
 import 'package:quiz_show/features/games/widgets/settings_strip.dart';
 import 'package:quiz_show/features/games/widgets/question_preview.dart';
 import 'package:quiz_show/features/games/widgets/question_type_editors.dart';
@@ -603,20 +603,10 @@ class _QuestionCardState extends State<QuestionCard> {
   }
 
   Widget _media(ThemeData theme) {
-    Widget row(MediaKind kind, String? name, String none, String field) => Row(
-      children: [
-        MediaButton(gameId: widget.gameId, kind: kind, name: name, onChanged: (name) => _save({field: name})),
-        const SizedBox(width: 4),
-        Expanded(child: Text(name ?? none, maxLines: 1, overflow: TextOverflow.ellipsis)),
-      ],
-    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        row(MediaKind.image, _q.image, context.l10n.noPicture, 'image'),
-        row(MediaKind.audio, _q.music, context.l10n.noMusic, 'music'),
-        // Started from the controller like the music, in the picture's place.
-        row(MediaKind.video, _q.video, context.l10n.noVideo, 'video'),
+        MediaSetFields(gameId: widget.gameId, media: _q.media, onChanged: (media) => _save(media.toMap())),
         ListTile(
           contentPadding: const EdgeInsets.only(left: 8),
           leading: const Icon(Icons.queue_music),

@@ -285,7 +285,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
           phase: Phase.question,
           buzzQueue: const [],
           wrongAttempts: 0,
-          media: question.hasMediaAt(s.revealed) ? MediaPlayback.playing : null,
+          media: question.hasMediaAt(s.revealed, s.standing) ? MediaPlayback.playing : null,
         ),
       );
 
@@ -400,7 +400,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
         teams: _addPoints(s.teams, answering, top.pointsOf(index, question!.pointsPlus)),
         buzzQueue: const [],
         phase: all ? Phase.answerRevealed : Phase.question,
-        media: !all && question.hasMediaAt(s.revealed) ? MediaPlayback.playing : null,
+        media: !all && question.hasMediaAt(s.revealed, s.standing) ? MediaPlayback.playing : null,
       );
       return _ok(next, [const SoundEffect(effectAnswerCorrect), if (all) const SoundEffect(effectFanfare)]);
 
@@ -427,7 +427,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       if (playback == s.media) return _no(s);
       if (playback != MediaPlayback.stopped) {
         final listening = (s.phase == Phase.question || s.phase == Phase.buzzered) && !s.waitingForBets;
-        if (!listening || !(question?.hasMediaAt(s.revealed) ?? false)) return _no(s);
+        if (!listening || !(question?.hasMediaAt(s.revealed, s.standing) ?? false)) return _no(s);
       }
       // The question's own sound and the background music never overlap.
       return _ok(s.copyWith(media: playback, music: playback == MediaPlayback.playing ? null : s.music));
@@ -688,7 +688,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       final winner = next.winner;
       // The last team left wins, and its points go up at once; by places,
       // everyone's do once it is decided.
-      var after = s.copyWith(standing: next);
+      var after = _standingMedia(s.copyWith(standing: next), question);
       if (winner != null) after = after.copyWith(results: after.results.rated(winner, true));
       if (winner != null || (question.standingByPlaces && next.finished)) after = _give(after, question);
       return _ok(after, [
@@ -699,16 +699,16 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
     case StartTurns():
       final play = s.standing;
       if (question == null || play == null || play.started) return _no(s);
-      return _ok(s.copyWith(standing: play.withStarted(true)));
+      return _ok(_standingMedia(s.copyWith(standing: play.withStarted(true)), question));
 
     case UndoTurn():
       final play = s.standing;
       // Before the first turn: back to the question alone.
       if (question != null && play != null && play.started && play.turns.isEmpty) {
-        return _ok(s.copyWith(standing: play.withStarted(false)));
+        return _ok(_standingMedia(s.copyWith(standing: play.withStarted(false)), question));
       }
       if (question == null || play == null || play.turns.isEmpty) return _no(s);
-      final back = s.copyWith(standing: play.withoutLastTurn());
+      final back = _standingMedia(s.copyWith(standing: play.withoutLastTurn()), question);
       // A winner that is no longer one gives its points back, and by places
       // so does everyone.
       if (!play.finished) return _ok(back);
@@ -833,7 +833,17 @@ SessionState _backToBoard(SessionState s) => s.copyWith(
 /// After a wrong answer: the next queued team is up, or the question reopens.
 SessionState _nextBuzzer(SessionState s, Question question) {
   if (s.buzzQueue.length > 1) return s.copyWith(buzzQueue: s.buzzQueue.sublist(1));
-  return s.copyWith(phase: Phase.question, buzzQueue: const [], media: question.hasMediaAt(s.revealed) ? MediaPlayback.playing : null);
+  return s.copyWith(phase: Phase.question, buzzQueue: const [], media: question.hasMediaAt(s.revealed, s.standing) ? MediaPlayback.playing : null);
+}
+
+/// Last team standing after a turn changed: a prompt with its own sound or
+/// clip starts it, as a Fragenhagel item does. Without prompts that have
+/// one, the question's own sound goes on as it was.
+SessionState _standingMedia(SessionState s, Question question) {
+  final items = question.lastStanding?.items ?? const <RapidItem>[];
+  if (!items.any((item) => item.media.hasSound)) return s;
+  final sound = question.hasMediaAt(s.revealed, s.standing);
+  return s.copyWith(media: sound ? MediaPlayback.playing : MediaPlayback.stopped, music: sound ? null : _keepTimer);
 }
 
 /// A Fragenhagel at item [index]: everyone may answer again, the item's sound
@@ -842,15 +852,15 @@ SessionState _nextBuzzer(SessionState s, Question question) {
 SessionState _rapidAt(SessionState s, Question question, int index, int? now) {
   final done = index >= question.maxReveal;
   final asking = !done && index >= 0;
-  final music = done ? null : question.musicAt(index);
+  final sound = !done && question.hasMediaAt(index);
   final companion = question.companion;
   return s.copyWith(
     revealed: index,
     phase: done ? Phase.answerRevealed : Phase.question,
     buzzQueue: const [],
     wrongAttempts: 0,
-    media: music == null ? MediaPlayback.stopped : MediaPlayback.playing,
-    music: music == null ? _keepTimer : null,
+    media: sound ? MediaPlayback.playing : MediaPlayback.stopped,
+    music: sound ? null : _keepTimer,
     answerRound: companion == null || !asking ? null : _newRound(companion, now),
     // Whiteboard ratings are for one item only.
     results: const Results(),

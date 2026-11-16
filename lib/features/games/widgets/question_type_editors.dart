@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:quiz_show/features/games/widgets/editor_section.dart';
 import 'package:quiz_show/features/games/widgets/media_button.dart';
+import 'package:quiz_show/features/games/widgets/media_set_fields.dart';
 import 'package:quiz_show/features/games/widgets/ranker_import.dart';
 import 'package:quiz_show/game/game.dart';
 import 'package:quiz_show/l10n/l10n.dart';
@@ -518,8 +519,7 @@ class _RapidRow {
         answer = TextEditingController(text: item.answer),
         hint = TextEditingController(text: item.hint),
         isTrue = item.isTrue,
-        image = item.image,
-        music = item.music;
+        media = item.media;
 
   final TextEditingController question;
   final TextEditingController answer;
@@ -527,11 +527,10 @@ class _RapidRow {
   /// For the gamemaster only, e.g. other answers to accept.
   final TextEditingController hint;
   bool isTrue;
-  String? image;
-  String? music;
+  MediaSet media;
 
   RapidItem get item =>
-      RapidItem(question: question.text, answer: answer.text, isTrue: isTrue, hint: hint.text.trim(), image: image, music: music);
+      RapidItem(question: question.text, answer: answer.text, isTrue: isTrue, hint: hint.text.trim(), media: media);
 
   void dispose() {
     question.dispose();
@@ -691,17 +690,10 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
                       ],
                     ),
                   ),
-                  MediaButton(
+                  MediaSetButton(
                     gameId: widget.gameId,
-                    kind: MediaKind.image,
-                    name: row.image,
-                    onChanged: (name) => _change(() => row.image = name),
-                  ),
-                  MediaButton(
-                    gameId: widget.gameId,
-                    kind: MediaKind.audio,
-                    name: row.music,
-                    onChanged: (name) => _change(() => row.music = name),
+                    media: row.media,
+                    onChanged: (media) => _change(() => row.media = media),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -829,11 +821,10 @@ class _StandingEditorState extends State<_StandingEditor> {
                       onChanged: (_) => _write(),
                     ),
                   ),
-                  MediaButton(
+                  MediaSetButton(
                     gameId: widget.gameId,
-                    kind: MediaKind.image,
-                    name: row.image,
-                    onChanged: (name) => _change(() => row.image = name),
+                    media: row.media,
+                    onChanged: (media) => _change(() => row.media = media),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),

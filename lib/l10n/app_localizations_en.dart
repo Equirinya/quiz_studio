@@ -827,6 +827,32 @@ class AppLocalizationsEn extends AppLocalizations {
       'Questions without a label still show their points';
 
   @override
+  String get mapShowsOnQuestions => 'On the questions';
+
+  @override
+  String get mapLabelsPoints => 'Points';
+
+  @override
+  String get mapLabelsTitles => 'Points and title';
+
+  @override
+  String get mapLabelsLabels => 'Labels';
+
+  @override
+  String get mapLabelsPointsText => 'Each question shows its points';
+
+  @override
+  String get mapLabelsTitlesText =>
+      'Each question on its own line with a short title: the question itself, or a name given in Arrange the map';
+
+  @override
+  String get mapQuestionTitles => 'Titles on the map';
+
+  @override
+  String get mapQuestionTitlesText =>
+      'Shown with \"Points and title\". Empty: the question itself.';
+
+  @override
   String get deleteBoard => 'Delete board';
 
   @override
@@ -1785,7 +1811,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mapDragBubble =>
-      'Drag to move. Use − and + below to change this bubble\'s size.';
+      'Drag to move. Use − and + below to change this bubble\'s size, the pencil to name its questions on the map.';
 
   @override
   String get mapDragSelected =>
@@ -3320,6 +3346,38 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get noVideo =>
       'No video (plays like the music, in the picture\'s place)';
+
+  @override
+  String get media => 'Pictures, sound and video';
+
+  @override
+  String pictureN(int n) {
+    return 'Picture $n';
+  }
+
+  @override
+  String get addAnotherPicture => 'Add another picture';
+
+  @override
+  String get morePicturesHint => 'Several pictures are shown side by side';
+
+  @override
+  String get videoHint => 'Plays like the music, in the picture\'s place';
+
+  @override
+  String uploadingPercent(int percent) {
+    return 'Uploading… $percent %';
+  }
+
+  @override
+  String uploadingFile(Object name) {
+    return 'Uploading $name';
+  }
+
+  @override
+  String uploadSizeOf(Object sent, Object total) {
+    return '$sent of $total';
+  }
 
   @override
   String get firstItem => 'First item';

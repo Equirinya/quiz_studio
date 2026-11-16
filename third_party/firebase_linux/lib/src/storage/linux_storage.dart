@@ -85,6 +85,7 @@ class LinuxFirebaseStorage extends FirebaseStoragePlatform {
     Future<http.BaseRequest> Function() build, {
     required int retryTime,
     bool Function()? canceled,
+    Duration timeout = const Duration(minutes: 2),
   }) async {
     final deadline = DateTime.now().add(Duration(milliseconds: retryTime));
     for (var attempt = 0;; attempt++) {
@@ -92,7 +93,7 @@ class LinuxFirebaseStorage extends FirebaseStoragePlatform {
       http.StreamedResponse? response;
       Object? failure;
       try {
-        response = await httpClient.send(await build()).timeout(const Duration(minutes: 2));
+        response = await httpClient.send(await build()).timeout(timeout);
       } catch (error) {
         if (!(isNetworkError(error) || error is TimeoutException)) rethrow;
         failure = error;
@@ -417,19 +418,32 @@ class LinuxTask extends TaskPlatform {
       '--$boundary\r\ncontent-type: ${metadata?.contentType ?? 'application/octet-stream'}\r\n\r\n',
     );
     final tail = utf8.encode('\r\n--$boundary--');
-    final body = Uint8List(head.length + bytes.length + tail.length)
-      ..setAll(0, head)
-      ..setAll(head.length, bytes)
-      ..setAll(head.length + bytes.length, tail);
+    // The body goes out in pieces, pulled as the connection takes them, so
+    // the progress follows what was really sent.
+    Stream<List<int>> body() async* {
+      yield head;
+      const piece = 256 * 1024;
+      for (var at = 0; at < bytes.length; at += piece) {
+        if (task._canceled) throw storageException('canceled', 'The upload was canceled.');
+        final end = min(at + piece, bytes.length);
+        yield Uint8List.sublistView(bytes, at, end);
+        task._update(TaskState.running, end, bytes.length);
+      }
+      yield tail;
+    }
+
     final response = await storage.send(
-      () async => http.Request('POST', storage.bucketUri({'name': ref.fullPath}))
+      () async => _StreamedBody('POST', storage.bucketUri({'name': ref.fullPath}), body)
+        ..contentLength = head.length + bytes.length + tail.length
         ..headers.addAll(await storage.headers({
           'content-type': 'multipart/related; boundary=$boundary',
           'x-goog-upload-protocol': 'multipart',
-        }))
-        ..bodyBytes = body,
+        })),
       retryTime: storage.maxUploadRetryTime,
       canceled: () => task._canceled,
+      // The answer comes once all of it is sent: time for that at a slow
+      // connection's pace (50 kB/s), on top of the usual wait.
+      timeout: Duration(minutes: 2, seconds: bytes.length ~/ 50000),
     );
     final json = jsonDecode(await response.stream.bytesToString());
     task._update(TaskState.success, bytes.length, bytes.length, metadataMap(Map<String, dynamic>.from(json as Map)));
@@ -480,5 +494,18 @@ class LinuxTask extends TaskPlatform {
     if (_done.isCompleted) return false;
     _canceled = true;
     return true;
+  }
+}
+
+/// A request whose body is made afresh for every attempt, piece by piece.
+class _StreamedBody extends http.BaseRequest {
+  _StreamedBody(super.method, super.url, this._body);
+
+  final Stream<List<int>> Function() _body;
+
+  @override
+  http.ByteStream finalize() {
+    super.finalize();
+    return http.ByteStream(_body());
   }
 }

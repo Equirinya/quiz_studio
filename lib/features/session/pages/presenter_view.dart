@@ -10,6 +10,7 @@ import 'package:quiz_show/features/companion/connections.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/session/boards/map_board.dart';
 import 'package:quiz_show/features/session/boards/wheel_board.dart';
+import 'package:quiz_show/features/session/pages/media_box.dart';
 import 'package:quiz_show/features/session/pages/ordering_display.dart';
 import 'package:quiz_show/features/session/pages/screen_overlays.dart';
 import 'package:quiz_show/features/session/pages/standing_display.dart';
@@ -279,13 +280,51 @@ class _Scores extends StatelessWidget {
                   ],
                 ),
               );
+              // Its place in the buzzer queue, readable across the room: a
+              // bell for the team answering, then 2, 3, ... for those waiting.
+              final badge = unit * (compact ? 3.6 : 4.4);
+              final queued = Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  box,
+                  Positioned(
+                    top: -badge * 0.35,
+                    left: -badge * 0.35,
+                    child: AnimatedScale(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutBack,
+                      scale: position < 0 ? 0 : 1,
+                      child: Container(
+                        width: badge,
+                        height: badge,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: position == 0 ? scheme.primary : scheme.secondaryContainer,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: scheme.surface, width: unit * 0.3),
+                        ),
+                        child: position == 0
+                            ? Icon(Icons.notifications_active, size: badge * 0.55, color: scheme.onPrimary)
+                            : Text(
+                                '${position + 1}',
+                                style: TextStyle(
+                                  fontSize: badge * 0.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: scheme.onSecondaryContainer,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
               // What the team just got pops up under its box for a moment.
               return ScorePop(
                 teamId: team.id,
                 log: state.scoreLog,
                 size: unit * 3.2,
                 delay: Duration(milliseconds: 350 * (popOrder.indexOf(team.id).clamp(0, 99))),
-                child: box,
+                child: queued,
               );
             },
           ),
@@ -576,8 +615,8 @@ class QuestionDisplay extends StatelessWidget {
     // the gamemaster shows popping up over it all.
     final main = switch (question.type) {
       QuestionType.connections => _ConnectionsDisplay(state: state, question: question, unit: unit),
-      QuestionType.rapidFire => RapidFireDisplay(state: state, question: question, unit: unit, file: _file),
-      QuestionType.lastStanding => StandingDisplay(state: state, question: question, unit: unit, file: _file),
+      QuestionType.rapidFire => RapidFireDisplay(state: state, question: question, unit: unit, file: _file, onVideoEnd: onVideoEnd),
+      QuestionType.lastStanding => StandingDisplay(state: state, question: question, unit: unit, file: _file, onVideoEnd: onVideoEnd),
       QuestionType.progressingReveal => _RevealDisplay(state: state, question: question, unit: unit, file: _file),
       _ => _standard(context, round),
     };
@@ -635,10 +674,17 @@ class QuestionDisplay extends StatelessWidget {
   /// top answers. Without anything below, the question gets all the room.
   Widget _standard(BuildContext context, AnswerRound? round) {
     final scheme = Theme.of(context).colorScheme;
-    final image = _file(question.image);
-    final videoName = question.videoAt(state.revealed);
-    final video = _file(videoName);
-    final hasPicture = image != null || videoName != null;
+    final videoName = question.videoAt(state.revealed, state.standing);
+    final media = MediaBox(
+      images: [for (final name in question.images) ?_file(name)],
+      unit: unit,
+      videoName: videoName,
+      video: _file(videoName),
+      playback: state.media,
+      onVideoEnd: onVideoEnd,
+    );
+    final hasPicture = !media.isEmpty;
+    final image = media.images.firstOrNull;
     // Matching and put in order: the question as tall as its text, the
     // pieces get the rest.
     final pieces = question.type == QuestionType.matching || question.type == QuestionType.ordering;
@@ -708,36 +754,12 @@ class QuestionDisplay extends StatelessWidget {
         // The picture as big as the box lets it be.
         crossAxisAlignment: pieces ? CrossAxisAlignment.center : CrossAxisAlignment.stretch,
         children: [
-          if (videoName != null)
+          if (hasPicture)
             Expanded(
               flex: 3,
               child: Padding(
                 padding: EdgeInsets.only(right: question.text.trim().isEmpty ? 0 : unit * 2),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(unit * 2),
-                  child: video != null && onVideoEnd != null
-                      ? QuestionVideo(key: ValueKey(video.path), file: video, playback: state.media, onFinished: onVideoEnd!)
-                      : ColoredBox(
-                          color: scheme.surfaceContainerHighest,
-                          child: Center(
-                            child: Icon(
-                              state.media == MediaPlayback.playing ? Icons.play_circle_outline : Icons.movie_outlined,
-                              size: unit * 12,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                ),
-              ),
-            )
-          else if (image != null)
-            Expanded(
-              flex: 3,
-              child: Padding(
-                padding: EdgeInsets.only(right: question.text.trim().isEmpty ? 0 : unit * 2),
-                child: FittedBox(
-                  child: ClipRRect(borderRadius: BorderRadius.circular(unit * 2), child: Image.file(image)),
-                ),
+                child: media,
               ),
             ),
           if (question.hasMusic && videoName == null)

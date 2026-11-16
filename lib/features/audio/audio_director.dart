@@ -114,9 +114,9 @@ class AudioDirector {
 
     final question = state.current == null ? null : host.game?.question(state.current!);
     // A clip brings its own sound and is played by the big screen.
-    final media = state.media == MediaPlayback.stopped || question?.videoAt(state.revealed) != null
+    final media = state.media == MediaPlayback.stopped || question?.videoAt(state.revealed, state.standing) != null
         ? null
-        : _path(question?.musicAt(state.revealed));
+        : _path(question?.musicAt(state.revealed, state.standing));
     final playback = media == null ? MediaPlayback.stopped : state.media;
     if (media != _media || playback != _playback) {
       _media = media;

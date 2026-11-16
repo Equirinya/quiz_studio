@@ -21,7 +21,12 @@ class MapEditor extends StatefulWidget {
     required this.onSave,
     required this.imageFile,
     this.pickImage,
+    this.onQuestionTitle,
   });
+
+  /// Gives a question its own short title on the map, or null to show the
+  /// question itself. Editing titles is off when this is null.
+  final void Function(String categoryId, String questionId, String? title)? onQuestionTitle;
 
   final CategoryGroup group;
   final void Function(Map<String, dynamic> layout) onSave;
@@ -179,6 +184,57 @@ class _MapEditorState extends State<MapEditor> {
     final decoration = _decorations[_selected!];
     final text = await promptText(context, title: context.l10n.editTitle, initial: decoration['text'] as String, label: context.l10n.text);
     if (text != null) _change(() => decoration['text'] = text);
+  }
+
+  /// The short titles of the selected bubble's questions, all in one dialog.
+  Future<void> _editQuestionTitles() async {
+    final category = widget.group.categories.where((c) => c.id == _bubble).firstOrNull;
+    final save = widget.onQuestionTitle;
+    if (category == null || save == null) return;
+    final fields = {for (final q in category.questions) q.id: TextEditingController(text: q.mapTitle ?? '')};
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${context.l10n.mapQuestionTitles} · ${category.name}'),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(context.l10n.mapQuestionTitlesText, style: Theme.of(context).textTheme.bodySmall),
+                for (final q in category.questions)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: TextField(
+                      controller: fields[q.id],
+                      decoration: InputDecoration(
+                        labelText: q.boardPoints.toString(),
+                        hintText: q.text.trim().split('\n').first,
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.cancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(context.l10n.done)),
+        ],
+      ),
+    );
+    if (ok == true) {
+      for (final q in category.questions) {
+        final title = fields[q.id]!.text.trim();
+        if (title != (q.mapTitle ?? '')) save(category.id, q.id, title.isEmpty ? null : title);
+      }
+    }
+    for (final field in fields.values) {
+      field.dispose();
+    }
   }
 
   void _resize(double factor) => _change(() {
@@ -421,7 +477,11 @@ class _MapEditorState extends State<MapEditor> {
               IconButton(
                 tooltip: context.l10n.editText,
                 icon: const Icon(Icons.edit_outlined),
-                onPressed: selected?['type'] == 'title' ? _editSelectedText : null,
+                onPressed: selected?['type'] == 'title'
+                    ? _editSelectedText
+                    : _bubble != null && widget.onQuestionTitle != null
+                    ? _editQuestionTitles
+                    : null,
               ),
               IconButton(
                 tooltip: context.l10n.remove,

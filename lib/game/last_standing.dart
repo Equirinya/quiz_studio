@@ -67,7 +67,7 @@ class LastStanding {
   RapidItem? itemAt(int index) => index >= 0 && index < items.length ? items[index] : null;
 
   Iterable<String> get mediaPaths => [
-    for (final item in items) ...[?item.image, ?item.music],
+    for (final item in items) ...item.media.paths,
   ];
 }
 

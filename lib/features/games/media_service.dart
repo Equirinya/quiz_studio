@@ -44,6 +44,22 @@ String newMediaName(String sourcePath, {Random? random}) {
   return dot < 0 ? id : '$id.${name.substring(dot + 1).toLowerCase()}';
 }
 
+/// One upload under way, for progress bars anywhere in the app.
+class MediaUpload {
+  MediaUpload({required this.label, required this.totalBytes});
+
+  /// The file's own name on this device, to tell the user which one it is.
+  final String label;
+  final int totalBytes;
+
+  /// 0..1 of the bytes sent.
+  final ValueNotifier<double> progress = ValueNotifier(0);
+
+  /// Big enough that the upload takes a while and gets its own notice that
+  /// stays on screen, whatever page is open.
+  bool get large => totalBytes >= MediaService.largeUploadBytes;
+}
+
 /// Game media: files live in storage under `game_{gameId}/` and are mirrored
 /// into the app's support directory, where every widget reads them from.
 class MediaService {
@@ -53,6 +69,12 @@ class MediaService {
 
   Directory? _root;
   final Map<String, Future<void>> _downloads = {};
+
+  /// From this size on an upload is shown in a notice of its own.
+  static const int largeUploadBytes = 20 * 1024 * 1024;
+
+  /// The uploads under way, oldest first.
+  final ValueNotifier<List<MediaUpload>> uploads = ValueNotifier(const []);
 
   /// Whether [localFile] can be used yet.
   bool get ready => _root != null;
@@ -70,7 +92,9 @@ class MediaService {
 
   /// Uploads the file at [sourcePath] and returns the name to store in the
   /// document. Throws when the file type is not supported.
-  Future<String> upload(String gameId, String sourcePath) async {
+  ///
+  /// [onProgress] gets 0..1 of the bytes sent as they go.
+  Future<String> upload(String gameId, String sourcePath, {ValueChanged<double>? onProgress}) async {
     await init();
     final contentType = contentTypeForPath(sourcePath);
     // Windows, where the show runs, cannot play Ogg or Opus.
@@ -79,7 +103,27 @@ class MediaService {
     }
     if (contentType == null) throw UnsupportedError('This file type is not supported.');
     final name = newMediaName(sourcePath);
-    await _remote(gameId, name).putFile(File(sourcePath), SettableMetadata(contentType: contentType));
+    final upload = MediaUpload(label: sourcePath.split(RegExp(r'[/\\]')).last, totalBytes: await File(sourcePath).length());
+    uploads.value = [...uploads.value, upload];
+    try {
+      final task = _remote(gameId, name).putFile(File(sourcePath), SettableMetadata(contentType: contentType));
+      final events = task.snapshotEvents.listen(
+        (snapshot) {
+          if (snapshot.totalBytes <= 0) return;
+          upload.progress.value = (snapshot.bytesTransferred / snapshot.totalBytes).clamp(0.0, 1.0);
+          onProgress?.call(upload.progress.value);
+        },
+        // The task itself reports the error.
+        onError: (Object _) {},
+      );
+      try {
+        await task;
+      } finally {
+        await events.cancel();
+      }
+    } finally {
+      uploads.value = [...uploads.value]..remove(upload);
+    }
     final local = localFile(gameId, name);
     await local.parent.create(recursive: true);
     await File(sourcePath).copy(local.path);

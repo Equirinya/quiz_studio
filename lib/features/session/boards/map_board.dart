@@ -139,7 +139,7 @@ class _MapBoardState extends State<MapCanvas> {
     final group = widget.group;
     final state = widget.state;
     final map = layoutMap(group);
-    final labels = mapShowsLabels(group);
+    final labels = MapLabels.of(group);
     _keys.removeWhere((id, _) => !map.nodes.containsKey(id));
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
 
@@ -237,7 +237,7 @@ class _Bubble extends StatelessWidget {
   final SessionState state;
   final double width;
   final double unit;
-  final bool labels;
+  final MapLabels labels;
 
   @override
   Widget build(BuildContext context) {
@@ -281,6 +281,15 @@ class _Bubble extends StatelessWidget {
             ),
           ),
           SizedBox(height: unit * 0.6),
+          if (labels == MapLabels.titles)
+            for (final (i, question) in category.questions.indexed)
+              _TitleRow(
+                question: question,
+                played: state.played.contains(refs[i].key),
+                open: state.current == refs[i],
+                unit: unit,
+              )
+          else
           Wrap(
             alignment: WrapAlignment.center,
             spacing: unit * 0.4,
@@ -302,7 +311,7 @@ class _Bubble extends StatelessWidget {
                       borderRadius: BorderRadius.circular(unit),
                     ),
                     child: Text(
-                      labels ? (question.description ?? question.boardPoints.toString()) : question.boardPoints.toString(),
+                      labels == MapLabels.label ? (question.description ?? question.boardPoints.toString()) : question.boardPoints.toString(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -320,6 +329,38 @@ class _Bubble extends StatelessWidget {
                 }),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One question on its own line: points, then its short title.
+class _TitleRow extends StatelessWidget {
+  const _TitleRow({required this.question, required this.played, required this.open, required this.unit});
+
+  final Question question;
+  final bool played;
+  final bool open;
+  final double unit;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = open ? scheme.onPrimary : (played ? scheme.outline : scheme.onPrimaryContainer);
+    final style = TextStyle(fontSize: unit, color: color, decoration: played ? TextDecoration.lineThrough : null);
+    return Container(
+      margin: EdgeInsets.only(top: unit * 0.3),
+      padding: EdgeInsets.symmetric(horizontal: unit * 0.7, vertical: unit * 0.3),
+      decoration: BoxDecoration(
+        color: open ? scheme.primary : (played ? Colors.transparent : scheme.primaryContainer),
+        borderRadius: BorderRadius.circular(unit),
+      ),
+      child: Row(
+        children: [
+          Text(question.boardPoints.toString(), style: style.copyWith(fontWeight: FontWeight.w700)),
+          SizedBox(width: unit * 0.6),
+          Expanded(child: Text(question.shortTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
         ],
       ),
     );

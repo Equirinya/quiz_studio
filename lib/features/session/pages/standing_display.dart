@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import 'package:quiz_show/features/session/pages/media_box.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/game/game.dart';
 import 'package:quiz_show/l10n/l10n.dart';
@@ -10,7 +11,14 @@ import 'package:quiz_show/l10n/l10n.dart';
 /// this turn's prompt, and every team in turn order, crossed out once it is
 /// out. At the end, the winner.
 class StandingDisplay extends StatelessWidget {
-  const StandingDisplay({super.key, required this.state, required this.question, required this.unit, required this.file});
+  const StandingDisplay({
+    super.key,
+    required this.state,
+    required this.question,
+    required this.unit,
+    required this.file,
+    this.onVideoEnd,
+  });
 
   final SessionState state;
   final Question question;
@@ -18,6 +26,9 @@ class StandingDisplay extends StatelessWidget {
 
   /// A media file of the game on this device, if it is there.
   final File? Function(String? name) file;
+
+  /// See [MediaBox.onVideoEnd].
+  final VoidCallback? onVideoEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +38,15 @@ class StandingDisplay extends StatelessWidget {
     final item = question.lastStanding?.itemAt(play.item);
     final current = play.current == null ? null : state.team(play.current!);
     final winner = play.winner == null ? null : state.team(play.winner!);
-    final picture = winner == null ? file(item?.image) : null;
+    final videoName = winner == null && item != null ? item.video : null;
+    final picture = MediaBox(
+      images: [if (winner == null) for (final name in item?.images ?? const <String>[]) ?file(name)],
+      unit: unit,
+      videoName: videoName,
+      video: file(videoName),
+      playback: state.media,
+      onVideoEnd: onVideoEnd,
+    );
     final out = play.out;
     // Before the first turn only the question is up, big, to be read out.
     if (!play.started) {
@@ -94,12 +113,9 @@ class StandingDisplay extends StatelessWidget {
                       ),
                     if (item != null) ...[
                       SizedBox(height: unit * 3),
-                      if (picture != null)
-                        Flexible(
-                          child: Padding(
-                            padding: EdgeInsets.only(bottom: unit * 2),
-                            child: Image.file(picture, fit: BoxFit.contain),
-                          ),
+                      if (!picture.isEmpty)
+                        Expanded(
+                          child: Padding(padding: EdgeInsets.only(bottom: unit * 2), child: picture),
                         ),
                       Text(
                         item.question,

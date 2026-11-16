@@ -62,6 +62,10 @@ class _MapEditorPageState extends State<MapEditorPage> {
                           return file;
                         },
                         pickImage: _pickImage,
+                        onQuestionTitle: (categoryId, questionId, title) => guarded(
+                          context,
+                          () => GameRepository.instance.updateQuestion(widget.gameId, categoryId, questionId, {'mapTitle': title}),
+                        ),
                         onSave: (layout) => guarded(
                           context,
                           () => GameRepository.instance.updateGroup(widget.gameId, widget.groupId, {'mapLayout': layout}),

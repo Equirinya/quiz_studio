@@ -2,6 +2,8 @@
 /// question of the game. Plain Dart.
 library;
 
+import 'media_set.dart';
+
 /// How the teams answer each item.
 enum RapidMode {
   /// Teams buzz; the gamemaster judges the answer, a right one moves on.
@@ -51,27 +53,30 @@ const List<String> rapidChoices = ["Right", "Wrong"];
 ///   true:     devices mode: whether the statement is right
 ///   hint:     optional, for the gamemaster only: something to help judge
 ///             or to tell after the item ("also accept: Lisbon")
-///   image, music: media files of the game shown and played with the item
+///   image, images, music, video: media files of the game shown and
+///             played with the item (see [MediaSet])
 class RapidItem {
-  const RapidItem({this.question = '', this.answer = '', this.isTrue = true, this.hint = '', this.image, this.music});
+  const RapidItem({this.question = '', this.answer = '', this.isTrue = true, this.hint = '', this.media = MediaSet.empty});
 
   final String question;
   final String answer;
   final bool isTrue;
   final String hint;
-  final String? image;
-  final String? music;
+  final MediaSet media;
+
+  String? get image => media.image;
+  List<String> get images => media.images;
+  String? get music => media.music;
+  String? get video => media.video;
 
   static RapidItem fromMap(Object? stored) {
     if (stored is! Map) return const RapidItem();
-    String? file(Object? v) => v is String && v.isNotEmpty ? v : null;
     return RapidItem(
       question: stored['question'] is String ? stored['question'] as String : '',
       answer: stored['answer'] is String ? stored['answer'] as String : '',
       isTrue: stored['true'] != false,
       hint: stored['hint'] is String ? stored['hint'] as String : '',
-      image: file(stored['image']),
-      music: file(stored['music']),
+      media: MediaSet.fromMap(stored),
     );
   }
 
@@ -80,22 +85,19 @@ class RapidItem {
         'answer': answer,
         'true': isTrue,
         if (hint.isNotEmpty) 'hint': hint,
-        'image': image,
-        'music': music,
+        // Empty fields are left out, as before there were videos.
+        for (final MapEntry(:key, :value) in media.toMap().entries)
+          if (value != null || key == 'image' || key == 'music') key: value,
       };
 
-  RapidItem copyWith({String? question, String? answer, bool? isTrue, String? hint, Object? image = _keep, Object? music = _keep}) =>
-      RapidItem(
+  RapidItem copyWith({String? question, String? answer, bool? isTrue, String? hint, MediaSet? media}) => RapidItem(
         question: question ?? this.question,
         answer: answer ?? this.answer,
         isTrue: isTrue ?? this.isTrue,
         hint: hint ?? this.hint,
-        image: image == _keep ? this.image : image as String?,
-        music: music == _keep ? this.music : music as String?,
+        media: media ?? this.media,
       );
 }
-
-const Object _keep = Object();
 
 /// A Fragenhagel's setup, stored on the question as `rapidFire`.
 ///
@@ -132,7 +134,7 @@ class RapidFire {
   RapidItem? itemAt(int done) => done >= 0 && done < items.length ? items[done] : null;
 
   Iterable<String> get mediaPaths => [
-        for (final item in items) ...[?item.image, ?item.music],
+        for (final item in items) ...item.media.paths,
       ];
 }
 

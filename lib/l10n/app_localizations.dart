@@ -1304,6 +1304,54 @@ abstract class AppLocalizations {
   /// **'Questions without a label still show their points'**
   String get labelsInsteadOfPointsText;
 
+  /// No description provided for @mapShowsOnQuestions.
+  ///
+  /// In en, this message translates to:
+  /// **'On the questions'**
+  String get mapShowsOnQuestions;
+
+  /// No description provided for @mapLabelsPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'Points'**
+  String get mapLabelsPoints;
+
+  /// No description provided for @mapLabelsTitles.
+  ///
+  /// In en, this message translates to:
+  /// **'Points and title'**
+  String get mapLabelsTitles;
+
+  /// No description provided for @mapLabelsLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get mapLabelsLabels;
+
+  /// No description provided for @mapLabelsPointsText.
+  ///
+  /// In en, this message translates to:
+  /// **'Each question shows its points'**
+  String get mapLabelsPointsText;
+
+  /// No description provided for @mapLabelsTitlesText.
+  ///
+  /// In en, this message translates to:
+  /// **'Each question on its own line with a short title: the question itself, or a name given in Arrange the map'**
+  String get mapLabelsTitlesText;
+
+  /// No description provided for @mapQuestionTitles.
+  ///
+  /// In en, this message translates to:
+  /// **'Titles on the map'**
+  String get mapQuestionTitles;
+
+  /// No description provided for @mapQuestionTitlesText.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown with \"Points and title\". Empty: the question itself.'**
+  String get mapQuestionTitlesText;
+
   /// No description provided for @deleteBoard.
   ///
   /// In en, this message translates to:
@@ -2867,7 +2915,7 @@ abstract class AppLocalizations {
   /// No description provided for @mapDragBubble.
   ///
   /// In en, this message translates to:
-  /// **'Drag to move. Use − and + below to change this bubble\'s size.'**
+  /// **'Drag to move. Use − and + below to change this bubble\'s size, the pencil to name its questions on the map.'**
   String get mapDragBubble;
 
   /// No description provided for @mapDragSelected.
@@ -5455,6 +5503,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No video (plays like the music, in the picture\'s place)'**
   String get noVideo;
+
+  /// No description provided for @media.
+  ///
+  /// In en, this message translates to:
+  /// **'Pictures, sound and video'**
+  String get media;
+
+  /// No description provided for @pictureN.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture {n}'**
+  String pictureN(int n);
+
+  /// No description provided for @addAnotherPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Add another picture'**
+  String get addAnotherPicture;
+
+  /// No description provided for @morePicturesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Several pictures are shown side by side'**
+  String get morePicturesHint;
+
+  /// No description provided for @videoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Plays like the music, in the picture\'s place'**
+  String get videoHint;
+
+  /// No description provided for @uploadingPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading… {percent} %'**
+  String uploadingPercent(int percent);
+
+  /// No description provided for @uploadingFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading {name}'**
+  String uploadingFile(Object name);
+
+  /// No description provided for @uploadSizeOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{sent} of {total}'**
+  String uploadSizeOf(Object sent, Object total);
 
   /// No description provided for @firstItem.
   ///

@@ -1399,7 +1399,7 @@ class _ActionPad extends StatelessWidget {
         ? const Reveal(1)
         : null;
     final playing = state.media == MediaPlayback.playing;
-    final Command? sound = q != null && q.hasMediaAt(state.revealed) && listening
+    final Command? sound = q != null && q.hasMediaAt(state.revealed, state.standing) && listening
         ? SetMedia(playing ? MediaPlayback.paused : MediaPlayback.playing)
         : null;
     final queued = state.buzzQueue.length > 1;
@@ -2161,7 +2161,7 @@ class _EffectsSheetState extends State<_EffectsSheet> {
                 ),
             ],
           ),
-          if (question != null && question.hasMediaAt(state.revealed)) ...[
+          if (question != null && question.hasMediaAt(state.revealed, state.standing)) ...[
             header(context.l10n.questionSound),
             Wrap(
               spacing: 8,

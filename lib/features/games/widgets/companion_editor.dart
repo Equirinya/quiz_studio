@@ -228,16 +228,12 @@ class _CompanionEditorState extends State<CompanionEditor> {
         if (kind == CompanionKind.whiteboard && _background == 'image')
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Row(
-              children: [
-                MediaButton(
-                  gameId: widget.gameId,
-                  kind: MediaKind.image,
-                  name: _backgroundImage,
-                  onChanged: (name) => _change(() => _backgroundImage = name),
-                ),
-                Expanded(child: Text(_backgroundImage == null ? context.l10n.choosePictureToDrawOn : context.l10n.pictureSet)),
-              ],
+            child: MediaButton.tile(
+              gameId: widget.gameId,
+              kind: MediaKind.image,
+              name: _backgroundImage,
+              title: _backgroundImage == null ? context.l10n.choosePictureToDrawOn : context.l10n.pictureSet,
+              onChanged: (name) => _change(() => _backgroundImage = name),
             ),
           ),
         if (_hasRange) ...[

@@ -18,7 +18,7 @@
 ///   decorations: [{type: "title", text, x, y, size}
 ///                 {type: "image", image, x, y, width}
 ///                 {type: "line", x1, y1, x2, y2}]
-/// and `mapLabels`: "points" (default) | "label".
+/// and `mapLabels`: "points" (default) | "label" | "titles".
 library;
 
 import 'dart:math';
@@ -360,5 +360,20 @@ MapLayout layoutMap(CategoryGroup group) {
   );
 }
 
+/// What a map board shows for each question in a bubble.
+enum MapLabels {
+  /// Its points.
+  points,
+
+  /// Its badge label ([Question.description]), or its points without one.
+  label,
+
+  /// Its points with a short title ([Question.shortTitle]), one per line.
+  titles;
+
+  static MapLabels of(CategoryGroup group) =>
+      MapLabels.values.where((mode) => mode.name == group.data['mapLabels']).firstOrNull ?? MapLabels.points;
+}
+
 /// Whether the map shows each question's short label instead of its points.
-bool mapShowsLabels(CategoryGroup group) => group.data['mapLabels'] == 'label';
+bool mapShowsLabels(CategoryGroup group) => MapLabels.of(group) == MapLabels.label;

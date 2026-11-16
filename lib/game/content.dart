@@ -9,6 +9,7 @@ library;
 import 'cards.dart';
 import 'companion.dart';
 import 'matching.dart';
+import 'media_set.dart';
 import 'ordering.dart';
 import 'top_answers.dart';
 import 'rapid_fire.dart';
@@ -337,7 +338,8 @@ class Question {
     this.text = '',
     this.description,
     this.answerHint,
-    this.image,
+    this.mapTitle,
+    this.images = const [],
     this.music,
     this.video,
     this.pointsPlus = 0,
@@ -376,7 +378,18 @@ class Question {
 
   /// Only ever shown to the gamemaster.
   final String? answerHint;
-  final String? image;
+
+  /// A short name for the question on a map board, set in the map editor;
+  /// see [shortTitle].
+  final String? mapTitle;
+
+  /// What the map shows beside the points: [mapTitle], or the question's
+  /// first line.
+  String get shortTitle => mapTitle ?? text.trim().split('\n').first.trim();
+
+  /// The question's pictures, shown side by side; see [MediaSet].
+  final List<String> images;
+  String? get image => images.firstOrNull;
   final String? music;
 
   /// A clip shown in the question's picture box, started, paused and
@@ -531,7 +544,8 @@ class Question {
       text: data['question'] is String ? data['question'] as String : '',
       description: _str(data['description']),
       answerHint: _str(data['answerHint']),
-      image: _str(data['image']),
+      mapTitle: _str(data['mapTitle']),
+      images: MediaSet.readImages(data),
       music: _str(data['music']),
       video: _str(data['video']),
       pointsPlus: _int(data['pointsPlus']),
@@ -668,16 +682,39 @@ class Question {
 
   bool get hasMusic => music != null;
 
+  MediaSet get media => MediaSet(images: images, music: music, video: video);
+
+  /// The item on screen at reveal counter [revealed], or in last team
+  /// standing at [standing]'s turn: a Fragenhagel or last-team-standing
+  /// prompt, if the question has them.
+  RapidItem? itemAt(int revealed, [StandingPlay? standing]) => switch (type) {
+        QuestionType.rapidFire => rapidFire?.itemAt(revealed),
+        QuestionType.lastStanding when standing != null && standing.started && !standing.finished =>
+          lastStanding?.itemAt(standing.item),
+        _ => null,
+      };
+
+  /// What plays at [revealed] (and [standing]): the item's own sound or
+  /// clip, or else the question's.
+  MediaSet _soundAt(int revealed, [StandingPlay? standing]) {
+    final item = itemAt(revealed, standing);
+    return item != null && item.media.hasSound ? item.media : media;
+  }
+
   /// The sound to play at reveal counter [revealed]: a Fragenhagel item's own
   /// one, or the question's.
-  String? musicAt(int revealed) => type == QuestionType.rapidFire ? (rapidFire?.itemAt(revealed)?.music ?? music) : music;
+  String? musicAt(int revealed, [StandingPlay? standing]) {
+    final sound = _soundAt(revealed, standing);
+    // While there is a clip its own sound plays instead.
+    return sound.video == null ? sound.music : null;
+  }
 
   /// The clip to show at reveal counter [revealed]; while there is one the
   /// question's sound stays off, as the clip brings its own.
-  String? videoAt(int revealed) => video;
+  String? videoAt(int revealed, [StandingPlay? standing]) => _soundAt(revealed, standing).video;
 
   /// Whether there is something to play at [revealed], sound or clip.
-  bool hasMediaAt(int revealed) => videoAt(revealed) != null || musicAt(revealed) != null;
+  bool hasMediaAt(int revealed, [StandingPlay? standing]) => _soundAt(revealed, standing).hasSound;
 
   bool get hasInformationImages => informationImages.any((e) => e.isNotEmpty);
 
@@ -699,9 +736,7 @@ class Question {
 
   /// Every media file this question needs, for caching ahead of the show.
   List<String> get mediaPaths => [
-        ?image,
-        ?music,
-        ?video,
+        ...media.paths,
         ...informationImages.where((e) => e.isNotEmpty),
         ...informationMusic.where((e) => e.isNotEmpty),
         ?companion?.backgroundImage,

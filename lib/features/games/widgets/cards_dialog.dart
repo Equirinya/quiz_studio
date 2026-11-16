@@ -404,17 +404,21 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  Text(context.l10n.picture, style: theme.textTheme.labelLarge),
-                  MediaButton(gameId: widget.gameId, kind: MediaKind.image, name: _image, onChanged: (name) => setState(() => _image = name)),
-                  const SizedBox(width: 16),
-                  Text(context.l10n.videoClip, style: theme.textTheme.labelLarge),
-                  MediaButton(gameId: widget.gameId, kind: MediaKind.video, name: _video, onChanged: (name) => setState(() => _video = name)),
-                ],
+              MediaButton.tile(
+                gameId: widget.gameId,
+                kind: MediaKind.image,
+                name: _image,
+                title: _image == null ? context.l10n.addMedia(MediaKind.image.name) : context.l10n.picture,
+                onChanged: (name) => setState(() => _image = name),
               ),
-              if (_video != null)
-                Text(context.l10n.videoClipText, style: theme.textTheme.bodySmall),
+              MediaButton.tile(
+                gameId: widget.gameId,
+                kind: MediaKind.video,
+                name: _video,
+                title: _video == null ? context.l10n.addMedia(MediaKind.video.name) : context.l10n.videoClip,
+                subtitle: _video == null ? null : context.l10n.videoClipText,
+                onChanged: (name) => setState(() => _video = name),
+              ),
               const SizedBox(height: 12),
               Text(context.l10n.look, style: theme.textTheme.labelLarge),
               const SizedBox(height: 6),

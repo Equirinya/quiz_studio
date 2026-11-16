@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:mini_music_visualizer/mini_music_visualizer.dart';
 
+import 'package:quiz_show/features/session/pages/media_box.dart';
 import 'package:quiz_show/features/session/pages/rapid_progress.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/game/game.dart';
@@ -12,7 +13,14 @@ import 'package:quiz_show/l10n/l10n.dart';
 /// picture and sound; which teams have picked (devices mode); and the
 /// progress in the style the editor chose.
 class RapidFireDisplay extends StatelessWidget {
-  const RapidFireDisplay({super.key, required this.state, required this.question, required this.unit, required this.file});
+  const RapidFireDisplay({
+    super.key,
+    required this.state,
+    required this.question,
+    required this.unit,
+    required this.file,
+    this.onVideoEnd,
+  });
 
   final SessionState state;
   final Question question;
@@ -20,6 +28,9 @@ class RapidFireDisplay extends StatelessWidget {
 
   /// The local copy of a media file of the game, when there is one.
   final File? Function(String? name) file;
+
+  /// See [MediaBox.onVideoEnd].
+  final VoidCallback? onVideoEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +40,16 @@ class RapidFireDisplay extends StatelessWidget {
     final total = rapid.items.length;
     final done = state.revealed.clamp(0, total);
     final item = rapid.itemAt(state.revealed);
-    final image = file(item?.image);
+    final videoName = item == null ? null : question.videoAt(state.revealed, state.standing);
+    final media = MediaBox(
+      images: [for (final name in item?.images ?? const <String>[]) ?file(name)],
+      unit: unit,
+      videoName: videoName,
+      video: file(videoName),
+      playback: state.media,
+      onVideoEnd: onVideoEnd,
+    );
+    final image = !media.isEmpty;
     final flux = rapid.progress == ProgressStyle.flux;
     // Before the first item only the question itself is up, to be read out.
     final intro = state.revealed < 0;
@@ -83,20 +103,12 @@ class RapidFireDisplay extends StatelessWidget {
                 // The picture as big as the box lets it be.
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (image != null)
+                  if (image)
                     Expanded(
                       flex: 3,
-                      child: Padding(
-                        padding: EdgeInsets.only(right: text.isEmpty ? 0 : unit * 3),
-                        child: FittedBox(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(unit * 2),
-                            child: Image.file(image),
-                          ),
-                        ),
-                      ),
+                      child: Padding(padding: EdgeInsets.only(right: text.isEmpty ? 0 : unit * 3), child: media),
                     ),
-                  if (item.music != null)
+                  if (item.music != null && videoName == null)
                     Padding(
                       padding: EdgeInsets.only(right: unit * 2),
                       child: MiniMusicVisualizer(
@@ -107,7 +119,7 @@ class RapidFireDisplay extends StatelessWidget {
                         radius: unit * 0.4,
                       ),
                     ),
-                  if (image == null || text.isNotEmpty)
+                  if (!image || text.isNotEmpty)
                     Flexible(
                       flex: 2,
                       child: Center(

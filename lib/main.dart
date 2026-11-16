@@ -16,6 +16,7 @@ import 'features/games/media_service.dart';
 import 'features/games/pages/game_access_page.dart';
 import 'features/games/pages/game_editor_page.dart';
 import 'features/games/pages/games_page.dart';
+import 'features/games/widgets/uploads_notice.dart';
 import 'features/session/pages/sessions_page.dart';
 import 'features/player/pages/join_session_page.dart';
 import 'features/session/presenter_window.dart';
@@ -64,6 +65,8 @@ class MyApp extends StatelessWidget {
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        // Large uploads stay in view on every page until they are done.
+        builder: (context, child) => UploadsNotice(child: child ?? const SizedBox()),
         // An installed version below `config/app.minRequiredVersion` never
         // reaches onboarding or the app.
         home: const VersionGate(child: AuthGate(child: HomePage())),

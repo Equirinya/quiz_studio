@@ -310,7 +310,7 @@ class _GroupCard extends StatelessWidget {
       // The sheet keeps the board as it was opened; switches remember
       // their own state until the list below catches up.
       var splitFields = group.splitPointFields;
-      var mapLabels = mapShowsLabels(group);
+      var mapLabels = MapLabels.of(group);
       void close() => Navigator.of(sheet).pop();
       return StatefulBuilder(
         builder: (sheet, setSheet) => ListView(
@@ -404,15 +404,36 @@ class _GroupCard extends StatelessWidget {
                   _arrangeMap(context);
                 },
               ),
-              SwitchListTile(
-                secondary: const Icon(Icons.label_outline),
-                title: Text(context.l10n.labelsInsteadOfPoints),
-                subtitle: Text(context.l10n.labelsInsteadOfPointsText),
-                value: mapLabels,
-                onChanged: (value) {
-                  setSheet(() => mapLabels = value);
-                  _update(context, {'mapLabels': value ? 'label' : 'points'});
-                },
+              ListTile(
+                leading: const Icon(Icons.label_outline),
+                title: Text(context.l10n.mapShowsOnQuestions),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SegmentedButton<MapLabels>(
+                        showSelectedIcon: false,
+                        segments: [
+                          ButtonSegment(value: MapLabels.points, label: Text(context.l10n.mapLabelsPoints)),
+                          ButtonSegment(value: MapLabels.titles, label: Text(context.l10n.mapLabelsTitles)),
+                          ButtonSegment(value: MapLabels.label, label: Text(context.l10n.mapLabelsLabels)),
+                        ],
+                        selected: {mapLabels},
+                        onSelectionChanged: (selected) {
+                          setSheet(() => mapLabels = selected.first);
+                          _update(context, {'mapLabels': selected.first.name});
+                        },
+                      ),
+                      const SizedBox(height: 4),
+                      Text(switch (mapLabels) {
+                        MapLabels.points => context.l10n.mapLabelsPointsText,
+                        MapLabels.titles => context.l10n.mapLabelsTitlesText,
+                        MapLabels.label => context.l10n.labelsInsteadOfPointsText,
+                      }),
+                    ],
+                  ),
+                ),
               ),
             ],
             const Divider(),

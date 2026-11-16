@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/game/game.dart';
@@ -337,6 +338,93 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
   InkPoint _point(Offset local, Size size) =>
       ((local.dx / size.width).clamp(0.0, 1.0).toDouble(), (local.dy / size.height).clamp(0.0, 1.0).toDouble());
 
+  /// The pointer drawing or erasing right now; any other is ignored, so a
+  /// second finger never draws a line across the board.
+  int? _pointer;
+  bool _pointerIsPen = false;
+  bool _erasing = false;
+
+  /// A pen (Apple Pencil, Android stylus, Surface pen) has touched this
+  /// board: from then on fingers do not draw, so a palm resting on the
+  /// screen while writing leaves no marks.
+  bool _penSeen = false;
+
+  static bool _isPen(PointerEvent e) =>
+      e.kind == PointerDeviceKind.stylus || e.kind == PointerDeviceKind.invertedStylus;
+
+  /// The eraser end of a pen, a pen with its side button held, or the right
+  /// mouse button.
+  static bool _wantsEraser(PointerEvent e) =>
+      e.kind == PointerDeviceKind.invertedStylus ||
+      (e.kind == PointerDeviceKind.stylus && e.buttons & kSecondaryStylusButton != 0) ||
+      (e.kind == PointerDeviceKind.mouse && e.buttons & kSecondaryMouseButton != 0);
+
+  void _down(PointerDownEvent e, Size size) {
+    final pen = _isPen(e);
+    if (pen) {
+      _penSeen = true;
+      // A finger stroke under way when the pen lands was the palm.
+      if (_pointer != null && !_pointerIsPen) {
+        if (!_erasing) _change(_strokes.removeLast);
+        _pointer = null;
+      }
+    } else if (_penSeen && e.kind == PointerDeviceKind.touch) {
+      return;
+    }
+    if (_pointer != null) return;
+    if (e.kind == PointerDeviceKind.mouse && e.buttons & (kPrimaryMouseButton | kSecondaryMouseButton) == 0) return;
+    _pointer = e.pointer;
+    _pointerIsPen = pen;
+    _erasing = _wantsEraser(e);
+    if (_erasing) {
+      _erase(e.localPosition, size);
+    } else {
+      _change(() => _strokes.add([_point(e.localPosition, size)]));
+    }
+  }
+
+  void _move(PointerMoveEvent e, Size size) {
+    if (e.pointer != _pointer) return;
+    if (_erasing) return _erase(e.localPosition, size);
+    final last = _strokes.last.last;
+    final previous = Offset(last.$1 * size.width, last.$2 * size.height);
+    // Pens report far more often than the drawing can tell apart.
+    if ((e.localPosition - previous).distance < 0.75) return;
+    _change(() => _strokes.last.add(_point(e.localPosition, size)));
+  }
+
+  /// Ends the stroke; one without movement stays as a dot: the point of an
+  /// "i", a decimal point.
+  void _up(PointerEvent e) {
+    if (e.pointer != _pointer) return;
+    _pointer = null;
+    _emit();
+  }
+
+  /// Removes every stroke that passes near [at].
+  void _erase(Offset at, Size size) {
+    final radius = math.max(12.0, size.height * 0.03);
+    Offset px(InkPoint p) => Offset(p.$1 * size.width, p.$2 * size.height);
+    bool hits(Stroke stroke) {
+      for (var i = 0; i < stroke.length; i++) {
+        final a = px(stroke[i]);
+        final b = i + 1 < stroke.length ? px(stroke[i + 1]) : a;
+        if (_distanceToSegment(at, a, b) <= radius) return true;
+      }
+      return false;
+    }
+
+    if (_strokes.any(hits)) _change(() => _strokes.removeWhere(hits));
+  }
+
+  static double _distanceToSegment(Offset p, Offset a, Offset b) {
+    final ab = b - a;
+    final length2 = ab.distanceSquared;
+    if (length2 == 0) return (p - a).distance;
+    final t = (((p - a).dx * ab.dx + (p - a).dy * ab.dy) / length2).clamp(0.0, 1.0);
+    return (p - (a + ab * t)).distance;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -353,33 +441,41 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
               borderRadius: BorderRadius.circular(16),
               child: Stack(
                 children: [
-                  GestureDetector(
+                  // Raw pointer events rather than a pan gesture: a stroke
+                  // starts right where the pen lands (no drag slop eats the
+                  // first millimetres), and the eager recognizer keeps a
+                  // scrolling page around the board from taking the pen.
+                  RawGestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onPanStart: !widget.enabled ? null : (d) => _change(() => _strokes.add([_point(d.localPosition, size)])),
-                    onPanUpdate: !widget.enabled ? null : (d) => _change(() => _strokes.last.add(_point(d.localPosition, size))),
-                    onPanEnd: !widget.enabled ? null : (_) => _emit(),
-                    // A tap leaves a dot: the point of an "i", a decimal point.
-                    onTapUp: !widget.enabled
-                        ? null
-                        : (d) {
-                            _change(() => _strokes.add([_point(d.localPosition, size)]));
-                            _emit();
-                          },
-                    child: SizedBox.fromSize(
-                      size: size,
-                      child: WhiteboardSurface(
-                        background: widget.background,
-                        backgroundImage: widget.backgroundImage,
-                        ink: CustomPaint(
-                          size: size,
-                          painter: WhiteboardPainter(
-                            fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
-                            strokes: _strokes,
-                            version: _version,
-                            background: widget.backgroundImage == null && widget.background == 'image'
-                                ? 'blank'
-                                : widget.background,
-                            listRows: widget.listRows,
+                    gestures: {
+                      if (widget.enabled)
+                        EagerGestureRecognizer: GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
+                          EagerGestureRecognizer.new,
+                          (_) {},
+                        ),
+                    },
+                    child: Listener(
+                      behavior: HitTestBehavior.opaque,
+                      onPointerDown: !widget.enabled ? null : (e) => _down(e, size),
+                      onPointerMove: !widget.enabled ? null : (e) => _move(e, size),
+                      onPointerUp: !widget.enabled ? null : _up,
+                      onPointerCancel: !widget.enabled ? null : _up,
+                      child: SizedBox.fromSize(
+                        size: size,
+                        child: WhiteboardSurface(
+                          background: widget.background,
+                          backgroundImage: widget.backgroundImage,
+                          ink: CustomPaint(
+                            size: size,
+                            painter: WhiteboardPainter(
+                              fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
+                              strokes: _strokes,
+                              version: _version,
+                              background: widget.backgroundImage == null && widget.background == 'image'
+                                  ? 'blank'
+                                  : widget.background,
+                              listRows: widget.listRows,
+                            ),
                           ),
                         ),
                       ),

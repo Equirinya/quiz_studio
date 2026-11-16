@@ -47,7 +47,26 @@ enum MediaKind {
 /// button for a sound, the clip's icon) that opens it large, with Replace
 /// and Remove. [onChanged] receives the stored file name, or null.
 class MediaButton extends StatefulWidget {
-  const MediaButton({super.key, required this.gameId, required this.kind, required this.name, required this.onChanged});
+  const MediaButton({super.key, required this.gameId, required this.kind, required this.name, required this.onChanged})
+      : title = null,
+        subtitle = null;
+
+  /// A whole row to tap, for forms: the preview, [title] and [subtitle]
+  /// beside it, a play button for a sound and a remove button. Tapping an
+  /// empty one picks a file, a filled one opens it large.
+  const MediaButton.tile({
+    super.key,
+    required this.gameId,
+    required this.kind,
+    required this.name,
+    required this.onChanged,
+    required String this.title,
+    this.subtitle,
+  });
+
+  /// Set for [MediaButton.tile].
+  final String? title;
+  final String? subtitle;
 
   final String gameId;
   final MediaKind kind;
@@ -85,6 +104,9 @@ Future<void> _toggleSound(String gameId, String name) async {
 class _MediaButtonState extends State<MediaButton> {
   bool _busy = false;
 
+  /// 0..1 of the upload sent, while there is one.
+  double? _progress;
+
   bool get _attached => widget.name != null && widget.name!.isNotEmpty;
 
   Future<void> _add() async {
@@ -92,10 +114,21 @@ class _MediaButtonState extends State<MediaButton> {
     final l10n = context.l10n;
     final path = await widget.kind.pick();
     if (path == null || !mounted) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _progress = 0;
+    });
     final old = widget.name;
     try {
-      widget.onChanged(await MediaService.instance.upload(widget.gameId, path));
+      widget.onChanged(
+        await MediaService.instance.upload(
+          widget.gameId,
+          path,
+          onProgress: (progress) {
+            if (mounted) setState(() => _progress = progress);
+          },
+        ),
+      );
       // A replaced file is referred to by nothing any more.
       if (old != null && old.isNotEmpty) MediaService.instance.delete(widget.gameId, old);
     } on UnsupportedError catch (error) {
@@ -103,7 +136,12 @@ class _MediaButtonState extends State<MediaButton> {
     } catch (_) {
       messenger.showSnackBar(SnackBar(content: Text(l10n.couldNotUploadMedia(widget.kind.name))));
     }
-    if (mounted) setState(() => _busy = false);
+    if (mounted) {
+      setState(() {
+        _busy = false;
+        _progress = null;
+      });
+    }
   }
 
   Future<void> _remove() async {
@@ -123,11 +161,120 @@ class _MediaButtonState extends State<MediaButton> {
     if (choice == 'remove') await _remove();
   }
 
+  Widget _tile(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    Widget box(Widget child, {bool filled = false}) => Container(
+      width: 56,
+      height: 40,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: filled ? scheme.primaryContainer : scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: child,
+    );
+    final Widget leading = _busy
+        ? box(
+            SizedBox.square(
+              dimension: 22,
+              child: CircularProgressIndicator(value: _progress == null || _progress == 0 ? null : _progress, strokeWidth: 3),
+            ),
+          )
+        : !_attached
+        ? box(Icon(widget.kind.addIcon, color: scheme.onSurfaceVariant))
+        : widget.kind == MediaKind.image
+        ? _CachedImage(gameId: widget.gameId, name: widget.name!, width: 56, height: 40)
+        : box(Icon(widget.kind.presentIcon, color: scheme.onPrimaryContainer), filled: true);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: _busy ? null : (_attached ? _open : _add),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            children: [
+              leading,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyLarge?.copyWith(color: _attached ? null : scheme.primary),
+                    ),
+                    if (_busy) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: LinearProgressIndicator(
+                              value: _progress == null || _progress == 0 ? null : _progress,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            context.l10n.uploadingPercent(((_progress ?? 0) * 100).round()),
+                            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ] else if (widget.subtitle case final subtitle?)
+                      Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
+                  ],
+                ),
+              ),
+              if (_attached && widget.kind == MediaKind.audio && !_busy)
+                ValueListenableBuilder<String?>(
+                  valueListenable: _playingSound,
+                  builder: (context, playing, _) {
+                    final on = playing == '${widget.gameId}/${widget.name}';
+                    return IconButton(
+                      tooltip: on ? context.l10n.stop : context.l10n.listen,
+                      color: scheme.primary,
+                      icon: Icon(on ? Icons.stop_circle_outlined : Icons.play_circle_outline),
+                      onPressed: () => _toggleSound(widget.gameId, widget.name!),
+                    );
+                  },
+                ),
+              if (_attached && !_busy)
+                IconButton(
+                  tooltip: context.l10n.remove,
+                  icon: const Icon(Icons.close),
+                  onPressed: _remove,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    if (widget.title != null) return _tile(context);
     if (_busy) {
-      return const SizedBox(width: 48, height: 48, child: Center(child: CupertinoActivityIndicator()));
+      return SizedBox(
+        width: 48,
+        height: 48,
+        child: Center(
+          child: SizedBox.square(
+            dimension: 24,
+            child: CircularProgressIndicator(value: _progress == null || _progress == 0 ? null : _progress, strokeWidth: 3),
+          ),
+        ),
+      );
     }
     if (!_attached) {
       return IconButton(tooltip: context.l10n.addMedia(widget.kind.name), icon: Icon(widget.kind.addIcon), onPressed: _add);

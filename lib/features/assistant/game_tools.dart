@@ -94,7 +94,18 @@ final Map<String, dynamic> _questionFields = {
   'question': {'type': 'string', 'description': 'The question as shown to the audience.'},
   'answerHint': {'type': 'string', 'description': 'The answer or notes; only the gamemaster sees this.'},
   'label': {'type': 'string', 'description': 'Optional short badge shown on the question card, e.g. a sub-topic.'},
-  'image': {'type': 'string', 'description': 'A picture shown with the question: a name from upload_media. "" removes it.'},
+  'mapTitle': {
+    'type': 'string',
+    'description': 'Optional short name of the question on a map board whose group has mapLabels "titles"; without it the '
+        'map shows the question\'s first line. "" removes it.',
+  },
+  'image': {'type': 'string', 'description': 'One picture shown with the question: a name from upload_media. "" removes it; for several use "images".'},
+  'images': {
+    'type': 'array',
+    'items': {'type': 'string'},
+    'description': 'Several pictures shown side by side on the big screen, names from upload_media, instead of "image". '
+        '[] removes them all.',
+  },
   'music': {'type': 'string', 'description': 'A sound played with the question: a name from upload_media. "" removes it.'},
   'video': {
     'type': 'string',
@@ -244,6 +255,13 @@ final Map<String, dynamic> _questionFields = {
             'question': {'type': 'string', 'description': 'The prompt of one turn.'},
             'answer': {'type': 'string', 'description': 'Its answer, for the gamemaster.'},
             'image': {'type': 'string', 'description': 'Optional picture, a name from upload_media.'},
+            'images': {
+              'type': 'array',
+              'items': {'type': 'string'},
+              'description': 'Optional pictures shown side by side, instead of "image".',
+            },
+            'music': {'type': 'string', 'description': 'Optional sound, played as the turn comes up.'},
+            'video': {'type': 'string', 'description': 'Optional clip, played instead of the sound as the turn comes up.'},
           },
           'required': ['question'],
         },
@@ -252,7 +270,8 @@ final Map<String, dynamic> _questionFields = {
   },
   'rapidFire': {
     'type': 'object',
-    'description': 'rapidFire only: the items and how they are played.',
+    'description': 'rapidFire only: the items and how they are played. An item with its own sound or video plays it '
+        'when it comes up; one without plays the question\'s.',
     'properties': {
       'mode': {
         'type': 'string',
@@ -285,7 +304,13 @@ final Map<String, dynamic> _questionFields = {
               'description': 'Optional note only the gamemaster sees with this item, e.g. other answers to accept.',
             },
             'image': {'type': 'string', 'description': 'Optional picture, a name from upload_media.'},
+            'images': {
+              'type': 'array',
+              'items': {'type': 'string'},
+              'description': 'Optional pictures shown side by side, instead of "image".',
+            },
             'music': {'type': 'string', 'description': 'Optional sound, e.g. a soundtrack to guess.'},
+            'video': {'type': 'string', 'description': 'Optional clip, played instead of the sound; started like the question\'s music.'},
           },
           'required': ['question'],
         },
@@ -534,6 +559,13 @@ final List<ToolSpec> gameToolSpecs = [
         'color': {'type': 'string', 'description': 'Board colour as #RRGGBB. "" goes back to the theme\'s.'},
         'accentColor': {'type': 'string', 'description': 'Accent colour as #RRGGBB. "" goes back to the theme\'s.'},
         'splitPointFields': {'type': 'boolean', 'description': 'wheel only: split a point field when a value appears twice.'},
+        'mapLabels': {
+          'type': 'string',
+          'enum': ['points', 'titles', 'label'],
+          'description': 'map only: what each question in a bubble shows. points (default); titles: its points and a short title '
+              '(the question\'s "mapTitle", else its first line), one question per line; label: its "label" badge instead '
+              'of the points.',
+        },
       },
       ['gameId', 'groupId'],
     ),
@@ -616,7 +648,9 @@ final List<ToolSpec> gameToolSpecs = [
   ToolSpec(
     'upload_media',
     'Uploads a picture, sound or video from this computer (the one running the app) into the game and returns '
-        'the name to use in image, music, video and similar fields. Only upload files the user pointed you to.',
+        'the name to use in image, images, music, video and similar fields. Questions, rapidFire items and lastStanding '
+        'items all take the same media: one or several pictures (shown side by side), a sound and a video clip. Large '
+        'files (videos) can take minutes; the app shows their progress. Only upload files the user pointed you to.',
     _object(
       {
         'gameId': _string,
@@ -653,9 +687,17 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
   if (hint != null) data['answerHint'] = hint;
   final label = take<String>('label');
   if (label != null) data['description'] = label;
+  final mapTitle = take<String>('mapTitle');
+  if (mapTitle != null) data['mapTitle'] = mapTitle.trim().isEmpty ? null : mapTitle.trim();
   for (final key in ['image', 'music', 'video']) {
     final name = take<String>(key);
     if (name != null) data[key] = name.isEmpty ? null : name;
+  }
+  // One picture given alone replaces the list; a list sets both.
+  if (data.containsKey('image')) data['images'] = null;
+  final images = take<List<dynamic>>('images');
+  if (images != null) {
+    data.addAll(MediaSet(images: [for (final name in images) if (name is String && name.isNotEmpty) name]).toMap()..remove('music')..remove('video'));
   }
   for (final key in ['pointsPlus', 'pointsMinus']) {
     final points = take<num>(key);
@@ -830,11 +872,7 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
       progress: ProgressStyle.fromName(progress),
       items: [
         for (final item in items.cast<Map>())
-          RapidItem.fromMap({
-            ...item,
-            for (final key in ['image', 'music'])
-              if (item[key] == '') key: null,
-          }),
+          RapidItem.fromMap(_itemMedia(item)),
       ],
     ).toMap();
   }
@@ -853,7 +891,7 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
     }
     data['lastStanding'] = LastStanding(
       order: TurnOrder.fromName(order),
-      items: [for (final item in items.cast<Map>()) RapidItem.fromMap({...item, if (item['image'] == '') 'image': null})],
+      items: [for (final item in items.cast<Map>()) RapidItem.fromMap(_itemMedia(item))],
     ).toMap();
   }
 
@@ -1005,6 +1043,7 @@ Map<String, dynamic> describeQuestion(Question q) => {
   'question': q.text,
   if (q.answerHint != null) 'answerHint': q.answerHint,
   if (q.description != null) 'label': q.description,
+  if (q.mapTitle != null) 'mapTitle': q.mapTitle,
   'pointsPlus': q.pointsPlus,
   'pointsMinus': q.pointsMinus,
   if (q.position != null) 'position': q.position,
@@ -1053,7 +1092,7 @@ Map<String, dynamic> describeQuestion(Question q) => {
       },
       _ => q.companion!.toMap(),
     },
-  if (q.image != null) 'image': q.image,
+  if (q.images.length > 1) 'images': q.images else if (q.image != null) 'image': q.image,
   if (q.music != null) 'music': q.music,
   if (q.video != null) 'video': q.video,
   ..._describeSounds(q.sounds),
@@ -1095,6 +1134,7 @@ Map<String, dynamic> describeGame(GameContent game) {
         if (group.color != null) 'color': _hex(group.color!),
         if (group.accentColor != null) 'accentColor': _hex(group.accentColor!),
         if (group.splitPointFields) 'splitPointFields': true,
+        if (group.type == BoardType.map && MapLabels.of(group) != MapLabels.points) 'mapLabels': MapLabels.of(group).name,
         if (group.cards.isNotEmpty) 'cards': _describeCards(group.cards),
         ..._describeSounds(group.sounds),
         'categories': [
@@ -1306,6 +1346,8 @@ class GameTools {
           if (args['color'] is String) 'color': color('color'),
           if (args['accentColor'] is String) 'accentColor': color('accentColor'),
           if (args['splitPointFields'] is bool) 'splitPointFields': args['splitPointFields'],
+          if (args['mapLabels'] is String) 'mapLabels': MapLabels.values.where((m) => m.name == args['mapLabels']).firstOrNull?.name ??
+              (throw const ToolError('"mapLabels" must be points, titles or label.')),
         };
         if (data.isEmpty) throw const ToolError('Nothing to change.');
         await backend.updateGroup(gameId, group.id, data);
@@ -1448,4 +1490,17 @@ class _Target {
   final String label;
   final Map<String, dynamic> data;
   final Future<void> Function(Map<String, dynamic> data) save;
+}
+
+/// An item as the assistant wrote it: "" for no file, and "images" with the
+/// first of them also as "image", as [MediaSet] stores them.
+Map<dynamic, dynamic> _itemMedia(Map<dynamic, dynamic> item) {
+  final images = item['images'] is List ? [for (final name in item['images'] as List) if (name is String && name.isNotEmpty) name] : null;
+  return {
+    ...item,
+    for (final key in ['image', 'music', 'video'])
+      if (item[key] == '') key: null,
+    if (images != null) 'image': images.firstOrNull,
+    'images': ?images,
+  };
 }
