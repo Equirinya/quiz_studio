@@ -48,6 +48,7 @@ class RapidFireDisplay extends StatelessWidget {
       video: file(videoName),
       playback: state.media,
       onVideoEnd: onVideoEnd,
+      shown: (item?.media ?? MediaSet.empty).stepsThroughPictures ? state.imageFocus : null,
     );
     final image = !media.isEmpty;
     final flux = rapid.progress == ProgressStyle.flux;

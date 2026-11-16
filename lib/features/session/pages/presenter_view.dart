@@ -682,6 +682,7 @@ class QuestionDisplay extends StatelessWidget {
       video: _file(videoName),
       playback: state.media,
       onVideoEnd: onVideoEnd,
+      shown: question.media.stepsThroughPictures ? state.imageFocus : null,
     );
     final hasPicture = !media.isEmpty;
     final image = media.images.firstOrNull;

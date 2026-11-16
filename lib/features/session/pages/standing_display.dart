@@ -46,6 +46,7 @@ class StandingDisplay extends StatelessWidget {
       video: file(videoName),
       playback: state.media,
       onVideoEnd: onVideoEnd,
+      shown: (item?.media ?? MediaSet.empty).stepsThroughPictures ? state.imageFocus : null,
     );
     final out = play.out;
     // Before the first turn only the question is up, big, to be read out.

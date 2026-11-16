@@ -510,6 +510,31 @@ class _NowPanel extends StatelessWidget {
               );
             },
           ),
+        // Pictures one after another: the gamemaster steps through them.
+        if (q.type != QuestionType.progressingReveal && q.picturesAt(state.revealed, state.standing).stepsThroughPictures)
+          Builder(
+            builder: (context) {
+              final count = q.picturesAt(state.revealed, state.standing).images.length;
+              final at = state.imageFocus.clamp(0, count - 1);
+              return Row(
+                children: [
+                  Icon(Icons.burst_mode_outlined, size: 20, color: scheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(l10n.pictureOf(at + 1, count), style: theme.textTheme.labelLarge)),
+                  IconButton(
+                    tooltip: l10n.previousPicture,
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: at > 0 ? () => send(const ImageFocus(-1)) : null,
+                  ),
+                  IconButton.filledTonal(
+                    tooltip: l10n.nextPicture,
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: at < count - 1 ? () => send(const ImageFocus(1)) : null,
+                  ),
+                ],
+              );
+            },
+          ),
         // Put in order: the solution, ticked off as the big screen places it.
         if (q.type == QuestionType.ordering) _OrderingPanel(state: state, question: q),
         if (q.type == QuestionType.topAnswers) _TopAnswersPanel(state: state, question: q, send: send),

@@ -106,6 +106,11 @@ final Map<String, dynamic> _questionFields = {
     'description': 'Several pictures shown side by side on the big screen, names from upload_media, instead of "image". '
         '[] removes them all.',
   },
+  'imagesOneByOne': {
+    'type': 'boolean',
+    'description': 'With several pictures: show them one after another, the gamemaster stepping through them, instead of '
+        'side by side. Default false.',
+  },
   'music': {'type': 'string', 'description': 'A sound played with the question: a name from upload_media. "" removes it.'},
   'video': {
     'type': 'string',
@@ -260,6 +265,7 @@ final Map<String, dynamic> _questionFields = {
               'items': {'type': 'string'},
               'description': 'Optional pictures shown side by side, instead of "image".',
             },
+            'imagesOneByOne': {'type': 'boolean', 'description': 'Show the pictures one after another instead of side by side.'},
             'music': {'type': 'string', 'description': 'Optional sound, played as the turn comes up.'},
             'video': {'type': 'string', 'description': 'Optional clip, played instead of the sound as the turn comes up.'},
           },
@@ -309,6 +315,7 @@ final Map<String, dynamic> _questionFields = {
               'items': {'type': 'string'},
               'description': 'Optional pictures shown side by side, instead of "image".',
             },
+            'imagesOneByOne': {'type': 'boolean', 'description': 'Show the pictures one after another instead of side by side.'},
             'music': {'type': 'string', 'description': 'Optional sound, e.g. a soundtrack to guess.'},
             'video': {'type': 'string', 'description': 'Optional clip, played instead of the sound; started like the question\'s music.'},
           },
@@ -697,8 +704,15 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
   if (data.containsKey('image')) data['images'] = null;
   final images = take<List<dynamic>>('images');
   if (images != null) {
-    data.addAll(MediaSet(images: [for (final name in images) if (name is String && name.isNotEmpty) name]).toMap()..remove('music')..remove('video'));
+    data.addAll(
+      MediaSet(images: [for (final name in images) if (name is String && name.isNotEmpty) name]).toMap()
+        ..remove('music')
+        ..remove('video')
+        ..remove('imagesOneByOne'),
+    );
   }
+  final oneByOne = take<bool>('imagesOneByOne');
+  if (oneByOne != null) data['imagesOneByOne'] = oneByOne ? true : null;
   for (final key in ['pointsPlus', 'pointsMinus']) {
     final points = take<num>(key);
     if (points == null) continue;
@@ -1093,6 +1107,7 @@ Map<String, dynamic> describeQuestion(Question q) => {
       _ => q.companion!.toMap(),
     },
   if (q.images.length > 1) 'images': q.images else if (q.image != null) 'image': q.image,
+  if (q.imagesOneByOne && q.images.length > 1) 'imagesOneByOne': true,
   if (q.music != null) 'music': q.music,
   if (q.video != null) 'video': q.video,
   ..._describeSounds(q.sounds),

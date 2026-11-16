@@ -5498,12 +5498,6 @@ abstract class AppLocalizations {
   /// **'No music'**
   String get noMusic;
 
-  /// No description provided for @noVideo.
-  ///
-  /// In en, this message translates to:
-  /// **'No video (plays like the music, in the picture\'s place)'**
-  String get noVideo;
-
   /// No description provided for @media.
   ///
   /// In en, this message translates to:
@@ -5525,14 +5519,38 @@ abstract class AppLocalizations {
   /// No description provided for @morePicturesHint.
   ///
   /// In en, this message translates to:
-  /// **'Several pictures are shown side by side'**
+  /// **'Add more to show them side by side or one after another'**
   String get morePicturesHint;
 
-  /// No description provided for @videoHint.
+  /// No description provided for @picturesSideBySide.
   ///
   /// In en, this message translates to:
-  /// **'Plays like the music, in the picture\'s place'**
-  String get videoHint;
+  /// **'Side by side'**
+  String get picturesSideBySide;
+
+  /// No description provided for @picturesOneByOne.
+  ///
+  /// In en, this message translates to:
+  /// **'One after another'**
+  String get picturesOneByOne;
+
+  /// No description provided for @pictureOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture {n} of {count}'**
+  String pictureOf(int n, int count);
+
+  /// No description provided for @previousPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous picture'**
+  String get previousPicture;
+
+  /// No description provided for @nextPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Next picture'**
+  String get nextPicture;
 
   /// No description provided for @uploadingPercent.
   ///

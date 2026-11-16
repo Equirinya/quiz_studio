@@ -18,7 +18,12 @@ class MediaBox extends StatelessWidget {
     this.video,
     this.playback = MediaPlayback.stopped,
     this.onVideoEnd,
+    this.shown,
   });
+
+  /// Pictures one after another: the index of the one on screen; null
+  /// shows them all side by side.
+  final int? shown;
 
   /// The pictures there are on this device, in order.
   final List<File> images;
@@ -57,6 +62,37 @@ class MediaBox extends StatelessWidget {
     }
     Widget picture(File file) => FittedBox(child: ClipRRect(borderRadius: radius, child: Image.file(file, gaplessPlayback: true)));
     if (images.length == 1) return picture(images.single);
+    if (shown case final index?) {
+      final at = index.clamp(0, images.length - 1);
+      return Column(
+        children: [
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: KeyedSubtree(key: ValueKey(at), child: Center(child: picture(images[at]))),
+            ),
+          ),
+          SizedBox(height: unit),
+          // Where in the row of pictures this one is.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < images.length; i++)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: EdgeInsets.symmetric(horizontal: unit * 0.4),
+                  width: i == at ? unit * 2.4 : unit,
+                  height: unit,
+                  decoration: BoxDecoration(
+                    color: i == at ? scheme.primary : scheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(unit),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      );
+    }
     // Up to three in a row, more in a grid about as wide as it is tall.
     final columns = images.length <= 3 ? images.length : math.sqrt(images.length).ceil();
     final rows = (images.length / columns).ceil();

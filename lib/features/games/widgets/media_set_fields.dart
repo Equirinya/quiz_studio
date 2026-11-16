@@ -36,11 +36,25 @@ class MediaSetFields extends StatelessWidget {
           kind: MediaKind.image,
           name: null,
           title: images.isEmpty ? l10n.addMedia(MediaKind.image.name) : l10n.addAnotherPicture,
-          subtitle: images.isEmpty ? null : l10n.morePicturesHint,
+          subtitle: images.length == 1 ? l10n.morePicturesHint : null,
           onChanged: (name) {
             if (name != null) onChanged(media.copyWith(images: [...images, name]));
           },
         ),
+        // Several pictures: all at once, or the gamemaster steps through them.
+        if (images.length > 1)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 2, 8, 8),
+            child: SegmentedButton<bool>(
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(value: false, icon: const Icon(Icons.view_column_outlined), label: Text(l10n.picturesSideBySide)),
+                ButtonSegment(value: true, icon: const Icon(Icons.burst_mode_outlined), label: Text(l10n.picturesOneByOne)),
+              ],
+              selected: {media.oneByOne},
+              onSelectionChanged: (selected) => onChanged(media.copyWith(oneByOne: selected.first)),
+            ),
+          ),
         MediaButton.tile(
           gameId: gameId,
           kind: MediaKind.audio,
@@ -54,7 +68,6 @@ class MediaSetFields extends StatelessWidget {
           kind: MediaKind.video,
           name: media.video,
           title: media.video == null ? l10n.addMedia(MediaKind.video.name) : l10n.video,
-          subtitle: l10n.videoHint,
           onChanged: (name) => onChanged(media.copyWith(video: name)),
         ),
       ],

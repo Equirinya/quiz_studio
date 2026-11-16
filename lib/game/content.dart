@@ -340,6 +340,7 @@ class Question {
     this.answerHint,
     this.mapTitle,
     this.images = const [],
+    this.imagesOneByOne = false,
     this.music,
     this.video,
     this.pointsPlus = 0,
@@ -390,6 +391,9 @@ class Question {
   /// The question's pictures, shown side by side; see [MediaSet].
   final List<String> images;
   String? get image => images.firstOrNull;
+
+  /// See [MediaSet.oneByOne].
+  final bool imagesOneByOne;
   final String? music;
 
   /// A clip shown in the question's picture box, started, paused and
@@ -546,6 +550,7 @@ class Question {
       answerHint: _str(data['answerHint']),
       mapTitle: _str(data['mapTitle']),
       images: MediaSet.readImages(data),
+      imagesOneByOne: data['imagesOneByOne'] == true,
       music: _str(data['music']),
       video: _str(data['video']),
       pointsPlus: _int(data['pointsPlus']),
@@ -682,7 +687,14 @@ class Question {
 
   bool get hasMusic => music != null;
 
-  MediaSet get media => MediaSet(images: images, music: music, video: video);
+  MediaSet get media => MediaSet(images: images, music: music, video: video, oneByOne: imagesOneByOne);
+
+  /// Whose pictures are on the big screen at [revealed] (and [standing]):
+  /// a Fragenhagel or last-team-standing item's, or the question's.
+  MediaSet picturesAt(int revealed, [StandingPlay? standing]) => switch (type) {
+        QuestionType.rapidFire || QuestionType.lastStanding => itemAt(revealed, standing)?.media ?? MediaSet.empty,
+        _ => media,
+      };
 
   /// The item on screen at reveal counter [revealed], or in last team
   /// standing at [standing]'s turn: a Fragenhagel or last-team-standing

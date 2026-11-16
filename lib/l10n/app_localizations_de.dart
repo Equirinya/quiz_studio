@@ -3363,9 +3363,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noMusic => 'Keine Musik';
 
   @override
-  String get noVideo => 'Kein Video (läuft wie die Musik, anstelle des Bildes)';
-
-  @override
   String get media => 'Bilder, Ton und Video';
 
   @override
@@ -3377,10 +3374,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addAnotherPicture => 'Weiteres Bild hinzufügen';
 
   @override
-  String get morePicturesHint => 'Mehrere Bilder werden nebeneinander gezeigt';
+  String get morePicturesHint =>
+      'Weitere Bilder werden nebeneinander oder nacheinander gezeigt';
 
   @override
-  String get videoHint => 'Läuft wie die Musik, anstelle des Bildes';
+  String get picturesSideBySide => 'Nebeneinander';
+
+  @override
+  String get picturesOneByOne => 'Nacheinander';
+
+  @override
+  String pictureOf(int n, int count) {
+    return 'Bild $n von $count';
+  }
+
+  @override
+  String get previousPicture => 'Vorheriges Bild';
+
+  @override
+  String get nextPicture => 'Nächstes Bild';
 
   @override
   String uploadingPercent(int percent) {

@@ -320,9 +320,15 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       ]);
 
     case ImageFocus(:final delta):
-      if (!questionOpen || question?.type != QuestionType.progressingReveal || delta == 0) return _no(s);
+      if (!questionOpen || question == null || delta == 0) return _no(s);
       final focus = s.imageFocus + delta;
-      if (focus < 0 || focus > s.revealed) return _no(s);
+      if (question.type == QuestionType.progressingReveal) {
+        if (focus < 0 || focus > s.revealed) return _no(s);
+        return _ok(s.copyWith(imageFocus: focus));
+      }
+      // Pictures one after another: which of them is on screen.
+      final pictures = question.picturesAt(s.revealed, s.standing);
+      if (!pictures.stepsThroughPictures || focus < 0 || focus >= pictures.images.length) return _no(s);
       return _ok(s.copyWith(imageFocus: focus));
 
     case FeudToggle(:final index):
@@ -840,6 +846,8 @@ SessionState _nextBuzzer(SessionState s, Question question) {
 /// clip starts it, as a Fragenhagel item does. Without prompts that have
 /// one, the question's own sound goes on as it was.
 SessionState _standingMedia(SessionState s, Question question) {
+  // Each prompt starts at its first picture.
+  s = s.copyWith(imageFocus: 0);
   final items = question.lastStanding?.items ?? const <RapidItem>[];
   if (!items.any((item) => item.media.hasSound)) return s;
   final sound = question.hasMediaAt(s.revealed, s.standing);
@@ -856,6 +864,8 @@ SessionState _rapidAt(SessionState s, Question question, int index, int? now) {
   final companion = question.companion;
   return s.copyWith(
     revealed: index,
+    // Each item starts at its first picture.
+    imageFocus: 0,
     phase: done ? Phase.answerRevealed : Phase.question,
     buzzQueue: const [],
     wrongAttempts: 0,
