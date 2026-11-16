@@ -909,6 +909,7 @@
   "uploadingPercent": "Wird hochgeladen… {percent} %",
   "uploadingFile": "{name} wird hochgeladen",
   "uploadSizeOf": "{sent} von {total}",
+  "fileTooLarge": "Diese Datei ist zu groß: höchstens {megabytes} MB (Videos bis 1 GB).",
   "firstItem": "Erste Frage",
   "rapidIntro": "Erst die Frage vorlesen, dann bringt Weiter Frage 1",
   "hintShown": "Hinweis: {hint}",

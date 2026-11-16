@@ -3380,6 +3380,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String fileTooLarge(int megabytes) {
+    return 'This file is too large: at most $megabytes MB (videos up to 1 GB).';
+  }
+
+  @override
   String get firstItem => 'First item';
 
   @override

@@ -44,6 +44,19 @@ String newMediaName(String sourcePath, {Random? random}) {
   return dot < 0 ? id : '$id.${name.substring(dot + 1).toLowerCase()}';
 }
 
+/// A file larger than storage accepts for its kind; see
+/// [MediaService.maxUploadBytes].
+class UploadTooLarge implements Exception {
+  const UploadTooLarge(this.maxBytes);
+
+  final int maxBytes;
+
+  int get maxMegabytes => maxBytes ~/ (1024 * 1024);
+
+  @override
+  String toString() => 'The file is too large: at most $maxMegabytes MB for its kind (pictures and sounds 50 MB, videos 1 GB).';
+}
+
 /// One upload under way, for progress bars anywhere in the app.
 class MediaUpload {
   MediaUpload({required this.label, required this.totalBytes});
@@ -69,6 +82,12 @@ class MediaService {
 
   Directory? _root;
   final Map<String, Future<void>> _downloads = {};
+
+  /// The largest file storage takes for [contentType], as storage.rules
+  /// say: the rules only check at the end of an upload, so the app checks
+  /// first.
+  static int maxUploadBytes(String contentType) =>
+      contentType.startsWith('video/') ? 1024 * 1024 * 1024 : 50 * 1024 * 1024;
 
   /// From this size on an upload is shown in a notice of its own.
   static const int largeUploadBytes = 20 * 1024 * 1024;
@@ -102,8 +121,11 @@ class MediaService {
       throw UnsupportedError('Ogg sounds do not play on Windows. Please use MP3, WAV or M4A.');
     }
     if (contentType == null) throw UnsupportedError('This file type is not supported.');
+    final size = await File(sourcePath).length();
+    // Storage rejects the file only once all of it is sent.
+    if (size >= maxUploadBytes(contentType)) throw UploadTooLarge(maxUploadBytes(contentType));
     final name = newMediaName(sourcePath);
-    final upload = MediaUpload(label: sourcePath.split(RegExp(r'[/\\]')).last, totalBytes: await File(sourcePath).length());
+    final upload = MediaUpload(label: sourcePath.split(RegExp(r'[/\\]')).last, totalBytes: size);
     uploads.value = [...uploads.value, upload];
     try {
       final task = _remote(gameId, name).putFile(File(sourcePath), SettableMetadata(contentType: contentType));

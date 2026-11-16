@@ -29,6 +29,9 @@ class _MapEditorPageState extends State<MapEditorPage> {
     if (path == null) return null;
     try {
       return await MediaService.instance.upload(widget.gameId, path);
+    } on UploadTooLarge catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.fileTooLarge(error.maxMegabytes))));
+      return null;
     } catch (_) {
       messenger.showSnackBar(SnackBar(content: Text(l10n.couldNotUploadPicture)));
       return null;

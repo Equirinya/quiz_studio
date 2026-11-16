@@ -131,6 +131,8 @@ class _MediaButtonState extends State<MediaButton> {
       );
       // A replaced file is referred to by nothing any more.
       if (old != null && old.isNotEmpty) MediaService.instance.delete(widget.gameId, old);
+    } on UploadTooLarge catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.fileTooLarge(error.maxMegabytes))));
     } on UnsupportedError catch (error) {
       messenger.showSnackBar(SnackBar(content: Text((error.message ?? '').startsWith('Ogg') ? l10n.oggNotSupported : l10n.fileTypeNotSupported)));
     } catch (_) {

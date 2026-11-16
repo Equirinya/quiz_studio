@@ -5552,6 +5552,12 @@ abstract class AppLocalizations {
   /// **'{sent} of {total}'**
   String uploadSizeOf(Object sent, Object total);
 
+  /// No description provided for @fileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is too large: at most {megabytes} MB (videos up to 1 GB).'**
+  String fileTooLarge(int megabytes);
+
   /// No description provided for @firstItem.
   ///
   /// In en, this message translates to:
