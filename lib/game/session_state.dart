@@ -7,6 +7,7 @@ import 'cards.dart';
 import 'companion.dart';
 import 'content.dart';
 import 'last_standing.dart';
+import 'media_set.dart';
 import 'rapid_fire.dart';
 import 'results.dart';
 
@@ -210,6 +211,7 @@ class SessionState {
     this.buzzQueue = const [],
     this.revealed = 0,
     this.imageFocus = 0,
+    this.mediaFullscreen = false,
     this.feudRevealed = const [],
     this.foundBy = const {},
     this.wrongAttempts = 0,
@@ -261,6 +263,9 @@ class SessionState {
   /// Progressing reveal with images: which revealed image is enlarged, 1-based;
   /// 0 shows the question's own image.
   final int imageFocus;
+
+  /// The open question's (or item's) pictures or video fill the big screen.
+  final bool mediaFullscreen;
 
   /// Survey duel and top answers: indices of the answers uncovered so far.
   final List<int> feudRevealed;
@@ -360,6 +365,7 @@ class SessionState {
     List<String>? buzzQueue,
     int? revealed,
     int? imageFocus,
+    bool? mediaFullscreen,
     List<int>? feudRevealed,
     Map<int, String>? foundBy,
     int? wrongAttempts,
@@ -392,6 +398,7 @@ class SessionState {
     buzzQueue: buzzQueue ?? this.buzzQueue,
     revealed: revealed ?? this.revealed,
     imageFocus: imageFocus ?? this.imageFocus,
+    mediaFullscreen: mediaFullscreen ?? this.mediaFullscreen,
     feudRevealed: feudRevealed ?? this.feudRevealed,
     foundBy: foundBy ?? this.foundBy,
     wrongAttempts: wrongAttempts ?? this.wrongAttempts,
@@ -426,6 +433,7 @@ class SessionState {
     'buzzQueue': buzzQueue,
     'revealed': revealed,
     'imageFocus': imageFocus,
+    if (mediaFullscreen) 'mediaFullscreen': true,
     'feudRevealed': feudRevealed,
     if (foundBy.isNotEmpty) 'foundBy': {for (final entry in foundBy.entries) '${entry.key}': entry.value},
     'wrongAttempts': wrongAttempts,
@@ -460,6 +468,7 @@ class SessionState {
     buzzQueue: (json['buzzQueue'] as List? ?? const []).cast<String>().toList(),
     revealed: (json['revealed'] as num?)?.toInt() ?? 0,
     imageFocus: (json['imageFocus'] as num?)?.toInt() ?? 0,
+    mediaFullscreen: json['mediaFullscreen'] == true,
     feudRevealed: [for (final index in json['feudRevealed'] as List? ?? const []) (index as num).toInt()],
     foundBy: {
       for (final entry in (json['foundBy'] as Map? ?? const {}).entries)
@@ -487,4 +496,12 @@ class SessionState {
     notesTeams: [for (final id in json['notesTeams'] as List? ?? const []) '$id'],
     notes: {for (final MapEntry(:key, :value) in (json['notes'] as Map? ?? const {}).entries) '$key': '$value'},
   );
+}
+
+/// The open question's media as they are on the big screen in [s].
+extension QuestionOnScreen on Question {
+  MediaSet picturesNow(SessionState s) => picturesAt(s.revealed, s.standing, s.imageFocus);
+
+  /// Pictures or a clip there, to be shown fullscreen.
+  bool hasScreenMediaNow(SessionState s) => hasScreenMediaAt(s.revealed, s.standing, s.imageFocus);
 }

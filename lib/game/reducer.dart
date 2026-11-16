@@ -327,9 +327,14 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
         return _ok(s.copyWith(imageFocus: focus));
       }
       // Pictures one after another: which of them is on screen.
-      final pictures = question.picturesAt(s.revealed, s.standing);
+      final pictures = question.picturesNow(s);
       if (!pictures.stepsThroughPictures || focus < 0 || focus >= pictures.images.length) return _no(s);
       return _ok(s.copyWith(imageFocus: focus));
+
+    case MediaFullscreen(:final on):
+      if (!questionOpen || question == null || on == s.mediaFullscreen) return _no(s);
+      if (on && !question.hasScreenMediaNow(s)) return _no(s);
+      return _ok(s.copyWith(mediaFullscreen: on));
 
     case FeudToggle(:final index):
       if (!_feudAnswering(s, question) || index < 0 || index >= question!.information.length) return _no(s);
@@ -822,6 +827,7 @@ SessionState _backToBoard(SessionState s) => s.copyWith(
   buzzQueue: const [],
   revealed: 0,
   imageFocus: 0,
+  mediaFullscreen: false,
   feudRevealed: const [],
   foundBy: const {},
   wrongAttempts: 0,

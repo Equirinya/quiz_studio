@@ -86,6 +86,7 @@ sealed class Command {
       'reopenQuestion' => const ReopenQuestion(),
       'reveal' => Reveal((j['delta'] as num).toInt()),
       'imageFocus' => ImageFocus((j['delta'] as num).toInt()),
+      'mediaFullscreen' => MediaFullscreen(on: j['on'] == true),
       'feudToggle' => FeudToggle((j['index'] as num).toInt()),
       'feudWrong' => const FeudWrong(),
       'feudSteal' => FeudSteal(success: j['success'] as bool),
@@ -250,6 +251,17 @@ class ImageFocus extends Command {
   String get type => 'imageFocus';
   @override
   Map<String, dynamic> get _args => {'delta': delta};
+}
+
+/// The open question's pictures or video fill the big screen, or go back
+/// into their box.
+class MediaFullscreen extends Command {
+  const MediaFullscreen({required this.on});
+  final bool on;
+  @override
+  String get type => 'mediaFullscreen';
+  @override
+  Map<String, dynamic> get _args => {'on': on};
 }
 
 class FeudToggle extends Command {

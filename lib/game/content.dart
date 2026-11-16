@@ -689,10 +689,21 @@ class Question {
 
   MediaSet get media => MediaSet(images: images, music: music, video: video, oneByOne: imagesOneByOne);
 
+  /// Whether there are pictures or a clip on the big screen at [revealed]
+  /// (and [standing], [imageFocus]), to be shown fullscreen.
+  bool hasScreenMediaAt(int revealed, [StandingPlay? standing, int imageFocus = 0]) =>
+      picturesAt(revealed, standing, imageFocus).images.isNotEmpty || videoAt(revealed, standing) != null;
+
   /// Whose pictures are on the big screen at [revealed] (and [standing]):
-  /// a Fragenhagel or last-team-standing item's, or the question's.
-  MediaSet picturesAt(int revealed, [StandingPlay? standing]) => switch (type) {
+  /// a Fragenhagel or last-team-standing item's, the progressing-reveal
+  /// step's picture shown large at [imageFocus], or the question's.
+  MediaSet picturesAt(int revealed, [StandingPlay? standing, int imageFocus = 0]) => switch (type) {
         QuestionType.rapidFire || QuestionType.lastStanding => itemAt(revealed, standing)?.media ?? MediaSet.empty,
+        QuestionType.progressingReveal when imageFocus > 0 => MediaSet(
+            images: [
+              if (informationImages.elementAtOrNull(imageFocus - 1) case final picture? when picture.isNotEmpty) picture,
+            ],
+          ),
         _ => media,
       };
 

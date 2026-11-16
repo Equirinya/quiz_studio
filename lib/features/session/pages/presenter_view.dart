@@ -73,6 +73,32 @@ class PresenterView extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               _screen(state, game, group, question),
+              // The question's pictures or clip over the whole screen. No
+              // fade: a playing clip moves here in one step, see MediaBox.
+              if (question != null && _fullscreen(state, question))
+                LayoutBuilder(
+                        key: const ValueKey('media-fullscreen'),
+                        builder: (context, box) {
+                          final unit = box.maxHeight / 100;
+                          final pictures = question.picturesNow(state);
+                          final videoName = question.videoAt(state.revealed, state.standing);
+                          return ColoredBox(
+                            color: Colors.black,
+                            child: Padding(
+                              padding: EdgeInsets.all(unit * 2),
+                              child: MediaBox(
+                                images: [for (final name in pictures.images) ?mediaFile(name)],
+                                unit: unit,
+                                videoName: videoName,
+                                video: videoName == null ? null : mediaFile(videoName),
+                                playback: state.media,
+                                onVideoEnd: videoCards ? () => connection.send(const SetMedia(MediaPlayback.stopped)) : null,
+                                shown: pictures.stepsThroughPictures ? state.imageFocus : null,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
               // Cards and effects lie over whatever is on screen.
               CardOverlay(
                 card: state.overlay,
@@ -95,6 +121,11 @@ class PresenterView extends StatelessWidget {
       },
     );
   }
+
+  /// Whether the open question's media fill the screen: asked for, and
+  /// there is something to show.
+  static bool _fullscreen(SessionState state, Question question) =>
+      state.mediaFullscreen && question.hasScreenMediaNow(state);
 
   Widget _screen(SessionState state, GameContent game, CategoryGroup? group, Question? question) {
     return Builder(
@@ -134,8 +165,11 @@ class PresenterView extends StatelessWidget {
                             state: state,
                             question: question,
                             unit: unit,
-                            // Like video cards: only the screen of the show plays the clip.
-                            onVideoEnd: videoCards ? () => connection.send(const SetMedia(MediaPlayback.stopped)) : null,
+                            // Like video cards: only the screen of the show plays the
+                            // clip, and only once, so not here while it is fullscreen.
+                            onVideoEnd: videoCards && !_fullscreen(state, question)
+                                ? () => connection.send(const SetMedia(MediaPlayback.stopped))
+                                : null,
                           )
                         : group == null
                         ? const SizedBox()
@@ -746,52 +780,70 @@ class QuestionDisplay extends StatelessWidget {
         ),
       _ => (null, 0),
     };
+    final text = question.text.trim();
+    final music = question.hasMusic && videoName == null;
+    // The question, with the bars that dance while its sound plays right
+    // before it.
+    final questionText = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (music)
+          Padding(
+            padding: EdgeInsets.only(right: unit * 2),
+            child: MiniMusicVisualizer(
+              animate: state.media == MediaPlayback.playing,
+              color: scheme.primary,
+              width: unit * 1.5,
+              height: unit * 5,
+              radius: unit * 0.4,
+            ),
+          ),
+        if (text.isNotEmpty)
+          Flexible(
+            child: Text(
+              question.text,
+              textAlign: TextAlign.center,
+              maxLines: pieces ? 3 : (body == null ? 8 : 6),
+              overflow: TextOverflow.ellipsis,
+              // As wide as its lines, so the bars stay right beside it.
+              textWidthBasis: TextWidthBasis.longestLine,
+              style: TextStyle(fontSize: unit * 4.5),
+            ),
+          ),
+      ],
+    );
+    // Media beside the text reach the card's left edge; the card's corners
+    // round them off there.
+    final flush = hasPicture && (text.isNotEmpty || music);
     final card = Container(
       width: double.infinity,
-      padding: EdgeInsets.all(unit * 2),
+      padding: flush ? EdgeInsets.fromLTRB(0, unit * 2, unit * 2, unit * 2) : EdgeInsets.all(unit * 2),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 3)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        // The picture as big as the box lets it be.
-        crossAxisAlignment: pieces ? CrossAxisAlignment.center : CrossAxisAlignment.stretch,
-        children: [
-          if (hasPicture)
-            Expanded(
-              flex: 3,
-              child: Padding(
-                padding: EdgeInsets.only(right: question.text.trim().isEmpty ? 0 : unit * 2),
-                child: media,
-              ),
+      child: !hasPicture
+          ? Center(child: questionText)
+          : LayoutBuilder(
+              builder: (context, box) {
+                // The question as wide as it needs, up to a share that grows
+                // with its length; the picture or clip gets the rest.
+                final share = text.length <= 40 ? 0.3 : (text.length <= 100 ? 0.38 : 0.48);
+                final beside = text.isNotEmpty || music;
+                return Row(
+                  // The picture as big as the box lets it be.
+                  crossAxisAlignment: pieces ? CrossAxisAlignment.center : CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: beside ? media.aligned(Alignment.centerLeft) : media),
+                    if (beside) ...[
+                      SizedBox(width: unit * 3),
+                      ConstrainedBox(
+                        constraints: BoxConstraints.tightFor(width: box.maxWidth * share),
+                        child: Center(child: questionText),
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
-          if (question.hasMusic && videoName == null)
-            Center(
-              child: Padding(
-                padding: EdgeInsets.only(right: unit * 2),
-                // Bars that dance while the sound plays and stand still otherwise.
-                child: MiniMusicVisualizer(
-                  animate: state.media == MediaPlayback.playing,
-                  color: scheme.primary,
-                  width: unit * 1.5,
-                  height: unit * 5,
-                  radius: unit * 0.4,
-                ),
-              ),
-            ),
-          if (!hasPicture || question.text.trim().isNotEmpty)
-            Flexible(
-              flex: 2,
-              child: Center(
-                child: Text(
-                  question.text,
-                  textAlign: TextAlign.center,
-                  maxLines: pieces ? 3 : (body == null ? 8 : 6),
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: unit * 4.5),
-                ),
-              ),
-            ),
-        ],
-      ),
     );
     return Column(
       children: [
@@ -1363,8 +1415,9 @@ class _PictureStrip extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, box) {
         final count = names.length;
-        // As v1 had them: never wider than a seventh of the screen.
-        final width = ((box.maxWidth - unit * count) / (count < 7 ? 7 : count)).clamp(0.0, unit * 22);
+        // Small, so the picture shown large keeps the room: never wider than
+        // a tenth of the screen.
+        final width = ((box.maxWidth - unit * count) / (count < 10 ? 10 : count)).clamp(0.0, unit * 14);
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

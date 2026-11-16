@@ -48,7 +48,16 @@ class _VideoCardState extends State<VideoCard> {
 /// [playback] says, the way the question's sound is. Starts on its first
 /// frame, and goes back there when stopped. [onFinished] when it ran out.
 class QuestionVideo extends StatefulWidget {
-  const QuestionVideo({super.key, required this.file, required this.playback, required this.onFinished});
+  const QuestionVideo({
+    super.key,
+    required this.file,
+    required this.playback,
+    required this.onFinished,
+    this.alignment = Alignment.center,
+  });
+
+  /// Where in its box the clip sits when the box has another shape.
+  final Alignment alignment;
 
   final File file;
   final MediaPlayback playback;
@@ -95,5 +104,6 @@ class _QuestionVideoState extends State<QuestionVideo> {
   }
 
   @override
-  Widget build(BuildContext context) => Video(controller: _controller, controls: NoVideoControls, fill: Colors.transparent);
+  Widget build(BuildContext context) =>
+      Video(controller: _controller, controls: NoVideoControls, fill: Colors.transparent, alignment: widget.alignment);
 }

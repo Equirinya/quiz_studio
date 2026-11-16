@@ -452,7 +452,12 @@ class _QuestionCardState extends State<QuestionCard> {
   String get _mediaSummary {
     final l10n = context.l10n;
     final sounds = soundsSummary(l10n, _q.sounds, inherited: "");
-    final parts = [if (_q.image != null) l10n.picture, if (_q.music != null) l10n.music, if (sounds.isNotEmpty) sounds];
+    final parts = [
+      if (_q.images.length > 1) l10n.nPictures(_q.images.length) else if (_q.image != null) l10n.picture,
+      if (_q.music != null) l10n.music,
+      if (_q.video != null) l10n.video,
+      if (sounds.isNotEmpty) sounds,
+    ];
     return parts.isEmpty ? l10n.noOwnMedia : parts.join(" · ");
   }
 

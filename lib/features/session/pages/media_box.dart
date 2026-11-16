@@ -19,7 +19,12 @@ class MediaBox extends StatelessWidget {
     this.playback = MediaPlayback.stopped,
     this.onVideoEnd,
     this.shown,
+    this.alignment = Alignment.center,
   });
+
+  /// Where a single picture or the clip sits when the box has another
+  /// shape: left when the question's text is beside it.
+  final Alignment alignment;
 
   /// Pictures one after another: the index of the one on screen; null
   /// shows them all side by side.
@@ -37,6 +42,21 @@ class MediaBox extends StatelessWidget {
   /// Set only on the screen that plays clips; the others show a placeholder.
   final VoidCallback? onVideoEnd;
 
+  static final Map<String, GlobalKey> _videoKeys = {};
+
+  /// The same, with a single picture or the clip at [alignment].
+  MediaBox aligned(Alignment alignment) => MediaBox(
+    key: key,
+    images: images,
+    unit: unit,
+    videoName: videoName,
+    video: video,
+    playback: playback,
+    onVideoEnd: onVideoEnd,
+    shown: shown,
+    alignment: alignment,
+  );
+
   bool get isEmpty => videoName == null && images.isEmpty;
 
   @override
@@ -47,7 +67,15 @@ class MediaBox extends StatelessWidget {
       return ClipRRect(
         borderRadius: radius,
         child: video != null && onVideoEnd != null
-            ? QuestionVideo(key: ValueKey(video!.path), file: video!, playback: playback, onFinished: onVideoEnd!)
+            ? QuestionVideo(
+                // One key per clip: going fullscreen and back moves the
+                // player along, without starting the clip over.
+                key: _videoKeys.putIfAbsent(video!.path, GlobalKey.new),
+                file: video!,
+                playback: playback,
+                onFinished: onVideoEnd!,
+                alignment: alignment,
+              )
             : ColoredBox(
                 color: scheme.surfaceContainerHighest,
                 child: Center(
@@ -60,8 +88,14 @@ class MediaBox extends StatelessWidget {
               ),
       );
     }
-    Widget picture(File file) => FittedBox(child: ClipRRect(borderRadius: radius, child: Image.file(file, gaplessPlayback: true)));
-    if (images.length == 1) return picture(images.single);
+    // Each picture as large as its room allows, small ones blown up too.
+    Widget picture(File file, {Alignment alignment = Alignment.center}) => SizedBox.expand(
+      child: FittedBox(
+        alignment: alignment,
+        child: ClipRRect(borderRadius: radius, child: Image.file(file, gaplessPlayback: true)),
+      ),
+    );
+    if (images.length == 1) return picture(images.single, alignment: alignment);
     if (shown case final index?) {
       final at = index.clamp(0, images.length - 1);
       return Column(

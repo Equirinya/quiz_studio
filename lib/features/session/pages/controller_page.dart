@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/companion/answer_view.dart';
+import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/games/pages/game_editor_page.dart' show BoardTypeIcon;
 import 'package:quiz_show/features/games/widgets/cards_dialog.dart' show CardThumbnail;
+import 'package:quiz_show/features/session/pages/presenter_view.dart' show QuestionDisplay;
 import 'package:quiz_show/features/session/pages/session_setup_page.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
@@ -473,6 +475,8 @@ class _NowPanel extends StatelessWidget {
             decoration: BoxDecoration(color: scheme.tertiaryContainer, borderRadius: BorderRadius.circular(12)),
             child: Text(q.answerHint!, style: theme.textTheme.bodyLarge?.copyWith(color: scheme.onTertiaryContainer)),
           ),
+        // The big screen in small: as it is, and as Next will make it.
+        if (!state.waitingForBets) _ScreenPreviews(state: state, game: game!, question: q),
         const SizedBox(height: 8),
         if (q.type == QuestionType.rapidFire) _RapidPanel(state: state, question: q, send: send),
         if (q.type == QuestionType.lastStanding) _StandingPanel(state: state, question: q, send: send),
@@ -510,31 +514,10 @@ class _NowPanel extends StatelessWidget {
               );
             },
           ),
-        // Pictures one after another: the gamemaster steps through them.
-        if (q.type != QuestionType.progressingReveal && q.picturesAt(state.revealed, state.standing).stepsThroughPictures)
-          Builder(
-            builder: (context) {
-              final count = q.picturesAt(state.revealed, state.standing).images.length;
-              final at = state.imageFocus.clamp(0, count - 1);
-              return Row(
-                children: [
-                  Icon(Icons.burst_mode_outlined, size: 20, color: scheme.primary),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(l10n.pictureOf(at + 1, count), style: theme.textTheme.labelLarge)),
-                  IconButton(
-                    tooltip: l10n.previousPicture,
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: at > 0 ? () => send(const ImageFocus(-1)) : null,
-                  ),
-                  IconButton.filledTonal(
-                    tooltip: l10n.nextPicture,
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: at < count - 1 ? () => send(const ImageFocus(1)) : null,
-                  ),
-                ],
-              );
-            },
-          ),
+        // The pictures or clip on the big screen: stepping through pictures
+        // shown one after another, and putting them over the whole screen.
+        if (q.hasScreenMediaNow(state))
+          _ScreenMediaRow(state: state, question: q, send: send),
         // Put in order: the solution, ticked off as the big screen places it.
         if (q.type == QuestionType.ordering) _OrderingPanel(state: state, question: q),
         if (q.type == QuestionType.topAnswers) _TopAnswersPanel(state: state, question: q, send: send),
@@ -543,8 +526,6 @@ class _NowPanel extends StatelessWidget {
           _ResultsPanel(state: state, question: q, send: send),
         // Notes of the teams given a notes field, as they write.
         if (state.notesTeams.isNotEmpty) _NotesPanel(state: state),
-        if (round != null && q.type != QuestionType.rapidFire)
-          _AnswersPanel(state: state, round: round, question: q, send: send, hostClock: hostClock, backgroundImage: backgroundImage),
         if (q.type == QuestionType.abcd)
           for (final (i, answer) in q.answers.indexed)
             Padding(
@@ -565,28 +546,65 @@ class _NowPanel extends StatelessWidget {
               ),
             ),
         if (q.type == QuestionType.progressingReveal) ...[
+          // Each step with its picture; a revealed one is tapped to show it
+          // large on the big screen, tapped again to go back.
           for (final (i, information) in q.information.indexed)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                children: [
-                  Expanded(child: Text("${i + 1}. $information", style: i < state.revealed ? theme.textTheme.bodyLarge : muted)),
-                  if (state.imageFocus == i + 1) Icon(Icons.zoom_in, size: 18, color: scheme.primary),
-                  if (i < state.revealed) Icon(Icons.visibility, size: 16, color: scheme.outline),
-                ],
-              ),
+            Builder(
+              builder: (context) {
+                final shown = i < state.revealed;
+                final focused = state.imageFocus == i + 1;
+                final picture = q.informationImages.elementAtOrNull(i) ?? '';
+                final file = picture.isEmpty || game == null || !MediaService.instance.ready
+                    ? null
+                    : MediaService.instance.localFile(game!.id, picture);
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Material(
+                    color: focused ? scheme.primaryContainer : (shown ? scheme.surfaceContainerHigh : Colors.transparent),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: shown && picture.isNotEmpty
+                          ? () => send(ImageFocus(focused ? -state.imageFocus : i + 1 - state.imageFocus))
+                          : null,
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Row(
+                          children: [
+                            if (q.hasInformationImages)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 10),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: SizedBox(
+                                    width: 64,
+                                    height: 44,
+                                    child: file != null && file.existsSync()
+                                        ? Opacity(
+                                            opacity: shown ? 1 : 0.45,
+                                            child: Image.file(file, fit: BoxFit.cover, cacheWidth: 160, gaplessPlayback: true),
+                                          )
+                                        : ColoredBox(
+                                            color: scheme.surfaceContainerHighest,
+                                            child: picture.isEmpty ? null : Icon(Icons.image_outlined, size: 18, color: scheme.outline),
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            Expanded(child: Text("${i + 1}. $information", style: shown ? theme.textTheme.bodyLarge : muted)),
+                            if (focused)
+                              Icon(Icons.zoom_in, size: 20, color: scheme.primary)
+                            else if (shown)
+                              Icon(Icons.visibility, size: 16, color: scheme.outline),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-          if (q.hasInformationImages)
-            Row(
-              children: [
-                Text(l10n.enlargedImage),
-                IconButton(icon: const Icon(Icons.chevron_left), onPressed: state.imageFocus > 0 ? () => send(const ImageFocus(-1)) : null),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: state.imageFocus < state.revealed ? () => send(const ImageFocus(1)) : null,
-                ),
-              ],
-            ),
+          if (q.hasInformationImages) Text(l10n.tapPictureToEnlarge, style: theme.textTheme.bodySmall?.copyWith(color: scheme.outline)),
         ],
         if (q.type == QuestionType.feud) ...[
           Row(
@@ -624,6 +642,9 @@ class _NowPanel extends StatelessWidget {
               ),
             ),
         ],
+        // The teams' answers come last, below the question's own controls.
+        if (round != null && q.type != QuestionType.rapidFire)
+          _AnswersPanel(state: state, round: round, question: q, send: send, hostClock: hostClock, backgroundImage: backgroundImage),
       ],
     );
   }
@@ -1033,12 +1054,39 @@ class _StandingPanel extends StatelessWidget {
 
 /// Fragenhagel: every item with its answer for the gamemaster, the one being
 /// asked highlighted; in devices mode what each team has picked for it.
-class _RapidPanel extends StatelessWidget {
+class _RapidPanel extends StatefulWidget {
   const _RapidPanel({required this.state, required this.question, required this.send});
 
   final SessionState state;
   final Question question;
   final void Function(Command) send;
+
+  @override
+  State<_RapidPanel> createState() => _RapidPanelState();
+}
+
+class _RapidPanelState extends State<_RapidPanel> {
+  /// On the item being asked, to keep it in view.
+  final GlobalKey _current = GlobalKey();
+
+  @override
+  void didUpdateWidget(_RapidPanel old) {
+    super.didUpdateWidget(old);
+    if (old.state.revealed == widget.state.revealed) return;
+    // On to another item: once the panel is scrolled down to the items, it
+    // follows along; at the top it stays put.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final item = _current.currentContext;
+      if (!mounted || item == null) return;
+      final position = Scrollable.maybeOf(item)?.position;
+      if (position == null || position.pixels <= 0) return;
+      Scrollable.ensureVisible(item, alignment: 0.3, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    });
+  }
+
+  SessionState get state => widget.state;
+  Question get question => widget.question;
+  void send(Command command) => widget.send(command);
 
   @override
   Widget build(BuildContext context) {
@@ -1092,6 +1140,7 @@ class _RapidPanel extends StatelessWidget {
         ),
         for (final (i, item) in rapid.items.indexed)
           Container(
+            key: i == state.revealed ? _current : null,
             margin: const EdgeInsets.symmetric(vertical: 3),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
@@ -1346,6 +1395,137 @@ String feudValueLabel(Question question, int index) {
 // Bottom: the action pad. Seven buttons, always in the same place.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// The big screen in small, twice: what is on it now, and what the pad's
+/// Next brings up (worked out here, nothing is sent).
+class _ScreenPreviews extends StatelessWidget {
+  const _ScreenPreviews({required this.state, required this.game, required this.question});
+
+  final SessionState state;
+  final GameContent game;
+  final Question question;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final next = _SteppingPlan(state, question).next;
+    final step = next == null ? null : reduce(state, next, game, now: DateTime.now().millisecondsSinceEpoch);
+    final after = step != null && step.accepted ? step.state : null;
+    Widget screen(String label, SessionState shown, {bool dim = false}) => Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 4),
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: dim ? scheme.outlineVariant : scheme.primary, width: dim ? 1 : 2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: RepaintBoundary(
+                  child: IgnorePointer(
+                    child: ColoredBox(
+                      color: scheme.surface,
+                      child: LayoutBuilder(
+                        builder: (context, box) {
+                          final unit = box.maxHeight / 100;
+                          return Padding(
+                            padding: EdgeInsets.all(unit * 3),
+                            child: QuestionDisplay(gameId: game.id, state: shown, question: question, unit: unit),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          screen(context.l10n.onTheBigScreen, state),
+          const SizedBox(width: 10),
+          if (after != null)
+            screen(context.l10n.afterNext, after, dim: true)
+          else
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 18),
+                child: Text(context.l10n.nothingNext, style: theme.textTheme.bodySmall?.copyWith(color: scheme.outline)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What the pad's Next does now. For a question with steps of its own it
+/// walks through them; otherwise it shows the teams' answers one by one.
+/// Also used to show on the controller what Next brings up.
+class _SteppingPlan {
+  _SteppingPlan(SessionState state, Question? q) : round = state.answerRound {
+    canReveal = q != null && q.maxReveal > 0 && state.current != null;
+    final round = this.round;
+    // Put in order and matching: answering closes first, then the entries
+    // go in place (the pairs together) one by one, then the teams' answers
+    // come up.
+    ordering = q?.type == QuestionType.ordering || q?.type == QuestionType.matching;
+    placing = ordering && canReveal && state.revealed < q!.maxReveal;
+    // Top answers: Next uncovers the list, least popular first; the teams'
+    // answers are shown by hand from the answers panel.
+    final top = q?.type == QuestionType.topAnswers;
+    answerSteps = !top && round != null && (!canReveal || (ordering && !placing));
+    final hidden = top ? [for (var i = (q!.topAnswers?.items.length ?? 0) - 1; i >= 0; i--) if (!state.feudRevealed.contains(i)) i] : const <int>[];
+    // Not while a team answers: an answer uncovered then counts as its find.
+    uncover = hidden.isEmpty || state.phase == Phase.buzzered ? null : TopAnswerToggle(hidden.first);
+    // Showing answers starts by closing the answering on every device, so
+    // the gamemaster can then show them in any order.
+    closeFirst =
+        (answerSteps && round!.open && round.revealed.isEmpty) || ((placing || top) && round != null && round.open);
+    // While bets are placed this button ends the betting, then starts the
+    // question once the bets have been shown.
+    betting = state.waitingForBets;
+    // Last team standing: the question is read out first, then Next starts the turns.
+    final startTurns = q?.type == QuestionType.lastStanding && state.standing?.started == false;
+    next = betting
+        ? (state.placingBets ? const CloseBets() : const StartQuestion())
+        : startTurns
+        ? const StartTurns()
+        : closeFirst
+        ? const LockAnswers()
+        : top
+        ? uncover
+        : answerSteps
+        ? (state.roundTeams.any((team) => !round!.revealed.contains(team.id)) ? const RevealNextAnswer() : null)
+        : canReveal && state.revealed < q!.maxReveal
+        ? const Reveal(1)
+        : null;
+  }
+
+  final AnswerRound? round;
+  late final bool canReveal;
+  late final bool ordering;
+  late final bool answerSteps;
+  late final bool placing;
+  late final bool closeFirst;
+  late final bool betting;
+
+  /// Top answers: the next answer on the list Next uncovers.
+  late final Command? uncover;
+  late final Command? next;
+}
+
 class _ActionPad extends StatelessWidget {
   const _ActionPad({required this.state, required this.game, required this.question, required this.send});
 
@@ -1383,46 +1563,26 @@ class _ActionPad extends StatelessWidget {
         : const Judge(correct: false);
     final Command? close = state.current == null ? null : const CloseQuestion();
 
-    // Second row: stepping through the question.
-    // For a question with steps of its own these walk through them;
-    // otherwise they show the teams' answers one by one.
-    final canReveal = q != null && q.maxReveal > 0 && state.current != null;
-    final round = state.answerRound;
-    // Put in order and matching: answering closes first, then the entries
-    // go in place (the pairs together) one by one, then the teams' answers
-    // come up.
-    final ordering = q?.type == QuestionType.ordering || q?.type == QuestionType.matching;
-    final placing = ordering && canReveal && state.revealed < q.maxReveal;
-    final answerSteps = round != null && (!canReveal || (ordering && !placing));
+    // Second row: stepping through the question; see [_SteppingPlan].
+    final plan = _SteppingPlan(state, q);
+    final round = plan.round;
+    final answerSteps = plan.answerSteps;
+    final ordering = plan.ordering;
+    final canReveal = plan.canReveal;
     final rapid = q?.type == QuestionType.rapidFire;
     // A Fragenhagel goes back as far as its question alone (-1), taking back
     // what was scored on the way.
-    final Command? back = answerSteps && round.revealed.isNotEmpty
+    final Command? back = answerSteps && round!.revealed.isNotEmpty
         ? RevealAnswer(round.revealed.last, show: false)
         : answerSteps && !ordering
         ? null
         : canReveal && state.revealed > (rapid ? -1 : 0)
         ? const Reveal(-1)
         : null;
-    // Showing answers starts by closing the answering on every device, so
-    // the gamemaster can then show them in any order.
-    final closeFirst = (answerSteps && round.open && round.revealed.isEmpty) || (placing && round != null && round.open);
-    // While bets are placed this button ends the betting, then starts the
-    // question once the bets have been shown.
-    final betting = state.waitingForBets;
-    // Last team standing: the question is read out first, then Next starts the turns.
-    final startTurns = q?.type == QuestionType.lastStanding && state.standing?.started == false;
-    final Command? next = betting
-        ? (state.placingBets ? const CloseBets() : const StartQuestion())
-        : startTurns
-        ? const StartTurns()
-        : closeFirst
-        ? const LockAnswers()
-        : answerSteps
-        ? (state.roundTeams.any((team) => !round.revealed.contains(team.id)) ? const RevealNextAnswer() : null)
-        : canReveal && state.revealed < q.maxReveal
-        ? const Reveal(1)
-        : null;
+    final Command? next = plan.next;
+    final placing = plan.placing;
+    final closeFirst = plan.closeFirst;
+    final betting = plan.betting;
     final playing = state.media == MediaPlayback.playing;
     final Command? sound = q != null && q.hasMediaAt(state.revealed, state.standing) && listening
         ? SetMedia(playing ? MediaPlayback.paused : MediaPlayback.playing)
@@ -1524,7 +1684,7 @@ class _ActionPad extends StatelessWidget {
                     : q?.type == QuestionType.connections
                     ? context.l10n.revealGroup
                     : placing
-                    ? (q.type == QuestionType.matching ? context.l10n.nextPair : context.l10n.placeNext)
+                    ? (q!.type == QuestionType.matching ? context.l10n.nextPair : context.l10n.placeNext)
                     : context.l10n.reveal,
                 Icons.navigate_next,
                 next,
@@ -2211,6 +2371,66 @@ class _EffectsSheetState extends State<_EffectsSheet> {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// What of the open question's media is on the big screen, with the
+/// buttons to step through pictures and to show them fullscreen.
+class _ScreenMediaRow extends StatelessWidget {
+  const _ScreenMediaRow({required this.state, required this.question, required this.send});
+
+  final SessionState state;
+  final Question question;
+  final void Function(Command) send;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final pictures = question.picturesNow(state);
+    final video = question.videoAt(state.revealed, state.standing) != null;
+    final steps = !video && pictures.stepsThroughPictures;
+    final count = pictures.images.length;
+    final at = state.imageFocus.clamp(0, count == 0 ? 0 : count - 1);
+    final full = state.mediaFullscreen;
+    return Row(
+      children: [
+        Icon(video ? Icons.movie_outlined : Icons.burst_mode_outlined, size: 20, color: theme.colorScheme.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            video
+                ? l10n.video
+                : steps
+                ? l10n.pictureOf(at + 1, count)
+                : count > 1
+                ? l10n.nPictures(count)
+                : l10n.picture,
+            style: theme.textTheme.labelLarge,
+          ),
+        ),
+        if (steps) ...[
+          IconButton(
+            tooltip: l10n.previousPicture,
+            icon: const Icon(Icons.chevron_left),
+            onPressed: at > 0 ? () => send(const ImageFocus(-1)) : null,
+          ),
+          IconButton.filledTonal(
+            tooltip: l10n.nextPicture,
+            icon: const Icon(Icons.chevron_right),
+            onPressed: at < count - 1 ? () => send(const ImageFocus(1)) : null,
+          ),
+        ],
+        const SizedBox(width: 4),
+        IconButton(
+          tooltip: full ? l10n.exitFullscreen : l10n.showFullscreen,
+          isSelected: full,
+          icon: const Icon(Icons.fullscreen),
+          selectedIcon: const Icon(Icons.fullscreen_exit),
+          onPressed: () => send(MediaFullscreen(on: !full)),
+        ),
+      ],
     );
   }
 }

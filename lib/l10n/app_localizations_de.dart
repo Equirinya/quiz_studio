@@ -1047,7 +1047,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get music => 'Musik';
 
   @override
-  String get noOwnMedia => 'Kein eigenes Bild, keine Musik, keine Sounds';
+  String get noOwnMedia => 'Keine eigenen Bilder, Musik, Videos oder Sounds';
+
+  @override
+  String nPictures(int count) {
+    return '$count Bilder';
+  }
 
   @override
   String get rule => 'Regel';
@@ -3393,6 +3398,25 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get nextPicture => 'Nächstes Bild';
+
+  @override
+  String get showFullscreen => 'Vollbild auf der Leinwand';
+
+  @override
+  String get exitFullscreen => 'Vollbild beenden';
+
+  @override
+  String get onTheBigScreen => 'Auf der Leinwand';
+
+  @override
+  String get afterNext => 'Nach dem nächsten Schritt';
+
+  @override
+  String get nothingNext => 'Kein weiterer Schritt';
+
+  @override
+  String get tapPictureToEnlarge =>
+      'Tippe auf einen gezeigten Schritt, um sein Bild groß zu zeigen, nochmal zurück; der Vollbild-Knopf legt es über die ganze Leinwand';
 
   @override
   String uploadingPercent(int percent) {

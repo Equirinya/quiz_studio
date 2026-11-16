@@ -1667,8 +1667,14 @@ abstract class AppLocalizations {
   /// No description provided for @noOwnMedia.
   ///
   /// In en, this message translates to:
-  /// **'No picture, music or sounds of its own'**
+  /// **'No pictures, music, video or sounds of its own'**
   String get noOwnMedia;
+
+  /// No description provided for @nPictures.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} pictures'**
+  String nPictures(int count);
 
   /// No description provided for @rule.
   ///
@@ -5551,6 +5557,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Next picture'**
   String get nextPicture;
+
+  /// No description provided for @showFullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Fullscreen on the big screen'**
+  String get showFullscreen;
+
+  /// No description provided for @exitFullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Back from fullscreen'**
+  String get exitFullscreen;
+
+  /// No description provided for @onTheBigScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'On the big screen'**
+  String get onTheBigScreen;
+
+  /// No description provided for @afterNext.
+  ///
+  /// In en, this message translates to:
+  /// **'After the next step'**
+  String get afterNext;
+
+  /// No description provided for @nothingNext.
+  ///
+  /// In en, this message translates to:
+  /// **'No further step to show'**
+  String get nothingNext;
+
+  /// No description provided for @tapPictureToEnlarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a shown step to show its picture large, again to go back; the fullscreen button puts it over the whole screen'**
+  String get tapPictureToEnlarge;
 
   /// No description provided for @uploadingPercent.
   ///

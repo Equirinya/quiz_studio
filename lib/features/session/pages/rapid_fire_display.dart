@@ -98,42 +98,59 @@ class RapidFireDisplay extends StatelessWidget {
                   Text(context.l10n.thatWasTheLastOne, style: TextStyle(fontSize: unit * 6, fontWeight: FontWeight.w600)),
                 ],
               )
-            : Row(
+            : LayoutBuilder(
                 key: itemKey,
-                mainAxisAlignment: MainAxisAlignment.center,
-                // The picture as big as the box lets it be.
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (image)
-                    Expanded(
-                      flex: 3,
-                      child: Padding(padding: EdgeInsets.only(right: text.isEmpty ? 0 : unit * 3), child: media),
-                    ),
-                  if (item.music != null && videoName == null)
-                    Padding(
-                      padding: EdgeInsets.only(right: unit * 2),
-                      child: MiniMusicVisualizer(
-                        animate: state.media == MediaPlayback.playing,
-                        color: scheme.primary,
-                        width: unit * 1.5,
-                        height: unit * 5,
-                        radius: unit * 0.4,
-                      ),
-                    ),
-                  if (!image || text.isNotEmpty)
-                    Flexible(
-                      flex: 2,
-                      child: Center(
-                        child: Text(
-                          text,
-                          textAlign: TextAlign.center,
-                          maxLines: 5,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: unit * 6),
+                builder: (context, box) {
+                  final music = item.music != null && videoName == null;
+                  // The item's text, with the bars of its sound right before it.
+                  final itemText = Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (music)
+                        Padding(
+                          padding: EdgeInsets.only(right: unit * 2),
+                          child: MiniMusicVisualizer(
+                            animate: state.media == MediaPlayback.playing,
+                            color: scheme.primary,
+                            width: unit * 1.5,
+                            height: unit * 5,
+                            radius: unit * 0.4,
+                          ),
                         ),
-                      ),
-                    ),
-                ],
+                      if (text.isNotEmpty)
+                        Flexible(
+                          child: Text(
+                            text,
+                            textAlign: TextAlign.center,
+                            maxLines: 5,
+                            overflow: TextOverflow.ellipsis,
+                            // As wide as its lines, so the bars stay right beside it.
+                            textWidthBasis: TextWidthBasis.longestLine,
+                            style: TextStyle(fontSize: unit * 6),
+                          ),
+                        ),
+                    ],
+                  );
+                  if (!image) return Center(child: itemText);
+                  // As on a question: the text as wide as it needs, up to a
+                  // share that grows with its length; the media get the rest.
+                  final share = text.length <= 30 ? 0.3 : (text.length <= 80 ? 0.38 : 0.48);
+                  final beside = text.isNotEmpty || music;
+                  return Row(
+                    // The picture as big as the box lets it be.
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: beside ? media.aligned(Alignment.centerLeft) : media),
+                      if (beside) ...[
+                        SizedBox(width: unit * 3),
+                        ConstrainedBox(
+                          constraints: BoxConstraints.tightFor(width: box.maxWidth * share),
+                          child: Center(child: itemText),
+                        ),
+                      ],
+                    ],
+                  );
+                },
               ),
       ),
     );

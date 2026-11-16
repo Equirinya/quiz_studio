@@ -1042,7 +1042,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get music => 'Music';
 
   @override
-  String get noOwnMedia => 'No picture, music or sounds of its own';
+  String get noOwnMedia => 'No pictures, music, video or sounds of its own';
+
+  @override
+  String nPictures(int count) {
+    return '$count pictures';
+  }
 
   @override
   String get rule => 'Rule';
@@ -3374,6 +3379,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nextPicture => 'Next picture';
+
+  @override
+  String get showFullscreen => 'Fullscreen on the big screen';
+
+  @override
+  String get exitFullscreen => 'Back from fullscreen';
+
+  @override
+  String get onTheBigScreen => 'On the big screen';
+
+  @override
+  String get afterNext => 'After the next step';
+
+  @override
+  String get nothingNext => 'No further step to show';
+
+  @override
+  String get tapPictureToEnlarge =>
+      'Tap a shown step to show its picture large, again to go back; the fullscreen button puts it over the whole screen';
 
   @override
   String uploadingPercent(int percent) {

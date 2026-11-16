@@ -255,9 +255,18 @@ void main() {
         sender: const Sender(Role.player, teamId: 'blue'),
       );
       await pumpBoth(tester);
-      final rows = tester.widgetList<ConnectionsProgressRow>(
-        find.descendant(of: find.byType(ControllerView), matching: find.byType(ConnectionsProgressRow)),
-      );
+      // The controller's own rows, not those in its small screen previews.
+      final previews = find
+          .descendant(
+            of: find.descendant(of: find.byType(ControllerView), matching: find.byType(QuestionDisplay)),
+            matching: find.byType(ConnectionsProgressRow),
+          )
+          .evaluate()
+          .toSet();
+      final rows = [
+        for (final element in find.descendant(of: find.byType(ControllerView), matching: find.byType(ConnectionsProgressRow)).evaluate())
+          if (!previews.contains(element)) element.widget as ConnectionsProgressRow,
+      ];
       expect([for (final row in rows) (row.solved.join(','), row.mistakes)], [('2,0', 0), ('', 1)]);
       expect(find.textContaining('2 of 4 found'), findsOneWidget);
       // The presenter shows the same, for the audience.
