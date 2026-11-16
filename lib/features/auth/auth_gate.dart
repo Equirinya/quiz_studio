@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:quiz_show/core/animated_background.dart';
 import 'package:quiz_show/features/auth/pages/onboarding_page.dart';
@@ -130,7 +131,12 @@ class _AuthGateState extends State<AuthGate> {
         return Scaffold(
           body: Stack(
             fit: StackFit.expand,
-            children: [animatedBackground(), const Center(child: CupertinoActivityIndicator())],
+            children: [
+              animatedBackground(),
+              const Center(child: CupertinoActivityIndicator()),
+              // Which version is starting, small at the bottom.
+              const Positioned(left: 0, right: 0, bottom: 16, child: SafeArea(child: _VersionLabel())),
+            ],
           ),
         );
       case _Profile.missing:
@@ -138,5 +144,24 @@ class _AuthGateState extends State<AuthGate> {
       case _Profile.present:
         return widget.child;
     }
+  }
+}
+
+/// The installed version, e.g. "Version 2.0.3".
+class _VersionLabel extends StatelessWidget {
+  const _VersionLabel();
+
+  static final Future<String?> _version = PackageInfo.fromPlatform().then((info) => info.version, onError: (Object _) => null);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: _version,
+      builder: (context, snapshot) => Text(
+        snapshot.data == null ? '' : 'Version ${snapshot.data}',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.75), fontWeight: FontWeight.w500),
+      ),
+    );
   }
 }
