@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:quiz_show/game/game.dart';
 import 'package:quiz_show/l10n/l10n.dart';
@@ -321,7 +323,42 @@ class WhiteboardPad extends StatefulWidget {
   State<WhiteboardPad> createState() => _WhiteboardPadState();
 }
 
+/// Whether iPadOS may treat Apple Pencil strokes as handwriting (Scribble).
+/// While it may, it holds back the start of every stroke to decide, so it
+/// is turned off while a board is on screen (ios/Runner/AppDelegate.swift).
+class _PencilDrawing {
+  static const _channel = MethodChannel('quiz_show/pencil');
+  static int _boards = 0;
+
+  static bool get _applies => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  static void _set(bool drawing) {
+    if (!_applies) return;
+    _channel.invokeMethod<bool>('drawing', drawing).catchError((Object _) => false);
+  }
+
+  static void add() {
+    if (_boards++ == 0) _set(true);
+  }
+
+  static void remove() {
+    if (--_boards == 0) _set(false);
+  }
+}
+
 class _WhiteboardPadState extends State<WhiteboardPad> {
+  @override
+  void initState() {
+    super.initState();
+    _PencilDrawing.add();
+  }
+
+  @override
+  void dispose() {
+    _PencilDrawing.remove();
+    super.dispose();
+  }
+
   late final List<Stroke> _strokes = decodeDrawing(widget.initial);
   late final double _aspect = widget.initial == null ? widget.aspect : drawingAspect(widget.initial);
 
