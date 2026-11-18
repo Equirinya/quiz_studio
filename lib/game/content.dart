@@ -830,7 +830,11 @@ class Category {
 enum BoardType {
   display('Grid board'),
   wheel('Ring board'),
-  map('Map board');
+  map('Map board'),
+
+  /// No categories: a text, a picture and a timer, e.g. for a break or the
+  /// rules. See [CategoryGroup.isInfo].
+  info('Information screen');
 
   const BoardType(this.uiString);
 
@@ -871,7 +875,8 @@ class CategoryGroup {
   final int? color;
   final int? accentColor;
 
-  /// Display boards only.
+  /// Display boards and information screens: the text shown; the picture
+  /// an information screen shows.
   final String? text;
   final String? imagePath;
   final String? connections;
@@ -883,6 +888,14 @@ class CategoryGroup {
   final Map<String, dynamic> data;
 
   bool get isUngrouped => id == ungroupedId;
+
+  /// An information screen: [text], [imagePath] and [timerSeconds] instead
+  /// of categories.
+  bool get isInfo => type == BoardType.info;
+
+  /// Information screens: the countdown that starts when the screen is
+  /// shown. Stored as `timer`.
+  int? get timerSeconds => isInfo && data['timer'] is num && (data['timer'] as num) > 0 ? (data['timer'] as num).toInt() : null;
 
   /// Cards offered while this board is played.
   List<CueCard> get cards => CueCard.listFrom(data['cards']);

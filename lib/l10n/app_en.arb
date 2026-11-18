@@ -155,7 +155,7 @@
       }
     }
   },
-  "boardTypeName": "{type, select, display{Grid board} wheel{Ring board} other{Map board}}",
+  "boardTypeName": "{type, select, display{Grid board} wheel{Ring board} info{Information screen} other{Map board}}",
   "@boardTypeName": {
     "placeholders": {
       "type": {
@@ -264,7 +264,7 @@
   "couldNotUploadPicture": "Could not upload the picture.",
   "map": "Map",
   "groupNotAvailable": "This group is not available.",
-  "newBoard": "{type, select, display{New grid board} wheel{New ring board} other{New map board}}",
+  "newBoard": "{type, select, display{New grid board} wheel{New ring board} info{New information screen} other{New map board}}",
   "@newBoard": {
     "placeholders": {
       "type": {
@@ -272,7 +272,7 @@
       }
     }
   },
-  "addBoard": "{type, select, display{Add grid board} wheel{Add ring board} other{Add map board}}",
+  "addBoard": "{type, select, display{Add grid board} wheel{Add ring board} info{Add information screen} other{Add map board}}",
   "@addBoard": {
     "placeholders": {
       "type": {
@@ -2045,5 +2045,9 @@
   "hiddenOnBoard": "Hidden on the board",
   "hiddenOnBoardText": "Not shown on the ring or the map. You can still open it from the controller, e.g. as a secret bonus question.",
   "unlockTeam": "Unlock: let {team} change its answer",
-  "@unlockTeam": {"placeholders": {"team": {"type": "String"}}}
+  "@unlockTeam": {"placeholders": {"team": {"type": "String"}}},
+  "textOnScreen": "Text on the screen",
+  "infoScreenText": "Shown on the big screen when you pick it on the controller, e.g. for a break or the rules. Any of text, picture and timer; the timer starts as the screen comes up.",
+  "infoScreenOnBigScreen": "This information screen is on the big screen. Its timer is in the middle of the controller.",
+  "startTimerAgain": "Start timer again"
 }

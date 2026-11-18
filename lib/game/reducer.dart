@@ -130,7 +130,15 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
     case SelectGroup(:final groupId):
       if (s.current != null) return _no(s);
       if (game != null && game.group(groupId) == null) return _no(s);
-      return _ok(s.copyWith(groupId: groupId));
+      // An information screen starts its clock as it is shown (again); a
+      // board has none.
+      final seconds = game?.group(groupId)?.timerSeconds;
+      return _ok(
+        s.copyWith(
+          groupId: groupId,
+          timer: seconds == null || now == null ? null : QuestionTimer(openedAtMillis: now, endsAtMillis: now + seconds * 1000),
+        ),
+      );
 
     case OpenQuestion(:final ref):
       if (s.phase == Phase.buzzerTest || game?.question(ref) == null) return _no(s);
@@ -200,7 +208,9 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
 
     case SetTimer(:final seconds):
       final timer = s.timer;
-      if (question == null || now == null || (seconds != null && seconds <= 0)) return _no(s);
+      // A question's clock, or an information screen's.
+      final info = question == null && s.current == null && game?.group(s.groupId)?.isInfo == true;
+      if ((question == null && !info) || now == null || (seconds != null && seconds <= 0)) return _no(s);
       if (seconds == null) return timer == null ? _no(s) : _ok(s.copyWith(timer: null));
       // Running: the time goes on top. Up or none yet: a fresh clock.
       final running = timer != null && timer.running && timer.endsAtMillis > now;

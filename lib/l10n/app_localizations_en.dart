@@ -398,6 +398,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(type, {
       'display': 'Grid board',
       'wheel': 'Ring board',
+      'info': 'Information screen',
       'other': 'Map board',
     });
     return '$_temp0';
@@ -583,6 +584,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(type, {
       'display': 'New grid board',
       'wheel': 'New ring board',
+      'info': 'New information screen',
       'other': 'New map board',
     });
     return '$_temp0';
@@ -593,6 +595,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(type, {
       'display': 'Add grid board',
       'wheel': 'Add ring board',
+      'info': 'Add information screen',
       'other': 'Add map board',
     });
     return '$_temp0';
@@ -3746,4 +3749,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String unlockTeam(String team) {
     return 'Unlock: let $team change its answer';
   }
+
+  @override
+  String get textOnScreen => 'Text on the screen';
+
+  @override
+  String get infoScreenText =>
+      'Shown on the big screen when you pick it on the controller, e.g. for a break or the rules. Any of text, picture and timer; the timer starts as the screen comes up.';
+
+  @override
+  String get infoScreenOnBigScreen =>
+      'This information screen is on the big screen. Its timer is in the middle of the controller.';
+
+  @override
+  String get startTimerAgain => 'Start timer again';
 }

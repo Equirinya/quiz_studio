@@ -403,6 +403,7 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(type, {
       'display': 'Fragentafel',
       'wheel': 'Fragenring',
+      'info': 'Infobildschirm',
       'other': 'Spielplan',
     });
     return '$_temp0';
@@ -588,6 +589,7 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(type, {
       'display': 'Neue Fragentafel',
       'wheel': 'Neuer Fragenring',
+      'info': 'Neuer Infobildschirm',
       'other': 'Neuer Spielplan',
     });
     return '$_temp0';
@@ -598,6 +600,7 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(type, {
       'display': 'Fragentafel hinzufügen',
       'wheel': 'Fragenring hinzufügen',
+      'info': 'Infobildschirm hinzufügen',
       'other': 'Spielplan hinzufügen',
     });
     return '$_temp0';
@@ -3767,4 +3770,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String unlockTeam(String team) {
     return 'Entsperren: $team darf die Antwort wieder ändern';
   }
+
+  @override
+  String get textOnScreen => 'Text auf dem Bildschirm';
+
+  @override
+  String get infoScreenText =>
+      'Erscheint auf dem großen Bildschirm, wenn du ihn in der Steuerung auswählst, z. B. für eine Pause oder die Regeln. Text, Bild und Timer nach Belieben; der Timer startet, sobald der Bildschirm erscheint.';
+
+  @override
+  String get infoScreenOnBigScreen =>
+      'Dieser Infobildschirm ist auf dem großen Bildschirm. Seinen Timer findest du in der Mitte der Steuerung.';
+
+  @override
+  String get startTimerAgain => 'Timer neu starten';
 }

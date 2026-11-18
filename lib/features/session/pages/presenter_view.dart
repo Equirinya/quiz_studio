@@ -8,6 +8,7 @@ import 'package:mini_music_visualizer/mini_music_visualizer.dart';
 import 'package:quiz_show/features/companion/answer_view.dart';
 import 'package:quiz_show/features/companion/connections.dart';
 import 'package:quiz_show/features/games/media_service.dart';
+import 'package:quiz_show/features/session/boards/info_board.dart';
 import 'package:quiz_show/features/session/boards/map_board.dart';
 import 'package:quiz_show/features/session/boards/wheel_board.dart';
 import 'package:quiz_show/features/session/pages/media_box.dart';
@@ -139,8 +140,9 @@ class PresenterView extends StatelessWidget {
               child: Column(
                 children: [
                   _Scores(state: state, unit: unit, question: question),
-                  // The question's own clock, when the devices have none.
-                  if (state.timer case final timer? when timer.running && state.answerRound == null)
+                  // The question's own clock, when the devices have none. An
+                  // information screen shows its own, large.
+                  if (state.timer case final timer? when timer.running && state.answerRound == null && state.current != null)
                     Padding(
                       padding: EdgeInsets.only(top: unit * 1.5),
                       child: RoundCountdown(
@@ -173,6 +175,16 @@ class PresenterView extends StatelessWidget {
                           )
                         : group == null
                         ? const SizedBox()
+                        : group.isInfo
+                        ? InfoBoard(
+                            group: group,
+                            state: state,
+                            unit: unit,
+                            imageFile: (name) {
+                              final file = MediaService.instance.localFile(game.id, name);
+                              return file.existsSync() ? file : null;
+                            },
+                          )
                         : group.type == BoardType.wheel
                         ? LayoutBuilder(
                             builder: (context, box) => WheelBoard(group: group, state: state, size: box.biggest),

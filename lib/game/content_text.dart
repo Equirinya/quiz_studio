@@ -106,11 +106,16 @@ String questionAsText(Question q) {
 String gameAsText(GameContent game) {
   final out = StringBuffer()..writeln(game.name.isEmpty ? 'Unnamed game' : game.name);
   for (final group in game.groups) {
-    if (group.categories.isEmpty && group.type != BoardType.display) continue;
+    if (group.categories.isEmpty && group.type != BoardType.display && !group.isInfo) continue;
     if (!group.isUngrouped) {
       out
         ..writeln()
         ..writeln('══ ${group.name} ══');
+    }
+    if (group.isInfo) {
+      out.writeln('(Information screen)');
+      if ((group.text ?? '').trim().isNotEmpty) out.writeln(group.text!.trim());
+      if (group.timerSeconds case final seconds?) out.writeln('Timer: ${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}');
     }
     for (final category in group.categories) {
       out

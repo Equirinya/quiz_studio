@@ -478,8 +478,8 @@ final List<ToolSpec> gameToolSpecs = [
         'name': _string,
         'board': {
           'type': 'string',
-          'enum': ['wheel', 'map', 'display'],
-          'description': 'How the board is drawn: wheel ("Ring board" in the app: a ring per point value, a sector per category; the default), map ("Map board": category bubbles on a picture) or display ("Grid board": a column per category).',
+          'enum': ['wheel', 'map', 'display', 'info'],
+          'description': 'How the board is drawn: wheel ("Ring board" in the app: a ring per point value, a sector per category; the default), map ("Map board": category bubbles on a picture), display ("Grid board": a column per category) or info ("Information screen": no categories, only a text, a picture and a timer, e.g. for a break or the rules; set them with update_category_group).',
         },
       },
       ['gameId', 'name'],
@@ -567,9 +567,15 @@ final List<ToolSpec> gameToolSpecs = [
         'name': _string,
         'board': {
           'type': 'string',
-          'enum': ['wheel', 'map', 'display'],
+          'enum': ['wheel', 'map', 'display', 'info'],
         },
-        'text': {'type': 'string', 'description': 'display boards: text shown on the board; line breaks (\\n) start new lines. "" removes it.'},
+        'text': {'type': 'string', 'description': 'display boards and information screens: text shown on the board; line breaks (\\n) start new lines. "" removes it.'},
+        'image': {'type': 'string', 'description': 'info only: the picture shown, a name from upload_media. "" removes it.'},
+        'timer': {
+          'type': ['integer', 'null'],
+          'minimum': 1,
+          'description': 'info only: seconds of a countdown that starts when the screen is shown, e.g. 600 for a ten-minute break. null removes it.',
+        },
         'color': {'type': 'string', 'description': 'Board colour as #RRGGBB. "" goes back to the theme\'s.'},
         'accentColor': {'type': 'string', 'description': 'Accent colour as #RRGGBB. "" goes back to the theme\'s.'},
         'splitPointFields': {'type': 'boolean', 'description': 'wheel only: split a point field when a value appears twice.'},
@@ -1156,6 +1162,8 @@ Map<String, dynamic> describeGame(GameContent game) {
         'name': group.isUngrouped ? '(no group)' : group.name,
         'board': group.type.name,
         if (group.text != null) 'text': group.text,
+        if (group.isInfo) 'image': ?group.imagePath,
+        'timer': ?group.timerSeconds,
         if (group.color != null) 'color': _hex(group.color!),
         if (group.accentColor != null) 'accentColor': _hex(group.accentColor!),
         if (group.splitPointFields) 'splitPointFields': true,
@@ -1258,7 +1266,7 @@ class GameTools {
         final gameId = _arg(args, 'gameId');
         final title = _arg(args, 'name');
         final board = BoardType.values.where((b) => b.name == (args['board'] ?? 'wheel')).firstOrNull;
-        if (board == null) throw const ToolError('"board" must be wheel, map or display.');
+        if (board == null) throw const ToolError('"board" must be wheel, map, display or info.');
         final game = await backend.loadGame(gameId);
         final id = await backend.addGroup(gameId, title, board, game.groups.where((g) => !g.isUngrouped).length);
         onActivity?.call('Added group "$title"');
@@ -1363,8 +1371,10 @@ class GameTools {
         }
 
         final board = args['board'] == null ? null : BoardType.values.where((b) => b.name == args['board']).firstOrNull;
-        if (args['board'] != null && board == null) throw const ToolError('"board" must be wheel, map or display.');
+        if (args['board'] != null && board == null) throw const ToolError('"board" must be wheel, map, display or info.');
         final data = <String, dynamic>{
+          if (args['image'] is String) 'imagePath': (args['image'] as String).isEmpty ? null : args['image'],
+          if (args.containsKey('timer')) 'timer': args['timer'] is num && (args['timer'] as num) > 0 ? (args['timer'] as num).toInt() : null,
           if (args['name'] is String) 'name': args['name'],
           'categoryGroupType': ?board?.databaseString,
           if (args['text'] is String) 'text': (args['text'] as String).isEmpty ? null : args['text'],

@@ -153,6 +153,9 @@ class FillDropdown<T> extends StatelessWidget {
 /// The times every timer in the editor offers, in seconds.
 const List<int> kTimerChoices = [10, 20, 30, 45, 60, 90, 120, 180, 300];
 
+/// For an information screen: a break, the time until the next round.
+const List<int> kInfoTimerChoices = [30, 60, 120, 180, 300, 600, 900, 1200, 1800];
+
 /// A timer the way the editor writes it everywhere: "0:30", "1:30", "5:00",
 /// like the clock on the screen.
 String timerLabel(int? seconds, [AppLocalizations? l10n]) =>
@@ -161,14 +164,17 @@ String timerLabel(int? seconds, [AppLocalizations? l10n]) =>
 /// Picks a question's timer from [kTimerChoices]; a time set elsewhere (e.g.
 /// by the assistant) stays offered.
 class TimerDropdown extends StatelessWidget {
-  const TimerDropdown({super.key, required this.seconds, required this.onChanged});
+  const TimerDropdown({super.key, required this.seconds, required this.onChanged, this.choices = kTimerChoices});
 
   final int? seconds;
   final ValueChanged<int?> onChanged;
 
+  /// The times offered; information screens offer longer ones.
+  final List<int> choices;
+
   @override
   Widget build(BuildContext context) {
-    final choices = [...kTimerChoices, if (seconds != null && !kTimerChoices.contains(seconds)) seconds!]..sort();
+    final choices = [...this.choices, if (seconds != null && !kTimerChoices.contains(seconds)) seconds!]..sort();
     return FillDropdown<int?>(
       label: context.l10n.timer,
       value: seconds,

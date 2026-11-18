@@ -114,7 +114,7 @@
   "creditsPublicDomain": "(gemeinfrei)",
   "creditsIntro": "Die Sounds in Quiz Studio wurden extra dafür gemacht oder sind frei nutzbar (CC0). Tippe auf eine Quelle, um zu sehen, woher ein Sound kommt.",
   "questionTypeName": "{type, select, free{Freie Frage} abcd{ABCD} progressingReveal{Stück für Stück} feud{Umfrage-Duell} connections{Wortgruppen} rapidFire{Fragenhagel} matching{Zuordnen} ordering{Sortieren} topAnswers{Top-Antworten} lastStanding{Wer bleibt übrig} other{Nicht unterstützt}}",
-  "boardTypeName": "{type, select, display{Fragentafel} wheel{Fragenring} other{Spielplan}}",
+  "boardTypeName": "{type, select, display{Fragentafel} wheel{Fragenring} info{Infobildschirm} other{Spielplan}}",
   "gameRoleName": "{role, select, admin{Admin} full{Voller Zugriff} other{Eingeschränkter Zugriff}}",
   "companionKindName": "{kind, select, whiteboard{Whiteboard} text{Text} number{Zahl} slider{Slider} choice{Auswahl} order{Reihenfolge} match{Paare zuordnen} connections{Wortgruppen} other{Antwortliste}}",
   "estimateScoringName": "{scoring, select, closest{Am nächsten gewinnt} podium{1., 2., 3.} other{Nach Abstand}}",
@@ -139,8 +139,8 @@
   "couldNotUploadPicture": "Bild konnte nicht hochgeladen werden.",
   "map": "Spielplan",
   "groupNotAvailable": "Diese Gruppe gibt es nicht mehr.",
-  "newBoard": "{type, select, display{Neue Fragentafel} wheel{Neuer Fragenring} other{Neuer Spielplan}}",
-  "addBoard": "{type, select, display{Fragentafel hinzufügen} wheel{Fragenring hinzufügen} other{Spielplan hinzufügen}}",
+  "newBoard": "{type, select, display{Neue Fragentafel} wheel{Neuer Fragenring} info{Neuer Infobildschirm} other{Neuer Spielplan}}",
+  "addBoard": "{type, select, display{Fragentafel hinzufügen} wheel{Fragenring hinzufügen} info{Infobildschirm hinzufügen} other{Spielplan hinzufügen}}",
   "newCategory": "Neue Kategorie",
   "hideOne": "Eins zudecken",
   "revealedOf": "{revealed} von {steps} aufgedeckt",
@@ -1004,5 +1004,9 @@
   "waitingToUpload": "wartet",
   "hiddenOnBoard": "Auf dem Board versteckt",
   "hiddenOnBoardText": "Erscheint nicht auf dem Ring oder dem Spielplan. Du kannst sie trotzdem über die Steuerung öffnen, z. B. als geheime Bonusfrage.",
-  "unlockTeam": "Entsperren: {team} darf die Antwort wieder ändern"
+  "unlockTeam": "Entsperren: {team} darf die Antwort wieder ändern",
+  "textOnScreen": "Text auf dem Bildschirm",
+  "infoScreenText": "Erscheint auf dem großen Bildschirm, wenn du ihn in der Steuerung auswählst, z. B. für eine Pause oder die Regeln. Text, Bild und Timer nach Belieben; der Timer startet, sobald der Bildschirm erscheint.",
+  "infoScreenOnBigScreen": "Dieser Infobildschirm ist auf dem großen Bildschirm. Seinen Timer findest du in der Mitte der Steuerung.",
+  "startTimerAgain": "Timer neu starten"
 }

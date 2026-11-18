@@ -785,7 +785,7 @@ abstract class AppLocalizations {
   /// No description provided for @boardTypeName.
   ///
   /// In en, this message translates to:
-  /// **'{type, select, display{Grid board} wheel{Ring board} other{Map board}}'**
+  /// **'{type, select, display{Grid board} wheel{Ring board} info{Information screen} other{Map board}}'**
   String boardTypeName(String type);
 
   /// No description provided for @gameRoleName.
@@ -935,13 +935,13 @@ abstract class AppLocalizations {
   /// No description provided for @newBoard.
   ///
   /// In en, this message translates to:
-  /// **'{type, select, display{New grid board} wheel{New ring board} other{New map board}}'**
+  /// **'{type, select, display{New grid board} wheel{New ring board} info{New information screen} other{New map board}}'**
   String newBoard(String type);
 
   /// No description provided for @addBoard.
   ///
   /// In en, this message translates to:
-  /// **'{type, select, display{Add grid board} wheel{Add ring board} other{Add map board}}'**
+  /// **'{type, select, display{Add grid board} wheel{Add ring board} info{Add information screen} other{Add map board}}'**
   String addBoard(String type);
 
   /// No description provided for @newCategory.
@@ -6127,6 +6127,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unlock: let {team} change its answer'**
   String unlockTeam(String team);
+
+  /// No description provided for @textOnScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Text on the screen'**
+  String get textOnScreen;
+
+  /// No description provided for @infoScreenText.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown on the big screen when you pick it on the controller, e.g. for a break or the rules. Any of text, picture and timer; the timer starts as the screen comes up.'**
+  String get infoScreenText;
+
+  /// No description provided for @infoScreenOnBigScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'This information screen is on the big screen. Its timer is in the middle of the controller.'**
+  String get infoScreenOnBigScreen;
+
+  /// No description provided for @startTimerAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Start timer again'**
+  String get startTimerAgain;
 }
 
 class _AppLocalizationsDelegate

@@ -407,6 +407,16 @@ class _NowPanel extends StatelessWidget {
           for (final q in c.questions) QuestionRef(c.id, q.id),
       ];
       final played = all.where((ref) => state.played.contains(ref.key)).length;
+      if (group != null && group.isInfo) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            status,
+            const SizedBox(height: 12),
+            _InfoScreenPanel(group: group, state: state, send: send, hostClock: hostClock),
+          ],
+        );
+      }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1817,6 +1827,56 @@ class _SheetRow extends StatelessWidget {
 // Sheets
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// An information screen on the big screen: what it shows, and its clock,
+/// started again, lengthened or stopped from here.
+class _InfoScreenPanel extends StatelessWidget {
+  const _InfoScreenPanel({required this.group, required this.state, required this.send, required this.hostClock});
+
+  final CategoryGroup group;
+  final SessionState state;
+  final void Function(Command) send;
+  final bool hostClock;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+    final text = (group.text ?? '').trim();
+    final timer = state.timer;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(group.name.isEmpty ? l10n.boardType(BoardType.info) : group.name, style: theme.textTheme.titleMedium),
+        if (text.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(text, style: theme.textTheme.bodyLarge),
+        ],
+        if (timer case final timer? when timer.running) ...[
+          const SizedBox(height: 12),
+          RoundCountdown(openedAt: timer.openedAtMillis, endsAt: timer.endsAtMillis, hostClock: hostClock),
+        ] else if (timer != null) ...[
+          const SizedBox(height: 12),
+          Text(l10n.timeIsUp, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.error)),
+        ],
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            // Shown again: its clock starts from the beginning.
+            if (group.timerSeconds != null)
+              ActionChip(avatar: const Icon(Icons.restart_alt, size: 18), label: Text(l10n.startTimerAgain), onPressed: () => send(SelectGroup(group.id))),
+            ActionChip(avatar: const Icon(Icons.more_time, size: 18), label: const Text("+30 s"), onPressed: () => send(const SetTimer(30))),
+            ActionChip(avatar: const Icon(Icons.more_time, size: 18), label: const Text("+1 min"), onPressed: () => send(const SetTimer(60))),
+            if (timer != null)
+              ActionChip(avatar: const Icon(Icons.timer_off_outlined, size: 18), label: Text(l10n.stopTimer), onPressed: () => send(const SetTimer(null))),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 /// The board: tap a field to read the question, then open it.
 class _BoardSheet extends StatefulWidget {
   const _BoardSheet({required this.state, required this.game, required this.send});
@@ -1870,7 +1930,12 @@ class _BoardSheetState extends State<_BoardSheet> {
               ),
             ),
           const SizedBox(height: 8),
-          if (group == null || group.categories.isEmpty)
+          if (group != null && group.isInfo)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(child: Text(context.l10n.infoScreenOnBigScreen, textAlign: TextAlign.center)),
+            )
+          else if (group == null || group.categories.isEmpty)
             Padding(
               padding: EdgeInsets.all(24),
               child: Center(child: Text(context.l10n.groupHasNoCategories)),

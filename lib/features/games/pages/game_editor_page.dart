@@ -9,6 +9,8 @@ import 'package:quiz_show/features/games/pages/game_access_page.dart';
 import 'package:quiz_show/features/games/pages/map_editor_page.dart';
 import 'package:quiz_show/features/games/pages/script_editor_page.dart';
 import 'package:quiz_show/features/games/widgets/cards_dialog.dart';
+import 'package:quiz_show/features/games/widgets/editor_section.dart';
+import 'package:quiz_show/features/games/widgets/media_button.dart';
 import 'package:quiz_show/features/games/widgets/group_colors_dialog.dart';
 import 'package:quiz_show/features/games/widgets/settings_strip.dart';
 import 'package:quiz_show/features/games/widgets/sounds_dialog.dart';
@@ -20,6 +22,7 @@ extension BoardTypeIcon on BoardType {
     BoardType.display => Icons.art_track_rounded,
     BoardType.wheel => Icons.pie_chart_outline,
     BoardType.map => Icons.route,
+    BoardType.info => Icons.info_outline,
   };
 }
 
@@ -286,7 +289,12 @@ class _GroupCard extends StatelessWidget {
     final count = group.categories.length;
     return [
       l10n.boardType(group.type),
-      l10n.categoryCount(count),
+      if (group.isInfo) ...[
+        if ((group.text ?? '').trim().isNotEmpty) l10n.text,
+        if (group.imagePath != null) l10n.picture,
+        if (group.timerSeconds case final seconds?) timerLabel(seconds, l10n),
+      ] else
+        l10n.categoryCount(count),
       if (group.sounds.slots.isNotEmpty || group.sounds.effects.isNotEmpty) l10n.ownSounds,
       if (group.cards.isNotEmpty) l10n.cardCount(group.cards.length),
     ].join(" · ");
@@ -373,7 +381,7 @@ class _GroupCard extends StatelessWidget {
                 );
               },
             ),
-            if (group.type == BoardType.display)
+            if (group.type == BoardType.display || group.isInfo)
               ListTile(
                 leading: const Icon(Icons.short_text),
                 title: Text(context.l10n.textOnBoard),
@@ -522,6 +530,16 @@ class _GroupCard extends StatelessWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _arrangeMap(context),
             ),
+          // An information screen: what it shows, instead of categories.
+          if (group.isInfo)
+            _InfoFields(
+              game: game,
+              group: group,
+              editable: editable,
+              onEditText: () => _editDisplayText(context),
+              update: (data) => _update(context, data),
+            )
+          else ...[
           for (final (index, category) in group.categories.indexed)
             _CategoryTile(
               game: game,
@@ -545,6 +563,66 @@ class _GroupCard extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// What an information screen shows: a text, a picture and a timer that
+/// starts when it is put on the big screen. Any of them, or all.
+class _InfoFields extends StatelessWidget {
+  const _InfoFields({required this.game, required this.group, required this.editable, required this.onEditText, required this.update});
+
+  final GameContent game;
+  final CategoryGroup group;
+  final bool editable;
+  final VoidCallback onEditText;
+  final void Function(Map<String, dynamic> data) update;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final text = (group.text ?? '').trim();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+            leading: const Icon(Icons.short_text),
+            title: Text(l10n.textOnScreen),
+            subtitle: Text(text.isEmpty ? l10n.none : text, maxLines: 3, overflow: TextOverflow.ellipsis),
+            trailing: const Icon(Icons.edit_outlined),
+            enabled: editable,
+            onTap: onEditText,
+          ),
+          IgnorePointer(
+            ignoring: !editable,
+            child: MediaButton.tile(
+              gameId: game.id,
+              kind: MediaKind.image,
+              name: group.imagePath,
+              title: group.imagePath == null ? l10n.addMedia(MediaKind.image.name) : l10n.picture,
+              onChanged: (name) => update({'imagePath': name}),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: TimerDropdown(
+              seconds: group.timerSeconds,
+              choices: kInfoTimerChoices,
+              onChanged: (seconds) => update({'timer': seconds}),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+            child: Text(l10n.infoScreenText, style: theme.textTheme.bodySmall),
           ),
         ],
       ),
@@ -617,7 +695,7 @@ class _CategoryTile extends StatelessWidget {
       builder: (context) => SimpleDialog(
         title: Text(context.l10n.moveToAnotherBoard),
         children: [
-          for (final other in game.groups.where((g) => g.id != group.id && !g.isUngrouped))
+          for (final other in game.groups.where((g) => g.id != group.id && !g.isUngrouped && !g.isInfo))
             SimpleDialogOption(
               onPressed: () => Navigator.of(context).pop(other.id),
               child: Row(
@@ -674,7 +752,7 @@ class _CategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final questions = category.questions.length;
-    final hasOtherGroups = game.groups.any((g) => g.id != group.id && !g.isUngrouped);
+    final hasOtherGroups = game.groups.any((g) => g.id != group.id && !g.isUngrouped && !g.isInfo);
     final checkbox = Tooltip(
       message: category.active ? context.l10n.inPlayTip : context.l10n.notInPlayTip,
       child: Checkbox(
