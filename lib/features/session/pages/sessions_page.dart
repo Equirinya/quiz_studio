@@ -964,4 +964,4 @@ class _PresentPageState extends State<PresentPage> {
 
 /// A button label on one line, cut off where the card is too narrow, so the
 /// buttons keep one height.
-Widget _oneLine(String label) => Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis);
+Widget _oneLine(String label) => Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.clip);
