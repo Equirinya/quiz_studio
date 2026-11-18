@@ -2416,8 +2416,11 @@ class _EffectsSheetState extends State<_EffectsSheet> {
                         gameId: game!.id,
                         card: card,
                         onScreen: _isOnScreen(state.overlay, card),
+                        // The card on screen goes again when tapped.
                         onTap: () => send(
-                          ShowCard(
+                          _isOnScreen(state.overlay, card)
+                              ? const HideCard()
+                              : ShowCard(
                             OverlayCard(
                               title: card.title.isEmpty ? null : card.title,
                               text: card.text.isEmpty ? null : card.text,

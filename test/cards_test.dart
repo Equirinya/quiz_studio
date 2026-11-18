@@ -186,6 +186,17 @@ void main() {
       expect(host.state.overlay, isNull);
       expect(host.state.cardAnimation, CardAnimation.bounce);
     });
+
+    testWidgets('tapping the card that is on screen takes it off again', (tester) async {
+      await pumpBoth(tester);
+      await tap(tester, find.descendant(of: find.byType(ControllerView), matching: find.widgetWithText(TextButton, 'Effects')));
+      await tap(tester, find.byTooltip("Time's up!"));
+      expect(host.state.overlay!.image, 'builtin:times_up');
+      await tap(tester, find.byTooltip("Time's up!"));
+      expect(host.state.overlay, isNull);
+      await tap(tester, find.byTooltip("Time's up!"));
+      expect(host.state.overlay!.image, 'builtin:times_up');
+    });
   });
 
   group('in the editor', () {
