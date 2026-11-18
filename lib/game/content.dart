@@ -1006,8 +1006,10 @@ class GameContent {
 
   /// The cards to offer: those of the open question's category, then of its
   /// group (or the board shown when no question is open), then the game's.
-  List<CueCard> cardsFor({QuestionRef? ref, String? groupId}) {
-    final category = ref == null ? null : this.category(ref.categoryId);
+  /// On a map, the category picked there ([focus]) counts before any of its
+  /// questions is open.
+  List<CueCard> cardsFor({QuestionRef? ref, String? groupId, String? focus}) {
+    final category = ref == null ? _mapFocus(groupId, focus) : this.category(ref.categoryId);
     final group = ref == null ? this.group(groupId) : groupOfCategory(ref.categoryId);
     return [...?category?.cards, ...?group?.cards, ...cards].where((card) => !card.hidden).toList();
   }
@@ -1173,9 +1175,10 @@ class GameContent {
   }
 
   /// Music and effects in force for [ref], or for the group or whole game
-  /// when no question is open.
-  MusicConfig soundsFor({QuestionRef? ref, String? groupId}) {
-    final category = ref == null ? null : this.category(ref.categoryId);
+  /// when no question is open; on a map with the category picked there
+  /// ([focus]), as in [cardsFor].
+  MusicConfig soundsFor({QuestionRef? ref, String? groupId, String? focus}) {
+    final category = ref == null ? _mapFocus(groupId, focus) : this.category(ref.categoryId);
     final group = ref == null ? this.group(groupId) : groupOfCategory(ref.categoryId);
     return MusicConfig.resolve([
       if (ref != null) ?question(ref)?.sounds,
@@ -1183,6 +1186,15 @@ class GameContent {
       ?group?.sounds,
       sounds,
     ]);
+  }
+
+  /// The category [focus] when it is on the map board [groupId]: picked
+  /// there, it is played next. Other boards have no such choice.
+  Category? _mapFocus(String? groupId, String? focus) {
+    if (focus == null) return null;
+    final group = groupOfCategory(focus);
+    if (group == null || group.id != groupId || group.type != BoardType.map) return null;
+    return category(focus);
   }
 
   /// Every media file the game needs, for caching ahead of the show.

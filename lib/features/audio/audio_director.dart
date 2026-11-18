@@ -87,7 +87,7 @@ class AudioDirector {
   MediaPlayback _playback = MediaPlayback.stopped;
 
   MusicConfig get _sounds =>
-      host.game?.soundsFor(ref: host.state.current, groupId: host.state.groupId) ?? MusicConfig.empty;
+      host.game?.soundsFor(ref: host.state.current, groupId: host.state.groupId, focus: host.state.boardFocus) ?? MusicConfig.empty;
 
   String? _path(String? name) {
     final game = host.game;

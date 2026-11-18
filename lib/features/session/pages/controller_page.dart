@@ -2180,10 +2180,10 @@ class _EffectsSheetState extends State<_EffectsSheet> {
     final state = widget.state;
     final game = widget.game;
     final send = widget.send;
-    final sounds = game?.soundsFor(ref: state.current, groupId: state.groupId) ?? MusicConfig.empty;
+    final sounds = game?.soundsFor(ref: state.current, groupId: state.groupId, focus: state.boardFocus) ?? MusicConfig.empty;
     final question = state.current == null ? null : game?.question(state.current!);
     final listening = state.phase == Phase.question || state.phase == Phase.buzzered;
-    final cards = game?.cardsFor(ref: state.current, groupId: state.groupId) ?? const <CueCard>[];
+    final cards = game?.cardsFor(ref: state.current, groupId: state.groupId, focus: state.boardFocus) ?? const <CueCard>[];
     Widget header(String text) => Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 8),
       child: Text(text, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
