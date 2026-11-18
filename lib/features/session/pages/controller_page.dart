@@ -118,12 +118,22 @@ class _ControllerViewState extends State<ControllerView> {
                         child: const ColoredBox(color: Color(0x66000000)),
                       ),
                     ),
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: _TabPanel(
-                        close: _closeTab,
-                        full: tab == _Tab.script,
-                        child: Builder(builder: (context) => _tabContent(context, tab, state, game)),
+                    // Always the full width, however little it holds.
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      top: 0,
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: _TabPanel(
+                            close: _closeTab,
+                            full: tab == _Tab.script,
+                            child: Builder(builder: (context) => _tabContent(context, tab, state, game)),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -1877,7 +1887,7 @@ class _SheetRow extends StatelessWidget {
 /// A panel above the buttons at the bottom, like a sheet but leaving them
 /// free to switch to another. As tall as its content, up to the room there
 /// is; its content sizes itself by this room as it did by the screen.
-class _TabPanel extends StatelessWidget {
+class _TabPanel extends StatefulWidget {
   const _TabPanel({required this.close, required this.child, this.full = false});
 
   final VoidCallback close;
@@ -1890,36 +1900,88 @@ class _TabPanel extends StatelessWidget {
   static void closeAround(BuildContext context) => context.findAncestorWidgetOfExactType<_TabPanel>()?.close();
 
   @override
+  State<_TabPanel> createState() => _TabPanelState();
+}
+
+class _TabPanelState extends State<_TabPanel> {
+  /// How far the panel is pulled down by its handle.
+  double _pulled = 0;
+
+  static const double _handleHeight = 24;
+
+  void _drag(DragUpdateDetails details) => setState(() => _pulled = (_pulled + details.delta.dy).clamp(0, double.infinity));
+
+  /// Let go far enough down, or flicked down: it closes; else it springs back.
+  void _release(DragEndDetails details, double height) {
+    if (_pulled > height * 0.25 || (details.primaryVelocity ?? 0) > 700) {
+      widget.close();
+    } else {
+      setState(() => _pulled = 0);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return PopScope(
       // Back closes the panel, not the session.
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) close();
+        if (!didPop) widget.close();
       },
       child: LayoutBuilder(
         builder: (context, box) {
           final media = MediaQuery.of(context);
-          return Material(
-            key: const ValueKey('controllerTabPanel'),
-            color: scheme.surfaceContainerLow,
-            elevation: 8,
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-            clipBehavior: Clip.antiAlias,
-            child: ConstrainedBox(
-              // Never a sliver with little in it: at least half the room.
-              constraints: BoxConstraints(minHeight: full ? box.maxHeight : box.maxHeight * 0.5, maxHeight: box.maxHeight),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  // The sheets size their parts by the screen's height;
-                  // here that is the room above the buttons. The script
-                  // takes 85 % of it, so it is given more to fill it all.
-                  child: MediaQuery(
-                    data: media.copyWith(size: Size(media.size.width, (box.maxHeight - 12) / (full ? 0.85 : 1))),
-                    child: child,
-                  ),
+          final room = box.maxHeight - _handleHeight;
+          // Follows the finger down.
+          return TweenAnimationBuilder<double>(
+            // Springs back when let go too early.
+            tween: Tween(end: _pulled),
+            duration: _pulled == 0 ? const Duration(milliseconds: 150) : Duration.zero,
+            builder: (context, pulled, child) => Transform.translate(offset: Offset(0, pulled), child: child),
+            child: Material(
+              key: const ValueKey('controllerTabPanel'),
+              color: scheme.surfaceContainerLow,
+              elevation: 8,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                // Never a sliver with little in it: at least half the room.
+                constraints: BoxConstraints(minHeight: widget.full ? box.maxHeight : box.maxHeight * 0.5, maxHeight: box.maxHeight),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // The handle: pulled down, the panel goes.
+                    GestureDetector(
+                      key: const ValueKey('controllerTabPanelHandle'),
+                      behavior: HitTestBehavior.opaque,
+                      onVerticalDragUpdate: _drag,
+                      onVerticalDragEnd: (details) => _release(details, box.maxHeight),
+                      child: SizedBox(
+                        height: _handleHeight,
+                        child: Center(
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(color: scheme.onSurfaceVariant.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2)),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        // The sheets size their parts by the screen's
+                        // height; here that is the room above the buttons.
+                        // The script takes 85 % of it, so it is given more
+                        // to fill it all.
+                        child: MediaQuery(
+                          data: media.copyWith(size: Size(media.size.width, room / (widget.full ? 0.85 : 1))),
+                          child: widget.child,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

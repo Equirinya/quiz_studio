@@ -72,6 +72,19 @@ void main() {
     expect(sheets, findsNothing);
   });
 
+  testWidgets('a panel is as wide as the controller, and pulled down by its handle it closes', (tester) async {
+    await pumpBoth(tester);
+    await tap(tester, tab('Answers'));
+    expect(tester.getSize(sheets).width, 460);
+    // A little: it springs back.
+    await tester.drag(find.byKey(const ValueKey('controllerTabPanelHandle')), const Offset(0, 40));
+    await tester.pumpAndSettle();
+    expect(sheets, findsOneWidget);
+    await tester.drag(find.byKey(const ValueKey('controllerTabPanelHandle')), const Offset(0, 500));
+    await tester.pumpAndSettle();
+    expect(sheets, findsNothing);
+  });
+
   testWidgets('the board is a sheet: tap a field to read it, then open it', (tester) async {
     await pumpBoth(tester);
     await tap(tester, tab('Board'));
