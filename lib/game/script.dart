@@ -126,24 +126,6 @@ class ScriptSection {
   final String? groupId;
 }
 
-/// Whether the script, opened again, stays where it was read last instead of
-/// jumping to the target section: it does when the target's divider is
-/// already in view (in the top four fifths), or when the reader is inside the
-/// target section and it fills at least half the view.
-///
-/// All values are in scroll pixels; [lastOffset] is null the first time.
-bool scriptStaysPut({
-  required double? lastOffset,
-  required double viewport,
-  required double sectionTop,
-  required double sectionBottom,
-}) {
-  if (lastOffset == null) return false;
-  final dividerInView = sectionTop >= lastOffset && sectionTop <= lastOffset + viewport * 0.8;
-  final readingInside = sectionTop < lastOffset && sectionBottom >= lastOffset + viewport * 0.5;
-  return dividerInView || readingInside;
-}
-
 // ── format ──────────────────────────────────────────────────────────────────
 
 /// The colours text can have, by the name written in the script.

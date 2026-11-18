@@ -122,6 +122,7 @@ class _ControllerViewState extends State<ControllerView> {
                       alignment: Alignment.bottomCenter,
                       child: _TabPanel(
                         close: _closeTab,
+                        full: tab == _Tab.script,
                         child: Builder(builder: (context) => _tabContent(context, tab, state, game)),
                       ),
                     ),
@@ -1877,10 +1878,13 @@ class _SheetRow extends StatelessWidget {
 /// free to switch to another. As tall as its content, up to the room there
 /// is; its content sizes itself by this room as it did by the screen.
 class _TabPanel extends StatelessWidget {
-  const _TabPanel({required this.close, required this.child});
+  const _TabPanel({required this.close, required this.child, this.full = false});
 
   final VoidCallback close;
   final Widget child;
+
+  /// As tall as there is room, for reading: the script.
+  final bool full;
 
   /// Closes the panel [context] is in, as done by e.g. opening a question.
   static void closeAround(BuildContext context) => context.findAncestorWidgetOfExactType<_TabPanel>()?.close();
@@ -1904,14 +1908,16 @@ class _TabPanel extends StatelessWidget {
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
             clipBehavior: Clip.antiAlias,
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: box.maxHeight),
+              // Never a sliver with little in it: at least half the room.
+              constraints: BoxConstraints(minHeight: full ? box.maxHeight : box.maxHeight * 0.5, maxHeight: box.maxHeight),
               child: SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 12),
                   // The sheets size their parts by the screen's height;
-                  // here that is the room above the buttons.
+                  // here that is the room above the buttons. The script
+                  // takes 85 % of it, so it is given more to fill it all.
                   child: MediaQuery(
-                    data: media.copyWith(size: Size(media.size.width, box.maxHeight - 12)),
+                    data: media.copyWith(size: Size(media.size.width, (box.maxHeight - 12) / (full ? 0.85 : 1))),
                     child: child,
                   ),
                 ),

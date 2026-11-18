@@ -119,24 +119,6 @@ void main() {
       expect(GameScript.targetKey(game, groupId: 'nope'), 'intro');
     });
 
-    test('jumps the first time, stays when the section is already close', () {
-      bool stays(double? last, double top, double bottom) =>
-          scriptStaysPut(lastOffset: last, viewport: 600, sectionTop: top, sectionBottom: bottom);
-      // Never opened: jump.
-      expect(stays(null, 0, 100), isFalse);
-      // Divider in view.
-      expect(stays(1000, 1000, 1200), isTrue);
-      expect(stays(1000, 1400, 1600), isTrue);
-      // Divider at the very bottom of the view or below it: jump.
-      expect(stays(1000, 1550, 1700), isFalse);
-      expect(stays(1000, 3000, 3200), isFalse);
-      // Far above: jump.
-      expect(stays(5000, 1000, 1200), isFalse);
-      // Reading inside a long section: stay.
-      expect(stays(1000, 400, 2000), isTrue);
-      // Only the section's last lines at the top of the view: jump back to it.
-      expect(stays(1000, 400, 1100), isFalse);
-    });
   });
 
   group('format', () {

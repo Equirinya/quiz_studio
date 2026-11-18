@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:quiz_show/features/games/pages/script_editor_page.dart';
 import 'package:quiz_show/features/games/widgets/script_format.dart';
 import 'package:quiz_show/features/session/pages/controller_page.dart';
@@ -41,6 +42,9 @@ GameContent _longGame() {
 
 void main() {
   group('script sheet on the controller', () {
+    // Nothing kept from an earlier run on this device.
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
     Future<double> open(WidgetTester tester, {QuestionRef? current, double? lastOffset}) async {
       tester.view.physicalSize = const Size(500, 900);
       tester.view.devicePixelRatio = 1;
@@ -49,6 +53,8 @@ void main() {
       await tester.pumpWidget(_app(Scaffold(
         body: ScriptSheet(key: UniqueKey(), game: _longGame(), current: current, lastOffset: lastOffset),
       )));
+      // The place kept on the device is read first.
+      await tester.pump();
       await tester.pump();
       return tester.state<ScrollableState>(find.byType(Scrollable).first).position.pixels;
     }
@@ -63,14 +69,12 @@ void main() {
       expect(top, lessThan(150));
     });
 
-    testWidgets('stays where it was left when the question is already in view', (tester) async {
+    testWidgets('opened again it stays where it was left, wherever that is', (tester) async {
       final jumped = await open(tester, current: const QuestionRef('c6', 'c6q2'));
-      // Left a little above the question, its divider still in view.
-      final stayed = await open(tester, current: const QuestionRef('c6', 'c6q2'), lastOffset: jumped - 200);
-      expect(stayed, jumped - 200);
-      // Left far away: it jumps again.
+      final near = await open(tester, current: const QuestionRef('c6', 'c6q2'), lastOffset: jumped - 200);
+      expect(near, jumped - 200);
       final far = await open(tester, current: const QuestionRef('c6', 'c6q2'), lastOffset: 100);
-      expect(far, jumped);
+      expect(far, 100);
     });
 
     testWidgets('without an open question it opens at the intro the first time', (tester) async {

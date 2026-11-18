@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:quiz_show/features/games/widgets/script_format.dart';
 import 'package:quiz_show/game/game.dart';
 import 'package:quiz_show/l10n/l10n.dart';
 
-/// The game's script for reading during the show. It opens at the section
-/// of the open question (or its category, or the board on screen), unless
-/// the place it was left at is already close to it; see [scriptStaysPut].
+/// The game's script for reading during the show. It opens where it was
+/// left last, kept per game on this device also when the app was closed;
+/// the very first time at the section of the open question (or its
+/// category, or the board on screen). "To current" jumps there.
 class ScriptSheet extends StatefulWidget {
   const ScriptSheet({super.key, required this.game, this.current, this.groupId, this.lastOffset, this.onScrolled});
 
@@ -26,6 +30,9 @@ class ScriptSheet extends StatefulWidget {
 
 class _ScriptSheetState extends State<ScriptSheet> {
   late final ScrollController _scroll = ScrollController(initialScrollOffset: widget.lastOffset ?? 0);
+
+  String get _savedKey => 'scriptOffset/${widget.game.id}';
+  Timer? _save;
   final _content = GlobalKey();
   final _keys = <String, GlobalKey>{};
 
@@ -34,12 +41,28 @@ class _ScriptSheetState extends State<ScriptSheet> {
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(() => widget.onScrolled?.call(_scroll.offset));
+    _scroll.addListener(() {
+      widget.onScrolled?.call(_scroll.offset);
+      // Kept for the next time the app runs, once the reader stops.
+      _save?.cancel();
+      final offset = _scroll.offset;
+      _save = Timer(const Duration(milliseconds: 600), () => _store(offset));
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) => _open());
+  }
+
+  Future<void> _store(double offset) async {
+    try {
+      await (await SharedPreferences.getInstance()).setDouble(_savedKey, offset);
+    } catch (_) {
+      // Only a convenience.
+    }
   }
 
   @override
   void dispose() {
+    _save?.cancel();
+    if (_scroll.hasClients) _store(_scroll.offset);
     _scroll.dispose();
     super.dispose();
   }
@@ -53,17 +76,20 @@ class _ScriptSheetState extends State<ScriptSheet> {
     return (top, top + box.size.height);
   }
 
-  void _open() {
+  /// Where it was left: kept in this session, else on this device; the
+  /// first time at the target section.
+  Future<void> _open() async {
+    if (widget.lastOffset != null) return;
+    double? saved;
+    try {
+      saved = (await SharedPreferences.getInstance()).getDouble(_savedKey);
+    } catch (_) {}
     if (!mounted || !_scroll.hasClients) return;
-    final extent = _extent(_target);
-    if (extent == null) return;
-    final stays = scriptStaysPut(
-      lastOffset: widget.lastOffset,
-      viewport: _scroll.position.viewportDimension,
-      sectionTop: extent.$1,
-      sectionBottom: extent.$2,
-    );
-    if (!stays) _jumpTo(_target);
+    if (saved != null) {
+      _scroll.jumpTo(saved.clamp(0.0, _scroll.position.maxScrollExtent));
+    } else {
+      _jumpTo(_target);
+    }
   }
 
   void _jumpTo(String key, {bool animate = false}) {
