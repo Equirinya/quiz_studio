@@ -40,8 +40,18 @@ class ControllerView extends StatefulWidget {
   State<ControllerView> createState() => _ControllerViewState();
 }
 
+/// The five buttons at the bottom, each with its panel.
+enum _Tab { board, effects, answers, script, setup }
+
 class _ControllerViewState extends State<ControllerView> {
   SessionConnection get _c => widget.connection;
+
+  /// The panel open above the buttons; they stay there to switch it.
+  _Tab? _tab;
+
+  void _toggle(_Tab tab) => setState(() => _tab = _tab == tab ? null : tab);
+
+  void _closeTab() => setState(() => _tab = null);
 
   void _send(Command command) => _c.send(command);
 
@@ -79,30 +89,57 @@ class _ControllerViewState extends State<ControllerView> {
             _TeamStrip(state: state, game: game, onTeam: _openTeam, onAdd: _addTeam),
             const Divider(height: 1),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
-                child: _NowPanel(
-                  state: state,
-                  game: game,
-                  question: question,
-                  send: _send,
-                  hostClock: _c.isPresenting,
-                  backgroundImage: _c.backgroundImage(state.answerRound?.spec.backgroundImage),
-                ),
+              child: Stack(
+                children: [
+                  Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(12),
+                          child: _NowPanel(
+                            state: state,
+                            game: game,
+                            question: question,
+                            send: _send,
+                            hostClock: _c.isPresenting,
+                            backgroundImage: _c.backgroundImage(state.answerRound?.spec.backgroundImage),
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      _ActionPad(state: state, game: game, question: question, send: _send),
+                    ],
+                  ),
+                  if (_tab case final tab?) ...[
+                    // Tapped beside the panel: it closes.
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onTap: _closeTab,
+                        child: const ColoredBox(color: Color(0x66000000)),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: _TabPanel(
+                        close: _closeTab,
+                        child: Builder(builder: (context) => _tabContent(context, tab, state, game)),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            const Divider(height: 1),
-            _ActionPad(state: state, game: game, question: question, send: _send),
             _SheetRow(
               boardSuggested: game != null && state.current == null && state.phase != Phase.buzzerTest,
               answersActive: state.answerRound != null,
               effectsActive: state.music != null || state.overlay != null,
-              onBoard: _openBoard,
-              onEffects: _openEffects,
-              onAnswers: _openAnswers,
+              open: _tab,
+              onBoard: () => _toggle(_Tab.board),
+              onEffects: () => _toggle(_Tab.effects),
+              onAnswers: () => _toggle(_Tab.answers),
               // Only a script with something in it is worth a tab.
-              onScript: game != null && GameScript.of(game).hasTextFor(game) ? _openScript : null,
-              onSetup: _openSetup,
+              onScript: game != null && GameScript.of(game).hasTextFor(game) ? () => _toggle(_Tab.script) : null,
+              onSetup: () => _toggle(_Tab.setup),
             ),
           ],
         );
@@ -201,21 +238,23 @@ class _ControllerViewState extends State<ControllerView> {
 
   // ── sheets ─────────────────────────────────────────────────────────────────
 
-  void _openBoard() => _sheet(
-    (context, state, game) => game == null
+  /// What the panel of [tab] shows, following the live session.
+  Widget _tabContent(BuildContext context, _Tab tab, SessionState state, GameContent? game) => switch (tab) {
+    _Tab.board => _board(context, state, game),
+    _Tab.effects => _EffectsSheet(state: state, game: game, send: _send),
+    _Tab.answers => _AnswersSheet(state: state, game: game, send: _send),
+    _Tab.script => _script(context, state, game),
+    _Tab.setup => _setup(context, state, game),
+  };
+
+  Widget _board(BuildContext context, SessionState state, GameContent? game) => (game == null
         ? SizedBox(height: 120, child: Center(child: Text(context.l10n.sessionHasNoGame)))
-        : _BoardSheet(state: state, game: game, send: _send),
-  );
-
-  void _openEffects() => _sheet((context, state, game) => _EffectsSheet(state: state, game: game, send: _send));
-
-  void _openAnswers() => _sheet((context, state, game) => _AnswersSheet(state: state, game: game, send: _send));
+        : _BoardSheet(state: state, game: game, send: _send));
 
   /// Where the script was left, per game, for [ScriptSheet.lastOffset].
   final _scriptOffsets = <String, double>{};
 
-  void _openScript() => _sheet(
-    (context, state, game) => game == null
+  Widget _script(BuildContext context, SessionState state, GameContent? game) => (game == null
         ? SizedBox(height: 120, child: Center(child: Text(context.l10n.sessionHasNoGame)))
         : ScriptSheet(
             key: ValueKey(game.id),
@@ -224,11 +263,10 @@ class _ControllerViewState extends State<ControllerView> {
             groupId: state.groupId,
             lastOffset: _scriptOffsets[game.id],
             onScrolled: (offset) => _scriptOffsets[game.id] = offset,
-          ),
-  );
+          ));
 
   // The same setup as before the show, from the session list.
-  void _openSetup() => _sheet((context, state, game) {
+  Widget _setup(BuildContext context, SessionState state, GameContent? game) {
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
       child: SingleChildScrollView(
@@ -239,19 +277,19 @@ class _ControllerViewState extends State<ControllerView> {
           onConnectDevices: widget.onConnectDevices == null
               ? null
               : () {
-                  Navigator.of(context).pop();
+                  _closeTab();
                   widget.onConnectDevices!();
                 },
           onBuzzerSetup: widget.onBuzzerSetup == null
               ? null
               : () {
-                  Navigator.of(context).pop();
+                  _closeTab();
                   widget.onBuzzerSetup!();
                 },
         ),
       ),
     );
-  });
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1763,7 +1801,11 @@ class _SheetRow extends StatelessWidget {
     required this.onAnswers,
     this.onScript,
     required this.onSetup,
+    this.open,
   });
+
+  /// The panel open above the buttons, marked.
+  final _Tab? open;
 
   /// Nothing is open: picking a question is the next thing to do.
   final bool boardSuggested;
@@ -1781,15 +1823,19 @@ class _SheetRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    Widget tab(String label, IconData icon, VoidCallback onTap, {bool highlight = false, bool dot = false}) => Expanded(
+    Widget tab(String label, IconData icon, VoidCallback onTap, {bool highlight = false, bool dot = false, _Tab? which}) => Expanded(
       child: Padding(
         padding: const EdgeInsets.all(4),
         child: SizedBox(
           height: 48,
           child: TextButton(
             style: TextButton.styleFrom(
-              backgroundColor: highlight ? scheme.primary : null,
-              foregroundColor: highlight ? scheme.onPrimary : null,
+              backgroundColor: which != null && which == open
+                  ? scheme.secondaryContainer
+                  : (highlight && open == null ? scheme.primary : null),
+              foregroundColor: which != null && which == open
+                  ? scheme.onSecondaryContainer
+                  : (highlight && open == null ? scheme.onPrimary : null),
               padding: EdgeInsets.zero,
             ),
             onPressed: onTap,
@@ -1812,11 +1858,11 @@ class _SheetRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
       child: Row(
         children: [
-          tab(context.l10n.tabBoard, Icons.grid_view_rounded, onBoard, highlight: boardSuggested),
-          tab(context.l10n.tabEffects, Icons.auto_awesome_outlined, onEffects, dot: effectsActive),
-          tab(context.l10n.tabAnswers, Icons.draw_outlined, onAnswers, dot: answersActive),
-          if (onScript case final onScript?) tab(context.l10n.script, Icons.description_outlined, onScript),
-          tab(context.l10n.tabSetup, Icons.settings_outlined, onSetup),
+          tab(context.l10n.tabBoard, Icons.grid_view_rounded, onBoard, highlight: boardSuggested, which: _Tab.board),
+          tab(context.l10n.tabEffects, Icons.auto_awesome_outlined, onEffects, dot: effectsActive, which: _Tab.effects),
+          tab(context.l10n.tabAnswers, Icons.draw_outlined, onAnswers, dot: answersActive, which: _Tab.answers),
+          if (onScript case final onScript?) tab(context.l10n.script, Icons.description_outlined, onScript, which: _Tab.script),
+          tab(context.l10n.tabSetup, Icons.settings_outlined, onSetup, which: _Tab.setup),
         ],
       ),
     );
@@ -1826,6 +1872,57 @@ class _SheetRow extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // Sheets
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// A panel above the buttons at the bottom, like a sheet but leaving them
+/// free to switch to another. As tall as its content, up to the room there
+/// is; its content sizes itself by this room as it did by the screen.
+class _TabPanel extends StatelessWidget {
+  const _TabPanel({required this.close, required this.child});
+
+  final VoidCallback close;
+  final Widget child;
+
+  /// Closes the panel [context] is in, as done by e.g. opening a question.
+  static void closeAround(BuildContext context) => context.findAncestorWidgetOfExactType<_TabPanel>()?.close();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return PopScope(
+      // Back closes the panel, not the session.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) close();
+      },
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final media = MediaQuery.of(context);
+          return Material(
+            key: const ValueKey('controllerTabPanel'),
+            color: scheme.surfaceContainerLow,
+            elevation: 8,
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+            clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: box.maxHeight),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  // The sheets size their parts by the screen's height;
+                  // here that is the room above the buttons.
+                  child: MediaQuery(
+                    data: media.copyWith(size: Size(media.size.width, box.maxHeight - 12)),
+                    child: child,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
 
 /// An information screen on the big screen: what it shows, and its clock,
 /// started again, lengthened or stopped from here.
@@ -2095,7 +2192,7 @@ class _BoardSheetState extends State<_BoardSheet> {
                         widget.send(UnmarkPlayed(selected));
                       } else {
                         widget.send(OpenQuestion(selected));
-                        Navigator.of(context).pop();
+                        _TabPanel.closeAround(context);
                       }
                     },
               icon: Icon(
@@ -2639,7 +2736,7 @@ class _AnswersSheetState extends State<_AnswersSheet> {
     final chosen = [for (final team in state.teams) if (!_left.contains(team.id)) team.id];
     void open(CompanionKind kind) {
       send(OpenAnswers(CompanionSpec(kind: kind, timerSeconds: _timer), teams: chosen.length == state.teams.length ? const [] : chosen));
-      Navigator.of(context).pop();
+      _TabPanel.closeAround(context);
     }
 
     final canOpen = chosen.isNotEmpty;

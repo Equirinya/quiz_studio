@@ -40,7 +40,9 @@ void main() {
 
   Finder inController(Finder finder) => find.descendant(of: find.byType(ControllerView), matching: finder);
   Finder inPresenter(Finder finder) => find.descendant(of: find.byType(PresenterView), matching: finder);
-  Finder inSheet(Finder finder) => find.descendant(of: find.byType(BottomSheet), matching: finder);
+  // A team's sheet, or the panel of one of the buttons at the bottom.
+  final sheets = find.byWidgetPredicate((w) => w is BottomSheet || w.key == const ValueKey('controllerTabPanel'));
+  Finder inSheet(Finder finder) => find.descendant(of: sheets, matching: finder);
   Finder tab(String label) => inController(find.widgetWithText(TextButton, label));
   Finder pad(String label) => inController(find.widgetWithText(FilledButton, label));
 
@@ -51,12 +53,24 @@ void main() {
   }
 
   Future<void> closeSheet(WidgetTester tester) async {
-    await tester.tapAt(const Offset(1000, 20));
+    // Back closes a sheet or the panel.
+    await tester.binding.handlePopRoute();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
   }
 
   bool enabled(WidgetTester tester, String label) => tester.widget<FilledButton>(pad(label)).onPressed != null;
+
+  testWidgets('the buttons stay under an open panel and switch it; tapped again it closes', (tester) async {
+    await pumpBoth(tester);
+    await tap(tester, tab('Board'));
+    expect(inSheet(find.widgetWithText(FilledButton, '100')), findsWidgets);
+    await tap(tester, tab('Setup'));
+    expect(inSheet(find.widgetWithText(FilledButton, '100')), findsNothing);
+    expect(inSheet(find.text('Queue buzzers')), findsOneWidget);
+    await tap(tester, tab('Setup'));
+    expect(sheets, findsNothing);
+  });
 
   testWidgets('the board is a sheet: tap a field to read it, then open it', (tester) async {
     await pumpBoth(tester);
@@ -69,7 +83,7 @@ void main() {
 
     await tap(tester, inSheet(find.text('Open question')));
     expect(host.state.current, free);
-    expect(find.byType(BottomSheet), findsNothing);
+    expect(sheets, findsNothing);
     expect(inPresenter(find.text('Capital of France?')), findsOneWidget);
     // The gamemaster sees the answer hint, the audience never does.
     expect(inController(find.text('Paris')), findsOneWidget);
