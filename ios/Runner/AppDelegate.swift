@@ -46,7 +46,12 @@ final class PencilDrawing: NSObject, FlutterPlugin {
       return
     }
     if drawing {
-      let scribbles = view.interactions.filter { $0 is UIIndirectScribbleInteraction }
+      // UIIndirectScribbleInteraction is generic over its delegate, so Swift
+      // cannot test for it with `is`; Flutter makes it in Objective-C, where
+      // the class keeps its plain name.
+      let scribbles = view.interactions.filter {
+        NSStringFromClass(type(of: $0)).contains("IndirectScribbleInteraction")
+      }
       for interaction in scribbles {
         view.removeInteraction(interaction)
       }
