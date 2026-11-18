@@ -1866,10 +1866,24 @@ class _InfoScreenPanel extends StatelessWidget {
             // Shown again: its clock starts from the beginning.
             if (group.timerSeconds != null)
               ActionChip(avatar: const Icon(Icons.restart_alt, size: 18), label: Text(l10n.startTimerAgain), onPressed: () => send(SelectGroup(group.id))),
-            ActionChip(avatar: const Icon(Icons.more_time, size: 18), label: const Text("+30 s"), onPressed: () => send(const SetTimer(30))),
-            ActionChip(avatar: const Icon(Icons.more_time, size: 18), label: const Text("+1 min"), onPressed: () => send(const SetTimer(60))),
             if (timer != null)
               ActionChip(avatar: const Icon(Icons.timer_off_outlined, size: 18), label: Text(l10n.stopTimer), onPressed: () => send(const SetTimer(null))),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // Less or more time; more without a clock puts one up.
+        Row(
+          children: [
+            for (final minutes in const [-15, -1, 1, 15]) ...[
+              if (minutes != -15) const SizedBox(width: 6),
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4)),
+                  onPressed: minutes < 0 && !(timer?.running ?? false) ? null : () => send(SetTimer(minutes * 60)),
+                  child: Text(minutes < 0 ? "−${-minutes} min" : "+$minutes min"),
+                ),
+              ),
+            ],
           ],
         ),
       ],

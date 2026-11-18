@@ -210,10 +210,17 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       final timer = s.timer;
       // A question's clock, or an information screen's.
       final info = question == null && s.current == null && game?.group(s.groupId)?.isInfo == true;
-      if ((question == null && !info) || now == null || (seconds != null && seconds <= 0)) return _no(s);
+      if ((question == null && !info) || now == null || seconds == 0) return _no(s);
       if (seconds == null) return timer == null ? _no(s) : _ok(s.copyWith(timer: null));
       // Running: the time goes on top. Up or none yet: a fresh clock.
       final running = timer != null && timer.running && timer.endsAtMillis > now;
+      // Less time: only off a running clock, and never into the past; at
+      // nothing left the time is up as usual.
+      if (seconds < 0) {
+        if (!running) return _no(s);
+        final ends = timer.endsAtMillis + seconds * 1000;
+        return _ok(s.copyWith(timer: QuestionTimer(openedAtMillis: timer.openedAtMillis, endsAtMillis: ends < now ? now : ends)));
+      }
       return _ok(
         s.copyWith(
           timer: running

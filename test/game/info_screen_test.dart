@@ -58,4 +58,22 @@ void main() {
   test('it shows up in the game as text', () {
     expect(gameAsText(game()), contains('Back in ten minutes'));
   });
+
+  test('minutes off and on; without a clock, more time puts one up', () {
+    final g = game();
+    var s = reduce(teams, const SelectGroup('break'), g, now: 0).state;
+    s = reduce(s, const SetTimer(-60), g, now: 0).state;
+    expect(s.timer!.endsAtMillis, 540000);
+    s = reduce(s, const SetTimer(15 * 60), g, now: 0).state;
+    expect(s.timer!.endsAtMillis, 1440000);
+    // Never into the past: at nothing left the time is up.
+    s = reduce(s, const SetTimer(-60 * 60), g, now: 1000).state;
+    expect(s.timer!.endsAtMillis, 1000);
+
+    s = reduce(s, const SetTimer(null), g, now: 2000).state;
+    expect(s.timer, isNull);
+    expect(reduce(s, const SetTimer(-60), g, now: 2000).accepted, isFalse, reason: 'nothing to take time off');
+    s = reduce(s, const SetTimer(60), g, now: 2000).state;
+    expect(s.timer!.endsAtMillis, 62000);
+  });
 }
