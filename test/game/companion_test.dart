@@ -138,10 +138,21 @@ void main() {
       expect(s.answerRound, isNull);
     });
 
-    test('ratings sound like the buzzer verdicts do', () {
-      final s = run(fixtureState(), [const OpenQuestion(sum)]);
-      expect((apply(s, const RateAnswer('red', correct: true)).effects.single as SoundEffect).key, effectAnswerCorrect);
-      expect((apply(s, const RateAnswer('red', correct: false)).effects.single as SoundEffect).key, effectAnswerWrong);
+    test('ratings sound like the buzzer verdicts do, with the answer on the big screen', () {
+      final hidden = run(fixtureState(), [const OpenQuestion(sum), const SubmitAnswer('red', PlayerAnswer(drawing: 'a'))]);
+      // Rated on the controller alone: no sound.
+      expect(apply(hidden, const RateAnswer('red', correct: true)).effects, isEmpty);
+
+      final shown = run(hidden, [const RevealAnswer('red')]);
+      expect((apply(shown, const RateAnswer('red', correct: true)).effects.single as SoundEffect).key, effectAnswerCorrect);
+      expect((apply(shown, const RateAnswer('red', correct: false)).effects.single as SoundEffect).key, effectAnswerWrong);
+
+      // Rated first, shown after: it sounds as it comes up.
+      final rated = run(hidden, [const RateAnswer('red', correct: false)]);
+      expect((apply(rated, const RevealAnswer('red')).effects.single as SoundEffect).key, effectAnswerWrong);
+      expect((apply(rated, const RevealNextAnswer()).effects.single as SoundEffect).key, effectAnswerWrong);
+      // Not rated yet: shown in silence.
+      expect(apply(hidden, const RevealAnswer('red')).effects, isEmpty);
     });
 
     test('players may answer and lock for their own team, never rate or reveal', () {

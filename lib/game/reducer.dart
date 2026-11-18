@@ -685,13 +685,16 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
     case RevealAnswer(:final teamId, :final show):
       final round = s.answerRound;
       if (round == null || s.team(teamId) == null || round.revealed.contains(teamId) == show) return _no(s);
-      return _ok(s.copyWith(answerRound: _reveal(round, show ? [...round.revealed, teamId] : ([...round.revealed]..remove(teamId)))));
+      return _ok(
+        s.copyWith(answerRound: _reveal(round, show ? [...round.revealed, teamId] : ([...round.revealed]..remove(teamId)))),
+        [if (show) ?_verdictSound(s, teamId)],
+      );
 
     case RevealNextAnswer():
       final round = s.answerRound;
       final next = s.roundTeams.where((team) => round != null && !round.revealed.contains(team.id)).firstOrNull;
       if (round == null || next == null) return _no(s);
-      return _ok(s.copyWith(answerRound: _reveal(round, [...round.revealed, next.id])));
+      return _ok(s.copyWith(answerRound: _reveal(round, [...round.revealed, next.id])), [?_verdictSound(s, next.id)]);
 
     case RevealAnswers():
       final round = s.answerRound;
@@ -710,7 +713,10 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       if (question == null || s.team(teamId) == null || s.waitingForBets) return _no(s);
       final results = s.results.rated(teamId, correct);
       if (s.results.verdicts[teamId] == correct && !s.results.points.containsKey(teamId)) return _no(s);
-      return _ok(s.copyWith(results: results), [if (correct != null) SoundEffect(correct ? effectAnswerCorrect : effectAnswerWrong)]);
+      // Heard only with the answer on the big screen; rated before it is
+      // shown, it sounds as it comes up (see [_verdictSound]).
+      final onScreen = s.answerRound?.revealed.contains(teamId) ?? false;
+      return _ok(s.copyWith(results: results), [if (correct != null && onScreen) SoundEffect(correct ? effectAnswerCorrect : effectAnswerWrong)]);
 
     case AwardAnswer(:final teamId, :final points):
       if (question == null || s.team(teamId) == null || s.waitingForBets) return _no(s);
@@ -802,6 +808,14 @@ bool canUnlockAnswer(SessionState s, String teamId) {
   if (round.answers[teamId]?.locked != true || round.revealed.contains(teamId)) return false;
   return round.open || s.roundTeams.every((team) => team.id == teamId || round.answers[team.id]?.locked == true);
 }
+
+/// The right or wrong sound of [teamId]'s rating, for when its answer comes
+/// up on the big screen; null when it is not rated yet.
+SoundEffect? _verdictSound(SessionState s, String teamId) => switch (s.results.verdicts[teamId]) {
+  true => const SoundEffect(effectAnswerCorrect),
+  false => const SoundEffect(effectAnswerWrong),
+  null => null,
+};
 
 /// Marker for "leave the timer as it is" in a copyWith that may clear it.
 const Object _keepTimer = Object();
