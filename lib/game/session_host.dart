@@ -6,13 +6,23 @@ import 'dart:async';
 
 import 'commands.dart';
 import 'content.dart';
+import 'played_round.dart';
 import 'public_view.dart';
 import 'reducer.dart';
 import 'session_state.dart';
 
+/// What changed about the kept rounds: with [cleared] every one went first;
+/// then [rounds] were kept, null dropping one.
+typedef StoredRoundsChange = ({bool cleared, Map<String, PlayedRound?> rounds});
+
 class SessionHost {
-  SessionHost({SessionState initial = const SessionState(), GameContent? game, int Function()? clock})
-      : _state = initial,
+  SessionHost({
+    SessionState initial = const SessionState(),
+    GameContent? game,
+    int Function()? clock,
+    Map<String, PlayedRound> rounds = const {},
+  })  : _state = initial,
+        _rounds = {...rounds},
         _game = game,
         _clock = clock ?? (() => DateTime.now().millisecondsSinceEpoch) {
     _armTimer();
@@ -34,9 +44,11 @@ class SessionHost {
 
   SessionState _state;
   GameContent? _game;
+  final Map<String, PlayedRound> _rounds;
 
   final StreamController<SessionState> _states = StreamController<SessionState>.broadcast(sync: true);
   final StreamController<Effect> _effects = StreamController<Effect>.broadcast(sync: true);
+  final StreamController<StoredRoundsChange> _roundChanges = StreamController<StoredRoundsChange>.broadcast(sync: true);
 
   SessionState get state => _state;
 
@@ -48,6 +60,12 @@ class SessionHost {
 
   /// One-shot events for the presenter, e.g. sounds to play.
   Stream<Effect> get effects => _effects.stream;
+
+  /// The rounds kept from played questions, by [QuestionRef.key].
+  Map<String, PlayedRound> get rounds => Map.unmodifiable(_rounds);
+
+  /// Every change to [rounds], to store them.
+  Stream<StoredRoundsChange> get roundChanges => _roundChanges.stream;
 
   /// What player devices may see of the current state.
   Map<String, dynamic> get publicState => publicView(_state, _game);
@@ -73,8 +91,19 @@ class SessionHost {
   /// may not issue it or it makes no sense right now; nothing changes then.
   bool dispatch(Command command, {Sender sender = const Sender.host()}) {
     if (_states.isClosed || !mayIssue(sender, command)) return false;
-    final result = reduce(_state, command, _game, now: _clock());
+    final result = reduce(_state, command, _game, now: _clock(), stored: _rounds);
     if (!result.accepted) return false;
+    if (result.clearRounds || result.rounds.isNotEmpty) {
+      if (result.clearRounds) _rounds.clear();
+      for (final MapEntry(:key, :value) in result.rounds.entries) {
+        if (value == null) {
+          _rounds.remove(key);
+        } else {
+          _rounds[key] = value;
+        }
+      }
+      _roundChanges.add((cleared: result.clearRounds, rounds: result.rounds));
+    }
     final changed = !identical(result.state, _state);
     _state = result.state;
     if (changed) {
@@ -124,5 +153,6 @@ class SessionHost {
     _countdownTimer?.cancel();
     await _states.close();
     await _effects.close();
+    await _roundChanges.close();
   }
 }

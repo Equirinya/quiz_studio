@@ -6151,6 +6151,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start timer again'**
   String get startTimerAgain;
+
+  /// No description provided for @reopenWithAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen with answers'**
+  String get reopenWithAnswers;
+
+  /// No description provided for @answersKept.
+  ///
+  /// In en, this message translates to:
+  /// **'answers kept'**
+  String get answersKept;
+
+  /// No description provided for @storedData.
+  ///
+  /// In en, this message translates to:
+  /// **'Stored data'**
+  String get storedData;
+
+  /// No description provided for @storedDataEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing stored yet: no question has been played.'**
+  String get storedDataEmpty;
+
+  /// No description provided for @playedQuestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Played questions'**
+  String get playedQuestions;
+
+  /// No description provided for @questionNoLongerInGame.
+  ///
+  /// In en, this message translates to:
+  /// **'No longer in the game'**
+  String get questionNoLongerInGame;
+
+  /// No description provided for @notRated.
+  ///
+  /// In en, this message translates to:
+  /// **'not rated'**
+  String get notRated;
+
+  /// No description provided for @clearSessionData.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all data'**
+  String get clearSessionData;
+
+  /// No description provided for @clearSessionDataText.
+  ///
+  /// In en, this message translates to:
+  /// **'Every team\'s points go back to 0, no question counts as played, and the answers kept from played questions are deleted. The teams stay as they are.'**
+  String get clearSessionDataText;
 }
 
 class _AppLocalizationsDelegate

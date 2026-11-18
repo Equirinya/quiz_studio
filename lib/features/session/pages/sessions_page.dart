@@ -27,6 +27,7 @@ import 'package:quiz_show/features/session/pages/controller_page.dart';
 import 'package:quiz_show/features/session/pages/presenter_view.dart';
 import 'package:quiz_show/features/session/pages/session_invite_sheet.dart';
 import 'package:quiz_show/features/session/pages/session_setup_page.dart';
+import 'package:quiz_show/features/session/pages/stored_data_page.dart';
 import 'package:quiz_show/features/session/presenter_window.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
@@ -144,6 +145,14 @@ class _SessionsPageState extends State<SessionsPage> {
     await guarded(context, () => _repo.leaveInvited(session.id));
   }
 
+  void _storedData(SessionSummary session) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => StoredDataPage(session: session, title: sessionTitle(session, _gameNames, context.l10n))),
+    );
+  }
+
+  Future<void> _clearData(SessionSummary session) => clearSessionData(context, session);
+
   Future<void> _delete(SessionSummary session) async {
     final sure = await confirm(
       context,
@@ -195,6 +204,8 @@ class _SessionsPageState extends State<SessionsPage> {
               onPresent: _present,
               onChangeGame: _changeGame,
               onDelete: _delete,
+              onStoredData: _storedData,
+              onClearData: _clearData,
               onSetUp: _setUp,
               onInvite: _invite,
               onControlInvited: _controlInvited,
@@ -218,6 +229,8 @@ class SessionsList extends StatelessWidget {
     required this.onChangeGame,
     required this.onDelete,
     this.onSetUp,
+    this.onStoredData,
+    this.onClearData,
     this.invitedSessions = const [],
     this.onInvite,
     this.onControlInvited,
@@ -233,6 +246,13 @@ class SessionsList extends StatelessWidget {
 
   /// Opens the teams and buzzers before the show; hidden when null.
   final ValueChanged<SessionSummary>? onSetUp;
+
+  /// Shows the points, the questions played and the answers kept; hidden
+  /// when null.
+  final ValueChanged<SessionSummary>? onStoredData;
+
+  /// Starts the session over with the same teams; hidden when null.
+  final ValueChanged<SessionSummary>? onClearData;
 
   /// Sessions someone else hosts and invited the user to.
   final List<SessionSummary> invitedSessions;
@@ -303,6 +323,10 @@ class SessionsList extends StatelessWidget {
                         itemBuilder: (context) => [
                           PopupMenuItem(value: () => onChangeGame(session), child: Text(context.l10n.changeGame)),
                           if (onInvite != null) PopupMenuItem(value: () => onInvite!(session), child: Text(context.l10n.inviteToSession)),
+                          if (onStoredData != null)
+                            PopupMenuItem(value: () => onStoredData!(session), child: Text(context.l10n.storedData)),
+                          if (onClearData != null)
+                            PopupMenuItem(value: () => onClearData!(session), child: Text(context.l10n.clearSessionData)),
                           PopupMenuItem(value: () => onDelete(session), child: Text(context.l10n.delete)),
                         ],
                       ),

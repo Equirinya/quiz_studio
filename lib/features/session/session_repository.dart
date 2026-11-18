@@ -145,7 +145,7 @@ class SessionRepository {
   /// Deletes the session and what belongs to it. Best effort for the
   /// subcollections: a document that slips through is unreachable anyway.
   Future<void> deleteSession(String sessionId) async {
-    for (final name in ['commands', 'members', 'tokens', 'public']) {
+    for (final name in ['commands', 'members', 'tokens', 'public', 'rounds']) {
       try {
         final docs = await session(sessionId).collection(name).get();
         for (final doc in docs.docs) {
@@ -156,6 +156,47 @@ class SessionRepository {
       }
     }
     await session(sessionId).delete();
+  }
+
+  // ── rounds kept from played questions ──────────────────────────────────────
+
+  /// One document per played question that left answers behind; host only.
+  CollectionReference<Map<String, dynamic>> _rounds(String sessionId) => session(sessionId).collection('rounds');
+
+  /// A question key has a '/', which a document id may not.
+  static String _roundDoc(String key) => Uri.encodeComponent(key);
+
+  /// The rounds kept from the session's played questions, by question key.
+  Future<Map<String, PlayedRound>> loadRounds(String sessionId) async {
+    final docs = await _rounds(sessionId).get();
+    return {
+      for (final doc in docs.docs)
+        if (doc.data()['key'] case final String key) key: ?PlayedRound.fromJson(doc.data()['round']),
+    };
+  }
+
+  Future<void> storeRound(String sessionId, String key, PlayedRound? round) => round == null
+      ? _rounds(sessionId).doc(_roundDoc(key)).delete()
+      : _rounds(sessionId).doc(_roundDoc(key)).set({'key': key, 'round': round.toJson(), 'storedAt': FieldValue.serverTimestamp()});
+
+  Future<void> clearRounds(String sessionId) async {
+    final docs = await _rounds(sessionId).get();
+    for (final doc in docs.docs) {
+      await doc.reference.delete();
+    }
+  }
+
+  /// Starts the session over with the same teams ([ClearSessionData]): the
+  /// presenting device does it, or else this one on the stored state.
+  Future<void> clearSessionData(SessionSummary summary) async {
+    if (summary.presentingAt(DateTime.now().millisecondsSinceEpoch)) {
+      await sendCommand(summary.id, const ClearSessionData(), role: Role.controller);
+      return;
+    }
+    final state = await FirestoreHostLink.loadState(summary.id);
+    final cleared = reduce(state, const ClearSessionData(), null).state;
+    await FirestoreHostLink.saveState(summary.id, cleared);
+    await clearRounds(summary.id);
   }
 
   // ── joining ────────────────────────────────────────────────────────────────
@@ -416,6 +457,11 @@ class FirestoreHostLink {
   StreamSubscription<dynamic>? _commands;
   StreamSubscription<dynamic>? _session;
   StreamSubscription<SessionState>? _states;
+  StreamSubscription<StoredRoundsChange>? _roundChanges;
+
+  /// Kept rounds are written one after the other, so a clearing goes out
+  /// before what is kept after it.
+  Future<void> _roundWrites = Future.value();
   bool _backlogDropped = false;
 
   /// The team views as last written, so an unchanged one is not written again.
@@ -449,6 +495,19 @@ class FirestoreHostLink {
     });
     _publish();
     _states = host.states.listen((_) => _publish());
+    _roundChanges = host.roundChanges.listen((change) {
+      final repo = SessionRepository.instance;
+      _roundWrites = _roundWrites.then((_) async {
+        try {
+          if (change.cleared) await repo.clearRounds(sessionId);
+          for (final MapEntry(:key, :value) in change.rounds.entries) {
+            await repo.storeRound(sessionId, key, value);
+          }
+        } catch (error) {
+          if (kDebugMode) print('Session: could not store a played round: $error');
+        }
+      });
+    });
 
     _session = _ref.snapshots().listen((doc) {
       final data = doc.data();
@@ -530,5 +589,6 @@ class FirestoreHostLink {
     await _commands?.cancel();
     await _session?.cancel();
     await _states?.cancel();
+    await _roundChanges?.cancel();
   }
 }

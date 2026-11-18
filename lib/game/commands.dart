@@ -69,9 +69,10 @@ sealed class Command {
     return switch (j['type']) {
       'setGame' => SetGame(j['gameId'] as String?),
       'selectGroup' => SelectGroup(j['groupId'] as String),
-      'openQuestion' => OpenQuestion(ref()),
+      'openQuestion' => OpenQuestion(ref(), restore: j['restore'] == true),
       'closeQuestion' => CloseQuestion(markPlayed: j['markPlayed'] != false),
       'unmarkPlayed' => UnmarkPlayed(ref()),
+      'clearSessionData' => const ClearSessionData(),
       'setBuzzerTest' => SetBuzzerTest(j['on'] as bool),
       'buzz' => Buzz(j['teamId'] as String),
       'judge' => Judge(correct: j['correct'] as bool),
@@ -161,13 +162,16 @@ class SelectGroup extends Command {
   Map<String, dynamic> get _args => {'groupId': groupId};
 }
 
+/// Opens [ref]. With [restore] it comes back as it was closed as played:
+/// the teams' answers, the ratings and the points given (see `PlayedRound`).
 class OpenQuestion extends Command {
-  const OpenQuestion(this.ref);
+  const OpenQuestion(this.ref, {this.restore = false});
   final QuestionRef ref;
+  final bool restore;
   @override
   String get type => 'openQuestion';
   @override
-  Map<String, dynamic> get _args => {'ref': ref.key};
+  Map<String, dynamic> get _args => {'ref': ref.key, if (restore) 'restore': true};
 }
 
 /// Back to the board. With [markPlayed] false the question stays available,
@@ -188,6 +192,14 @@ class UnmarkPlayed extends Command {
   String get type => 'unmarkPlayed';
   @override
   Map<String, dynamic> get _args => {'ref': ref.key};
+}
+
+/// Starts the show over with the same teams: every score back to 0, no
+/// question played, and the rounds kept from played questions gone.
+class ClearSessionData extends Command {
+  const ClearSessionData();
+  @override
+  String get type => 'clearSessionData';
 }
 
 // ── buzzing and judging ──────────────────────────────────────────────────────

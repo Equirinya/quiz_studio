@@ -1008,5 +1008,14 @@
   "textOnScreen": "Text auf dem Bildschirm",
   "infoScreenText": "Erscheint auf dem großen Bildschirm, wenn du ihn in der Steuerung auswählst, z. B. für eine Pause oder die Regeln. Text, Bild und Timer nach Belieben; der Timer startet, sobald der Bildschirm erscheint.",
   "infoScreenOnBigScreen": "Dieser Infobildschirm ist auf dem großen Bildschirm. Seinen Timer findest du in der Mitte der Steuerung.",
-  "startTimerAgain": "Timer neu starten"
+  "startTimerAgain": "Timer neu starten",
+  "reopenWithAnswers": "Mit Antworten wieder öffnen",
+  "answersKept": "Antworten gespeichert",
+  "storedData": "Gespeicherte Daten",
+  "storedDataEmpty": "Noch nichts gespeichert: Es wurde noch keine Frage gespielt.",
+  "playedQuestions": "Gespielte Fragen",
+  "questionNoLongerInGame": "Nicht mehr im Spiel",
+  "notRated": "nicht bewertet",
+  "clearSessionData": "Alle Daten löschen",
+  "clearSessionDataText": "Die Punkte aller Teams gehen auf 0 zurück, keine Frage gilt mehr als gespielt und die gespeicherten Antworten der gespielten Fragen werden gelöscht. Die Teams bleiben, wie sie sind."
 }

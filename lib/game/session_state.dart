@@ -206,6 +206,7 @@ class SessionState {
     this.groupId,
     this.current,
     this.played = const {},
+    this.storedRounds = const {},
     this.queueBuzzers = false,
     this.cardAnimation = CardAnimation.fade,
     this.buzzQueue = const [],
@@ -247,6 +248,11 @@ class SessionState {
 
   /// [QuestionRef.key]s of questions already played.
   final Set<String> played;
+
+  /// [QuestionRef.key]s of played questions whose answers, ratings and
+  /// points were kept as they closed, so they can be reopened with them; the
+  /// rounds themselves are stored apart (see `PlayedRound`).
+  final Set<String> storedRounds;
 
   /// When true, later buzzes queue up behind the first instead of being lost.
   final bool queueBuzzers;
@@ -360,6 +366,7 @@ class SessionState {
     Object? groupId = _unset,
     Object? current = _unset,
     Set<String>? played,
+    Set<String>? storedRounds,
     bool? queueBuzzers,
     CardAnimation? cardAnimation,
     List<String>? buzzQueue,
@@ -393,6 +400,7 @@ class SessionState {
     groupId: identical(groupId, _unset) ? this.groupId : groupId as String?,
     current: identical(current, _unset) ? this.current : current as QuestionRef?,
     played: played ?? this.played,
+    storedRounds: storedRounds ?? this.storedRounds,
     queueBuzzers: queueBuzzers ?? this.queueBuzzers,
     cardAnimation: cardAnimation ?? this.cardAnimation,
     buzzQueue: buzzQueue ?? this.buzzQueue,
@@ -428,6 +436,7 @@ class SessionState {
     'groupId': groupId,
     'current': current?.key,
     'played': played.toList()..sort(),
+    if (storedRounds.isNotEmpty) 'storedRounds': storedRounds.toList()..sort(),
     'queueBuzzers': queueBuzzers,
     'cardAnimation': cardAnimation.name,
     'buzzQueue': buzzQueue,
@@ -463,6 +472,7 @@ class SessionState {
     groupId: json['groupId'] as String?,
     current: QuestionRef.tryParse(json['current']),
     played: {...(json['played'] as List? ?? const []).cast<String>()},
+    storedRounds: {for (final key in json['storedRounds'] as List? ?? const []) '$key'},
     queueBuzzers: json['queueBuzzers'] == true,
     cardAnimation: CardAnimation.fromName(json['cardAnimation']),
     buzzQueue: (json['buzzQueue'] as List? ?? const []).cast<String>().toList(),

@@ -3784,4 +3784,33 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get startTimerAgain => 'Timer neu starten';
+
+  @override
+  String get reopenWithAnswers => 'Mit Antworten wieder öffnen';
+
+  @override
+  String get answersKept => 'Antworten gespeichert';
+
+  @override
+  String get storedData => 'Gespeicherte Daten';
+
+  @override
+  String get storedDataEmpty =>
+      'Noch nichts gespeichert: Es wurde noch keine Frage gespielt.';
+
+  @override
+  String get playedQuestions => 'Gespielte Fragen';
+
+  @override
+  String get questionNoLongerInGame => 'Nicht mehr im Spiel';
+
+  @override
+  String get notRated => 'nicht bewertet';
+
+  @override
+  String get clearSessionData => 'Alle Daten löschen';
+
+  @override
+  String get clearSessionDataText =>
+      'Die Punkte aller Teams gehen auf 0 zurück, keine Frage gilt mehr als gespielt und die gespeicherten Antworten der gespielten Fragen werden gelöscht. Die Teams bleiben, wie sie sind.';
 }

@@ -95,7 +95,8 @@ class SessionConnection {
   static Future<SessionConnection> present(String sessionId) async {
     final repo = SessionRepository.instance;
     final deviceId = await repo.deviceId();
-    final host = SessionHost(initial: await FirestoreHostLink.loadState(sessionId));
+    final (state, rounds) = await (FirestoreHostLink.loadState(sessionId), _loadRounds(sessionId)).wait;
+    final host = SessionHost(initial: state, rounds: rounds);
     final link = FirestoreHostLink(sessionId, host, deviceId);
     final connection = SessionConnection._(sessionId, LocalCommandSink(host), host: host, link: link);
     connection._onState(host.state);
@@ -103,6 +104,16 @@ class SessionConnection {
     await link.start();
     await connection._serveLan();
     return connection;
+  }
+
+  /// The kept rounds, or none where they cannot be read (rules not yet
+  /// deployed, offline): the show runs without them.
+  static Future<Map<String, PlayedRound>> _loadRounds(String sessionId) async {
+    try {
+      return await SessionRepository.instance.loadRounds(sessionId);
+    } catch (_) {
+      return const {};
+    }
   }
 
   /// Who [token] lets in over the local network: the presenter window of this

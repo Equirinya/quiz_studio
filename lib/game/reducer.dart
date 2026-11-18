@@ -6,6 +6,7 @@ import 'commands.dart';
 import 'companion.dart';
 import 'content.dart';
 import 'last_standing.dart';
+import 'played_round.dart';
 import 'rapid_fire.dart';
 import 'scoring.dart';
 import 'session_state.dart';
@@ -34,10 +35,17 @@ class VisualEffect extends Effect {
 }
 
 class Reduction {
-  const Reduction(this.state, {this.effects = const [], this.accepted = true});
+  const Reduction(this.state, {this.effects = const [], this.accepted = true, this.rounds = const {}, this.clearRounds = false});
 
   final SessionState state;
   final List<Effect> effects;
+
+  /// Rounds of played questions to keep, by [QuestionRef.key]; null drops
+  /// the one kept for that question. See [PlayedRound].
+  final Map<String, PlayedRound?> rounds;
+
+  /// Every kept round goes, before [rounds] are kept.
+  final bool clearRounds;
 
   /// False when the command made no sense in the current state and was dropped.
   final bool accepted;
@@ -100,9 +108,15 @@ String? feudOpponent(SessionState state) {
 ///
 /// Every change to a team's score, whatever the command, is added to
 /// [SessionState.scoreLog].
-Reduction reduce(SessionState s, Command command, GameContent? game, {int? now}) {
-  final result = _reduce(s, command, game, now: now);
+///
+/// [stored] are the rounds kept from played questions, which an
+/// [OpenQuestion] with `restore` brings back.
+Reduction reduce(SessionState s, Command command, GameContent? game, {int? now, Map<String, PlayedRound> stored = const {}}) {
+  var result = _reduce(s, command, game, now: now, stored: stored);
   if (!result.accepted) return result;
+  result = _keepRound(s, command, result, game, now);
+  // Starting over: nothing to show for the scores going back to 0.
+  if (command is ClearSessionData) return result;
   final before = {for (final team in s.teams) team.id: team.points};
   var id = s.scoreLog.isEmpty ? 0 : s.scoreLog.last.id;
   final changes = [
@@ -115,17 +129,40 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now})
   return Reduction(
     result.state.copyWith(scoreLog: log.length > kScoreLogLength ? log.sublist(log.length - kScoreLogLength) : log),
     effects: result.effects,
+    rounds: result.rounds,
+    clearRounds: result.clearRounds,
   );
 }
 
-Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}) {
+/// A question closed as played keeps what it left behind, replacing what
+/// an earlier time it was played left.
+Reduction _keepRound(SessionState s, Command command, Reduction result, GameContent? game, int? now) {
+  final current = s.current;
+  final next = result.state;
+  if (current == null || next.current == current || !next.played.contains(current.key)) return result;
+  // As it was closed: what was rated counts as given.
+  final closing = command is CloseQuestion || command is OpenQuestion ? _givenBeforeClosing(s, game) : s;
+  final round = PlayedRound.of(closing, now: now);
+  if (round == null && !next.storedRounds.contains(current.key)) return result;
+  return Reduction(
+    next.copyWith(storedRounds: round == null ? ({...next.storedRounds}..remove(current.key)) : {...next.storedRounds, current.key}),
+    effects: result.effects,
+    rounds: {...result.rounds, current.key: round},
+    clearRounds: result.clearRounds,
+  );
+}
+
+Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now, Map<String, PlayedRound> stored = const {}}) {
   final question = s.current == null ? null : game?.question(s.current!);
   final questionOpen = s.current != null && (s.phase == Phase.question || s.phase == Phase.buzzered || s.phase == Phase.answerRevealed);
 
   switch (command) {
     // ── game and board ───────────────────────────────────────────────────────
     case SetGame(:final gameId):
-      return _ok(_backToBoard(s).copyWith(gameId: gameId, groupId: null, played: const {}, music: null));
+      return Reduction(
+        _ok(_backToBoard(s).copyWith(gameId: gameId, groupId: null, played: const {}, storedRounds: const {}, music: null)).state,
+        clearRounds: s.storedRounds.isNotEmpty,
+      );
 
     case SelectGroup(:final groupId):
       if (s.current != null) return _no(s);
@@ -140,8 +177,10 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
         ),
       );
 
-    case OpenQuestion(:final ref):
+    case OpenQuestion(:final ref, :final restore):
       if (s.phase == Phase.buzzerTest || game?.question(ref) == null) return _no(s);
+      final kept = restore ? stored[ref.key] : null;
+      if (restore && kept == null) return _no(s);
       final opened = game!.question(ref)!;
       final companion = opened.companion;
       final next = _backToBoard(_givenBeforeClosing(s, game)).copyWith(
@@ -149,7 +188,8 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
         current: ref,
         groupId: game.groupOfCategory(ref.categoryId)?.id ?? s.groupId,
         boardFocus: ref.categoryId,
-        played: {...s.played, ?s.current?.key},
+        // Brought back as it was played: it is being played again.
+        played: {...s.played, ?s.current?.key}..remove(kept == null ? null : ref.key),
         // A question with a companion screen puts it on the teams' devices
         // the moment it opens; with bets, once they are placed.
         answerRound: companion == null || opened.hasBets ? null : _newRound(companion, now, timed: !_waitsForOptions(opened, 0)),
@@ -160,6 +200,12 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
         betting: opened.hasBets ? const Betting() : null,
         timer: opened.hasBets || _waitsForOptions(opened, 0) ? null : _timerFor(opened, now),
       );
+      if (kept != null) {
+        final finished = opened.type == QuestionType.rapidFire && kept.revealed >= opened.maxReveal;
+        return _ok(kept.restoreInto(next).copyWith(phase: finished ? Phase.answerRevealed : null), const [
+          SoundEffect(effectQuestionOpen),
+        ]);
+      }
       // A Fragenhagel starts with only the question itself on screen; the
       // first "next" brings up its first item.
       return _ok(opened.type == QuestionType.rapidFire ? _rapidAt(next, opened, -1, now) : next, const [SoundEffect(effectQuestionOpen)]);
@@ -242,6 +288,20 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
     case UnmarkPlayed(:final ref):
       if (!s.played.contains(ref.key)) return _no(s);
       return _ok(s.copyWith(played: {...s.played}..remove(ref.key)));
+
+    case ClearSessionData():
+      return Reduction(
+        _ok(
+          _backToBoard(s).copyWith(
+            teams: [for (final team in s.teams) team.copyWith(points: 0)],
+            played: const {},
+            storedRounds: const {},
+            scoreLog: const [],
+            overlay: null,
+          ),
+        ).state,
+        clearRounds: true,
+      );
 
     // ── buzzing and judging ──────────────────────────────────────────────────
     case SetBuzzerTest(:final on):

@@ -2082,6 +2082,8 @@ class _BoardSheetState extends State<_BoardSheet> {
     final question = selected == null ? null : game.question(selected);
     final played = selected != null && state.played.contains(selected.key);
     final open = selected != null && state.current == selected;
+    // Played with answers or ratings, which it can come back with.
+    final kept = selected != null && !open && state.storedRounds.contains(selected.key);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
@@ -2235,7 +2237,8 @@ class _BoardSheetState extends State<_BoardSheet> {
                               ? " · ${context.l10n.onScreen}"
                               : played
                               ? " · ${context.l10n.played}"
-                              : ""}",
+                              : ""}"
+                          "${kept ? " · ${context.l10n.answersKept}" : ""}",
                           style: theme.textTheme.labelMedium?.copyWith(color: scheme.primary),
                         ),
                         const SizedBox(height: 4),
@@ -2247,9 +2250,24 @@ class _BoardSheetState extends State<_BoardSheet> {
                   ),
           ),
           const SizedBox(height: 8),
+          if (kept && question != null) ...[
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                key: const Key('reopenWithAnswers'),
+                onPressed: () {
+                  widget.send(OpenQuestion(selected, restore: true));
+                  _TabPanel.closeAround(context);
+                },
+                icon: const Icon(Icons.history),
+                label: Text(context.l10n.reopenWithAnswers),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           SizedBox(
             height: 52,
-            child: FilledButton.icon(
+            child: (kept ? FilledButton.tonalIcon : FilledButton.icon)(
               onPressed: selected == null || question == null
                   ? null
                   : () {

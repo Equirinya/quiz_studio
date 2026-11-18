@@ -2049,5 +2049,14 @@
   "textOnScreen": "Text on the screen",
   "infoScreenText": "Shown on the big screen when you pick it on the controller, e.g. for a break or the rules. Any of text, picture and timer; the timer starts as the screen comes up.",
   "infoScreenOnBigScreen": "This information screen is on the big screen. Its timer is in the middle of the controller.",
-  "startTimerAgain": "Start timer again"
+  "startTimerAgain": "Start timer again",
+  "reopenWithAnswers": "Reopen with answers",
+  "answersKept": "answers kept",
+  "storedData": "Stored data",
+  "storedDataEmpty": "Nothing stored yet: no question has been played.",
+  "playedQuestions": "Played questions",
+  "questionNoLongerInGame": "No longer in the game",
+  "notRated": "not rated",
+  "clearSessionData": "Clear all data",
+  "clearSessionDataText": "Every team's points go back to 0, no question counts as played, and the answers kept from played questions are deleted. The teams stay as they are."
 }
