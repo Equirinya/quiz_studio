@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +28,25 @@ enum MediaKind {
   final IconData addIcon;
   final IconData presentIcon;
 
+  static const _extensions = {
+    MediaKind.image: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'heif'],
+    MediaKind.audio: ['mp3', 'wav', 'm4a', 'aac', 'flac', 'ogg', 'oga', 'opus'],
+    MediaKind.video: ['mp4', 'm4v', 'mov', 'webm', 'mkv'],
+  };
+
+  /// Whether a file dragged in from outside looks like one of these.
+  bool accepts(String path) {
+    final dot = path.lastIndexOf('.');
+    return dot >= 0 && _extensions[this]!.contains(path.substring(dot + 1).toLowerCase());
+  }
+
+  /// Lets the user choose several pictures at once; empty when they cancel.
+  /// Other kinds choose one.
+  Future<List<String>> pickMany() async {
+    if (this != MediaKind.image) return [?await pick()];
+    return [for (final file in await ImagePicker().pickMultiImage()) file.path];
+  }
+
   /// Lets the user choose a file; null when they cancel.
   Future<String?> pick() async {
     switch (this) {
@@ -42,6 +62,28 @@ enum MediaKind {
   }
 }
 
+/// Uploads [path] for [gameId] and returns its stored name; null when it
+/// failed, after saying why in a snack bar.
+Future<String?> uploadMedia(
+  ScaffoldMessengerState messenger,
+  AppLocalizations l10n,
+  String gameId,
+  MediaKind kind,
+  String path, {
+  void Function(double progress)? onProgress,
+}) async {
+  try {
+    return await MediaService.instance.upload(gameId, path, onProgress: onProgress);
+  } on UploadTooLarge catch (error) {
+    messenger.showSnackBar(SnackBar(content: Text(l10n.fileTooLarge(error.maxMegabytes))));
+  } on UnsupportedError catch (error) {
+    messenger.showSnackBar(SnackBar(content: Text((error.message ?? '').startsWith('Ogg') ? l10n.oggNotSupported : l10n.fileTypeNotSupported)));
+  } catch (_) {
+    messenger.showSnackBar(SnackBar(content: Text(l10n.couldNotUploadMedia(kind.name))));
+  }
+  return null;
+}
+
 /// Attaches one media file to a document field. Without a file: a button to
 /// pick and upload one. With one: a preview (the picture itself, a play
 /// button for a sound, the clip's icon) that opens it large, with Replace
@@ -49,7 +91,9 @@ enum MediaKind {
 class MediaButton extends StatefulWidget {
   const MediaButton({super.key, required this.gameId, required this.kind, required this.name, required this.onChanged})
       : title = null,
-        subtitle = null;
+        subtitle = null,
+        multiple = false,
+        onPicked = null;
 
   /// A whole row to tap, for forms: the preview, [title] and [subtitle]
   /// beside it, a play button for a sound and a remove button. Tapping an
@@ -62,7 +106,18 @@ class MediaButton extends StatefulWidget {
     required this.onChanged,
     required String this.title,
     this.subtitle,
+    this.multiple = false,
+    this.onPicked,
   });
+
+  /// Several files may be dropped on it at once: each is uploaded in turn
+  /// and [onChanged] is called for each. For "add another picture".
+  final bool multiple;
+
+  /// Set to upload elsewhere: the files chosen or dropped go here instead,
+  /// and this one stays a button to add with. For "add another picture",
+  /// whose uploads show as rows of their own.
+  final ValueChanged<List<String>>? onPicked;
 
   /// Set for [MediaButton.tile].
   final String? title;
@@ -109,40 +164,74 @@ class _MediaButtonState extends State<MediaButton> {
 
   bool get _attached => widget.name != null && widget.name!.isNotEmpty;
 
-  Future<void> _add() async {
+  /// A file dragged over this one right now.
+  bool _dragging = false;
+
+  /// Files dropped from the computer: the ones of this kind, uploaded as if
+  /// picked.
+  Future<void> _dropped(List<String> paths) async {
+    final fitting = paths.where(widget.kind.accepts).toList();
+    if (fitting.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.fileTypeNotSupported)));
+      return;
+    }
+    if (widget.onPicked case final picked?) {
+      picked(widget.multiple ? fitting : fitting.take(1).toList());
+      return;
+    }
+    // Dropped while one is still uploading: they wait their turn. A single
+    // file replaces whatever was waiting.
+    setState(() => widget.multiple ? _waiting.addAll(fitting) : (_waiting..clear()..add(fitting.first)));
+    if (_uploading) return;
+    _uploading = true;
+    while (_waiting.isNotEmpty && mounted) {
+      final next = _waiting.removeAt(0);
+      await _add(next);
+    }
+    _uploading = false;
+  }
+
+  /// Dropped files not uploaded yet, first first.
+  final List<String> _waiting = [];
+  bool _uploading = false;
+
+  Future<void> _add([String? dropped]) async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l10n;
-    final path = await widget.kind.pick();
+    if (dropped == null && widget.onPicked != null) {
+      final paths = widget.multiple ? await widget.kind.pickMany() : [?await widget.kind.pick()];
+      if (paths.isNotEmpty) widget.onPicked!(paths);
+      return;
+    }
+    final path = dropped ?? await widget.kind.pick();
     if (path == null || !mounted) return;
     setState(() {
       _busy = true;
       _progress = 0;
     });
     final old = widget.name;
-    try {
-      widget.onChanged(
-        await MediaService.instance.upload(
-          widget.gameId,
-          path,
-          onProgress: (progress) {
-            if (mounted) setState(() => _progress = progress);
-          },
-        ),
-      );
-      // A replaced file is referred to by nothing any more.
-      if (old != null && old.isNotEmpty) MediaService.instance.delete(widget.gameId, old);
-    } on UploadTooLarge catch (error) {
-      messenger.showSnackBar(SnackBar(content: Text(l10n.fileTooLarge(error.maxMegabytes))));
-    } on UnsupportedError catch (error) {
-      messenger.showSnackBar(SnackBar(content: Text((error.message ?? '').startsWith('Ogg') ? l10n.oggNotSupported : l10n.fileTypeNotSupported)));
-    } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(l10n.couldNotUploadMedia(widget.kind.name))));
-    }
+    final uploaded = await uploadMedia(
+      messenger,
+      l10n,
+      widget.gameId,
+      widget.kind,
+      path,
+      onProgress: (progress) {
+        if (mounted) setState(() => _progress = progress);
+      },
+    );
     if (mounted) {
       setState(() {
         _busy = false;
         _progress = null;
       });
+    }
+    // Also when this button is gone by now (its dialog or card closed): the
+    // file is up, so it is put in place.
+    if (uploaded != null) {
+      widget.onChanged(uploaded);
+      // A replaced file is referred to by nothing any more.
+      if (old != null && old.isNotEmpty) MediaService.instance.delete(widget.gameId, old);
     }
   }
 
@@ -221,7 +310,10 @@ class _MediaButtonState extends State<MediaButton> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            context.l10n.uploadingPercent(((_progress ?? 0) * 100).round()),
+                            [
+                              context.l10n.uploadingPercent(((_progress ?? 0) * 100).round()),
+                              if (_waiting.isNotEmpty) context.l10n.nMoreWaiting(_waiting.length),
+                            ].join(' · '),
                             style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ],
@@ -264,6 +356,63 @@ class _MediaButtonState extends State<MediaButton> {
 
   @override
   Widget build(BuildContext context) {
+    // Only while its page is on top: a drop target hears drops even under
+    // a dialog, and the dialog's own fields should get them.
+    final onTop = ModalRoute.of(context)?.isCurrent ?? true;
+    final scheme = Theme.of(context).colorScheme;
+    return DropTarget(
+      enable: onTop,
+      onDragEntered: (_) => setState(() => _dragging = true),
+      onDragExited: (_) => setState(() => _dragging = false),
+      onDragDone: (details) {
+        setState(() => _dragging = false);
+        _dropped([for (final file in details.files) file.path]);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          color: _dragging ? scheme.primaryContainer.withValues(alpha: 0.6) : Colors.transparent,
+          border: Border.all(color: _dragging ? scheme.primary : Colors.transparent, width: 2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Stack(
+          children: [
+            _content(context),
+            // What letting go will do: replace the file there, or add one.
+            if (_dragging)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(color: scheme.primaryContainer, borderRadius: BorderRadius.circular(10)),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(_attached ? Icons.swap_horiz : Icons.add, color: scheme.onPrimaryContainer),
+                        if (widget.title != null) ...[
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              _attached ? context.l10n.dropToReplace : context.l10n.dropToAdd,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: scheme.onPrimaryContainer, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _content(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     if (widget.title != null) return _tile(context);
     if (_busy) {
@@ -279,7 +428,7 @@ class _MediaButtonState extends State<MediaButton> {
       );
     }
     if (!_attached) {
-      return IconButton(tooltip: context.l10n.addMedia(widget.kind.name), icon: Icon(widget.kind.addIcon), onPressed: _add);
+      return IconButton(tooltip: context.l10n.addMedia(widget.kind.name), icon: Icon(widget.kind.addIcon), onPressed: () => _add());
     }
     switch (widget.kind) {
       case MediaKind.image:

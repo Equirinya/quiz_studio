@@ -210,7 +210,9 @@ class _SoundsDialogState extends State<SoundsDialog> {
     builtins: builtinSoundsFor(key),
     fallback: defaultEffectSounds[key] == null ? null : builtinSound(defaultEffectSounds[key]!),
     set: (next) {
-      setState(() => next == null ? _builtIn.remove(key) : _builtIn[key] = next);
+      // An upload can finish after the dialog was closed: still saved.
+      void apply() => next == null ? _builtIn.remove(key) : _builtIn[key] = next;
+      mounted ? setState(apply) : apply();
       _saveEffects();
     },
   );
@@ -222,7 +224,8 @@ class _SoundsDialogState extends State<SoundsDialog> {
     builtins: builtinMusicTracks,
     fallback: defaultMusicTrack(slot),
     set: (next) {
-      setState(() => next == null ? _slots.remove(slot) : _slots[slot] = next);
+      void apply() => next == null ? _slots.remove(slot) : _slots[slot] = next;
+      mounted ? setState(apply) : apply();
       widget.save({slot: next});
     },
   );
@@ -274,7 +277,9 @@ class _SoundsDialogState extends State<SoundsDialog> {
                         kind: MediaKind.audio,
                         name: effect.file,
                         onChanged: (name) {
-                          setState(() => effect.file = name);
+                          // An upload can finish after the dialog was closed: still saved.
+                          effect.file = name;
+                          if (mounted) setState(() {});
                           _saveEffects();
                         },
                       ),

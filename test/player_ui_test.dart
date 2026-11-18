@@ -142,6 +142,7 @@ void main() {
   testWidgets('a choice answer offers the options', (tester) async {
     host
       ..dispatch(const OpenQuestion(abcd))
+      ..dispatch(const Reveal(4))
       ..dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.choice, options: ['a', 'b', 'c', 'd'])));
     await pumpPlayer(tester, teamId: 'blue');
     await tester.tap(find.text('c'));
@@ -152,6 +153,7 @@ void main() {
   testWidgets('with several allowed, picks are ticked on and off', (tester) async {
     host
       ..dispatch(const OpenQuestion(abcd))
+      ..dispatch(const Reveal(4))
       ..dispatch(const OpenAnswers(CompanionSpec(kind: CompanionKind.choice, options: ['a', 'b', 'c', 'd'], multiple: true)));
     await pumpPlayer(tester, teamId: 'blue');
     await tester.tap(find.text('c'));

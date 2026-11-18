@@ -9,17 +9,32 @@ import 'package:quiz_show/l10n/l10n.dart';
 /// whiteboard, a number to enter, items to sort, and so on. Stored on the
 /// question as `companion`; null removes it.
 class CompanionEditor extends StatefulWidget {
-  const CompanionEditor({super.key, required this.gameId, required this.question, required this.save});
+  const CompanionEditor({
+    super.key,
+    required this.gameId,
+    required this.question,
+    required this.save,
+    this.needsNumber = false,
+    this.needsScreen = false,
+  });
 
   final String gameId;
   final Question question;
   final void Function(Map<String, dynamic> data) save;
 
+  /// The scoring rule goes by how close a number is: only a number or a
+  /// slider will do; the other screens are greyed out.
+  final bool needsNumber;
+
+  /// The scoring rule needs an answer screen on the devices (by speed): a
+  /// buzzer or nothing are greyed out.
+  final bool needsScreen;
+
   @override
-  State<CompanionEditor> createState() => _CompanionEditorState();
+  State<CompanionEditor> createState() => CompanionEditorState();
 }
 
-class _CompanionEditorState extends State<CompanionEditor> {
+class CompanionEditorState extends State<CompanionEditor> {
   late CompanionKind? _kind;
 
   /// With no screen: whether the devices show a buzzer, or nothing at all.
@@ -145,8 +160,23 @@ class _CompanionEditorState extends State<CompanionEditor> {
   }
 
   void _change(VoidCallback change) {
-    setState(change);
+    // An upload can finish after this editor was closed: still saved.
+    if (mounted) {
+      setState(change);
+    } else {
+      change();
+    }
     _write();
+  }
+
+  /// A scoring rule was picked that needs a number ([number]) or any answer
+  /// screen on the devices: switches to one if the current one won't do.
+  void fitRule({required bool number}) {
+    if (number) {
+      if (_kind != CompanionKind.number && _kind != CompanionKind.slider) _change(() => _kind = CompanionKind.number);
+    } else if (_kind == null) {
+      _change(() => _kind = recommendedCompanionKind(widget.question.type) ?? companionKindsFor(widget.question.type).first);
+    }
   }
 
   Widget _number(TextEditingController controller, String label) => TextField(
@@ -175,6 +205,21 @@ class _CompanionEditorState extends State<CompanionEditor> {
               : context.l10n.deviceScreenText,
           style: theme.textTheme.bodySmall,
         ),
+        if (widget.needsNumber || widget.needsScreen) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.link, size: 16, color: theme.colorScheme.primary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  context.l10n.screensForRule(widget.needsNumber ? 'closest' : 'timed'),
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.primary),
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 12),
         FieldGrid(
           minWidth: 170,
@@ -184,12 +229,19 @@ class _CompanionEditorState extends State<CompanionEditor> {
                 label: context.l10n.onTheDevicesShort,
                 value: kind?.name ?? (_phoneBuzzer ? _buzzer : _nothing),
                 entries: [
-                  if (_canBuzz) DropdownMenuEntry(value: _buzzer, label: context.l10n.buzzer),
-                  DropdownMenuEntry(value: _nothing, label: context.l10n.nothing),
+                  // What the scoring rule can't work with is greyed out.
+                  if (_canBuzz)
+                    DropdownMenuEntry(
+                      value: _buzzer,
+                      label: context.l10n.buzzer,
+                      enabled: !widget.needsScreen && !widget.needsNumber,
+                    ),
+                  DropdownMenuEntry(value: _nothing, label: context.l10n.nothing, enabled: !widget.needsScreen && !widget.needsNumber),
                   for (final option in companionKindsFor(widget.question.type, current: kind))
                     DropdownMenuEntry(
                       value: option.name,
                       label: context.l10n.companionKind(option),
+                      enabled: !widget.needsNumber || option == CompanionKind.number || option == CompanionKind.slider,
                       trailingIcon: option == recommendedCompanionKind(widget.question.type)
                           ? Tooltip(message: context.l10n.recommended, child: const Icon(Icons.star_outline, size: 18))
                           : null,

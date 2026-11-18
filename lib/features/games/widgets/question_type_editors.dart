@@ -367,7 +367,12 @@ class _InformationEditorState extends State<_InformationEditor> {
       });
 
   void _change(VoidCallback change) {
-    setState(change);
+    // An upload can finish after this editor was closed: still saved.
+    if (mounted) {
+      setState(change);
+    } else {
+      change();
+    }
     _write();
   }
 
@@ -572,7 +577,12 @@ class _RapidFireEditorState extends State<_RapidFireEditor> {
       });
 
   void _change(VoidCallback change) {
-    setState(change);
+    // An upload can finish after this editor was closed: still saved.
+    if (mounted) {
+      setState(change);
+    } else {
+      change();
+    }
     _write();
   }
 
@@ -752,7 +762,12 @@ class _StandingEditorState extends State<_StandingEditor> {
   void _write() => widget.save({'lastStanding': LastStanding(order: _order, items: [for (final row in _rows) row.item]).toMap()});
 
   void _change(VoidCallback change) {
-    setState(change);
+    // An upload can finish after this editor was closed: still saved.
+    if (mounted) {
+      setState(change);
+    } else {
+      change();
+    }
     _write();
   }
 
@@ -855,7 +870,10 @@ class _StandingEditorState extends State<_StandingEditor> {
 
 /// Says so when a question can only be played with the teams' own devices.
 class DevicesOnlyHint extends StatelessWidget {
-  const DevicesOnlyHint({super.key});
+  const DevicesOnlyHint({super.key, this.text});
+
+  /// Instead of the question type's reason, e.g. a scoring rule's.
+  final String? text;
 
   @override
   Widget build(BuildContext context) {
@@ -870,7 +888,7 @@ class DevicesOnlyHint extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              context.l10n.onlyWithDevices,
+              text ?? context.l10n.onlyWithDevices,
               style: TextStyle(color: scheme.onSecondaryContainer),
             ),
           ),
@@ -936,7 +954,12 @@ class _MatchingEditorState extends State<_MatchingEditor> {
       });
 
   void _change(VoidCallback change) {
-    setState(change);
+    // An upload can finish after this editor was closed: still saved.
+    if (mounted) {
+      setState(change);
+    } else {
+      change();
+    }
     _write();
   }
 
@@ -1076,7 +1099,12 @@ class _OrderingEditorState extends State<_OrderingEditor> {
       });
 
   void _change(VoidCallback change) {
-    setState(change);
+    // An upload can finish after this editor was closed: still saved.
+    if (mounted) {
+      setState(change);
+    } else {
+      change();
+    }
     _write();
   }
 
@@ -1245,7 +1273,12 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
       });
 
   void _change(VoidCallback change) {
-    setState(change);
+    // An upload can finish after this editor was closed: still saved.
+    if (mounted) {
+      setState(change);
+    } else {
+      change();
+    }
     _write();
   }
 

@@ -67,7 +67,9 @@ void main() {
       final result = reduce(shown, const StartQuestion(), bettingGame(), now: 2000);
       expect(result.effects.whereType<SoundEffect>().single.key, effectQuestionOpen);
       expect(result.state.waitingForBets, isFalse);
-      expect(result.state.answerRound!.endsAtMillis, 22000);
+      // ABCD: the time runs once every option is up.
+      expect(result.state.answerRound!.endsAtMillis, isNull);
+      expect(reduce(result.state, const Reveal(4), bettingGame(), now: 3000).state.answerRound!.endsAtMillis, 23000);
       expect(accepts(result.state, const StartQuestion()), isFalse);
       expect(accepts(play(const [OpenQuestion(picked)]), const StartQuestion()), isFalse);
     });
@@ -138,7 +140,8 @@ void main() {
       expect(accepts(open, const OpenAnswers(CompanionSpec(kind: CompanionKind.text))), isFalse);
       final started = play(const [CloseBets(), StartQuestion()], from: open, now: 5000);
       expect(started.answerRound!.kind, CompanionKind.choice);
-      expect(started.answerRound!.endsAtMillis, 25000);
+      expect(started.answerRound!.endsAtMillis, isNull);
+      expect(play(const [Reveal(4)], from: started, now: 6000).answerRound!.endsAtMillis, 26000);
     });
 
     test('rating wins or loses each team its own bet, and changing a ruling never counts twice', () {

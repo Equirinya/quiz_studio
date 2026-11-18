@@ -1946,7 +1946,17 @@ class _BoardSheetState extends State<_BoardSheet> {
                                               : scheme.onSurface,
                                         ),
                                         onPressed: () => setState(() => _selected = ref),
-                                        child: Text(q.boardPoints.toString()),
+                                        // Not on the big screen's board: only here to open.
+                                        child: q.hiddenOnBoard
+                                            ? Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.visibility_off_outlined, size: 14, semanticLabel: context.l10n.hiddenOnBoard),
+                                                  const SizedBox(width: 3),
+                                                  Flexible(child: Text(q.boardPoints.toString(), overflow: TextOverflow.fade, softWrap: false)),
+                                                ],
+                                              )
+                                            : Text(q.boardPoints.toString()),
                                       ),
                                     );
                                   },
@@ -1976,6 +1986,7 @@ class _BoardSheetState extends State<_BoardSheet> {
                       children: [
                         Text(
                           "${context.l10n.questionType(question.type)} · +${question.pointsPlus} / −${question.pointsMinus}"
+                          "${question.hiddenOnBoard ? " · ${context.l10n.hiddenOnBoard}" : ""}"
                           "${open
                               ? " · ${context.l10n.onScreen}"
                               : played
@@ -2828,15 +2839,28 @@ class _AnswersPanel extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(
-                            answer?.locked == true
-                                ? Icons.lock
-                                : (answer == null || answer.isEmpty)
-                                ? Icons.hourglass_empty
-                                : Icons.edit_outlined,
-                            size: 16,
-                            color: scheme.outline,
-                          ),
+                          // Locked in: tapped, the team may change it again.
+                          if (canUnlockAnswer(state, team.id))
+                            SizedBox.square(
+                              dimension: 28,
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                iconSize: 18,
+                                tooltip: context.l10n.unlockTeam(team.name),
+                                icon: Icon(Icons.lock, color: scheme.primary),
+                                onPressed: () => send(UnlockAnswer(team.id)),
+                              ),
+                            )
+                          else
+                            Icon(
+                              answer?.locked == true
+                                  ? Icons.lock
+                                  : (answer == null || answer.isEmpty)
+                                  ? Icons.hourglass_empty
+                                  : Icons.edit_outlined,
+                              size: 16,
+                              color: scheme.outline,
+                            ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(

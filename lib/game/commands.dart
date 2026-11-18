@@ -120,6 +120,7 @@ sealed class Command {
       'lockAnswer' => LockAnswer(j['teamId'] as String),
       'lockAnswers' => const LockAnswers(),
       'unlockAnswers' => const UnlockAnswers(),
+      'unlockAnswer' => UnlockAnswer(j['teamId'] as String),
       'extendAnswers' => ExtendAnswers((j['seconds'] as num?)?.toInt()),
       'revealAnswer' => RevealAnswer(j['teamId'] as String, show: j['show'] != false),
       'revealNextAnswer' => const RevealNextAnswer(),
@@ -649,6 +650,17 @@ class LockAnswers extends Command {
 }
 
 /// Lets every team change its answer again; a timer does not restart.
+/// Lets one team change its answer again after it locked in, e.g. by
+/// mistake; see [canUnlockAnswer].
+class UnlockAnswer extends Command {
+  const UnlockAnswer(this.teamId);
+  final String teamId;
+  @override
+  String get type => 'unlockAnswer';
+  @override
+  Map<String, dynamic> get _args => {'teamId': teamId};
+}
+
 class UnlockAnswers extends Command {
   const UnlockAnswers();
   @override

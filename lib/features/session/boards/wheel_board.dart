@@ -23,14 +23,15 @@ class WheelBoard extends StatelessWidget {
     final questionDocs = [
       for (final category in group.categories)
         [
-          for (final question in category.questions) <String, dynamic>{pointsPlus: question.boardPoints},
+          // Questions hidden on the board are left out; the gamemaster opens them.
+          for (final question in category.boardQuestions) <String, dynamic>{pointsPlus: question.boardPoints},
         ],
     ];
     (int, int)? indexOf(QuestionRef? ref) {
       if (ref == null) return null;
       final c = group.categories.indexWhere((category) => category.id == ref.categoryId);
       if (c < 0) return null;
-      final q = group.categories[c].questions.indexWhere((question) => question.id == ref.questionId);
+      final q = group.categories[c].boardQuestions.indexWhere((question) => question.id == ref.questionId);
       return q < 0 ? null : (c, q);
     }
 

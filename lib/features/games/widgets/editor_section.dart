@@ -13,7 +13,11 @@ class EditorSection extends StatelessWidget {
     required this.open,
     required this.onToggle,
     required this.child,
+    this.warning = false,
   });
+
+  /// Something in it does not fit: a warning sign beside the title.
+  final bool warning;
 
   final IconData icon;
   final String title;
@@ -49,7 +53,15 @@ class EditorSection extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(title, style: theme.textTheme.titleSmall),
+                          Row(
+                            children: [
+                              Flexible(child: Text(title, style: theme.textTheme.titleSmall)),
+                              if (warning) ...[
+                                const SizedBox(width: 6),
+                                Icon(Icons.warning_amber_rounded, size: 18, color: scheme.error),
+                              ],
+                            ],
+                          ),
                           if (!open)
                             Text(
                               summary,

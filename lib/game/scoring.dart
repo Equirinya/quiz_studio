@@ -15,6 +15,7 @@
 /// estimate, top answers found) or set by hand win over the rule.
 library;
 
+import 'companion.dart';
 import 'content.dart';
 import 'session_state.dart';
 
@@ -157,3 +158,43 @@ Map<String, int> pointsToGive(SessionState state, Question question) => {
   for (final team in state.teams)
     if ((pointsDue(state, question, team.id) ?? 0) - (state.results.given[team.id] ?? 0) case final delta when delta != 0) team.id: delta,
 };
+
+/// Something about how [Question] is scored that does not fit how its teams
+/// answer; the editor warns about each.
+enum ScoringIssue {
+  /// By closeness, but the devices show no number or slider: nothing to be
+  /// close with, so it counts as fixed points.
+  closenessNeedsNumber,
+
+  /// By closeness without a right value to be close to.
+  closenessNeedsSolution,
+
+  /// By speed with nothing on the teams' devices: no times, so the places
+  /// count as by order.
+  speedNeedsDevices,
+
+  /// By speed, but teams cannot lock in, which is what their time is taken
+  /// from.
+  speedNeedsLockIn,
+
+  /// By order on the devices, but teams cannot lock in: the order is only
+  /// the one the gamemaster taps.
+  orderNeedsLockIn,
+}
+
+/// What does not fit in how [question] is scored and answered; empty when
+/// everything works together.
+List<ScoringIssue> scoringIssues(Question question) {
+  if (!question.type.wagerable || question.hasBets || question.rankStep == null) return const [];
+  final companion = question.companion;
+  final kind = companion?.kind;
+  if (question.closest) {
+    if (kind != CompanionKind.number && kind != CompanionKind.slider) return const [ScoringIssue.closenessNeedsNumber];
+    return [if (companion!.solution == null) ScoringIssue.closenessNeedsSolution];
+  }
+  if (question.data['byTime'] == true) {
+    if (companion == null) return const [ScoringIssue.speedNeedsDevices];
+    return [if (!companion.lockable) ScoringIssue.speedNeedsLockIn];
+  }
+  return [if (companion != null && !companion.lockable) ScoringIssue.orderNeedsLockIn];
+}

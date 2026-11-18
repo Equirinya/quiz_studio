@@ -109,11 +109,16 @@ class MediaService {
   /// Where [name] is, or will be, cached. Requires [init].
   File localFile(String gameId, String name) => File('${_root!.path}/$gameId/$name');
 
+  /// Stands in for [upload] in tests.
+  @visibleForTesting
+  static Future<String> Function(String sourcePath, ValueChanged<double>? onProgress)? debugUpload;
+
   /// Uploads the file at [sourcePath] and returns the name to store in the
   /// document. Throws when the file type is not supported.
   ///
   /// [onProgress] gets 0..1 of the bytes sent as they go.
   Future<String> upload(String gameId, String sourcePath, {ValueChanged<double>? onProgress}) async {
+    if (debugUpload case final fake?) return fake(sourcePath, onProgress);
     await init();
     final contentType = contentTypeForPath(sourcePath);
     // Windows, where the show runs, cannot play Ogg or Opus.

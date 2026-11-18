@@ -402,7 +402,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String boardTypeName(String type) {
     String _temp0 = intl.Intl.selectLogic(type, {
       'display': 'Fragentafel',
-      'wheel': 'Glücksrad',
+      'wheel': 'Fragenring',
       'other': 'Spielplan',
     });
     return '$_temp0';
@@ -587,7 +587,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String newBoard(String type) {
     String _temp0 = intl.Intl.selectLogic(type, {
       'display': 'Neue Fragentafel',
-      'wheel': 'Neues Glücksrad',
+      'wheel': 'Neuer Fragenring',
       'other': 'Neuer Spielplan',
     });
     return '$_temp0';
@@ -597,7 +597,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String addBoard(String type) {
     String _temp0 = intl.Intl.selectLogic(type, {
       'display': 'Fragentafel hinzufügen',
-      'wheel': 'Glücksrad hinzufügen',
+      'wheel': 'Fragenring hinzufügen',
       'other': 'Spielplan hinzufügen',
     });
     return '$_temp0';
@@ -1001,24 +1001,24 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get teamsBetShort => 'Teams wetten';
+  String get teamsBetShort => 'Punkte setzen';
 
   @override
-  String get teamsBetHowManyShort => 'Teams wetten auf Anzahl';
+  String get teamsBetHowManyShort => 'Anzahl wetten';
 
   @override
   String get byOrderShort => 'nach Reihenfolge';
 
   @override
-  String get fixed => 'Fest';
+  String get fixed => 'Feste Punkte';
 
   @override
   String pointsBetSummary(int limit) {
-    return 'Teams setzen ihre Punkte · bis $limit immer möglich';
+    return 'Punkte setzen · bis $limit immer möglich';
   }
 
   @override
-  String get betOnHowMany => 'Wetten, wie viele';
+  String get betOnHowMany => 'Anzahl wetten';
 
   @override
   String plusEach(int plus) {
@@ -1061,11 +1061,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String scoringRuleName(String rule) {
     String _temp0 = intl.Intl.selectLogic(rule, {
       'fixed': 'Feste Punkte',
-      'points': 'Teams setzen ihre Punkte',
-      'amount': 'Teams wetten, wie viele sie schaffen',
-      'closest': 'Nach Nähe: Nächste zuerst',
-      'timed': 'Schnellste zuerst: Punkte nach Zeit',
-      'other': 'Nach Reihenfolge: Schnellste zuerst',
+      'ranked': 'Nach Reihenfolge',
+      'timed': 'Nach Tempo',
+      'closest': 'Nach Nähe',
+      'points': 'Punkte setzen',
+      'amount': 'Anzahl wetten',
+      'other': 'Nach Reihenfolge',
     });
     return '$_temp0';
   }
@@ -1075,7 +1076,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get scoringRankedText =>
-      'Das erste Team bekommt die meisten Punkte, jedes weitere etwas weniger. Die Reihenfolge ergibt sich daraus, wann die Teams eine richtige Antwort eingeloggt haben, oder wie du sie antippst, z. B. wenn sie auf der Bühne fertig werden. Falsche Antworten kosten die Minuspunkte.';
+      'Das erste richtige Team bekommt die meisten Punkte, jedes weitere etwas weniger. Die Reihenfolge ergibt sich daraus, wann die Teams eine richtige Antwort eingeloggt haben, oder wie du sie antippst, z. B. wenn sie auf der Bühne fertig werden. Falsche Antworten kosten die Minuspunkte.';
 
   @override
   String scoringPointsText(int limit) {
@@ -1139,7 +1140,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get byTimeText =>
-      'Das schnellste richtige Team bekommt die Punkte für Platz 1, die anderen einen Anteil danach, wie lange sie gebraucht haben: doppelt so lange, halbe Punkte. Teams knapp hintereinander bekommen fast gleich viel. Geht nur mit den Geräten der Teams; Teams, die du von Hand in Reihenfolge bringst, zählen nach Platz.';
+      'Das schnellste richtige Team bekommt die Punkte für Platz 1, die anderen einen Anteil danach, wie lange sie gebraucht haben: doppelt so lange, halbe Punkte. Teams knapp hintereinander bekommen fast gleich viel. Die Zeit zählt bis zum Einloggen der Antwort.';
 
   @override
   String get winnerTakesAll => 'Sieger bekommt alles';
@@ -3463,10 +3464,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Das Team, dessen Zahl am nächsten am richtigen Wert liegt, bekommt die meisten Punkte, jeder weitere Platz etwas weniger. Gleich nahe Teams teilen sich einen Platz. Die Plätze zählen, sobald die Antworten gesperrt sind, und der große Bildschirm zeigt sie mit den Antworten.';
 
   @override
-  String get scoringClosenessNoSolution =>
-      'Die Plätze richten sich danach, wie nah jede Zahl an der Lösung ist. Gib dafür unter „Wie Teams antworten“ einen richtigen Wert an.';
-
-  @override
   String placeN(String place) {
     return '$place Platz';
   }
@@ -3700,10 +3697,74 @@ class AppLocalizationsDe extends AppLocalizations {
   String get scriptNextMatch => 'Nächster Treffer (Enter)';
 
   @override
-  String get byTimeShort => 'nach Zeit';
+  String get byTimeShort => 'nach Tempo';
 
   @override
   String byTimeSummary(int points) {
-    return 'Schnellste +$points, die anderen nach ihrer Zeit';
+    return 'Nach Tempo · Schnellste +$points, die anderen nach ihrer Zeit';
+  }
+
+  @override
+  String get needsTheDevices => 'Braucht die Geräte der Teams';
+
+  @override
+  String get ruleNeedsDevices =>
+      'Diese Regel braucht die eigenen Geräte der Teams: Sie richtet sich danach, was dort eingegeben wird. Jedes Team braucht ein verbundenes Handy oder Tablet.';
+
+  @override
+  String screensForRule(String rule) {
+    String _temp0 = intl.Intl.selectLogic(rule, {
+      'closest':
+          'Nach Nähe braucht eine Zahl oder einen Schieberegler zum Antworten.',
+      'other':
+          'Nach Tempo braucht eine Antwortanzeige: Die Zeit zählt bis zum Einloggen.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String scoringIssue(String issue) {
+    String _temp0 = intl.Intl.selectLogic(issue, {
+      'closenessNeedsNumber':
+          'Nach Nähe braucht eine Zahl oder einen Schieberegler auf den Geräten. Mit dieser Antwortanzeige zählen feste Punkte.',
+      'closenessNeedsSolution':
+          'Nach Nähe braucht einen richtigen Wert, dem man nahekommen kann: Gib ihn unter „Wie Teams antworten“ an.',
+      'speedNeedsDevices':
+          'Nach Tempo braucht eine Antwortanzeige auf den Geräten. Mit Buzzer oder ohne Anzeige zählen die Plätze nach Reihenfolge.',
+      'speedNeedsLockIn':
+          'Nach Tempo misst die Zeit bis zum Einloggen, aber die Teams können nicht einloggen. Schalte „Teams dürfen früher einloggen“ unter „Wie Teams antworten“ ein.',
+      'other':
+          'Die Teams können nicht einloggen, also zählt nur die Reihenfolge, in der du tippst. Schalte „Teams dürfen früher einloggen“ unter „Wie Teams antworten“ ein, damit die Reihenfolge der Antworten zählt.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get reorderPictures => 'Ziehen, um die Bilder umzusortieren';
+
+  @override
+  String get dropToReplace => 'Loslassen zum Ersetzen';
+
+  @override
+  String get dropToAdd => 'Loslassen zum Hinzufügen';
+
+  @override
+  String nMoreWaiting(int count) {
+    return '$count weitere warten';
+  }
+
+  @override
+  String get waitingToUpload => 'wartet';
+
+  @override
+  String get hiddenOnBoard => 'Auf dem Board versteckt';
+
+  @override
+  String get hiddenOnBoardText =>
+      'Erscheint nicht auf dem Ring oder dem Spielplan. Du kannst sie trotzdem über die Steuerung öffnen, z. B. als geheime Bonusfrage.';
+
+  @override
+  String unlockTeam(String team) {
+    return 'Entsperren: $team darf die Antwort wieder ändern';
   }
 }

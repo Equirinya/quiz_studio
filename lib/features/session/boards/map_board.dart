@@ -158,8 +158,8 @@ class _MapBoardState extends State<MapCanvas> {
 
         bool done(String categoryId) {
           final category = group.categories.firstWhere((c) => c.id == categoryId);
-          return category.questions.isNotEmpty &&
-              category.questions.every((q) => state.played.contains(QuestionRef(category.id, q.id).key));
+          return category.boardQuestions.isNotEmpty &&
+              category.boardQuestions.every((q) => state.played.contains(QuestionRef(category.id, q.id).key));
         }
 
         Widget centred(MapPoint point, Widget child) => Positioned(
@@ -242,7 +242,9 @@ class _Bubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final refs = [for (final question in category.questions) QuestionRef(category.id, question.id)];
+    // Questions hidden on the board are left out; the gamemaster opens them.
+    final questions = category.boardQuestions;
+    final refs = [for (final question in questions) QuestionRef(category.id, question.id)];
     final done = refs.isNotEmpty && refs.every((ref) => state.played.contains(ref.key));
     final active = state.current?.categoryId == category.id;
     return AnimatedContainer(
@@ -282,7 +284,7 @@ class _Bubble extends StatelessWidget {
           ),
           SizedBox(height: unit * 0.6),
           if (labels == MapLabels.titles)
-            for (final (i, question) in category.questions.indexed)
+            for (final (i, question) in questions.indexed)
               _TitleRow(
                 question: question,
                 played: state.played.contains(refs[i].key),
@@ -295,7 +297,7 @@ class _Bubble extends StatelessWidget {
             spacing: unit * 0.4,
             runSpacing: unit * 0.4,
             children: [
-              for (final (i, question) in category.questions.indexed)
+              for (final (i, question) in questions.indexed)
                 Builder(builder: (context) {
                   final played = state.played.contains(refs[i].key);
                   final open = state.current == refs[i];

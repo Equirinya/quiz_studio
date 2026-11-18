@@ -144,13 +144,13 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
         played: {...s.played, ?s.current?.key},
         // A question with a companion screen puts it on the teams' devices
         // the moment it opens; with bets, once they are placed.
-        answerRound: companion == null || opened.hasBets ? null : _newRound(companion, now),
+        answerRound: companion == null || opened.hasBets ? null : _newRound(companion, now, timed: !_waitsForOptions(opened, 0)),
         // Last team standing: the turn order is fixed as it opens.
         standing: opened.type == QuestionType.lastStanding
             ? StandingPlay(order: turnOrder(s.teams, opened.lastStanding?.order ?? TurnOrder.teams), started: false)
             : null,
         betting: opened.hasBets ? const Betting() : null,
-        timer: opened.hasBets ? null : _timerFor(opened, now),
+        timer: opened.hasBets || _waitsForOptions(opened, 0) ? null : _timerFor(opened, now),
       );
       // A Fragenhagel starts with only the question itself on screen; the
       // first "next" brings up its first item.
@@ -188,8 +188,8 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       return _ok(
         s.copyWith(
           betting: s.betting!.copyWith(shown: false),
-          answerRound: companion == null ? null : _newRound(companion, now),
-          timer: _timerFor(question, now),
+          answerRound: companion == null ? null : _newRound(companion, now, timed: !_waitsForOptions(question, s.revealed)),
+          timer: _waitsForOptions(question, s.revealed) ? null : _timerFor(question, now),
         ),
         const [SoundEffect(effectQuestionOpen)],
       );
@@ -313,8 +313,13 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       // The enlarged image follows a new reveal and never points past the
       // last revealed one.
       final focus = delta > 0 ? revealed : (s.imageFocus > revealed ? revealed : s.imageFocus);
+      var shown = s.copyWith(revealed: revealed, imageFocus: question.type == QuestionType.progressingReveal ? focus : null);
+      // ABCD: the clock starts once the last option is up.
+      if (_waitsForOptions(question, s.revealed) && !_waitsForOptions(question, revealed) && !s.waitingForBets) {
+        shown = _startClocks(shown, question, now);
+      }
       // Teams keep playing while groups come up; their time runs on.
-      return _ok(s.copyWith(revealed: revealed, imageFocus: question.type == QuestionType.progressingReveal ? focus : null), [
+      return _ok(shown, [
         if ((question.type == QuestionType.connections || placing) && delta > 0)
           const SoundEffect(effectReveal),
       ]);
@@ -633,6 +638,20 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       final from = round.open && round.endsAtMillis != null && round.endsAtMillis! > now ? round.endsAtMillis! : now;
       return _ok(s.copyWith(answerRound: round.copyWith(open: true, endsAtMillis: seconds == null ? null : from + seconds * 1000)));
 
+    case UnlockAnswer(:final teamId):
+      if (!canUnlockAnswer(s, teamId)) return _no(s);
+      final round = s.answerRound!;
+      return _ok(
+        s.copyWith(
+          answerRound: round.copyWith(
+            // Closed because everyone had locked in: open again, which
+            // changes nothing for the others, still locked.
+            open: true,
+            answers: {...round.answers, teamId: round.answers[teamId]!.asLocked(false)},
+          ),
+        ),
+      );
+
     case UnlockAnswers():
       final round = s.answerRound;
       if (round == null) return _no(s);
@@ -756,15 +775,43 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
   }
 }
 
+/// Whether the gamemaster can let [teamId] change its locked-in answer: not
+/// once it is on the big screen, and with answering closed only when it
+/// closed because every team had locked in (opening it again then lets no
+/// one else change theirs).
+bool canUnlockAnswer(SessionState s, String teamId) {
+  final round = s.answerRound;
+  if (round == null || s.team(teamId) == null || !round.takesPart(teamId)) return false;
+  if (round.answers[teamId]?.locked != true || round.revealed.contains(teamId)) return false;
+  return round.open || s.roundTeams.every((team) => team.id == teamId || round.answers[team.id]?.locked == true);
+}
+
 /// Marker for "leave the timer as it is" in a copyWith that may clear it.
 const Object _keepTimer = Object();
 
-AnswerRound _newRound(CompanionSpec spec, int? now, {List<String> teams = const []}) => AnswerRound(
+AnswerRound _newRound(CompanionSpec spec, int? now, {List<String> teams = const [], bool timed = true}) => AnswerRound(
   spec: spec,
   teams: teams,
   openedAtMillis: now,
-  endsAtMillis: now != null && spec.timerSeconds != null ? now + spec.timerSeconds! * 1000 : null,
+  endsAtMillis: timed && now != null && spec.timerSeconds != null ? now + spec.timerSeconds! * 1000 : null,
 );
+
+/// ABCD with options still to uncover: its time does not run yet, the
+/// teams could not know what to pick.
+bool _waitsForOptions(Question question, int revealed) =>
+    question.type == QuestionType.abcd && question.answers.isNotEmpty && revealed < question.answers.length;
+
+/// The question's clock and its devices' timer, started now unless running.
+SessionState _startClocks(SessionState s, Question question, int? now) {
+  final round = s.answerRound;
+  final seconds = round?.spec.timerSeconds;
+  return s.copyWith(
+    answerRound: round != null && round.open && round.endsAtMillis == null && seconds != null && now != null
+        ? round.copyWith(endsAtMillis: now + seconds * 1000)
+        : round,
+    timer: s.timer ?? _timerFor(question, now),
+  );
+}
 
 /// [round] with [answer] for [teamId]. Once every team has locked in there is
 /// nothing left to wait for, so the round closes.

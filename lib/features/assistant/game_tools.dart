@@ -99,6 +99,11 @@ final Map<String, dynamic> _questionFields = {
     'description': 'Optional short name of the question on a map board whose group has mapLabels "titles"; without it the '
         'map shows the question\'s first line. "" removes it.',
   },
+  'hiddenOnBoard': {
+    'type': 'boolean',
+    'description': 'On a ring (wheel) or map board: leaves the question off the big screen\'s board; the gamemaster can '
+        'still open it from the controller, e.g. a secret bonus question. false shows it again.',
+  },
   'image': {'type': 'string', 'description': 'One picture shown with the question: a name from upload_media. "" removes it; for several use "images".'},
   'images': {
     'type': 'array',
@@ -130,7 +135,7 @@ final Map<String, dynamic> _questionFields = {
   'wager': {
     'type': 'boolean',
     'description':
-        'A bet question ("Teams bet their points", German "Einsatz"/"Wetten"; e.g. a final question). Set true and '
+        'A bet question (the rule "Bet points" in the app, German "Punkte setzen"/"Einsatz"; e.g. a final question). Set true and '
         'teams bet their own points instead of playing for fixed points: before the question is shown each '
         'team bets, a right answer wins the bet and a wrong one loses it (pointsMinus is then not used). A team may bet up '
         'to its score, or up to pointsPlus (at least $kMinBetLimit) if it has less; with "betOwnPoints" only up to its '
@@ -141,7 +146,7 @@ final Map<String, dynamic> _questionFields = {
   'amountBet': {
     'type': ['object', 'null'],
     'description':
-        'free only: teams bet how many they can do, e.g. how many films of a kind they can name or how many '
+        'free only, the rule "Bet how many" in the app: teams bet how many they can do, e.g. how many films of a kind they can name or how many '
         'push-ups. First only "prompt" is shown and each team picks a number up to "max"; then the question runs (give it '
         'a companion screen such as list or whiteboard, or none for a physical challenge, and a timer). The gamemaster '
         'judges per team whether it reached its number: reached gives pointsPlus times the number, missed takes '
@@ -167,15 +172,17 @@ final Map<String, dynamic> _questionFields = {
   },
   'byTime': {
     'type': 'boolean',
-    'description': 'With "rankStep" (by order) on a question answered on the teams\' devices: the fastest right team '
+    'description': 'The rule "By speed" in the app, with "rankStep": the fastest right team '
         'gets the first place\'s points, every other right team a share by how long it took (twice as long, half the '
-        'points), so teams close together get about the same. Teams the gamemaster puts in order by hand count by place.',
+        'points), so teams close together get about the same. The time is when a team locks in, so it needs a companion '
+        'screen with locking in allowed; without a companion the places count as "By order". Teams the gamemaster puts '
+        'in order by hand count by place.',
   },
   'rankStep': {
     'type': ['integer', 'null'],
     'minimum': 0,
     'description':
-        '"By order" scoring, e.g. for answers ranked by speed: the first team gets pointsPlus, each after it '
+        'The rule "By order" in the app, e.g. for answers ranked by who was first: the first team gets pointsPlus, each after it '
         'this many points less (never below 0); wrong answers lose pointsMinus. The order is the order teams lock in a right '
         'answer on their devices, or the order the gamemaster taps them in (e.g. charades on stage). null switches it off. '
         'For free, abcd, progressingReveal, matching and ordering questions; not together with "wager" or "amountBet". With '
@@ -186,7 +193,7 @@ final Map<String, dynamic> _questionFields = {
   'closest': {
     'type': 'boolean',
     'description':
-        '"By closeness" scoring for estimation questions: needs a companion of kind number or slider with a '
+        'The rule "By closeness" in the app, for estimation questions: needs a companion of kind number or slider with a '
         '"solution". Once answering is closed, the team whose number is nearest the solution gets pointsPlus, each '
         'place after it rankStep less (rankStep defaults to 100 if not given); teams equally near share a place, and '
         'the big screen shows the places with the answers. false switches it back to "by order". Example: {"type": '
@@ -472,7 +479,7 @@ final List<ToolSpec> gameToolSpecs = [
         'board': {
           'type': 'string',
           'enum': ['wheel', 'map', 'display'],
-          'description': 'How the board is drawn. wheel is the default.',
+          'description': 'How the board is drawn: wheel ("Ring board" in the app: a ring per point value, a sector per category; the default), map ("Map board": category bubbles on a picture) or display ("Grid board": a column per category).',
         },
       },
       ['gameId', 'name'],
@@ -519,11 +526,11 @@ final List<ToolSpec> gameToolSpecs = [
         'text and pointsPlus. A typical category has five questions rising in value, e.g. 100 to 500. Pictures and '
         'sounds are names from upload_media. '
         'The format is "type" (free, abcd, progressingReveal, feud, topAnswers, connections, rapidFire, matching, '
-        'lastStanding), each with its own field (see "type"). How it is scored is a separate choice, one at a time: '
-        'fixed points (default: pointsPlus/pointsMinus); "wager" (teams bet their points); "amountBet" (teams bet how '
-        'many they can do); "rankStep" (by order or speed, optionally "byTime"); "rankStep" with "closest" (by closeness, '
-        'for number or slider estimates); "placePoints" lists the points of each place instead of the step. The field '
-        'descriptions have examples.',
+        'lastStanding), each with its own field (see "type"). How it is scored is a separate choice, one rule at a time, '
+        'named as in the app: Fixed points (default: pointsPlus/pointsMinus); By order ("rankStep"); By speed '
+        '("rankStep" with "byTime", needs a companion screen teams lock in on); By closeness ("rankStep" with "closest", '
+        'needs a number or slider companion with a solution); Bet points ("wager"); Bet how many ("amountBet"). '
+        '"placePoints" lists the points of each place instead of the step. The field descriptions have examples.',
     _object({'gameId': _string, 'categoryId': _string, ..._questionFields}, ['gameId', 'categoryId', 'question']),
   ),
   ToolSpec(
@@ -696,6 +703,8 @@ Map<String, dynamic> questionDataFromArgs(Map<String, dynamic> args, {required b
   if (label != null) data['description'] = label;
   final mapTitle = take<String>('mapTitle');
   if (mapTitle != null) data['mapTitle'] = mapTitle.trim().isEmpty ? null : mapTitle.trim();
+  final hidden = take<bool>('hiddenOnBoard');
+  if (hidden != null) data['hiddenOnBoard'] = hidden ? true : null;
   for (final key in ['image', 'music', 'video']) {
     final name = take<String>(key);
     if (name != null) data[key] = name.isEmpty ? null : name;
@@ -1058,6 +1067,7 @@ Map<String, dynamic> describeQuestion(Question q) => {
   if (q.answerHint != null) 'answerHint': q.answerHint,
   if (q.description != null) 'label': q.description,
   if (q.mapTitle != null) 'mapTitle': q.mapTitle,
+  if (q.hiddenOnBoard) 'hiddenOnBoard': true,
   'pointsPlus': q.pointsPlus,
   'pointsMinus': q.pointsMinus,
   if (q.position != null) 'position': q.position,

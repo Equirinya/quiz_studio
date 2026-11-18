@@ -245,6 +245,7 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
                     question: questions[i],
                     initiallyExpanded: questions[i].id == _fresh,
                     reorderIndex: questions.length > 1 ? i : null,
+                    boardType: snapshot.data?.content.groupOfCategory(category.id)?.type,
                   ),
                 );
               }),
@@ -266,7 +267,12 @@ class QuestionCard extends StatefulWidget {
     required this.question,
     this.initiallyExpanded = false,
     this.reorderIndex,
+    this.boardType,
   });
+
+  /// How the question's board shows it: the ring and the map can leave it
+  /// off (see [Question.hiddenOnBoard]).
+  final BoardType? boardType;
 
   final String gameId;
   final String categoryId;
@@ -325,11 +331,15 @@ class _QuestionCardState extends State<QuestionCard> {
     _ => _Scoring.fixed,
   };
 
-  /// Numbers and sliders on the devices can go by how close teams came.
-  bool get _closable => switch (_q.companion?.kind) {
-    CompanionKind.number || CompanionKind.slider => !_q.hasBets,
-    _ => false,
-  };
+  /// Numbers and sliders on the devices can go by how close teams came; a
+  /// free question can be given one when the rule is picked.
+  bool get _closable =>
+      !_q.hasBets &&
+      (_q.type == QuestionType.free || _q.companion?.kind == CompanionKind.number || _q.companion?.kind == CompanionKind.slider);
+
+  /// How teams answer, one per question type, so a rule picked here can
+  /// switch its screen at once (see [CompanionEditorState.fitRule]).
+  final Map<QuestionType, GlobalKey<CompanionEditorState>> _companionEditors = {};
 
   bool get _byPlace => _effectiveScoring == _Scoring.ranked || _effectiveScoring == _Scoring.closest;
 
@@ -344,6 +354,8 @@ class _QuestionCardState extends State<QuestionCard> {
       'closest': scoring == _Scoring.closest ? true : null,
       'byTime': scoring == _Scoring.timed ? true : null,
     });
+    // A rule that needs the devices brings a screen it can work with.
+    if (scoring.needsDevices) _companionEditors[_q.type]?.currentState?.fitRule(number: scoring == _Scoring.closest);
   }
 
   Map<String, dynamic> _amountBet() =>
@@ -403,6 +415,9 @@ class _QuestionCardState extends State<QuestionCard> {
   late bool _expanded = widget.initiallyExpanded;
   late bool _showLabel = (widget.question.description ?? '').isNotEmpty;
 
+  /// Kept here so the chip moves at once, before the write comes back.
+  late bool _hiddenOnBoard = widget.question.hiddenOnBoard;
+
   /// Put in order: how it is scored, shown at once while the write is queued.
   late OrderScoring _orderScoring = widget.question.ordering?.scoring ?? OrderScoring.places;
 
@@ -461,6 +476,20 @@ class _QuestionCardState extends State<QuestionCard> {
     return parts.isEmpty ? l10n.noOwnMedia : parts.join(" · ");
   }
 
+  /// What does not fit in how the question is scored and answered. While a
+  /// newly picked rule is on its way, the stored one would be checked, so
+  /// nothing is said until it is back.
+  List<ScoringIssue> get _issues => _scoring == _storedScoring ? scoringIssues(_q) : const [];
+
+  _Scoring get _storedScoring {
+    final q = _q;
+    if (q.amountBet != null) return _Scoring.amount;
+    if (q.wager) return _Scoring.points;
+    if (q.rankStep == null) return _Scoring.fixed;
+    if (q.closest) return _Scoring.closest;
+    return q.data['byTime'] == true ? _Scoring.timed : _Scoring.ranked;
+  }
+
   Widget _scoringSection(ThemeData theme) {
     final scoring = _effectiveScoring;
     final l10n = context.l10n;
@@ -474,7 +503,13 @@ class _QuestionCardState extends State<QuestionCard> {
             entries: [
               for (final option in _Scoring.values)
                 if ((option != _Scoring.amount || _q.type == QuestionType.free) && (option != _Scoring.closest || _closable))
-                  DropdownMenuEntry(value: option, label: l10n.scoringRuleName(option.name)),
+                  DropdownMenuEntry(
+                    value: option,
+                    label: l10n.scoringRuleName(option.name),
+                    trailingIcon: option.needsDevices
+                        ? Tooltip(message: l10n.needsTheDevices, child: const Icon(Icons.tablet_android, size: 18))
+                        : null,
+                  ),
             ],
             onSelected: (option) {
               if (option != null) _setScoring(option);
@@ -485,10 +520,15 @@ class _QuestionCardState extends State<QuestionCard> {
             _Scoring.fixed => l10n.scoringFixedText,
             _Scoring.ranked => l10n.scoringRankedText,
             _Scoring.timed => l10n.byTimeText,
-            _Scoring.closest => _q.companion?.solution == null ? l10n.scoringClosenessNoSolution : l10n.scoringClosenessText,
+            _Scoring.closest => l10n.scoringClosenessText,
             _Scoring.points => l10n.scoringPointsText(_q.pointsPlus > kMinBetLimit ? _q.pointsPlus : kMinBetLimit),
             _Scoring.amount => l10n.scoringAmountText,
           }, style: theme.textTheme.bodySmall),
+          // Only while the devices are not set up for it yet.
+          if (scoring.needsDevices &&
+              _issues.any((issue) => issue == ScoringIssue.closenessNeedsNumber || issue == ScoringIssue.speedNeedsDevices))
+            DevicesOnlyHint(text: l10n.ruleNeedsDevices),
+          for (final issue in _issues) _IssueNote(text: l10n.scoringIssue(issue.name)),
           const SizedBox(height: 12),
         ],
         // Last team standing: the winner alone, or everyone by places.
@@ -636,7 +676,14 @@ class _QuestionCardState extends State<QuestionCard> {
                 _q.type == QuestionType.ordering ||
                 _q.type == QuestionType.topAnswers
             ? null
-            : CompanionEditor(key: ValueKey('companion-${_q.type}'), gameId: widget.gameId, question: _q, save: _save));
+            : CompanionEditor(
+                key: _companionEditors.putIfAbsent(_q.type, GlobalKey.new),
+                gameId: widget.gameId,
+                question: _q,
+                save: _save,
+                needsNumber: _effectiveScoring == _Scoring.closest,
+                needsScreen: _effectiveScoring == _Scoring.timed,
+              ));
     final main = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -680,16 +727,34 @@ class _QuestionCardState extends State<QuestionCard> {
             onChanged: (value) => _save({'description': value}),
           ),
           const SizedBox(height: 8),
-        ] else
-          Align(
-            alignment: Alignment.centerLeft,
-            child: ActionChip(
-              avatar: const Icon(Icons.add),
-              label: Text(context.l10n.label),
-              tooltip: context.l10n.labelTooltip,
-              onPressed: () => setState(() => _showLabel = true),
-            ),
-          ),
+        ],
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            if (!_showLabel)
+              ActionChip(
+                avatar: const Icon(Icons.add),
+                label: Text(context.l10n.label),
+                tooltip: context.l10n.labelTooltip,
+                onPressed: () => setState(() => _showLabel = true),
+              ),
+            // The ring and the map can leave it off; the gamemaster still
+            // opens it from the controller.
+            if (widget.boardType == BoardType.wheel || widget.boardType == BoardType.map || _hiddenOnBoard)
+              FilterChip(
+                avatar: Icon(_hiddenOnBoard ? Icons.visibility_off : Icons.visibility_off_outlined),
+                showCheckmark: false,
+                label: Text(context.l10n.hiddenOnBoard),
+                tooltip: context.l10n.hiddenOnBoardText,
+                selected: _hiddenOnBoard,
+                onSelected: (on) {
+                  setState(() => _hiddenOnBoard = on);
+                  _save({'hiddenOnBoard': on ? true : null});
+                },
+              ),
+          ],
+        ),
         typeContent,
       ],
     );
@@ -701,6 +766,7 @@ class _QuestionCardState extends State<QuestionCard> {
             icon: Icons.touch_app_outlined,
             title: context.l10n.howTeamsAnswer,
             summary: answeringSummary(context.l10n, _q),
+            warning: _q.type.wagerable && _issues.isNotEmpty,
             open: _isOpen('answer', roomy),
             onToggle: () => _toggle('answer', roomy),
             child: answering,
@@ -709,6 +775,7 @@ class _QuestionCardState extends State<QuestionCard> {
           icon: Icons.scoreboard_outlined,
           title: context.l10n.scoring,
           summary: _scoringSummary,
+          warning: _q.type.wagerable && _issues.isNotEmpty,
           open: _isOpen('scoring', roomy),
           onToggle: () => _toggle('scoring', roomy),
           child: _scoringSection(theme),
@@ -808,17 +875,43 @@ class _QuestionCardState extends State<QuestionCard> {
   }
 }
 
-/// How a question is scored: fixed points, bets of points, or bets on how
-/// many a team can do.
+/// How a question is scored, in the order the menu offers them: fixed
+/// points; "By …" rules that rank the teams; "Bet …" rules where the teams
+/// set the stakes. Names in `scoringRuleName`.
 enum _Scoring {
-  fixed("Fixed points"),
-  points("Teams bet their points"),
-  amount("Teams bet how many they can do"),
-  ranked("By order: fastest first"),
-  timed("Fastest first, by time"),
-  closest("By closeness: nearest first");
+  fixed,
+  ranked,
+  timed,
+  closest,
+  points,
+  amount;
 
-  const _Scoring(this.label);
+  /// Works only with the teams' devices: the time they lock in, the number
+  /// they give.
+  bool get needsDevices => this == timed || this == closest;
+}
 
-  final String label;
+/// Something that does not fit in how a question is scored and answered.
+class _IssueNote extends StatelessWidget {
+  const _IssueNote({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: scheme.errorContainer, borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, color: scheme.onErrorContainer),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text, style: TextStyle(color: scheme.onErrorContainer))),
+        ],
+      ),
+    );
+  }
 }

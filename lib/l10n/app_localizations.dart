@@ -785,7 +785,7 @@ abstract class AppLocalizations {
   /// No description provided for @boardTypeName.
   ///
   /// In en, this message translates to:
-  /// **'{type, select, display{Display Board} wheel{Wheel Playboard} other{Map Playboard}}'**
+  /// **'{type, select, display{Grid board} wheel{Ring board} other{Map board}}'**
   String boardTypeName(String type);
 
   /// No description provided for @gameRoleName.
@@ -935,13 +935,13 @@ abstract class AppLocalizations {
   /// No description provided for @newBoard.
   ///
   /// In en, this message translates to:
-  /// **'{type, select, display{New Display Board} wheel{New Wheel Playboard} other{New Map Playboard}}'**
+  /// **'{type, select, display{New grid board} wheel{New ring board} other{New map board}}'**
   String newBoard(String type);
 
   /// No description provided for @addBoard.
   ///
   /// In en, this message translates to:
-  /// **'{type, select, display{Add Display Board} wheel{Add Wheel Playboard} other{Add Map Playboard}}'**
+  /// **'{type, select, display{Add grid board} wheel{Add ring board} other{Add map board}}'**
   String addBoard(String type);
 
   /// No description provided for @newCategory.
@@ -1595,13 +1595,13 @@ abstract class AppLocalizations {
   /// No description provided for @teamsBetShort.
   ///
   /// In en, this message translates to:
-  /// **'teams bet'**
+  /// **'bet points'**
   String get teamsBetShort;
 
   /// No description provided for @teamsBetHowManyShort.
   ///
   /// In en, this message translates to:
-  /// **'teams bet how many'**
+  /// **'bet how many'**
   String get teamsBetHowManyShort;
 
   /// No description provided for @byOrderShort.
@@ -1613,19 +1613,19 @@ abstract class AppLocalizations {
   /// No description provided for @fixed.
   ///
   /// In en, this message translates to:
-  /// **'Fixed'**
+  /// **'Fixed points'**
   String get fixed;
 
   /// No description provided for @pointsBetSummary.
   ///
   /// In en, this message translates to:
-  /// **'Teams bet their points · at least {limit} to bet'**
+  /// **'Bet points · at least {limit} to bet'**
   String pointsBetSummary(int limit);
 
   /// No description provided for @betOnHowMany.
   ///
   /// In en, this message translates to:
-  /// **'Bet on how many'**
+  /// **'Bet how many'**
   String get betOnHowMany;
 
   /// No description provided for @plusEach.
@@ -1685,7 +1685,7 @@ abstract class AppLocalizations {
   /// No description provided for @scoringRuleName.
   ///
   /// In en, this message translates to:
-  /// **'{rule, select, fixed{Fixed points} points{Teams bet their points} amount{Teams bet how many they can do} closest{By closeness: nearest first} timed{Fastest first: points by time} other{By order: fastest first}}'**
+  /// **'{rule, select, fixed{Fixed points} ranked{By order} timed{By speed} closest{By closeness} points{Bet points} amount{Bet how many} other{By order}}'**
   String scoringRuleName(String rule);
 
   /// No description provided for @scoringFixedText.
@@ -1697,7 +1697,7 @@ abstract class AppLocalizations {
   /// No description provided for @scoringRankedText.
   ///
   /// In en, this message translates to:
-  /// **'The first team gets the most points, each after it a bit less. The order is the order teams locked in a right answer on their devices, or the order you tap them in, e.g. as they finish on stage. Wrong answers lose the minus points.'**
+  /// **'The first right team gets the most points, each after it a bit less. The order is the order teams locked in a right answer on their devices, or the order you tap them in, e.g. as they finish on stage. Wrong answers lose the minus points.'**
   String get scoringRankedText;
 
   /// No description provided for @scoringPointsText.
@@ -1811,7 +1811,7 @@ abstract class AppLocalizations {
   /// No description provided for @byTimeText.
   ///
   /// In en, this message translates to:
-  /// **'The fastest right team gets the first place\'s points, the others a share by how long they took: twice as long, half the points. Teams close together get about the same. Needs the teams\' devices; teams you put in order by hand go by their places.'**
+  /// **'The fastest right team gets the first place\'s points, the others a share by how long they took: twice as long, half the points. Teams close together get about the same. The time is when a team locks in its answer.'**
   String get byTimeText;
 
   /// No description provided for @winnerTakesAll.
@@ -5654,12 +5654,6 @@ abstract class AppLocalizations {
   /// **'The team whose number is nearest the right value gets the most points, each place after it a bit less. Teams equally near share a place. The places count once the answering is closed, and the big screen shows them with the answers.'**
   String get scoringClosenessText;
 
-  /// No description provided for @scoringClosenessNoSolution.
-  ///
-  /// In en, this message translates to:
-  /// **'Places go by how near each number is to the solution, so give the slider or number a right value under How teams answer.'**
-  String get scoringClosenessNoSolution;
-
   /// No description provided for @placeN.
   ///
   /// In en, this message translates to:
@@ -6053,14 +6047,86 @@ abstract class AppLocalizations {
   /// No description provided for @byTimeShort.
   ///
   /// In en, this message translates to:
-  /// **'by time'**
+  /// **'by speed'**
   String get byTimeShort;
 
   /// No description provided for @byTimeSummary.
   ///
   /// In en, this message translates to:
-  /// **'Fastest +{points}, the others by their time'**
+  /// **'By speed · fastest +{points}, the others by their time'**
   String byTimeSummary(int points);
+
+  /// No description provided for @needsTheDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs the teams\' devices'**
+  String get needsTheDevices;
+
+  /// No description provided for @ruleNeedsDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'This rule needs the teams\' own devices: it goes by what they enter there. Every team needs a phone or tablet connected.'**
+  String get ruleNeedsDevices;
+
+  /// No description provided for @screensForRule.
+  ///
+  /// In en, this message translates to:
+  /// **'{rule, select, closest{By closeness needs a number or slider to answer with.} other{By speed needs an answer screen: the time is when a team locks in.}}'**
+  String screensForRule(String rule);
+
+  /// No description provided for @scoringIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'{issue, select, closenessNeedsNumber{By closeness needs a number or slider on the devices. With this answer screen it counts as fixed points.} closenessNeedsSolution{By closeness needs a right value to be close to: give one under How teams answer.} speedNeedsDevices{By speed needs an answer screen on the devices. With a buzzer or nothing there, the places count as by order.} speedNeedsLockIn{By speed takes each team\'s time from when it locks in, but teams can\'t lock in. Turn on “Teams can lock in early” under How teams answer.} other{Teams can\'t lock in, so the order is only the one you tap. Turn on “Teams can lock in early” under How teams answer for the order they answer in.}}'**
+  String scoringIssue(String issue);
+
+  /// No description provided for @reorderPictures.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to reorder the pictures'**
+  String get reorderPictures;
+
+  /// No description provided for @dropToReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop to replace it'**
+  String get dropToReplace;
+
+  /// No description provided for @dropToAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop to add'**
+  String get dropToAdd;
+
+  /// No description provided for @nMoreWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more waiting'**
+  String nMoreWaiting(int count);
+
+  /// No description provided for @waitingToUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'waiting'**
+  String get waitingToUpload;
+
+  /// No description provided for @hiddenOnBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden on the board'**
+  String get hiddenOnBoard;
+
+  /// No description provided for @hiddenOnBoardText.
+  ///
+  /// In en, this message translates to:
+  /// **'Not shown on the ring or the map. You can still open it from the controller, e.g. as a secret bonus question.'**
+  String get hiddenOnBoardText;
+
+  /// No description provided for @unlockTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock: let {team} change its answer'**
+  String unlockTeam(String team);
 }
 
 class _AppLocalizationsDelegate

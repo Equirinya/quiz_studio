@@ -159,7 +159,12 @@ class _CardsDialogState extends State<CardsDialog> {
   void _save() => widget.save([for (final card in _cards) card.toMap()]);
 
   void _change(VoidCallback change) {
-    setState(change);
+    // An upload can finish after this editor was closed: still saved.
+    if (mounted) {
+      setState(change);
+    } else {
+      change();
+    }
     _save();
   }
 
@@ -409,7 +414,7 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
                 kind: MediaKind.image,
                 name: _image,
                 title: _image == null ? context.l10n.addMedia(MediaKind.image.name) : context.l10n.picture,
-                onChanged: (name) => setState(() => _image = name),
+                onChanged: (name) => mounted ? setState(() => _image = name) : null,
               ),
               MediaButton.tile(
                 gameId: widget.gameId,
@@ -417,7 +422,7 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
                 name: _video,
                 title: _video == null ? context.l10n.addMedia(MediaKind.video.name) : context.l10n.videoClip,
                 subtitle: _video == null ? null : context.l10n.videoClipText,
-                onChanged: (name) => setState(() => _video = name),
+                onChanged: (name) => mounted ? setState(() => _video = name) : null,
               ),
               const SizedBox(height: 12),
               Text(context.l10n.look, style: theme.textTheme.labelLarge),

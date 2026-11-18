@@ -396,9 +396,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String boardTypeName(String type) {
     String _temp0 = intl.Intl.selectLogic(type, {
-      'display': 'Display Board',
-      'wheel': 'Wheel Playboard',
-      'other': 'Map Playboard',
+      'display': 'Grid board',
+      'wheel': 'Ring board',
+      'other': 'Map board',
     });
     return '$_temp0';
   }
@@ -581,9 +581,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String newBoard(String type) {
     String _temp0 = intl.Intl.selectLogic(type, {
-      'display': 'New Display Board',
-      'wheel': 'New Wheel Playboard',
-      'other': 'New Map Playboard',
+      'display': 'New grid board',
+      'wheel': 'New ring board',
+      'other': 'New map board',
     });
     return '$_temp0';
   }
@@ -591,9 +591,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String addBoard(String type) {
     String _temp0 = intl.Intl.selectLogic(type, {
-      'display': 'Add Display Board',
-      'wheel': 'Add Wheel Playboard',
-      'other': 'Add Map Playboard',
+      'display': 'Add grid board',
+      'wheel': 'Add ring board',
+      'other': 'Add map board',
     });
     return '$_temp0';
   }
@@ -996,24 +996,24 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get teamsBetShort => 'teams bet';
+  String get teamsBetShort => 'bet points';
 
   @override
-  String get teamsBetHowManyShort => 'teams bet how many';
+  String get teamsBetHowManyShort => 'bet how many';
 
   @override
   String get byOrderShort => 'by order';
 
   @override
-  String get fixed => 'Fixed';
+  String get fixed => 'Fixed points';
 
   @override
   String pointsBetSummary(int limit) {
-    return 'Teams bet their points · at least $limit to bet';
+    return 'Bet points · at least $limit to bet';
   }
 
   @override
-  String get betOnHowMany => 'Bet on how many';
+  String get betOnHowMany => 'Bet how many';
 
   @override
   String plusEach(int plus) {
@@ -1056,11 +1056,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String scoringRuleName(String rule) {
     String _temp0 = intl.Intl.selectLogic(rule, {
       'fixed': 'Fixed points',
-      'points': 'Teams bet their points',
-      'amount': 'Teams bet how many they can do',
-      'closest': 'By closeness: nearest first',
-      'timed': 'Fastest first: points by time',
-      'other': 'By order: fastest first',
+      'ranked': 'By order',
+      'timed': 'By speed',
+      'closest': 'By closeness',
+      'points': 'Bet points',
+      'amount': 'Bet how many',
+      'other': 'By order',
     });
     return '$_temp0';
   }
@@ -1070,7 +1071,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scoringRankedText =>
-      'The first team gets the most points, each after it a bit less. The order is the order teams locked in a right answer on their devices, or the order you tap them in, e.g. as they finish on stage. Wrong answers lose the minus points.';
+      'The first right team gets the most points, each after it a bit less. The order is the order teams locked in a right answer on their devices, or the order you tap them in, e.g. as they finish on stage. Wrong answers lose the minus points.';
 
   @override
   String scoringPointsText(int limit) {
@@ -1134,7 +1135,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get byTimeText =>
-      'The fastest right team gets the first place\'s points, the others a share by how long they took: twice as long, half the points. Teams close together get about the same. Needs the teams\' devices; teams you put in order by hand go by their places.';
+      'The fastest right team gets the first place\'s points, the others a share by how long they took: twice as long, half the points. Teams close together get about the same. The time is when a team locks in its answer.';
 
   @override
   String get winnerTakesAll => 'Winner takes all';
@@ -3444,10 +3445,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'The team whose number is nearest the right value gets the most points, each place after it a bit less. Teams equally near share a place. The places count once the answering is closed, and the big screen shows them with the answers.';
 
   @override
-  String get scoringClosenessNoSolution =>
-      'Places go by how near each number is to the solution, so give the slider or number a right value under How teams answer.';
-
-  @override
   String placeN(String place) {
     return '$place place';
   }
@@ -3680,10 +3677,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scriptNextMatch => 'Next (Enter)';
 
   @override
-  String get byTimeShort => 'by time';
+  String get byTimeShort => 'by speed';
 
   @override
   String byTimeSummary(int points) {
-    return 'Fastest +$points, the others by their time';
+    return 'By speed · fastest +$points, the others by their time';
+  }
+
+  @override
+  String get needsTheDevices => 'Needs the teams\' devices';
+
+  @override
+  String get ruleNeedsDevices =>
+      'This rule needs the teams\' own devices: it goes by what they enter there. Every team needs a phone or tablet connected.';
+
+  @override
+  String screensForRule(String rule) {
+    String _temp0 = intl.Intl.selectLogic(rule, {
+      'closest': 'By closeness needs a number or slider to answer with.',
+      'other':
+          'By speed needs an answer screen: the time is when a team locks in.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String scoringIssue(String issue) {
+    String _temp0 = intl.Intl.selectLogic(issue, {
+      'closenessNeedsNumber':
+          'By closeness needs a number or slider on the devices. With this answer screen it counts as fixed points.',
+      'closenessNeedsSolution':
+          'By closeness needs a right value to be close to: give one under How teams answer.',
+      'speedNeedsDevices':
+          'By speed needs an answer screen on the devices. With a buzzer or nothing there, the places count as by order.',
+      'speedNeedsLockIn':
+          'By speed takes each team\'s time from when it locks in, but teams can\'t lock in. Turn on “Teams can lock in early” under How teams answer.',
+      'other':
+          'Teams can\'t lock in, so the order is only the one you tap. Turn on “Teams can lock in early” under How teams answer for the order they answer in.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get reorderPictures => 'Drag to reorder the pictures';
+
+  @override
+  String get dropToReplace => 'Drop to replace it';
+
+  @override
+  String get dropToAdd => 'Drop to add';
+
+  @override
+  String nMoreWaiting(int count) {
+    return '$count more waiting';
+  }
+
+  @override
+  String get waitingToUpload => 'waiting';
+
+  @override
+  String get hiddenOnBoard => 'Hidden on the board';
+
+  @override
+  String get hiddenOnBoardText =>
+      'Not shown on the ring or the map. You can still open it from the controller, e.g. as a secret bonus question.';
+
+  @override
+  String unlockTeam(String team) {
+    return 'Unlock: let $team change its answer';
   }
 }

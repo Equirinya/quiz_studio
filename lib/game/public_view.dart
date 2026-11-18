@@ -58,7 +58,7 @@ Map<String, dynamic> publicView(SessionState state, GameContent? game, {String? 
         : {
             // Without the solution, and with the items to sort or assign
             // shuffled; the seed keeps the shuffle the same for everyone.
-            'spec': round.spec.toPublicMap(state.current?.key ?? ''),
+            'spec': _uncoveredOptions(round.spec.toPublicMap(state.current?.key ?? ''), state, question),
             'open': round.open,
             'canLock': canLockIn(state, game),
             if (round.teams.isNotEmpty) 'teams': round.teams,
@@ -104,6 +104,16 @@ Map<String, dynamic> publicView(SessionState state, GameContent? game, {String? 
         },
       },
   };
+}
+
+/// ABCD: the devices get the options only as the big screen uncovers them,
+/// the rest as a count (`optionCount`) so they can hold their places.
+/// Choices are indices, so leaving off the end changes none of them.
+Map<String, dynamic> _uncoveredOptions(Map<String, dynamic> spec, SessionState state, Question? question) {
+  if (question?.type != QuestionType.abcd || spec['kind'] != CompanionKind.choice.name) return spec;
+  final options = (spec['options'] as List? ?? const []).cast<String>();
+  if (state.revealed >= question!.answers.length || state.revealed >= options.length) return spec;
+  return {...spec, 'options': options.sublist(0, state.revealed.clamp(0, options.length)), 'optionCount': options.length};
 }
 
 /// An answer as everyone may see it once it is on the big screen. A team's

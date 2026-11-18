@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links_linux
   audioplayers_linux
+  desktop_drop
   file_selector_linux
   flutter_libserialport
   media_kit_libs_linux

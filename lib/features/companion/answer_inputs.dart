@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -86,8 +87,9 @@ class _CompanionInputState extends State<CompanionInput> {
       ((entry as Map)['i'] as num).toInt(): (entry['img'] is String ? entry['img'] as String : null, '${entry['t']}'),
   };
 
-  // choice and match: the options (match: the left-hand items)
-  late final List<String> _left = [for (final option in (widget.spec['options'] as List? ?? const []).cast<String>()) context.l10n.deviceLabel(option)];
+  // choice and match: the options (match: the left-hand items). Read each
+  // time: ABCD options arrive one by one as the big screen uncovers them.
+  List<String> get _left => [for (final option in (widget.spec['options'] as List? ?? const []).cast<String>()) context.l10n.deviceLabel(option)];
 
   // list: one field per answer
   late final List<TextEditingController> _lines = [
@@ -267,7 +269,9 @@ class _CompanionInputState extends State<CompanionInput> {
         return LayoutBuilder(
           builder: (context, box) {
             final sideways = box.maxWidth > box.maxHeight * 1.15;
-            final columns = sideways ? (_left.length <= 4 ? 2 : 3) : 1;
+            // ABCD options not uncovered yet keep their places, empty.
+            final count = math.max(_left.length, (widget.spec['optionCount'] as num?)?.toInt() ?? 0);
+            final columns = sideways ? (count <= 4 ? 2 : 3) : 1;
             final width = (box.maxWidth - (columns - 1) * 12) / columns;
             return SingleChildScrollView(
               child: Wrap(
@@ -295,6 +299,11 @@ class _CompanionInputState extends State<CompanionInput> {
                                 _emit(PlayerAnswer(choice: i));
                               },
                       ),
+                    ),
+                  for (var i = _left.length; i < count; i++)
+                    SizedBox(
+                      width: width,
+                      child: _ChoiceTile(letter: String.fromCharCode(0x41 + i), text: '', selected: false, tall: sideways, hidden: true),
                     ),
                 ],
               ),
@@ -424,8 +433,12 @@ class _ChoiceTile extends StatelessWidget {
     required this.selected,
     required this.tall,
     this.several = false,
+    this.hidden = false,
     this.onTap,
   });
+
+  /// Not uncovered on the big screen yet: only its letter, faint.
+  final bool hidden;
 
   final String letter;
   final String text;
@@ -444,7 +457,7 @@ class _ChoiceTile extends StatelessWidget {
     final background = selected ? scheme.primary : scheme.secondaryContainer;
     final foreground = selected ? scheme.onPrimary : scheme.onSecondaryContainer;
     return Opacity(
-      opacity: locked && !selected ? 0.5 : 1,
+      opacity: hidden ? 0.35 : (locked && !selected ? 0.5 : 1),
       child: Material(
         color: background,
         borderRadius: BorderRadius.circular(16),

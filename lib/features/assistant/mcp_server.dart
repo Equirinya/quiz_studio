@@ -134,9 +134,9 @@ class McpServer {
               'Leave sounds and music alone unless the user asks for them. '
               'A question has a format ("type": free, abcd, progressingReveal, feud, topAnswers, connections, '
               'rapidFire/Fragenhagel, matching, ordering/put in order, lastStanding/last team standing) and, separately, a way of scoring: '
-              'fixed points, bets ("wager": teams bet their points, "betOwnPoints" caps a bet at the team\'s score; '
-              '"amountBet": teams bet how many they can do), by order ("rankStep", "byTime" for fastest first by time), '
-              'or by closeness ("rankStep" with "closest"); "placePoints" (e.g. [400, 200, 100, 100]) sets the points '
+              'named as in the app: Fixed points; By order ("rankStep"); By speed ("rankStep" with "byTime", needs the '
+              'teams\' devices); By closeness ("rankStep" with "closest", needs a number or slider with a solution); '
+              'Bet points ("wager", "betOwnPoints" caps a bet at the team\'s score); Bet how many ("amountBet"); "placePoints" (e.g. [400, 200, 100, 100]) sets the points '
               'of each place instead of the step, also for lastStanding by places. Categories and groups can have '
               'their own colours. The add_question fields describe each, with examples.',
         });

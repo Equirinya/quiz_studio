@@ -388,6 +388,11 @@ class Question {
   /// first line.
   String get shortTitle => mapTitle ?? text.trim().split('\n').first.trim();
 
+  /// Left off the ring and the map on the big screen; the gamemaster can
+  /// still open it from the controller, e.g. a secret bonus question.
+  /// Stored as `hiddenOnBoard`.
+  bool get hiddenOnBoard => data['hiddenOnBoard'] == true;
+
   /// The question's pictures, shown side by side; see [MediaSet].
   final List<String> images;
   String? get image => images.firstOrNull;
@@ -806,6 +811,9 @@ class Category {
 
   /// In playing order; see [sortQuestions].
   final List<Question> questions;
+
+  /// The ones the ring and the map show: all but those hidden on the board.
+  List<Question> get boardQuestions => [for (final question in questions) if (!question.hiddenOnBoard) question];
   final MusicConfig sounds;
   final Map<String, dynamic> data;
 
@@ -820,9 +828,9 @@ class Category {
 
 /// How a category group is shown on the presenter.
 enum BoardType {
-  display('Display Board'),
-  wheel('Wheel Playboard'),
-  map('Map Playboard');
+  display('Grid board'),
+  wheel('Ring board'),
+  map('Map board');
 
   const BoardType(this.uiString);
 
