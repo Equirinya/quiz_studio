@@ -685,8 +685,10 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
     case RevealAnswer(:final teamId, :final show):
       final round = s.answerRound;
       if (round == null || s.team(teamId) == null || round.revealed.contains(teamId) == show) return _no(s);
+      final revealed = s.copyWith(answerRound: _reveal(round, show ? [...round.revealed, teamId] : ([...round.revealed]..remove(teamId))));
       return _ok(
-        s.copyWith(answerRound: _reveal(round, show ? [...round.revealed, teamId] : ([...round.revealed]..remove(teamId)))),
+        // Rated already: its points go up as it comes up.
+        show && question != null ? _giveTeam(revealed, question, teamId) : revealed,
         [if (show) ?_verdictSound(s, teamId)],
       );
 
@@ -694,20 +696,23 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       final round = s.answerRound;
       final next = s.roundTeams.where((team) => round != null && !round.revealed.contains(team.id)).firstOrNull;
       if (round == null || next == null) return _no(s);
-      return _ok(s.copyWith(answerRound: _reveal(round, [...round.revealed, next.id])), [?_verdictSound(s, next.id)]);
+      final revealed = s.copyWith(answerRound: _reveal(round, [...round.revealed, next.id]));
+      return _ok(question == null ? revealed : _giveTeam(revealed, question, next.id), [?_verdictSound(s, next.id)]);
 
     case RevealAnswers():
       final round = s.answerRound;
       if (round == null || s.roundTeams.every((team) => round.revealed.contains(team.id))) return _no(s);
-      return _ok(
-        s.copyWith(
-          answerRound: _reveal(round, [
-            ...round.revealed,
-            for (final team in s.roundTeams)
-              if (!round.revealed.contains(team.id)) team.id,
-          ]),
-        ),
-      );
+      final newly = [
+        for (final team in s.roundTeams)
+          if (!round.revealed.contains(team.id)) team.id,
+      ];
+      var revealed = s.copyWith(answerRound: _reveal(round, [...round.revealed, ...newly]));
+      if (question != null) {
+        for (final teamId in newly) {
+          revealed = _giveTeam(revealed, question, teamId);
+        }
+      }
+      return _ok(revealed);
 
     case RateAnswer(:final teamId, :final correct):
       if (question == null || s.team(teamId) == null || s.waitingForBets) return _no(s);
@@ -716,12 +721,19 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now}
       // Heard only with the answer on the big screen; rated before it is
       // shown, it sounds as it comes up (see [_verdictSound]).
       final onScreen = s.answerRound?.revealed.contains(teamId) ?? false;
-      return _ok(s.copyWith(results: results), [if (correct != null && onScreen) SoundEffect(correct ? effectAnswerCorrect : effectAnswerWrong)]);
+      final rated = s.copyWith(results: results);
+      // On the big screen: its points go up at once.
+      return _ok(
+        onScreen ? _giveTeam(rated, question, teamId) : rated,
+        [if (correct != null && onScreen) SoundEffect(correct ? effectAnswerCorrect : effectAnswerWrong)],
+      );
 
     case AwardAnswer(:final teamId, :final points):
       if (question == null || s.team(teamId) == null || s.waitingForBets) return _no(s);
       if (s.results.points[teamId] == points && s.results.verdicts[teamId] == points > 0) return _no(s);
-      return _ok(s.copyWith(results: s.results.rated(teamId, points > 0, points: points)));
+      final awarded = s.copyWith(results: s.results.rated(teamId, points > 0, points: points));
+      final shown = s.answerRound?.revealed.contains(teamId) ?? false;
+      return _ok(shown ? _giveTeam(awarded, question, teamId) : awarded);
 
     case PlaceTeam(:final teamId):
       if (question == null || !question.ranked || s.team(teamId) == null) return _no(s);
@@ -876,6 +888,28 @@ SessionState _give(SessionState s, Question question) {
       given: {
         for (final team in s.teams)
           if (pointsDue(s, question, team.id) case final due? when due != 0) team.id: due,
+      },
+    ),
+  );
+}
+
+/// [s] with [teamId]'s points for the open question on the scoreboard, as
+/// rated so far: what it is due less what it was given (a rating taken back
+/// takes them back). For an answer rated on the big screen, or shown once
+/// rated. A Fragenhagel scores item by item as it moves on instead.
+SessionState _giveTeam(SessionState s, Question question, String teamId) {
+  if (question.type == QuestionType.rapidFire) return s;
+  final due = pointsDue(s, question, teamId);
+  final given = s.results.given[teamId] ?? 0;
+  final delta = (due ?? 0) - given;
+  if (delta == 0) return s;
+  return s.copyWith(
+    teams: [for (final team in s.teams) team.id == teamId ? team.copyWith(points: team.points + delta) : team],
+    results: s.results.copyWith(
+      given: {
+        for (final entry in s.results.given.entries)
+          if (entry.key != teamId) entry.key: entry.value,
+        if (due != null && due != 0) teamId: due,
       },
     ),
   );

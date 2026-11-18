@@ -155,6 +155,25 @@ void main() {
       expect(apply(hidden, const RevealAnswer('red')).effects, isEmpty);
     });
 
+    test('points go up for an answer rated on the big screen, or as it comes up once rated', () {
+      final hidden = run(fixtureState(), [const OpenQuestion(sum), const SubmitAnswer('red', PlayerAnswer(drawing: 'a'))]);
+      int red(SessionState s) => s.team('red')!.points;
+      // Rated on the controller alone: nothing yet.
+      final rated = run(hidden, [const RateAnswer('red', correct: true)]);
+      expect(red(rated), 0);
+      // Shown: now.
+      final shown = run(rated, [const RevealAnswer('red')]);
+      expect(red(shown), 400);
+      // Hidden and shown again: never twice.
+      expect(red(run(shown, [const RevealAnswer('red', show: false), const RevealAnswer('red')])), 400);
+      // Rated on screen: at once; taken back: gone again.
+      final onScreen = run(hidden, [const RevealAnswer('red'), const RateAnswer('red', correct: true)]);
+      expect(red(onScreen), 400);
+      expect(red(run(onScreen, [const RateAnswer('red', correct: null)])), 0);
+      // All shown at once: the rated ones count.
+      expect(red(run(rated, [const RevealAnswers()])), 400);
+    });
+
     test('players may answer and lock for their own team, never rate or reveal', () {
       const red = Sender(Role.player, teamId: 'red');
       expect(mayIssue(red, const SubmitAnswer('red', PlayerAnswer(drawing: 'a'))), isTrue);

@@ -246,21 +246,16 @@ void main() {
     await tester.ensureVisible(inController(find.byTooltip('Wrong')).last);
     await tap(tester, inController(find.byTooltip('Wrong')).last);
     expect(host.state.results.verdicts, {'red': true, 'blue': false});
-    // Rated, not given yet: the button says what giving would do.
-    expect(host.state.team('red')!.points, 0);
-    final give = inController(find.textContaining('Give points · Red +400'));
-    await tester.ensureVisible(give);
-    await tap(tester, give);
+    // Red's answer is on the big screen: its points go up at once.
     expect(host.state.team('red')!.points, 400);
     expect(host.state.team('blue')!.points, 0);
     expect(inController(find.text('All points given')), findsOneWidget);
-    // Changing one's mind does not count twice.
+    // Changing one's mind takes them back, never counting twice.
     await tester.ensureVisible(inController(find.byTooltip('Right')).first);
     await tap(tester, inController(find.byTooltip('Right')).first);
-    final takeBack = inController(find.textContaining('Give points · Red −400'));
-    await tester.ensureVisible(takeBack);
-    await tap(tester, takeBack);
     expect(host.state.team('red')!.points, 0);
+    await tap(tester, inController(find.byTooltip('Right')).first);
+    expect(host.state.team('red')!.points, 400);
   });
 
   testWidgets('a round can be started by hand, with a timer, from the Answers sheet', (tester) async {
