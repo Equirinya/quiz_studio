@@ -192,6 +192,9 @@ class _CompanionInputState extends State<CompanionInput> {
     switch (_kind) {
       case CompanionKind.whiteboard:
         return WhiteboardPad(
+          // A phone that joins mid-round, or a question reopened with its
+          // answers, starts from what the team drew.
+          initial: widget.teamAnswer?.drawing,
           enabled: enabled,
           aspect: widget.whiteboardAspect,
           backgroundImage: widget.backgroundImage,

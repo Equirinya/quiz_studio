@@ -112,6 +112,38 @@ void main() {
     host.dispatch(const ClearAnswers());
   });
 
+  testWidgets('a question reopened with its answers gives the team its whiteboard back', (tester) async {
+    for (final command in <Command>[
+      const OpenQuestion(sum),
+      const SubmitAnswer('red', PlayerAnswer(drawing: '100,100 500,500')),
+      const CloseQuestion(),
+    ]) {
+      expect(host.dispatch(command), isTrue);
+    }
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: StreamBuilder<SessionState>(
+          stream: host.states,
+          builder: (context, _) => PlayerView(
+            view: PublicView(host.publicStateFor('red')),
+            teamId: 'red',
+            send: (command) => host.dispatch(command, sender: const Sender(Role.player, teamId: 'red')),
+          ),
+        ),
+      ),
+    ));
+    expect(find.byType(WhiteboardPad), findsNothing);
+
+    host.dispatch(const OpenQuestion(sum, restore: true));
+    await tester.pump();
+    expect(tester.widget<WhiteboardPad>(find.byType(WhiteboardPad)).initial, '100,100 500,500');
+    expect(tester.widget<WhiteboardPad>(find.byType(WhiteboardPad)).enabled, isFalse, reason: 'locked until unlocked');
+
+    host.dispatch(const UnlockAnswers());
+    await tester.pump();
+    expect(tester.widget<WhiteboardPad>(find.byType(WhiteboardPad)).enabled, isTrue);
+  });
+
   testWidgets('a question with a whiteboard opens it on the device by itself', (tester) async {
     host.dispatch(const OpenQuestion(sum));
     await pumpPlayer(tester);

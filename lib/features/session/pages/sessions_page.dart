@@ -344,7 +344,7 @@ class SessionsList extends StatelessWidget {
                         child: FilledButton.icon(
                           onPressed: () => onPresent(session),
                           icon: const Icon(Icons.tv),
-                          label: Text(context.l10n.present),
+                          label: _oneLine(context.l10n.present),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -352,7 +352,7 @@ class SessionsList extends StatelessWidget {
                         child: FilledButton.tonalIcon(
                           onPressed: () => onControl(session),
                           icon: const Icon(Icons.tune),
-                          label: Text(context.l10n.control),
+                          label: _oneLine(context.l10n.control),
                         ),
                       ),
                       if (onSetUp != null) ...[
@@ -418,7 +418,7 @@ class SessionsList extends StatelessWidget {
                         child: FilledButton.tonalIcon(
                           onPressed: onControlInvited == null ? null : () => onControlInvited!(session),
                           icon: const Icon(Icons.tune),
-                          label: Text(context.l10n.control),
+                          label: _oneLine(context.l10n.control),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -961,3 +961,7 @@ class _PresentPageState extends State<PresentPage> {
     );
   }
 }
+
+/// A button label on one line, cut off where the card is too narrow, so the
+/// buttons keep one height.
+Widget _oneLine(String label) => Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis);
