@@ -632,6 +632,7 @@ class AnswerRound {
 
   AnswerRound copyWith({
     bool? open,
+    int? openedAtMillis,
     /// An int sets the timer, null clears it; leave out (or pass any other
     /// object) to keep it as it is.
     Object? endsAtMillis = _keep,
@@ -641,7 +642,7 @@ class AnswerRound {
   }) => AnswerRound(
     spec: spec,
     open: open ?? this.open,
-    openedAtMillis: openedAtMillis,
+    openedAtMillis: openedAtMillis ?? this.openedAtMillis,
     endsAtMillis: endsAtMillis is int? ? endsAtMillis : this.endsAtMillis,
     answers: answers ?? this.answers,
     revealed: revealed ?? this.revealed,

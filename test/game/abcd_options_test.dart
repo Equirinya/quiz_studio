@@ -7,9 +7,9 @@ import 'fixture.dart';
 /// uncovers them, and the clock waits for the last.
 void main() {
   const ref = QuestionRef('c2', 'abcd');
-  GameContent game({Map<String, dynamic>? companion, int? timer}) {
+  GameContent game({Map<String, dynamic>? companion, int? timer, Map<String, dynamic> extra = const {}}) {
     final base = fixtureGame();
-    final question = Map<String, dynamic>.from(base.question(ref)!.data);
+    final question = {...base.question(ref)!.data, ...extra};
     if (companion != null) question['companion'] = companion;
     if (timer != null) question['timer'] = timer;
     return GameContent.assemble(
@@ -58,5 +58,27 @@ void main() {
     expect(s.timer, isNull);
     s = run(s, [const Reveal(4)], g, 4000);
     expect(s.timer!.endsAtMillis, 34000);
+  });
+
+  test('the round counts as opened once the last option is up: a full bar, and speed measured from there', () {
+    final g = game(companion: {'kind': 'choice', 'timer': 20, 'lockable': true}, extra: {'rankStep': 100, 'byTime': true});
+    var s = run(fixtureState(), [const OpenQuestion(ref), const Reveal(3)], g, 1000);
+    expect(s.answerRound!.openedAtMillis, 1000);
+    // Nothing to lock in while the options are still coming.
+    expect(canLockIn(s, g), isFalse);
+    s = run(s, [const Reveal(1)], g, 30000);
+    expect(s.answerRound!.openedAtMillis, 30000);
+    expect(s.answerRound!.endsAtMillis, 50000);
+    expect(canLockIn(s, g), isTrue);
+    s = run(s, [const SubmitAnswer('red', PlayerAnswer(choice: 0)), const LockAnswer('red')], g, 33500);
+    expect(s.answerRound!.answers['red']!.secondsTaken(s.answerRound!), 3.5);
+  });
+
+  test('every state carries the host clock, for the devices to set theirs by', () {
+    final g = game(companion: {'kind': 'choice'});
+    final s = run(fixtureState(), [const OpenQuestion(ref)], g, 7000);
+    expect(s.clockMillis, 7000);
+    expect(SessionState.fromJson(s.toJson()).clockMillis, 7000);
+    expect(PublicView(publicView(s, g)).hostMillis, 7000);
   });
 }

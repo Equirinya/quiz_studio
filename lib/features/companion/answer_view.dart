@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:quiz_show/core/host_clock.dart';
+
 import 'package:quiz_show/features/companion/connections.dart';
 import 'package:quiz_show/features/companion/whiteboard.dart';
 import 'package:quiz_show/game/game.dart';
@@ -108,8 +110,9 @@ class AnswerView extends StatelessWidget {
 /// The time left in an answer round, as a shrinking bar and seconds.
 ///
 /// The deadline is on the host's clock. The presenting device compares it
-/// with its own time ([hostClock] true); any other device counts from the
-/// moment it first saw the round, which is right to within the network delay.
+/// with its own time ([hostClock] true); any other device corrects for how
+/// far its clock is off ([HostClock]), or, before it knows that, counts from
+/// the moment it first saw the round.
 class RoundCountdown extends StatefulWidget {
   const RoundCountdown({super.key, required this.openedAt, required this.endsAt, this.hostClock = false, this.height = 8});
 
@@ -135,7 +138,9 @@ class _RoundCountdownState extends State<RoundCountdown> with SingleTickerProvid
 
   int _measureOffset() {
     final opened = widget.openedAt;
-    if (widget.hostClock || opened == null) return 0;
+    if (widget.hostClock) return 0;
+    if (HostClock.offset case final offset?) return offset;
+    if (opened == null) return 0;
     return _offsets.putIfAbsent(opened, () {
       if (_offsets.length > 20) _offsets.remove(_offsets.keys.first);
       return _now() - opened;
@@ -163,7 +168,9 @@ class _RoundCountdownState extends State<RoundCountdown> with SingleTickerProvid
         animation: _ticker,
         builder: (context, _) {
           final total = widget.openedAt == null ? null : widget.endsAt - widget.openedAt!;
-          final left = (widget.endsAt - (_now() - _offset)).clamp(0, total ?? 1 << 31);
+          // Read every frame: a closer measurement may have come in since.
+          final offset = widget.hostClock ? 0 : (HostClock.offset ?? _offset);
+          final left = (widget.endsAt - (_now() - offset)).clamp(0, total ?? 1 << 31);
           final seconds = (left / 1000).ceil();
           final urgent = seconds <= 5;
           return Row(

@@ -60,6 +60,8 @@ bool canLockIn(SessionState state, GameContent? game) {
   final round = state.answerRound;
   if (round == null || !round.open || !round.spec.lockable) return false;
   final question = state.current == null ? null : game?.question(state.current!);
+  // ABCD still uncovering its options: the time to answer has not begun.
+  if (question != null && _waitsForOptions(question, state.revealed)) return false;
   return question?.ranked == true || round.kind == CompanionKind.connections;
 }
 
@@ -114,6 +116,15 @@ String? feudOpponent(SessionState state) {
 Reduction reduce(SessionState s, Command command, GameContent? game, {int? now, Map<String, PlayedRound> stored = const {}}) {
   var result = _reduce(s, command, game, now: now, stored: stored);
   if (!result.accepted) return result;
+  // Stamped only on a change: an effect alone (a sound) leaves the state be.
+  if (now != null && !identical(result.state, s)) {
+    result = Reduction(
+      result.state.copyWith(clockMillis: now),
+      effects: result.effects,
+      rounds: result.rounds,
+      clearRounds: result.clearRounds,
+    );
+  }
   result = _keepRound(s, command, result, game, now);
   // Starting over: nothing to show for the scores going back to 0.
   if (command is ClearSessionData) return result;
@@ -905,12 +916,17 @@ bool _waitsForOptions(Question question, int revealed) =>
     question.type == QuestionType.abcd && question.answers.isNotEmpty && revealed < question.answers.length;
 
 /// The question's clock and its devices' timer, started now unless running.
+/// The round counts as opened now: its bar starts full, and "by speed"
+/// measures from here.
 SessionState _startClocks(SessionState s, Question question, int? now) {
   final round = s.answerRound;
   final seconds = round?.spec.timerSeconds;
   return s.copyWith(
-    answerRound: round != null && round.open && round.endsAtMillis == null && seconds != null && now != null
-        ? round.copyWith(endsAtMillis: now + seconds * 1000)
+    answerRound: round != null && round.open && now != null
+        ? round.copyWith(
+            openedAtMillis: now,
+            endsAtMillis: round.endsAtMillis == null && seconds != null ? now + seconds * 1000 : _keepTimer,
+          )
         : round,
     timer: s.timer ?? _timerFor(question, now),
   );

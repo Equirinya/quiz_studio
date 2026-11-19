@@ -537,6 +537,12 @@ class _NowPanel extends StatelessWidget {
         // The big screen in small: as it is, and as Next will make it.
         if (!state.waitingForBets) _ScreenPreviews(state: state, game: game!, question: q),
         const SizedBox(height: 8),
+        // The pictures or clip on the big screen: stepping through pictures
+        // shown one after another, and putting them over the whole screen.
+        // Above the items of a Fragenhagel and the like, so it is not
+        // pushed out of sight by a long list.
+        if (q.hasScreenMediaNow(state))
+          _ScreenMediaRow(state: state, question: q, send: send),
         if (q.type == QuestionType.rapidFire) _RapidPanel(state: state, question: q, send: send),
         if (q.type == QuestionType.lastStanding) _StandingPanel(state: state, question: q, send: send),
         // Matching: the solution, as the big screen names the pieces.
@@ -573,10 +579,6 @@ class _NowPanel extends StatelessWidget {
               );
             },
           ),
-        // The pictures or clip on the big screen: stepping through pictures
-        // shown one after another, and putting them over the whole screen.
-        if (q.hasScreenMediaNow(state))
-          _ScreenMediaRow(state: state, question: q, send: send),
         // Put in order: the solution, ticked off as the big screen places it.
         if (q.type == QuestionType.ordering) _OrderingPanel(state: state, question: q),
         if (q.type == QuestionType.topAnswers) _TopAnswersPanel(state: state, question: q, send: send),
@@ -1125,22 +1127,46 @@ class _RapidPanel extends StatefulWidget {
 }
 
 class _RapidPanelState extends State<_RapidPanel> {
-  /// On the item being asked, to keep it in view.
-  final GlobalKey _current = GlobalKey();
+  /// On each item by its index, and on the line above them (-1), to tell
+  /// what is in view.
+  final Map<int, GlobalKey> _items = {};
+  GlobalKey _keyOf(int index) => _items.putIfAbsent(index, GlobalKey.new);
 
   @override
   void didUpdateWidget(_RapidPanel old) {
     super.didUpdateWidget(old);
-    if (old.state.revealed == widget.state.revealed) return;
-    // On to another item: once the panel is scrolled down to the items, it
-    // follows along; at the top it stays put.
+    final was = old.state.revealed;
+    final next = widget.state.revealed;
+    if (was == next) return;
+    // On to another item: the panel follows only when the gamemaster was
+    // watching the item just asked and the next one is not in full view;
+    // anything else they scrolled to stays put.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final item = _current.currentContext;
-      if (!mounted || item == null) return;
-      final position = Scrollable.maybeOf(item)?.position;
-      if (position == null || position.pixels <= 0) return;
-      Scrollable.ensureVisible(item, alignment: 0.3, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      if (!mounted) return;
+      final previous = _keyOf(was < -1 ? -1 : was).currentContext;
+      final item = _items[next]?.currentContext;
+      if (previous == null || item == null) return;
+      if (_inView(previous, fully: false) != true || _inView(item, fully: true) != false) return;
+      Scrollable.ensureVisible(
+        item,
+        alignmentPolicy: next > was ? ScrollPositionAlignmentPolicy.keepVisibleAtEnd : ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     });
+  }
+
+  /// Whether [item] is in its scroll view's visible part, at least partly or
+  /// [fully]; null outside a scroll view.
+  static bool? _inView(BuildContext item, {required bool fully}) {
+    final scrollable = Scrollable.maybeOf(item);
+    final viewport = scrollable?.context.findRenderObject();
+    final box = item.findRenderObject();
+    if (viewport is! RenderBox || box is! RenderBox || !box.attached) return null;
+    final top = box.localToGlobal(Offset.zero, ancestor: viewport).dy;
+    final bottom = top + box.size.height;
+    final height = viewport.size.height;
+    return fully ? top >= -0.5 && bottom <= height + 0.5 : bottom > 0 && top < height;
   }
 
   SessionState get state => widget.state;
@@ -1190,6 +1216,7 @@ class _RapidPanelState extends State<_RapidPanel> {
             ),
           ),
         Text(
+          key: _keyOf(-1),
           state.revealed < 0
               ? context.l10n.rapidIntro
               : state.revealed >= rapid.items.length
@@ -1199,7 +1226,7 @@ class _RapidPanelState extends State<_RapidPanel> {
         ),
         for (final (i, item) in rapid.items.indexed)
           Container(
-            key: i == state.revealed ? _current : null,
+            key: _keyOf(i),
             margin: const EdgeInsets.symmetric(vertical: 3),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(

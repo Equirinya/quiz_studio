@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:quiz_show/core/host_clock.dart';
+
 import 'package:quiz_show/features/session/lan/lan_client.dart';
 import 'package:quiz_show/features/session/lan/lan_discovery.dart';
 import 'package:quiz_show/features/session/session_links.dart';
@@ -181,12 +183,14 @@ class SessionClient implements CommandSink {
   }
 
   void _onState(SessionState next) {
+    HostClock.sample(next.clockMillis);
     if (_disposed || next.seq < _seq) return;
     _seq = next.seq;
     state.value = next;
   }
 
   void _onView(PublicView next) {
+    HostClock.sample(next.hostMillis);
     if (_disposed || next.seq < _seq) return;
     _seq = next.seq;
     view.value = next;

@@ -200,6 +200,7 @@ const Object _unset = Object();
 class SessionState {
   const SessionState({
     this.seq = 0,
+    this.clockMillis,
     this.gameId,
     this.teams = const [],
     this.phase = Phase.overview,
@@ -236,6 +237,10 @@ class SessionState {
 
   /// Incremented on every accepted command; lets a client drop stale updates.
   final int seq;
+
+  /// The host's clock when this state was made. Other devices compare it
+  /// with their own on arrival, so every countdown ends at the same moment.
+  final int? clockMillis;
   final String? gameId;
   final List<Team> teams;
   final Phase phase;
@@ -360,6 +365,7 @@ class SessionState {
 
   SessionState copyWith({
     int? seq,
+    int? clockMillis,
     Object? gameId = _unset,
     List<Team>? teams,
     Phase? phase,
@@ -394,6 +400,7 @@ class SessionState {
     Map<String, String>? notes,
   }) => SessionState(
     seq: seq ?? this.seq,
+    clockMillis: clockMillis ?? this.clockMillis,
     gameId: identical(gameId, _unset) ? this.gameId : gameId as String?,
     teams: teams ?? this.teams,
     phase: phase ?? this.phase,
@@ -430,6 +437,7 @@ class SessionState {
 
   Map<String, dynamic> toJson() => {
     'seq': seq,
+    'at': ?clockMillis,
     'gameId': gameId,
     'teams': [for (final team in teams) team.toJson()],
     'phase': phase.name,
@@ -466,6 +474,7 @@ class SessionState {
 
   factory SessionState.fromJson(Map<String, dynamic> json) => SessionState(
     seq: (json['seq'] as num?)?.toInt() ?? 0,
+    clockMillis: (json['at'] as num?)?.toInt(),
     gameId: json['gameId'] as String?,
     teams: [for (final team in json['teams'] as List? ?? const []) Team.fromJson(Map<String, dynamic>.from(team as Map))],
     phase: Phase.values.byName(json['phase'] as String? ?? Phase.overview.name),

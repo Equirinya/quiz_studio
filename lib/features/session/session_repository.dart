@@ -566,7 +566,9 @@ class FirestoreHostLink {
         final written = <String, String>{};
         for (final team in state.teams) {
           final view = host.publicStateFor(team.id);
-          final encoded = jsonEncode(view);
+          // The host's time changes with every state; on its own it is no
+          // reason to write a team's copy again.
+          final encoded = jsonEncode({...view}..remove('at'));
           written[team.id] = encoded;
           if (_teamViews[team.id] != encoded) batch.set(_ref.collection('public').doc('team_${team.id}'), view);
         }

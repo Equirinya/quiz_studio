@@ -28,6 +28,7 @@ Map<String, dynamic> publicView(SessionState state, GameContent? game, {String? 
   final seed = state.current?.key ?? '';
   return {
     'seq': state.seq,
+    'at': ?state.clockMillis,
     'minAppVersion': kMinCompanionVersion,
     'phase': state.phase.name,
     'teams': [for (final team in state.teams) team.toJson()],
@@ -285,6 +286,9 @@ class PublicView {
   bool get answersOpen => _round?['open'] == true;
 
   /// Host clock; see `AnswerRound`.
+  /// The host's clock when this view was made; see [SessionState.clockMillis].
+  int? get hostMillis => (json['at'] as num?)?.toInt();
+
   int? get answersOpenedAt => (_round?['openedAt'] as num?)?.toInt();
 
   int? get answersEndAt => (_round?['endsAt'] as num?)?.toInt();
