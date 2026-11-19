@@ -1,0 +1,72 @@
+###necessary github action repository variables:
+#ANDROID_BUNDLE_ID   de.equirinya.quizStudio
+
+###necessary github action repository secrets:
+#GOOGLE_PLAY_SERVICE_ACCOUNT_JSON  see https://github.com/marketplace/actions/upload-android-release-to-play-store
+
+# Sends the app bundle of the newest GitHub release that has one to Google
+# Play, without building anything: for when the build went through but the
+# upload did not (e.g. a missing permission in the Play Console). Drafts
+# count too, since "Android Build and Deploy" makes its releases as drafts.
+
+name: Android Upload Latest Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Google Play track (production = the public release)'
+        type: choice
+        options: [internal, alpha, beta, production]
+        default: internal
+      status:
+        description: 'Release status (draft until the app is published once in the Play Console; completed rolls it out)'
+        type: choice
+        options: [draft, completed]
+        default: draft
+
+jobs:
+  android_upload:
+    runs-on: ubuntu-latest
+    permissions:
+      # Write access is what lets the token see draft releases.
+      contents: write
+
+    steps:
+      # Step 1: Find the newest release with an .aab and download it.
+      - name: Download App Bundle of the latest release
+        id: bundle
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p bundle
+          for tag in $(gh release list --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[].tagName'); do
+            aab=$(gh release view "$tag" --json assets --jq '[.assets[].name | select(endswith(".aab"))][0] // empty')
+            if [ -n "$aab" ]; then
+              echo "Using $aab from release $tag"
+              gh release download "$tag" --pattern "$aab" --dir bundle --clobber
+              echo "file=bundle/$aab" >> "$GITHUB_OUTPUT"
+              echo "tag=$tag" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "::error::No release has an .aab attached"
+          exit 1
+
+      # Step 2: Upload AAB to Google Play, to the track chosen in Run workflow.
+      # The service account needs access to this app in the Play Console
+      # ("Release apps to testing tracks", plus "Release to production" for
+      # production); otherwise the API answers "The caller does not have
+      # permission". Play only accepts draft releases while the app itself is
+      # still a draft; choose completed once the app is published.
+      - name: Upload to Google Play
+        env:
+          ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ vars.ANDROID_BUNDLE_ID }}
+          releaseFiles: ${{ steps.bundle.outputs.file }}
+          tracks: ${{ inputs.track }}
+          status: ${{ inputs.status }}
