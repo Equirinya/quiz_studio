@@ -164,10 +164,13 @@ jobs:
         run: |
           envsubst < ios/Runner/ExportOptions-Template.plist > ios/Runner/ExportOptions.plist
 
-      # Step 9: Build IPA (can add --verbose for more logging)
+      # Step 9: Build IPA. Verbose: without it Flutter prints nothing while
+      # Xcode runs, so a build that hangs until the timeout shows no trace of
+      # where it stopped.
       - name: Build IPA
         run: |
           flutter build ipa \
+            --verbose \
             --release \
             --build-number=$BUILD_NUMBER \
             --build-name=$VERSION \
