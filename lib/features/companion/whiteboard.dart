@@ -330,6 +330,25 @@ class _PencilDrawing {
   static const _channel = MethodChannel('quiz_show/pencil');
   static int _boards = 0;
 
+  /// Boards on screen that switch between pen and eraser when the Pencil
+  /// is double-tapped (unless the iPad's Pencil settings say otherwise).
+  static final Set<VoidCallback> _switchTool = {};
+  static bool _listening = false;
+
+  static void listen(VoidCallback onSwitch) {
+    _switchTool.add(onSwitch);
+    if (!_applies || _listening) return;
+    _listening = true;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method != 'switchTool') return;
+      for (final callback in [..._switchTool]) {
+        callback();
+      }
+    });
+  }
+
+  static void stopListening(VoidCallback onSwitch) => _switchTool.remove(onSwitch);
+
   static bool get _applies => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   static void _set(bool drawing) {
@@ -351,12 +370,22 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
   void initState() {
     super.initState();
     _PencilDrawing.add();
+    _PencilDrawing.listen(_switchTool);
   }
 
   @override
   void dispose() {
+    _PencilDrawing.stopListening(_switchTool);
     _PencilDrawing.remove();
     super.dispose();
+  }
+
+  /// The eraser is picked on the board, or by double-tapping the Pencil:
+  /// then every pen and finger erases, for pens without an eraser end.
+  bool _eraserTool = false;
+
+  void _switchTool() {
+    if (mounted && widget.enabled) setState(() => _eraserTool = !_eraserTool);
   }
 
   late final List<Stroke> _strokes = decodeDrawing(widget.initial);
@@ -412,7 +441,7 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
     if (e.kind == PointerDeviceKind.mouse && e.buttons & (kPrimaryMouseButton | kSecondaryMouseButton) == 0) return;
     _pointer = e.pointer;
     _pointerIsPen = pen;
-    _erasing = _wantsEraser(e);
+    _erasing = _eraserTool || _wantsEraser(e);
     if (_erasing) {
       _erase(e.localPosition, size);
     } else {
@@ -528,6 +557,17 @@ class _WhiteboardPadState extends State<WhiteboardPad> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            IconButton(
+                              key: const ValueKey('whiteboardEraser'),
+                              tooltip: _eraserTool ? context.l10n.pen : context.l10n.eraser,
+                              isSelected: _eraserTool,
+                              icon: const Icon(Icons.auto_fix_normal),
+                              color: Colors.black87,
+                              style: IconButton.styleFrom(
+                                backgroundColor: _eraserTool ? Colors.black.withValues(alpha: 0.14) : null,
+                              ),
+                              onPressed: () => setState(() => _eraserTool = !_eraserTool),
+                            ),
                             IconButton(
                               tooltip: context.l10n.undo,
                               icon: const Icon(Icons.undo),

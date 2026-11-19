@@ -57,6 +57,24 @@ void main() {
     expect(decodeDrawing(drawing), hasLength(1));
   });
 
+  testWidgets('with the eraser picked, a pen without an eraser end erases', (tester) async {
+    final board = await pumpPad(tester);
+    await stroke(tester, board.center, PointerDeviceKind.stylus);
+    await stroke(tester, board.center + const Offset(0, 80), PointerDeviceKind.stylus);
+    expect(decodeDrawing(drawing), hasLength(2));
+
+    await tester.tap(find.byKey(const ValueKey('whiteboardEraser')));
+    await tester.pump();
+    await stroke(tester, board.center + const Offset(0, 80), PointerDeviceKind.stylus);
+    expect(decodeDrawing(drawing), hasLength(1));
+
+    // Back to the pen: it draws again.
+    await tester.tap(find.byKey(const ValueKey('whiteboardEraser')));
+    await tester.pump();
+    await stroke(tester, board.center + const Offset(0, 80), PointerDeviceKind.stylus);
+    expect(decodeDrawing(drawing), hasLength(2));
+  });
+
   testWidgets("the pen's eraser end removes the strokes it touches", (tester) async {
     final board = await pumpPad(tester);
     await stroke(tester, board.center - const Offset(0, 60), PointerDeviceKind.stylus);

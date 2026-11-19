@@ -6205,6 +6205,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Every team\'s points go back to 0, no question counts as played, and the answers kept from played questions are deleted. The teams stay as they are.'**
   String get clearSessionDataText;
+
+  /// No description provided for @eraser.
+  ///
+  /// In en, this message translates to:
+  /// **'Eraser'**
+  String get eraser;
+
+  /// No description provided for @pen.
+  ///
+  /// In en, this message translates to:
+  /// **'Pen'**
+  String get pen;
 }
 
 class _AppLocalizationsDelegate

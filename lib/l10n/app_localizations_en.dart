@@ -3792,4 +3792,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get clearSessionDataText =>
       'Every team\'s points go back to 0, no question counts as played, and the answers kept from played questions are deleted. The teams stay as they are.';
+
+  @override
+  String get eraser => 'Eraser';
+
+  @override
+  String get pen => 'Pen';
 }

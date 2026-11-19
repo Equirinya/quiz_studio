@@ -1017,5 +1017,7 @@
   "questionNoLongerInGame": "Nicht mehr im Spiel",
   "notRated": "nicht bewertet",
   "clearSessionData": "Alle Daten löschen",
-  "clearSessionDataText": "Die Punkte aller Teams gehen auf 0 zurück, keine Frage gilt mehr als gespielt und die gespeicherten Antworten der gespielten Fragen werden gelöscht. Die Teams bleiben, wie sie sind."
+  "clearSessionDataText": "Die Punkte aller Teams gehen auf 0 zurück, keine Frage gilt mehr als gespielt und die gespeicherten Antworten der gespielten Fragen werden gelöscht. Die Teams bleiben, wie sie sind.",
+  "eraser": "Radierer",
+  "pen": "Stift"
 }

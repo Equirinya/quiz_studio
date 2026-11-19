@@ -2058,5 +2058,7 @@
   "questionNoLongerInGame": "No longer in the game",
   "notRated": "not rated",
   "clearSessionData": "Clear all data",
-  "clearSessionDataText": "Every team's points go back to 0, no question counts as played, and the answers kept from played questions are deleted. The teams stay as they are."
+  "clearSessionDataText": "Every team's points go back to 0, no question counts as played, and the answers kept from played questions are deleted. The teams stay as they are.",
+  "eraser": "Eraser",
+  "pen": "Pen"
 }

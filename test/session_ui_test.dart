@@ -103,6 +103,25 @@ void main() {
     expect(inPresenter(find.text('Paris')), findsNothing);
   });
 
+  testWidgets('answers panel: everyone can be let back in as soon as one team locked in', (tester) async {
+    await pumpBoth(tester);
+    host
+      ..dispatch(const OpenQuestion(race))
+      ..dispatch(const SubmitAnswer('red', PlayerAnswer(drawing: '1,1 2,2')));
+    await tester.pump();
+    await tap(tester, tab('Answers'));
+    expect(inSheet(find.widgetWithText(FilledButton, 'Lock all')), findsOneWidget);
+    expect(inSheet(find.widgetWithText(FilledButton, 'Let them edit again')), findsNothing, reason: 'nobody locked in yet');
+
+    host.dispatch(const LockAnswer('red'));
+    await tester.pump();
+    expect(host.state.answerRound!.open, isTrue, reason: 'blue still answers');
+    expect(inSheet(find.widgetWithText(FilledButton, 'Lock all')), findsOneWidget);
+    await tap(tester, inSheet(find.widgetWithText(FilledButton, 'Let them edit again')));
+    expect(host.state.answerRound!.answers['red']!.locked, isFalse);
+    expect(host.state.answerRound!.open, isTrue);
+  });
+
   testWidgets('the pad never moves; buttons switch off instead', (tester) async {
     await pumpBoth(tester);
     const labels = ['Right', 'Wrong', 'Close', 'Hide', 'Reveal', 'Play', 'Reopen'];

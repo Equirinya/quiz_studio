@@ -2878,9 +2878,9 @@ class _AnswersSheetState extends State<_AnswersSheet> {
             ),
             Wrap(
               children: [
-                if (round.open)
-                  action(l10n.lockAll, Icons.lock_outline, () => send(const LockAnswers()))
-                else
+                if (round.open) action(l10n.lockAll, Icons.lock_outline, () => send(const LockAnswers())),
+                // Also while others still answer, once one team locked in.
+                if (!round.open || round.answers.values.any((answer) => answer.locked))
                   action(l10n.letThemEditAgain, Icons.lock_open, () => send(const UnlockAnswers())),
                 action(
                   l10n.showAll,
