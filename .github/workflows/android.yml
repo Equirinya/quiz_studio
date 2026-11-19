@@ -18,12 +18,12 @@ on:
         description: 'Google Play track (production = the public release)'
         type: choice
         options: [internal, alpha, beta, production]
-        default: internal
+        default: production
       status:
         description: 'Release status (draft until the app is published once in the Play Console; completed rolls it out)'
         type: choice
         options: [draft, completed]
-        default: draft
+        default: completed
 
 jobs:
   android_deployment:
