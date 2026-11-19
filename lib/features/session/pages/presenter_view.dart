@@ -135,16 +135,20 @@ class PresenterView extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final unit = constraints.maxHeight / 100;
+            final side = EdgeInsets.symmetric(horizontal: unit * 2);
+            // A map scrolls sideways: it runs to the screen's edges, or its
+            // bubbles would be cut off a little way in from them.
+            final map = question == null && !state.waitingForBets && group != null && !group.isInfo && group.type == BoardType.map;
             return Padding(
-              padding: EdgeInsets.all(unit * 2),
+              padding: EdgeInsets.symmetric(vertical: unit * 2),
               child: Column(
                 children: [
-                  _Scores(state: state, unit: unit, question: question),
+                  Padding(padding: side, child: _Scores(state: state, unit: unit, question: question)),
                   // The question's own clock, when the devices have none. An
                   // information screen shows its own, large.
                   if (state.timer case final timer? when timer.running && state.answerRound == null && state.current != null)
                     Padding(
-                      padding: EdgeInsets.only(top: unit * 1.5),
+                      padding: EdgeInsets.only(top: unit * 1.5, left: unit * 2, right: unit * 2),
                       child: RoundCountdown(
                         openedAt: timer.openedAtMillis,
                         endsAt: timer.endsAtMillis,
@@ -154,7 +158,9 @@ class PresenterView extends StatelessWidget {
                     ),
                   SizedBox(height: unit * 2),
                   Expanded(
-                    child: question != null && state.waitingForBets
+                    child: Padding(
+                      padding: map ? EdgeInsets.zero : side,
+                      child: question != null && state.waitingForBets
                         ? BettingDisplay(
                             state: state,
                             category: game.category(state.current!.categoryId)?.name,
@@ -199,6 +205,7 @@ class PresenterView extends StatelessWidget {
                                             },
                                           )
                                         : _BoardGrid(group: group, state: state, unit: unit),
+                    ),
                   ),
                 ],
               ),

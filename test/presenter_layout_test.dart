@@ -30,6 +30,36 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
   }
 
+  testWidgets('a map board runs to the edges of the screen; the scores keep their margin', (tester) async {
+    tester.view
+      ..physicalSize = const Size(1600, 900)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final game = GameContent.assemble(
+      id: 'game',
+      game: const {'name': 'Map'},
+      groups: const {'m': {'name': 'Map', 'categoryGroupType': 'category_map', 'categoryGroupIndex': 0}},
+      categories: {
+        for (var c = 0; c < 8; c++) 'c$c': {'name': 'Category $c', 'categoryGroup': 'm', 'categoryIndex': c},
+      },
+      questions: {
+        for (var c = 0; c < 8; c++) 'c$c': {'q': {'type': 'free', 'question': 'Q', 'pointsPlus': 100}},
+      },
+    );
+    host = SessionHost(initial: fixtureState(), game: game);
+    addTearDown(host.dispose);
+    host.dispatch(const SelectGroup('m'));
+    final connection = SessionConnection.local(host, game: game);
+    addTearDown(connection.dispose);
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: PresenterView(connection: connection))));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final board = tester.getRect(find.byType(Scrollable).first);
+    expect(board.left, 0);
+    expect(board.right, 1600);
+    expect(tester.getRect(find.text('Red')).left, greaterThan(9));
+  });
+
   testWidgets('ABCD keeps its answers on screen while the teams pick on their devices', (tester) async {
     await pumpScreen(tester, (host) {
       host
