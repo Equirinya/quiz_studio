@@ -248,8 +248,8 @@ class _Scores extends StatelessWidget {
     // More teams than fit on one line: narrower, flatter boxes, so ten
     // fit next to each other on a wide screen and the rows take less of it.
     final count = state.teams.length;
-    final compact = count > ((constraints.maxWidth + unit) / (unit * 23)).floor();
-    final width = unit * (compact ? 16 : 22);
+    final compact = count > ((constraints.maxWidth + unit) / (unit * 21)).floor();
+    final width = unit * (compact ? 14.5 : 20);
     // Even rows: sixteen teams are two rows of eight, not seven, seven and two.
     final fits = max(1, ((constraints.maxWidth + unit) / (width + unit)).floor());
     final perRow = (count / (count / fits).ceil()).ceil();
@@ -292,7 +292,8 @@ class _Scores extends StatelessWidget {
                       team.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: unit * 2.2, color: text),
+                      // Tight lines: the points close under the name.
+                      style: TextStyle(fontSize: unit * 2.2, height: 1.1, color: text),
                     ),
                     // Never on two lines: smaller, if a score gets long.
                     FittedBox(
@@ -301,7 +302,7 @@ class _Scores extends StatelessWidget {
                         team.points.toString(),
                         maxLines: 1,
                         softWrap: false,
-                        style: TextStyle(fontSize: unit * (compact ? 4 : 4.5), fontWeight: FontWeight.w600, color: text),
+                        style: TextStyle(fontSize: unit * (compact ? 4 : 4.5), height: 1.05, fontWeight: FontWeight.w600, color: text),
                       ),
                     ),
                     if (bets != null)
