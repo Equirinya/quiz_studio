@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:quiz_show/core/host_clock.dart';
@@ -155,9 +157,16 @@ class RoundCountdown extends StatefulWidget {
   State<RoundCountdown> createState() => _RoundCountdownState();
 }
 
-class _RoundCountdownState extends State<RoundCountdown> with SingleTickerProviderStateMixin {
-  late final AnimationController _ticker = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+class _RoundCountdownState extends State<RoundCountdown> {
+  /// Wakes the countdown when something on it will look different: the
+  /// seconds, or the bar a pixel shorter. Not every frame: on the big
+  /// screen each frame is the whole window drawn again, and a clock running
+  /// at the display's rate kept the GPU (and its fans) busy for nothing.
+  Timer? _tick;
   late int _offset = _measureOffset();
+
+  /// Never more often than this, however long the bar.
+  static const _fastest = 40;
 
   static int _now() => DateTime.now().millisecondsSinceEpoch;
 
@@ -185,22 +194,37 @@ class _RoundCountdownState extends State<RoundCountdown> with SingleTickerProvid
 
   @override
   void dispose() {
-    _ticker.dispose();
+    _tick?.cancel();
     super.dispose();
+  }
+
+  /// The next redraw: when the seconds change, or sooner when the bar of
+  /// [width] pixels loses one before that.
+  void _schedule(int left, int? total, double width) {
+    _tick?.cancel();
+    if (left <= 0) return;
+    var wait = left % 1000 == 0 ? 1000 : left % 1000;
+    if (total != null && total > 0 && width > 0) {
+      final perPixel = (total / width).ceil();
+      if (perPixel < wait) wait = perPixel;
+    }
+    _tick = Timer(Duration(milliseconds: wait < _fastest ? _fastest : wait), () {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // Redrawn every frame; in a layer of its own, so nothing next to it is.
+    // In a layer of its own, so nothing next to it is redrawn with it.
     return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _ticker,
-        builder: (context, _) {
+      child: LayoutBuilder(
+        builder: (context, box) {
           final total = widget.openedAt == null ? null : widget.endsAt - widget.openedAt!;
-          // Read every frame: a closer measurement may have come in since.
+          // Read on every redraw: a closer measurement may have come in since.
           final offset = widget.hostClock ? 0 : (HostClock.offset ?? _offset);
           final left = (widget.endsAt - (_now() - offset)).clamp(0, total ?? 1 << 31);
+          _schedule(left, total, box.maxWidth.isFinite ? box.maxWidth : 1000);
           final seconds = (left / 1000).ceil();
           final urgent = seconds <= 5;
           return Row(
