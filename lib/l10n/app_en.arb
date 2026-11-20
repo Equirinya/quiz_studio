@@ -1942,7 +1942,7 @@
   "@placeN": {"placeholders": {"place": {"type": "String"}}},
   "statusRapidIntro": "Question open · read it out first",
   "pickSeveral": "Teams can pick several",
-  "pickSeveralText": "For questions with more than one right answer: right only when a team picks exactly the right ones",
+  "pickSeveralText": "For questions with more than one right answer",
   "explainOrdering": "Put in order: entries such as inventions, films or cities that every team sorts on its device, e.g. by year. The big screen shows them mixed up, then puts them in place one by one.",
   "orderingEditorText": "Write the entries in the right order, first to last; drag them to change it. Each can be a text, a picture or both, plus what it's sorted by (a year, a size), which appears as the entry is put in place.",
   "orderEntry": "Entry",
@@ -2064,5 +2064,17 @@
   "effectsVolume": "Effects volume",
   "mediaVolume": "Volume",
   "soundControls": "Sound controls",
-  "stopEffect": "Tap again to stop"
+  "stopEffect": "Tap again to stop",
+  "autoRate": "Rate by itself",
+  "autoRateText": "Final answers are rated right or wrong at once, as if you had tapped it. You can still change any rating.",
+  "autoRateTopText": "Typed answers are matched with the list as soon as they are final, typos and all. You can still change what was found.",
+  "multipleScoringLabel": "With several right options",
+  "multipleScoring": "{rule, select, any{At least one right one} partial{Points per right one} other{All right ones}}",
+  "@multipleScoring": {"placeholders": {"rule": {"type": "String"}}},
+  "multipleScoringText": "{rule, select, any{Right with at least one right option and no wrong one.} partial{A share of the points for every right option, less one for every wrong one.} other{Right only with exactly the right options, no more and no fewer.}}",
+  "@multipleScoringText": {"placeholders": {"rule": {"type": "String"}}},
+  "listSolutions": "Right answers",
+  "listSolutionsText": "One per line. While you rate, the lines of the teams that match one are marked, small typos too. No points are given by themselves.",
+  "matchesAnswer": "matches {answer}",
+  "@matchesAnswer": {"placeholders": {"answer": {"type": "String"}}}
 }

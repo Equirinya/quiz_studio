@@ -5675,7 +5675,7 @@ abstract class AppLocalizations {
   /// No description provided for @pickSeveralText.
   ///
   /// In en, this message translates to:
-  /// **'For questions with more than one right answer: right only when a team picks exactly the right ones'**
+  /// **'For questions with more than one right answer'**
   String get pickSeveralText;
 
   /// No description provided for @explainOrdering.
@@ -6241,6 +6241,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap again to stop'**
   String get stopEffect;
+
+  /// No description provided for @autoRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate by itself'**
+  String get autoRate;
+
+  /// No description provided for @autoRateText.
+  ///
+  /// In en, this message translates to:
+  /// **'Final answers are rated right or wrong at once, as if you had tapped it. You can still change any rating.'**
+  String get autoRateText;
+
+  /// No description provided for @autoRateTopText.
+  ///
+  /// In en, this message translates to:
+  /// **'Typed answers are matched with the list as soon as they are final, typos and all. You can still change what was found.'**
+  String get autoRateTopText;
+
+  /// No description provided for @multipleScoringLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'With several right options'**
+  String get multipleScoringLabel;
+
+  /// No description provided for @multipleScoring.
+  ///
+  /// In en, this message translates to:
+  /// **'{rule, select, any{At least one right one} partial{Points per right one} other{All right ones}}'**
+  String multipleScoring(String rule);
+
+  /// No description provided for @multipleScoringText.
+  ///
+  /// In en, this message translates to:
+  /// **'{rule, select, any{Right with at least one right option and no wrong one.} partial{A share of the points for every right option, less one for every wrong one.} other{Right only with exactly the right options, no more and no fewer.}}'**
+  String multipleScoringText(String rule);
+
+  /// No description provided for @listSolutions.
+  ///
+  /// In en, this message translates to:
+  /// **'Right answers'**
+  String get listSolutions;
+
+  /// No description provided for @listSolutionsText.
+  ///
+  /// In en, this message translates to:
+  /// **'One per line. While you rate, the lines of the teams that match one are marked, small typos too. No points are given by themselves.'**
+  String get listSolutionsText;
+
+  /// No description provided for @matchesAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'matches {answer}'**
+  String matchesAnswer(String answer);
 }
 
 class _AppLocalizationsDelegate

@@ -1254,6 +1254,9 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
   late int? _timer = _companion?.timerSeconds;
   late bool _lock = _companion?.lockable ?? true;
 
+  /// Typed in: matched with the list by itself, unless switched off.
+  late AutoRating _autoRating = widget.question.autoRating;
+
   Map<String, dynamic>? get _storedCompanion {
     final stored = widget.question.data['companion'];
     return stored is Map ? Map<String, dynamic>.from(stored) : null;
@@ -1270,6 +1273,7 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
   void _write() => widget.save({
         'topAnswers': TopAnswers(mode: _mode, items: [for (final row in _rows) row.item]).toMap(),
         'companion': {'timer': _timer, 'lock': _lock},
+        'autoRating': _autoRating.toMap(),
       });
 
   void _change(VoidCallback change) {
@@ -1303,6 +1307,14 @@ class _TopAnswersEditorState extends State<_TopAnswersEditor> {
           FieldGrid(minWidth: 170, children: [TimerDropdown(seconds: _timer, onChanged: (seconds) => _change(() => _timer = seconds))]),
           LockInSwitch(value: _lock, onChanged: (on) => _change(() => _lock = on)),
         ],
+        if (_mode == TopAnswersMode.typed)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(context.l10n.autoRate),
+            subtitle: Text(context.l10n.autoRateTopText),
+            value: _autoRating.on,
+            onChanged: (on) => _change(() => _autoRating = _autoRating.copyWith(on: on)),
+          ),
         const SizedBox(height: 8),
         Text(
           switch (_mode) {

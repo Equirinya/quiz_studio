@@ -6,6 +6,7 @@
 /// firebase/firestore.rules.
 library;
 
+import 'auto_rating.dart';
 import 'cards.dart';
 import 'companion.dart';
 import 'matching.dart';
@@ -422,6 +423,10 @@ class Question {
 
   /// Free questions only: no buzzing, e.g. for estimation questions.
   final bool noBuzzer;
+
+  /// Whether, and how, answers on the devices are rated by themselves; see
+  /// [AutoRating]. Stored as `autoRating`.
+  AutoRating get autoRating => AutoRating.fromMap(data['autoRating']);
 
   /// The teams' devices show nothing, not even a buzzer: only a buzzer box
   /// can buzz.

@@ -3157,13 +3157,19 @@ class _AnswersPanel extends StatelessWidget {
               final answer = round.answers[team.id];
               final shown = round.revealed.contains(team.id);
               final verdict = state.results.verdicts[team.id];
-              final partial = partialScore(spec, answer);
+              final partial = shareOf(question, spec, answer);
               final place = question.byCloseness ? closenessPlaces(state)[team.id] : null;
               final suggestion = connections || top != null || partial != null || question.byCloseness
                   ? null
-                  : autoVerdict(spec, answer, choiceCorrect: question.answersCorrect) ?? (closest.contains(team.id) ? true : null);
+                  : verdictOf(question, spec, answer) ?? (closest.contains(team.id) ? true : null);
               final found = foundBy(round, team.id);
               final suggested = top == null ? const <int?>[] : suggestionsFor(question, answer);
+              // Beside each line of a list: the answer it was matched with,
+              // on the top answers list or among the right answers set in
+              // the editor, so it is plain why it was rated as it was.
+              final matches = top != null
+                  ? [for (final i in suggested) i == null ? null : "${i + 1}. ${top.items[i].answer}"]
+                  : [for (final i in listMatches(spec, answer)) i == null ? null : spec.solutions[i]];
               final took = answer?.secondsTaken(round);
               final half = (pointsIfRight(state, question, team.id) / 2).round();
               return Card(
@@ -3206,12 +3212,6 @@ class _AnswersPanel extends StatelessWidget {
                               style: theme.textTheme.labelLarge,
                             ),
                           ),
-                          if (question.ranked && state.results.verdicts[team.id] != false)
-                            _PlaceButton(state: state, question: question, teamId: team.id, send: send),
-                          _PointsChip(state: state, question: question, teamId: team.id),
-                          const SizedBox(width: 8),
-                          // What rating automatically would make of it.
-                          if (verdict == null && place != null)
                           if (state.betting?.bets[team.id] case final bet? when question.amountBet != null)
                             Padding(
                               key: ValueKey('bet-${team.id}'),
@@ -3228,6 +3228,12 @@ class _AnswersPanel extends StatelessWidget {
                               ),
                             ),
                           const Spacer(),
+                          if (question.ranked && state.results.verdicts[team.id] != false)
+                            _PlaceButton(state: state, question: question, teamId: team.id, send: send),
+                          _PointsChip(state: state, question: question, teamId: team.id),
+                          const SizedBox(width: 8),
+                          // What rating automatically would make of it.
+                          if (verdict == null && place != null)
                             Text(context.l10n.placeN(context.l10n.ordinal(place + 1)), style: theme.textTheme.labelMedium?.copyWith(color: scheme.outline)),
                           if (verdict == null && (partial != null || suggestion != null))
                             Text(
@@ -3259,7 +3265,13 @@ class _AnswersPanel extends StatelessWidget {
                                     ? AnswerView(spec: spec, answer: answer, fontSize: 16, backgroundImage: backgroundImage)
                                     : SingleChildScrollView(
                                         primary: false,
-                                        child: AnswerView(spec: spec, answer: answer, fontSize: 16, backgroundImage: backgroundImage),
+                                        child: AnswerView(
+                                          spec: spec,
+                                          answer: answer,
+                                          fontSize: 16,
+                                          backgroundImage: backgroundImage,
+                                          matches: matches,
+                                        ),
                                       ),
                               ),
                             ),

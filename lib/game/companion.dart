@@ -125,6 +125,8 @@ List<String> _strings(Object? v) => [
 ///   mistakes:    connections: wrong guesses a team may make (default 3)
 ///   multiple:    choice: teams may pick several answers (all the right
 ///                ones count); absent = one
+///   solutions:   list: right answers, for the gamemaster: the controller
+///                marks the lines that match one; never sent to the devices
 ///   groups:      connections: the four groups, easiest first. On the
 ///                question they are stored as `connections`; see
 ///                [Question.companion].
@@ -161,6 +163,7 @@ class CompanionSpec {
     this.targetImages = const [],
     this.multiple = false,
     this.orderScoring = OrderScoring.places,
+    this.solutions = const [],
   });
 
   final CompanionKind kind;
@@ -187,6 +190,10 @@ class CompanionSpec {
 
   /// Order: how a team's order is scored.
   final OrderScoring orderScoring;
+
+  /// Answer list: right answers, a help for rating. Lines matching one are
+  /// marked for the gamemaster, nothing is rated by itself.
+  final List<String> solutions;
 
   /// Every picture of this screen, for sending to the devices.
   List<String> get pictures => {...optionImages.nonNulls, ...targetImages.nonNulls}.toList();
@@ -222,6 +229,7 @@ class CompanionSpec {
       targetImages: _images(stored['targetImages']),
       multiple: kind == CompanionKind.choice && stored['multiple'] == true,
       orderScoring: OrderScoring.fromName(stored['scoring']),
+      solutions: kind == CompanionKind.list ? [for (final text in _strings(stored['solutions'])) if (text.trim().isNotEmpty) text] : const [],
     );
   }
 
@@ -250,6 +258,7 @@ class CompanionSpec {
         if (targetImages.any((name) => name != null)) 'targetImages': targetImages,
         if (multiple) 'multiple': true,
         if (kind == CompanionKind.order && orderScoring != OrderScoring.places) 'scoring': orderScoring.name,
+        if (kind == CompanionKind.list && solutions.isNotEmpty) 'solutions': solutions,
       };
 
   /// The same screen with the groups of a Connections question.
@@ -287,6 +296,7 @@ class CompanionSpec {
     targetImages: targetImages,
     multiple: multiple,
         orderScoring: orderScoring,
+    solutions: solutions,
   );
 
   CompanionSpec withOptions(List<String> options) => CompanionSpec(
@@ -310,6 +320,7 @@ class CompanionSpec {
         targetImages: targetImages,
         multiple: multiple,
         orderScoring: orderScoring,
+        solutions: solutions,
       );
 
   /// The slider's range, with defaults where the editor left a gap.

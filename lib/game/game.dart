@@ -2,6 +2,7 @@
 /// Nothing in here may import Flutter or Firebase.
 library;
 
+export 'auto_rating.dart';
 export 'bots.dart';
 export 'cards.dart';
 export 'commands.dart';

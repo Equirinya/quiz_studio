@@ -929,7 +929,7 @@
   "placeN": "{place} Platz",
   "statusRapidIntro": "Frage offen · erst vorlesen",
   "pickSeveral": "Mehrfachauswahl",
-  "pickSeveralText": "Für Fragen mit mehreren richtigen Antworten: Richtig ist nur, wer genau die richtigen wählt",
+  "pickSeveralText": "Für Fragen mit mehreren richtigen Antworten",
   "explainOrdering": "Sortieren: Einträge wie Erfindungen, Filme oder Städte, die jedes Team auf seinem Gerät ordnet, z. B. nach Jahr. Der große Bildschirm zeigt sie gemischt und setzt sie dann einzeln an ihren Platz.",
   "orderingEditorText": "Schreib die Einträge in der richtigen Reihenfolge, vom ersten bis zum letzten; zum Umsortieren ziehen. Jeder kann Text, Bild oder beides sein, dazu das, wonach sortiert wird (ein Jahr, eine Größe). Das erscheint, sobald der Eintrag an seinem Platz landet.",
   "orderEntry": "Eintrag",
@@ -1023,5 +1023,14 @@
   "effectsVolume": "Lautstärke der Effekte",
   "mediaVolume": "Lautstärke",
   "soundControls": "Ton steuern",
-  "stopEffect": "Nochmal tippen zum Stoppen"
+  "stopEffect": "Nochmal tippen zum Stoppen",
+  "autoRate": "Selbst bewerten",
+  "autoRateText": "Fertige Antworten werden sofort richtig oder falsch bewertet, als hättest du getippt. Jede Bewertung lässt sich noch ändern.",
+  "autoRateTopText": "Getippte Antworten werden mit der Liste abgeglichen, sobald sie fertig sind, auch mit Tippfehlern. Was gefunden wurde, lässt sich noch ändern.",
+  "multipleScoringLabel": "Bei mehreren richtigen Antworten",
+  "multipleScoring": "{rule, select, any{Mindestens eine richtige} partial{Punkte je richtige} other{Alle richtigen}}",
+  "multipleScoringText": "{rule, select, any{Richtig mit mindestens einer richtigen und keiner falschen Antwort.} partial{Ein Teil der Punkte für jede richtige Antwort, einer weniger für jede falsche.} other{Richtig nur mit genau den richtigen Antworten, nicht mehr und nicht weniger.}}",
+  "listSolutions": "Richtige Antworten",
+  "listSolutionsText": "Eine pro Zeile. Beim Bewerten werden die Zeilen der Teams markiert, die zu einer passen, auch mit kleinen Tippfehlern. Punkte gibt es dafür nicht von selbst.",
+  "matchesAnswer": "passt zu {answer}"
 }

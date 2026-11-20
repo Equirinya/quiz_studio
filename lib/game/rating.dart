@@ -2,6 +2,7 @@
 /// an answer round. Plain Dart.
 library;
 
+import 'auto_rating.dart';
 import 'commands.dart';
 import 'companion.dart';
 import 'content.dart';
@@ -21,12 +22,77 @@ List<Command> autoRating(SessionState state, AnswerRound round, Question questio
     if (_final(round, command) && _changes(state, round, command, question)) command,
 ];
 
+/// Whether [question] has its teams' answers rated as soon as they are
+/// final, without the button: ABCD picked on the devices, and top answers
+/// typed in, unless the editor switched it off.
+bool ratesItself(Question question, AnswerRound round) =>
+    question.autoRating.on &&
+    switch (question.type) {
+      QuestionType.abcd => round.kind == CompanionKind.choice,
+      QuestionType.topAnswers => round.kind == CompanionKind.list,
+      _ => false,
+    };
+
+/// The ratings for [teams] whose answers just became final, as the
+/// gamemaster would have tapped them. A team the gamemaster has rated
+/// already keeps that rating. Empty unless [ratesItself].
+List<Command> ratingByItself(SessionState state, AnswerRound round, Question question, Iterable<String> teams) {
+  if (!ratesItself(question, round)) return const [];
+  final ids = teams.toSet();
+  return [
+    for (final command in _candidates(state, round, question))
+      if (_teamOf(command) case final teamId? when ids.contains(teamId) && !_rated(state, teamId)) command,
+  ];
+}
+
+bool _rated(SessionState state, String teamId) =>
+    state.results.verdicts.containsKey(teamId) || state.results.points.containsKey(teamId);
+
+String? _teamOf(Command command) => switch (command) {
+  RateAnswer(:final teamId) || AwardAnswer(:final teamId) || MarkTopAnswers(:final teamId) => teamId,
+  _ => null,
+};
+
 bool _final(AnswerRound round, Command command) {
-  final teamId = switch (command) {
-    RateAnswer(:final teamId) || AwardAnswer(:final teamId) || MarkTopAnswers(:final teamId) => teamId,
-    _ => null,
-  };
+  final teamId = _teamOf(command);
   return teamId != null && (!round.open || round.answers[teamId]?.locked == true);
+}
+
+/// Several picks on an ABCD question, scored as [scoring] says: how much of
+/// it is right, out of how much. All or nothing is 1 of 1 or 0 of 1. Null
+/// for a single pick, or without the right options.
+({int right, int of})? multipleChoiceScore(PlayerAnswer? answer, List<bool> correct, MultipleChoiceScoring scoring) {
+  final picked = answer?.choices?.toSet();
+  if (picked == null || correct.isEmpty) return null;
+  final right = {for (final (i, yes) in correct.indexed) if (yes) i};
+  final hits = picked.where(right.contains).length;
+  final misses = picked.length - hits;
+  return switch (scoring) {
+    MultipleChoiceScoring.all => (right: hits == right.length && misses == 0 ? 1 : 0, of: 1),
+    MultipleChoiceScoring.any => (right: hits > 0 && misses == 0 ? 1 : 0, of: 1),
+    MultipleChoiceScoring.partial => (right: (hits - misses).clamp(0, right.length), of: right.length),
+  };
+}
+
+/// How much of a team's answer is right, out of how much, where points are
+/// shared out by it: items in place ([partialScore]), or several ABCD
+/// picks scored per right one.
+({int right, int of})? shareOf(Question question, CompanionSpec spec, PlayerAnswer? answer) {
+  final partial = partialScore(spec, answer);
+  if (partial != null) return partial;
+  final scoring = question.autoRating.multiple;
+  if (spec.kind != CompanionKind.choice || scoring != MultipleChoiceScoring.partial) return null;
+  return multipleChoiceScore(answer, question.answersCorrect, scoring);
+}
+
+/// Right or wrong, where that can be told without a human ([autoVerdict]),
+/// with several ABCD picks counted as the question says.
+bool? verdictOf(Question question, CompanionSpec spec, PlayerAnswer? answer) {
+  if (spec.kind == CompanionKind.choice && answer?.choices != null) {
+    final score = multipleChoiceScore(answer, question.answersCorrect, question.autoRating.multiple);
+    return score == null ? null : score.right == score.of;
+  }
+  return autoVerdict(spec, answer, choiceCorrect: question.answersCorrect);
 }
 
 bool _changes(SessionState state, AnswerRound round, Command command, Question question) => switch (command) {
@@ -56,7 +122,7 @@ List<Command> _candidates(SessionState state, AnswerRound round, Question questi
   final commands = <Command>[];
   for (final team in state.teams) {
     final answer = round.answers[team.id];
-    final partial = partialScore(round.spec, answer);
+    final partial = shareOf(question, round.spec, answer);
     if (partial != null) {
       commands.add(
         partial.right == partial.of || partial.right == 0
@@ -65,7 +131,7 @@ List<Command> _candidates(SessionState state, AnswerRound round, Question questi
       );
       continue;
     }
-    final verdict = autoVerdict(round.spec, answer, choiceCorrect: question.answersCorrect);
+    final verdict = verdictOf(question, round.spec, answer);
     if (verdict != null) commands.add(RateAnswer(team.id, correct: verdict));
   }
   return commands;
@@ -98,6 +164,16 @@ List<int> foundBy(AnswerRound round, String teamId) => round.found[teamId] ?? co
 
 /// [found] with answer [index] added or taken away.
 List<int> toggled(List<int> found, int index) => found.contains(index) ? ([...found]..remove(index)) : [...found, index];
+
+/// An answer list with right answers set in the editor: for each line a
+/// team wrote, the right answer it matches, or null. Matched as loosely as
+/// top answers, so small typos still count; each right answer is matched
+/// once at most.
+List<int?> listMatches(CompanionSpec spec, PlayerAnswer? answer) {
+  final items = answer?.items;
+  if (items == null || spec.kind != CompanionKind.list || spec.solutions.isEmpty) return const [];
+  return TopAnswers(items: [for (final text in spec.solutions) TopAnswer(answer: text)]).suggest(items);
+}
 
 /// Suggestions for a team's typed answers, by line; null where a line
 /// matches nothing on the list.

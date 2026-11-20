@@ -47,6 +47,12 @@ class CompanionEditorState extends State<CompanionEditor> {
 
   /// Choice: teams may pick several answers.
   late bool _multiple;
+
+  /// ABCD: whether picks are rated by themselves, and how several count.
+  late AutoRating _autoRating;
+
+  /// Answer list: the right answers, one per line.
+  late final TextEditingController _solutions;
   late int _mistakes;
   late String _background;
   String? _backgroundImage;
@@ -75,6 +81,8 @@ class CompanionEditorState extends State<CompanionEditor> {
     _timer = played?.timerSeconds ?? (spec == null && own is num ? own.toInt() : null);
     _lockable = played?.lockable ?? true;
     _multiple = spec?.multiple ?? false;
+    _autoRating = widget.question.autoRating;
+    _solutions = TextEditingController(text: (spec?.solutions ?? const <String>[]).join('\n'));
     _mistakes = played?.mistakes ?? 3;
     // Read from the stored value: a "Picture" paper without a picture yet
     // should stay selected while one is being chosen.
@@ -96,7 +104,7 @@ class CompanionEditorState extends State<CompanionEditor> {
 
   @override
   void dispose() {
-    for (final controller in [_min, _max, _step, _unit, _solution, _tolerance, ..._options, ..._targets]) {
+    for (final controller in [_min, _max, _step, _unit, _solution, _tolerance, _solutions, ..._options, ..._targets]) {
       controller.dispose();
     }
     super.dispose();
@@ -112,6 +120,9 @@ class CompanionEditorState extends State<CompanionEditor> {
   bool get _hasItems => _kind == CompanionKind.order || _kind == CompanionKind.match;
 
   bool get _hasRange => _kind == CompanionKind.number || _kind == CompanionKind.slider;
+
+  /// ABCD picked on the devices: rated by itself, unless switched off.
+  bool get _ratesChoices => widget.question.type == QuestionType.abcd && _kind == CompanionKind.choice;
 
   void _write() {
     final kind = _kind;
@@ -152,8 +163,10 @@ class CompanionEditorState extends State<CompanionEditor> {
         targets: kind == CompanionKind.match ? [for (final c in _targets) c.text] : const [],
         lockable: _lockable,
         multiple: kind == CompanionKind.choice && _multiple,
+        solutions: kind == CompanionKind.list ? [for (final line in _solutions.text.split('\n')) if (line.trim().isNotEmpty) line.trim()] : const [],
       ).toMap(),
       'timer': null,
+      if (_ratesChoices) 'autoRating': _autoRating.toMap(),
       // Teams answer on their devices; a buzzer would only get in the way.
       if (widget.question.type == QuestionType.free) 'noBuzzer': true,
     });
@@ -319,6 +332,44 @@ class CompanionEditorState extends State<CompanionEditor> {
             value: _multiple,
             onChanged: (value) => _change(() => _multiple = value),
           ),
+        if (kind == CompanionKind.choice && _multiple) ...[
+          const SizedBox(height: 4),
+          FillDropdown<MultipleChoiceScoring>(
+            label: context.l10n.multipleScoringLabel,
+            value: _autoRating.multiple,
+            entries: [
+              for (final scoring in MultipleChoiceScoring.values)
+                DropdownMenuEntry(value: scoring, label: context.l10n.multipleScoring(scoring.name)),
+            ],
+            onSelected: (value) => _change(() => _autoRating = _autoRating.copyWith(multiple: value)),
+          ),
+          const SizedBox(height: 4),
+          Text(context.l10n.multipleScoringText(_autoRating.multiple.name), style: theme.textTheme.bodySmall),
+        ],
+        if (_ratesChoices)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(context.l10n.autoRate),
+            subtitle: Text(context.l10n.autoRateText),
+            value: _autoRating.on,
+            onChanged: (value) => _change(() => _autoRating = _autoRating.copyWith(on: value)),
+          ),
+        if (kind == CompanionKind.list) ...[
+          const SizedBox(height: 12),
+          TextField(
+            controller: _solutions,
+            minLines: 2,
+            maxLines: 8,
+            keyboardType: TextInputType.multiline,
+            decoration: InputDecoration(
+              labelText: context.l10n.listSolutions,
+              helperText: context.l10n.listSolutionsText,
+              helperMaxLines: 3,
+              alignLabelWithHint: true,
+            ),
+            onChanged: (_) => _write(),
+          ),
+        ],
         if (kind != null)
           LockInSwitch(
             title: connections ? context.l10n.teamsCanStopEarly : context.l10n.teamsCanLockIn,

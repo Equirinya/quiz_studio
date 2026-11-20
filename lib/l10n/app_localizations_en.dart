@@ -3459,8 +3459,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pickSeveral => 'Teams can pick several';
 
   @override
-  String get pickSeveralText =>
-      'For questions with more than one right answer: right only when a team picks exactly the right ones';
+  String get pickSeveralText => 'For questions with more than one right answer';
 
   @override
   String get explainOrdering =>
@@ -3810,4 +3809,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stopEffect => 'Tap again to stop';
+
+  @override
+  String get autoRate => 'Rate by itself';
+
+  @override
+  String get autoRateText =>
+      'Final answers are rated right or wrong at once, as if you had tapped it. You can still change any rating.';
+
+  @override
+  String get autoRateTopText =>
+      'Typed answers are matched with the list as soon as they are final, typos and all. You can still change what was found.';
+
+  @override
+  String get multipleScoringLabel => 'With several right options';
+
+  @override
+  String multipleScoring(String rule) {
+    String _temp0 = intl.Intl.selectLogic(rule, {
+      'any': 'At least one right one',
+      'partial': 'Points per right one',
+      'other': 'All right ones',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String multipleScoringText(String rule) {
+    String _temp0 = intl.Intl.selectLogic(rule, {
+      'any': 'Right with at least one right option and no wrong one.',
+      'partial':
+          'A share of the points for every right option, less one for every wrong one.',
+      'other':
+          'Right only with exactly the right options, no more and no fewer.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get listSolutions => 'Right answers';
+
+  @override
+  String get listSolutionsText =>
+      'One per line. While you rate, the lines of the teams that match one are marked, small typos too. No points are given by themselves.';
+
+  @override
+  String matchesAnswer(String answer) {
+    return 'matches $answer';
+  }
 }

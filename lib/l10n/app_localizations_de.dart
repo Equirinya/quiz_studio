@@ -3478,8 +3478,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get pickSeveral => 'Mehrfachauswahl';
 
   @override
-  String get pickSeveralText =>
-      'Für Fragen mit mehreren richtigen Antworten: Richtig ist nur, wer genau die richtigen wählt';
+  String get pickSeveralText => 'Für Fragen mit mehreren richtigen Antworten';
 
   @override
   String get explainOrdering =>
@@ -3831,4 +3830,53 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get stopEffect => 'Nochmal tippen zum Stoppen';
+
+  @override
+  String get autoRate => 'Selbst bewerten';
+
+  @override
+  String get autoRateText =>
+      'Fertige Antworten werden sofort richtig oder falsch bewertet, als hättest du getippt. Jede Bewertung lässt sich noch ändern.';
+
+  @override
+  String get autoRateTopText =>
+      'Getippte Antworten werden mit der Liste abgeglichen, sobald sie fertig sind, auch mit Tippfehlern. Was gefunden wurde, lässt sich noch ändern.';
+
+  @override
+  String get multipleScoringLabel => 'Bei mehreren richtigen Antworten';
+
+  @override
+  String multipleScoring(String rule) {
+    String _temp0 = intl.Intl.selectLogic(rule, {
+      'any': 'Mindestens eine richtige',
+      'partial': 'Punkte je richtige',
+      'other': 'Alle richtigen',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String multipleScoringText(String rule) {
+    String _temp0 = intl.Intl.selectLogic(rule, {
+      'any':
+          'Richtig mit mindestens einer richtigen und keiner falschen Antwort.',
+      'partial':
+          'Ein Teil der Punkte für jede richtige Antwort, einer weniger für jede falsche.',
+      'other':
+          'Richtig nur mit genau den richtigen Antworten, nicht mehr und nicht weniger.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get listSolutions => 'Richtige Antworten';
+
+  @override
+  String get listSolutionsText =>
+      'Eine pro Zeile. Beim Bewerten werden die Zeilen der Teams markiert, die zu einer passen, auch mit kleinen Tippfehlern. Punkte gibt es dafür nicht von selbst.';
+
+  @override
+  String matchesAnswer(String answer) {
+    return 'passt zu $answer';
+  }
 }

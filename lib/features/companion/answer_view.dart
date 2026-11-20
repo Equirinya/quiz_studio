@@ -11,10 +11,21 @@ import 'package:quiz_show/l10n/l10n.dart';
 /// along, the audience once it is revealed. [fontSize] scales it from a
 /// phone card to a projector tile.
 class AnswerView extends StatelessWidget {
-  const AnswerView({super.key, required this.spec, required this.answer, this.fontSize = 16, this.backgroundImage});
+  const AnswerView({
+    super.key,
+    required this.spec,
+    required this.answer,
+    this.fontSize = 16,
+    this.backgroundImage,
+    this.matches = const [],
+  });
 
   /// Whiteboards drawn on a picture: that picture, where this device has it.
   final ImageProvider? backgroundImage;
+
+  /// An answer list, for the gamemaster: per line, the right answer it
+  /// matches, shown beside it; null where it matches none.
+  final List<String?> matches;
 
   final CompanionSpec spec;
   final PlayerAnswer? answer;
@@ -58,12 +69,31 @@ class AnswerView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final (i, item) in (answer.items ?? const <String>[]).indexed)
-              Text(
-                "${i + 1}. ${item.isEmpty ? "–" : item}",
-                style: item.isEmpty ? style.copyWith(color: scheme.outline) : style,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              if (matches.elementAtOrNull(i) case final match?)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(child: Text("${i + 1}. $item", style: style, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    SizedBox(width: fontSize * 0.4),
+                    Icon(Icons.check, size: fontSize, color: scheme.primary),
+                    SizedBox(width: fontSize * 0.2),
+                    Flexible(
+                      child: Text(
+                        context.l10n.matchesAnswer(match),
+                        style: style.copyWith(fontSize: fontSize * 0.8, color: scheme.primary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Text(
+                  "${i + 1}. ${item.isEmpty ? "–" : item}",
+                  style: item.isEmpty ? style.copyWith(color: scheme.outline) : style,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
           ],
         );
       case CompanionKind.number:

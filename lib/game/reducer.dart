@@ -8,6 +8,7 @@ import 'content.dart';
 import 'last_standing.dart';
 import 'played_round.dart';
 import 'rapid_fire.dart';
+import 'rating.dart';
 import 'scoring.dart';
 import 'session_state.dart';
 
@@ -126,6 +127,7 @@ String? feudOpponent(SessionState state) {
 Reduction reduce(SessionState s, Command command, GameContent? game, {int? now, Map<String, PlayedRound> stored = const {}}) {
   var result = _reduce(s, command, game, now: now, stored: stored);
   if (!result.accepted) return result;
+  result = _rateByItself(s, result, game, now);
   final clocked = _mediaClockFor(s, result.state, game, now);
   if (!identical(clocked, result.state)) {
     result = Reduction(clocked, effects: result.effects, rounds: result.rounds, clearRounds: result.clearRounds);
@@ -157,6 +159,32 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now, 
     rounds: result.rounds,
     clearRounds: result.clearRounds,
   );
+}
+
+/// Answers that became final with this command (locked in, or answering
+/// closed) rated right away where the question [ratesItself], through the
+/// same commands as tapping right or wrong. Ratings the gamemaster made stay.
+Reduction _rateByItself(SessionState s, Reduction result, GameContent? game, int? now) {
+  final next = result.state;
+  final round = next.answerRound;
+  final question = next.current == null ? null : game?.question(next.current!);
+  // A question opened again comes back as it was left.
+  if (round == null || question == null || next.current != s.current || !ratesItself(question, round)) return result;
+  bool done(AnswerRound? round, String teamId) => round != null && (!round.open || round.answers[teamId]?.locked == true);
+  final newly = [
+    for (final team in next.roundTeams)
+      if (done(round, team.id) && !done(s.answerRound, team.id)) team.id,
+  ];
+  if (newly.isEmpty) return result;
+  var state = next;
+  final effects = [...result.effects];
+  for (final command in ratingByItself(next, round, question, newly)) {
+    final rated = _reduce(state, command, game, now: now);
+    if (!rated.accepted) continue;
+    state = rated.state;
+    effects.addAll(rated.effects);
+  }
+  return identical(state, next) ? result : Reduction(state, effects: effects, rounds: result.rounds, clearRounds: result.clearRounds);
 }
 
 /// Which sound or clip of the open question is playing in [s], if any.
