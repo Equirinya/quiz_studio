@@ -74,6 +74,40 @@ void main() {
     expect(find.byType(RoundStatusStrip), findsOneWidget);
   });
 
+  testWidgets('ABCD with five answers: D and E sit in the middle under A, B and C', (tester) async {
+    tester.view
+      ..physicalSize = const Size(1600, 900)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final game = GameContent.assemble(
+      id: 'five',
+      game: const {'name': 'Five'},
+      groups: const {'g': {'name': 'Round', 'categoryGroupIndex': 0}},
+      categories: const {'c': {'name': 'Pick', 'categoryGroup': 'g', 'categoryIndex': 0}},
+      questions: const {
+        'c': {
+          'q': {'type': 'abcd', 'question': 'Pick one', 'answers': ['one', 'two', 'three', 'four', 'five'], 'answersCorrect': [true, false, false, false, false], 'pointsPlus': 100},
+        },
+      },
+    );
+    host = SessionHost(initial: fixtureState(), game: game);
+    addTearDown(host.dispose);
+    host
+      ..dispatch(const OpenQuestion(QuestionRef('c', 'q')))
+      ..dispatch(const Reveal(5));
+    final connection = SessionConnection.local(host, game: game);
+    addTearDown(connection.dispose);
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: PresenterView(connection: connection))));
+    await tester.pump(const Duration(milliseconds: 500));
+    Rect tile(String label) => tester.getRect(find.ancestor(of: find.text(label), matching: find.byType(AnimatedContainer)).first);
+    final (a, b, c, d, e) = (tile('A'), tile('B'), tile('C'), tile('D'), tile('E'));
+    expect(d.width, moreOrLessEquals(a.width, epsilon: 1), reason: 'as wide as the others');
+    expect((d.center.dx + e.center.dx) / 2, moreOrLessEquals(b.center.dx, epsilon: 1), reason: 'in the middle of their row');
+    expect(d.left, greaterThan(a.left + a.width / 3));
+    expect(e.right, lessThan(c.right - c.width / 3));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('many teams: the status stays one line and the scores get flatter', (tester) async {
     await pumpScreen(tester, teams: 16, (host) {
       host

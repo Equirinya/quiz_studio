@@ -754,6 +754,8 @@ class QuestionDisplay extends StatelessWidget {
             unit: unit,
             // Up to four answers two by two, more three by three.
             columns: question.answers.length <= 4 ? 2 : 3,
+            // Five answers: D and E in the middle under A, B and C.
+            centerLastRow: true,
             tiles: [
               for (final (i, answer) in question.answers.indexed)
                 (
@@ -1479,11 +1481,15 @@ typedef _Tile = ({String label, String text, bool shown, bool? mark});
 
 /// A grid of answer tiles; a tile keeps its place while it is still hidden.
 class _Tiles extends StatelessWidget {
-  const _Tiles({required this.tiles, required this.unit, this.columns});
+  const _Tiles({required this.tiles, required this.unit, this.columns, this.centerLastRow = false});
 
   final List<_Tile> tiles;
   final double unit;
   final int? columns;
+
+  /// A last row with fewer tiles has them in the middle, each as wide as
+  /// the others, instead of starting at the left.
+  final bool centerLastRow;
 
   @override
   Widget build(BuildContext context) {
@@ -1498,8 +1504,12 @@ class _Tiles extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (var c = 0; c < perRow; c++)
+                // Half a tile's room on either side per tile missing; the
+                // tiles count double so halves add up.
+                if (_missing(r, perRow) case final missing when missing > 0) Spacer(flex: missing),
+                for (var c = 0; c < perRow - _missing(r, perRow); c++)
                   Expanded(
+                    flex: 2,
                     child: Builder(
                       builder: (context) {
                         final tile = tiles.elementAtOrNull(r * perRow + c);
@@ -1540,10 +1550,14 @@ class _Tiles extends StatelessWidget {
                       },
                     ),
                   ),
+                if (_missing(r, perRow) case final missing when missing > 0) Spacer(flex: missing),
               ],
             ),
           ),
       ],
     );
   }
+
+  /// How many tiles short of a full row row [r] is, when it is centred.
+  int _missing(int r, int perRow) => centerLastRow ? perRow - (tiles.length - r * perRow).clamp(0, perRow) : 0;
 }
