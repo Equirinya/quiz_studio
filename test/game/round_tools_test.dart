@@ -55,6 +55,15 @@ void main() {
     expect(reduce(s, const ExtendAnswers(null), game, now: 80000).accepted, isFalse);
   });
 
+  test('run out and let edit again, the round takes a fresh minute from now', () {
+    var s = open(const CompanionSpec(kind: CompanionKind.text, timerSeconds: 30));
+    s = reduce(s, const LockAnswers(), game, now: 30000).state;
+    s = reduce(s, const UnlockAnswers(), game, now: 40000).state;
+    expect((s.answerRound!.open, s.answerRound!.endsAtMillis), (true, null));
+    s = reduce(s, const ExtendAnswers(60), game, now: 50000).state;
+    expect((s.answerRound!.open, s.answerRound!.endsAtMillis), (true, 110000));
+  });
+
   test('locking in early only where the scoring goes by time', () {
     final timed = open(const CompanionSpec(kind: CompanionKind.text, timerSeconds: 30));
     final s = reduce(timed, const SubmitAnswer('red', PlayerAnswer(text: 'x')), game).state;

@@ -3018,10 +3018,10 @@ class _AnswersSheetState extends State<_AnswersSheet> {
             heading(l10n.moreTime),
             Wrap(
               children: [
-                // A round running without a limit has all the time already;
-                // +30 s would put a limit on it instead.
-                action("+30 s", Icons.more_time, unlimited ? null : () => send(const ExtendAnswers(30))),
-                action("+1 min", Icons.more_time, unlimited ? null : () => send(const ExtendAnswers(60))),
+                // Always on: without a limit (say after letting them edit
+                // again) it puts a fresh clock on the round from now.
+                action("+30 s", Icons.more_time, () => send(const ExtendAnswers(30))),
+                action("+1 min", Icons.more_time, () => send(const ExtendAnswers(60))),
                 action(
                   l10n.noTimeLimit,
                   Icons.all_inclusive,
