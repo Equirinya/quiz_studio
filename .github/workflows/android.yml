@@ -24,6 +24,10 @@ on:
         type: choice
         options: [draft, completed]
         default: completed
+      apk:
+        description: 'Also build an APK and attach it to the GitHub release (Play only needs the app bundle)'
+        type: boolean
+        default: false
 
 jobs:
   android_deployment:
@@ -102,8 +106,9 @@ jobs:
           echo "version=$VERSION" >> $env:GITHUB_OUTPUT
           echo "build_number=$BUILD_NUMBER" >> $env:GITHUB_OUTPUT
 
-      # Step 8: Build APK
+      # Step 8: Build APK, only when asked for in Run workflow.
       - name: Build APK
+        if: ${{ inputs.apk }}
         run: |
           # Downloads from GitHub's release servers time out now and then
           # (504); try again a few times, waiting a bit longer each time.
@@ -145,17 +150,19 @@ jobs:
           $TAG_NAME = "v$VERSION"
           $APK_PATH = "build/app/outputs/flutter-apk/app-release.apk"
           $AAB_PATH = "build/app/outputs/bundle/release/app-release.aab"
+          # The APK only when it was built.
+          $FILES = @($AAB_PATH)
+          if ("${{ inputs.apk }}" -eq "true") { $FILES += $APK_PATH }
 
           # 1. Check if release already exists.
           # If it does, just upload the assets to the existing release.
           if (gh release view "$TAG_NAME" 2>$null) {
             Write-Output "Release $TAG_NAME exists. Uploading assets..."
-            gh release upload "$TAG_NAME" "$APK_PATH" --clobber
-            gh release upload "$TAG_NAME" "$AAB_PATH" --clobber
+            foreach ($FILE in $FILES) { gh release upload "$TAG_NAME" "$FILE" --clobber }
           } else {
             # 2. Create new release and attach assets in one step
             Write-Output "Creating release $TAG_NAME..."
-            gh release create "$TAG_NAME" "$APK_PATH" "$AAB_PATH" `
+            gh release create "$TAG_NAME" @FILES `
               --title "Release $TAG_NAME" `
               --draft=true `
               --prerelease=false `
