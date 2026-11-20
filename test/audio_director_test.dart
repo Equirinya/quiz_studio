@@ -25,13 +25,51 @@ class FakeBackend implements AudioBackend {
   @override
   void setMedia(String? path, MediaPlayback playback) => log.add('media $path ${playback.name}');
   @override
-  void playFile(String path) => log.add('file $path');
+  void playFile(String path, {String? id, bool effect = true}) {
+    log.add('file $path');
+    if (id != null) held.add(id);
+    if (!effect) unscaled.add(path);
+  }
+
   @override
-  void playAsset(String asset) => log.add('asset $asset');
+  void playAsset(String asset, {String? id, bool effect = true}) {
+    log.add('asset $asset');
+    if (id != null) held.add(id);
+    if (!effect) unscaled.add(asset);
+  }
+
+  /// Ids the sounds were played with; sounds played at full volume.
+  final List<String> held = [];
+  final List<String> unscaled = [];
+  final List<String?> stopped = [];
+  final List<String> extra = [];
+
+  @override
+  void stopSound(String? id) => stopped.add(id);
+  final List<bool> holds = [];
+  @override
+  void holdMusic(bool hold) => holds.add(hold);
+  @override
+  void setEffectsVolume(double volume) => extra.add('effects $volume');
+  @override
+  void setMediaVolume(double volume) => extra.add('media volume $volume');
+  @override
+  void seekMedia(Duration position) => extra.add('seek ${position.inMilliseconds}');
+
+  final StreamController<String> ended = StreamController<String>.broadcast(sync: true);
+  final StreamController<Duration> durations = StreamController<Duration>.broadcast(sync: true);
+  @override
+  Stream<String> get soundEnded => ended.stream;
+  @override
+  Stream<Duration> get mediaDurations => durations.stream;
   @override
   Stream<void> get mediaCompleted => completed.stream;
   @override
-  Future<void> dispose() => completed.close();
+  Future<void> dispose() async {
+    await completed.close();
+    await ended.close();
+    await durations.close();
+  }
 }
 
 void main() {
@@ -247,5 +285,119 @@ void main() {
     expect(clipHost.dispatch(const SetMedia(MediaPlayback.paused)), isTrue);
     await clipDirector.dispose();
     await clipHost.dispose();
+  });
+
+  test('an effect started by hand is listed while it sounds, and the same chip stops it', () {
+    host.dispatch(const PlayEffect('airhorn'));
+    expect(host.state.effectsPlaying, ['airhorn']);
+    expect(backend.held, ['airhorn']);
+    expect(host.dispatch(const StopEffect('airhorn')), isTrue);
+    expect(backend.stopped, ['airhorn']);
+    expect(host.state.effectsPlaying, isEmpty);
+
+    // Played to its end: the chip goes out by itself.
+    host.dispatch(const PlayEffect('airhorn'));
+    backend.ended.add('airhorn');
+    expect(host.state.effectsPlaying, isEmpty);
+  });
+
+  test('effects the show plays by itself are not listed; buzzers play at full volume', () {
+    host
+      ..dispatch(const OpenQuestion(free))
+      ..dispatch(const Buzz('red'));
+    expect(backend.held, isEmpty);
+    expect(host.state.effectsPlaying, isEmpty);
+    expect(backend.unscaled, ['sounds/buzzers/buzzer.wav']);
+  });
+
+  test('an effect with nothing to play goes out again at once', () async {
+    host.dispatch(const PlayEffect('no such sound'));
+    await pumpEventQueue();
+    expect(host.state.effectsPlaying, isEmpty);
+  });
+
+  test('effects listed from before this device took over are cleared', () async {
+    final stale = SessionHost(initial: fixtureState().copyWith(effectsPlaying: ['airhorn']), game: fixtureGame());
+    final staleDirector = AudioDirector(host: stale, backend: FakeBackend(), resolve: (gameId, name) => '/$gameId/$name');
+    await pumpEventQueue();
+    expect(stale.state.effectsPlaying, isEmpty);
+    await staleDirector.dispose();
+    await stale.dispose();
+  });
+
+  test('the effects have a volume of their own', () {
+    host.dispatch(const SetEffectsVolume(50));
+    expect(backend.extra, ['effects ${sliderGain(50)}']);
+    expect(Command.fromJson(const SetEffectsVolume(50).toJson()), isA<SetEffectsVolume>());
+  });
+
+  test("the question's sound: its place on the host's clock, moved and turned down from the controller", () async {
+    await director.dispose();
+    var now = 1000;
+    host = SessionHost(initial: fixtureState(), game: fixtureGame(), clock: () => now);
+    backend = FakeBackend();
+    director = AudioDirector(host: host, backend: backend, resolve: (gameId, name) => '/$gameId/$name');
+    host
+      ..dispatch(const OpenQuestion(song))
+      ..dispatch(const SetMedia(MediaPlayback.playing));
+    expect(host.state.mediaClock, const MediaClock(sinceMillis: 1000));
+    backend.durations.add(const Duration(seconds: 10));
+    expect(host.state.mediaClock!.durationMs, 10000);
+
+    now = 4000;
+    host.dispatch(const SetMedia(MediaPlayback.paused));
+    expect(host.state.mediaClock, const MediaClock(positionMs: 3000, durationMs: 10000));
+
+    expect(host.dispatch(const SeekMedia(7000)), isTrue);
+    expect(backend.extra, ['seek 7000']);
+    now = 5000;
+    host.dispatch(const SetMedia(MediaPlayback.playing));
+    expect(host.state.mediaClock!.positionAt(6000), 8000);
+    expect(host.state.mediaClock!.positionAt(99000), 10000, reason: 'no further than its end');
+    expect(host.dispatch(const SeekMedia(60000)), isTrue);
+    expect(host.state.mediaClock!.positionMs, 10000);
+
+    host.dispatch(const SetMediaVolume(40));
+    expect(backend.extra.last, 'media volume ${sliderGain(40)}');
+
+    host.dispatch(const CloseQuestion());
+    expect(host.state.mediaClock, isNull);
+    expect(host.dispatch(const SeekMedia(1000)), isFalse, reason: 'nothing to move');
+    final json = SessionState.fromJson(
+      fixtureState().copyWith(mediaClock: const MediaClock(positionMs: 5, sinceMillis: 6, durationMs: 7)).toJson(),
+    );
+    expect(json.mediaClock, const MediaClock(positionMs: 5, sinceMillis: 6, durationMs: 7));
+  });
+
+  test('the music waits for the question sound, a video card and a team answering, and comes back after', () {
+    host
+      ..dispatch(const SetMusic(musicBackground))
+      ..dispatch(const OpenQuestion(song))
+      ..dispatch(const SetMedia(MediaPlayback.playing));
+    expect(backend.holds, [true]);
+    expect(host.state.music, musicBackground, reason: 'still chosen');
+    host.dispatch(const SetMedia(MediaPlayback.stopped));
+    expect(backend.holds, [true, false]);
+    // A buzz: held while the team answers, back once it is judged.
+    host.dispatch(const Buzz('red'));
+    expect(backend.holds.last, isTrue);
+    host.dispatch(const Judge(correct: false));
+    expect(backend.holds.last, isTrue, reason: "the question's sound goes on after a wrong answer");
+    host.dispatch(const SetMedia(MediaPlayback.stopped));
+    expect(backend.holds.last, isFalse);
+    host.dispatch(const ShowCard(OverlayCard(video: 'intro.mp4')));
+    expect(backend.holds.last, isTrue);
+    host.dispatch(const HideCard());
+    expect(backend.holds.last, isFalse);
+    expect(backend.log.where((line) => line.startsWith('music')), ['music /game/bg.mp3'], reason: 'never stopped or started over');
+  });
+
+  test('a question without a sound of its own leaves the music playing', () {
+    host
+      ..dispatch(const SetMusic(musicBackground))
+      ..dispatch(const OpenQuestion(free))
+      ..dispatch(const Reveal(1));
+    expect(backend.holds, isEmpty);
+    expect(host.state.music, musicBackground);
   });
 }

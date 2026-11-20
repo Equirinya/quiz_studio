@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:audioplayers_platform_interface/audioplayers_platform_interface.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_show/features/audio/audioplayers_backend.dart';
 import 'package:quiz_show/game/game.dart';
@@ -49,11 +50,13 @@ void main() {
   late _FakeAudio audio;
   late AudioplayersBackend backend;
 
-  setUp(() {
+  setUp(() async {
     audio = _FakeAudio();
     AudioplayersPlatformInterface.instance = audio;
     GlobalAudioplayersPlatformInterface.instance = audio;
     backend = AudioplayersBackend(stepLimit: const Duration(milliseconds: 200));
+    // The app-wide audio set-up, done once, out of the way of fake clocks.
+    await pumpEventQueue();
   });
   tearDown(() => backend.dispose());
 
@@ -108,5 +111,96 @@ void main() {
     await pumpEventQueue();
     expect(audio.playersWithSources, hasLength(1));
     expect(audio.callsOf(audio.playersWithSources.single), containsAllInOrder(['resume', 'pause', 'resume', 'stop', 'release']));
+  });
+
+  test('an effect plays to its end however long it takes, unless it is stopped; the volume reaches it while it plays', () {
+    fakeAsync((async) {
+      final ended = <String>[];
+      backend.soundEnded.listen(ended.add);
+      backend.playFile('/fx/long.mp3', id: 'long');
+      async.flushMicrotasks();
+      final player = audio.playersWithSources.single;
+      // Long past the two minutes effects used to be cut off at.
+      async.elapse(const Duration(minutes: 10));
+      expect(audio.callsOf(player), isNot(contains('release')));
+      expect(ended, isEmpty);
+
+      backend.setEffectsVolume(0.25);
+      async.flushMicrotasks();
+      expect(audio.callsOf(player).last, 'setVolume 0.25');
+
+      backend.stopSound('long');
+      async.flushMicrotasks();
+      expect(audio.callsOf(player), contains('stop'));
+      expect(ended, ['long']);
+
+      // Played to its end.
+      backend.playFile('/fx/short.mp3', id: 'short');
+      async.flushMicrotasks();
+      audio.complete(audio.playersWithSources.last);
+      async.flushMicrotasks();
+      expect(ended, ['long', 'short']);
+    });
+  });
+
+  test('a buzzer plays at full volume, whatever the effects are set to', () async {
+    backend
+      ..setEffectsVolume(0.1)
+      ..playFile('/fx/buzz.mp3', effect: false);
+    await pumpEventQueue();
+    expect(audio.callsOf(audio.playersWithSources.single), isNot(contains('setVolume 0.1')));
+  });
+
+  test('the music pauses for an effect and comes back a moment after it, where it was', () {
+    fakeAsync((async) {
+      backend.setMusic('/music/bg.mp3');
+      async.elapse(const Duration(seconds: 2));
+      final music = audio.playersWithSources.single;
+      expect(audio.callsOf(music), contains('resume'));
+
+      backend.playFile('/fx/horn.mp3');
+      async.elapse(const Duration(milliseconds: 400));
+      expect(audio.callsOf(music).last, 'pause');
+      final horn = audio.playersWithSources.last;
+      audio.complete(horn);
+      async.elapse(const Duration(milliseconds: 300));
+      expect(audio.callsOf(music).last, 'pause', reason: 'waits a moment, in case another effect follows');
+      async.elapse(const Duration(seconds: 2));
+      expect(audio.callsOf(music).where((call) => call == 'resume'), hasLength(2));
+      expect(audio.callsOf(music), isNot(contains('stop')));
+      expect(audio.callsOf(music).last, 'setVolume 1.0');
+      backend.dispose();
+      async.elapse(const Duration(seconds: 1));
+    });
+  });
+
+  test('music asked for while it is held starts once nothing holds it', () {
+    fakeAsync((async) {
+      backend
+        ..holdMusic(true)
+        ..setMusic('/music/bg.mp3');
+      async.elapse(const Duration(seconds: 2));
+      final music = audio.playersWithSources.single;
+      expect(audio.callsOf(music), isNot(contains('resume')));
+      backend.holdMusic(false);
+      async.elapse(const Duration(seconds: 2));
+      expect(audio.callsOf(music), contains('resume'));
+      backend.dispose();
+      async.elapse(const Duration(seconds: 1));
+    });
+  });
+
+  test('music that says it ended starts over', () {
+    fakeAsync((async) {
+      backend.setMusic('/music/bg.mp3');
+      async.elapse(const Duration(seconds: 2));
+      final music = audio.playersWithSources.single;
+      final resumes = audio.callsOf(music).where((call) => call == 'resume').length;
+      audio.complete(music);
+      async.flushMicrotasks();
+      expect(audio.callsOf(music).where((call) => call == 'resume'), hasLength(resumes + 1));
+      backend.dispose();
+      async.elapse(const Duration(seconds: 1));
+    });
   });
 }

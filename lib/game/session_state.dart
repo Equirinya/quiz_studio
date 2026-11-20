@@ -195,6 +195,55 @@ class QuestionTimer {
   }
 }
 
+/// Where the open question's sound or clip is, on the host's clock, so
+/// every device can show it moving without being told every second.
+class MediaClock {
+  const MediaClock({this.positionMs = 0, this.sinceMillis, this.durationMs});
+
+  /// The position when it was last started, paused or moved.
+  final int positionMs;
+
+  /// When it was started from [positionMs]; null while it is paused.
+  final int? sinceMillis;
+
+  /// How long it is, once the presenting device has loaded it.
+  final int? durationMs;
+
+  bool get running => sinceMillis != null;
+
+  /// The position at [hostMillis], no further than the end.
+  int positionAt(int hostMillis) {
+    final at = sinceMillis == null ? positionMs : positionMs + (hostMillis - sinceMillis!).clamp(0, 1 << 40);
+    return durationMs == null ? at : at.clamp(0, durationMs!);
+  }
+
+  /// Paused at [hostMillis].
+  MediaClock pausedAt(int hostMillis) => MediaClock(positionMs: positionAt(hostMillis), durationMs: durationMs);
+
+  /// Running from where it is, from [hostMillis] on.
+  MediaClock startedAt(int hostMillis) => MediaClock(positionMs: positionMs, sinceMillis: hostMillis, durationMs: durationMs);
+
+  MediaClock withDuration(int? durationMs) => MediaClock(positionMs: positionMs, sinceMillis: sinceMillis, durationMs: durationMs);
+
+  Map<String, dynamic> toJson() => {'position': positionMs, 'since': ?sinceMillis, 'duration': ?durationMs};
+
+  static MediaClock? fromJson(Object? json) {
+    if (json is! Map) return null;
+    return MediaClock(
+      positionMs: (json['position'] as num?)?.toInt() ?? 0,
+      sinceMillis: (json['since'] as num?)?.toInt(),
+      durationMs: (json['duration'] as num?)?.toInt(),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is MediaClock && other.positionMs == positionMs && other.sinceMillis == sinceMillis && other.durationMs == durationMs;
+
+  @override
+  int get hashCode => Object.hash(positionMs, sinceMillis, durationMs);
+}
+
 const Object _unset = Object();
 
 class SessionState {
@@ -222,6 +271,11 @@ class SessionState {
     this.ambience = ambienceSoftNoise,
     this.musicVolume = 100,
     this.ambienceVolume = 30,
+    this.effectsVolume = 100,
+    this.mediaVolume = 100,
+    this.mediaClock,
+    this.mediaSeek = 0,
+    this.effectsPlaying = const [],
     this.boardFocus,
     this.answerRound,
     this.betting,
@@ -306,6 +360,23 @@ class SessionState {
   /// is half the device's volume: the noise is never meant to be heard.
   final int ambienceVolume;
 
+  /// 0 to 100: how loud the sound effects play.
+  final int effectsVolume;
+
+  /// 0 to 100: how loud the open question's sound or clip plays.
+  final int mediaVolume;
+
+  /// Where the question's sound or clip is; null while it is stopped.
+  final MediaClock? mediaClock;
+
+  /// Counts every time the gamemaster moved the question's sound or clip,
+  /// so the presenting device knows to jump to [mediaClock]'s position.
+  final int mediaSeek;
+
+  /// The effects started by hand that are still sounding, by key; tapped
+  /// again, they stop.
+  final List<String> effectsPlaying;
+
   /// The category the board was last turned to: the one of the last question
   /// opened, or one the gamemaster picked. A map wider than the screen keeps
   /// it in the middle.
@@ -387,6 +458,11 @@ class SessionState {
     Object? ambience = _unset,
     int? musicVolume,
     int? ambienceVolume,
+    int? effectsVolume,
+    int? mediaVolume,
+    Object? mediaClock = _unset,
+    int? mediaSeek,
+    List<String>? effectsPlaying,
     Object? boardFocus = _unset,
     Object? answerRound = _unset,
     Object? betting = _unset,
@@ -422,6 +498,11 @@ class SessionState {
     ambience: identical(ambience, _unset) ? this.ambience : ambience as String?,
     musicVolume: musicVolume ?? this.musicVolume,
     ambienceVolume: ambienceVolume ?? this.ambienceVolume,
+    effectsVolume: effectsVolume ?? this.effectsVolume,
+    mediaVolume: mediaVolume ?? this.mediaVolume,
+    mediaClock: identical(mediaClock, _unset) ? this.mediaClock : mediaClock as MediaClock?,
+    mediaSeek: mediaSeek ?? this.mediaSeek,
+    effectsPlaying: effectsPlaying ?? this.effectsPlaying,
     boardFocus: identical(boardFocus, _unset) ? this.boardFocus : boardFocus as String?,
     answerRound: identical(answerRound, _unset) ? this.answerRound : answerRound as AnswerRound?,
     betting: identical(betting, _unset) ? this.betting : betting as Betting?,
@@ -459,6 +540,11 @@ class SessionState {
     'ambience': ambience,
     'musicVolume': musicVolume,
     'ambienceVolume': ambienceVolume,
+    if (effectsVolume != 100) 'effectsVolume': effectsVolume,
+    if (mediaVolume != 100) 'mediaVolume': mediaVolume,
+    if (mediaClock != null) 'mediaClock': mediaClock!.toJson(),
+    if (mediaSeek != 0) 'mediaSeek': mediaSeek,
+    if (effectsPlaying.isNotEmpty) 'effectsPlaying': effectsPlaying,
     'boardFocus': boardFocus,
     'answerRound': answerRound?.toJson(),
     if (betting != null) 'betting': betting!.toJson(),
@@ -500,6 +586,11 @@ class SessionState {
     ambience: json.containsKey('ambience') ? json['ambience'] as String? : ambienceSoftNoise,
     musicVolume: (json['musicVolume'] as num?)?.toInt().clamp(0, 100) ?? 100,
     ambienceVolume: (json['ambienceVolume'] as num?)?.toInt().clamp(0, 100) ?? 30,
+    effectsVolume: (json['effectsVolume'] as num?)?.toInt().clamp(0, 100) ?? 100,
+    mediaVolume: (json['mediaVolume'] as num?)?.toInt().clamp(0, 100) ?? 100,
+    mediaClock: MediaClock.fromJson(json['mediaClock']),
+    mediaSeek: (json['mediaSeek'] as num?)?.toInt() ?? 0,
+    effectsPlaying: [for (final key in json['effectsPlaying'] as List? ?? const []) '$key'],
     boardFocus: json['boardFocus'] as String?,
     answerRound: json['answerRound'] == null ? null : AnswerRound.fromJson(Map<String, dynamic>.from(json['answerRound'] as Map)),
     betting: json['betting'] is Map ? Betting.fromJson(Map<String, dynamic>.from(json['betting'] as Map)) : null,

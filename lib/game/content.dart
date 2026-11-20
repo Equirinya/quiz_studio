@@ -65,6 +65,7 @@ const List<BuiltinSound> builtinSounds = [
   BuiltinSound('countdown/alarm_clock_ticking', "Ticking clock, 10 seconds", 'sounds/effects/countdown/alarm_clock_ticking.mp3'),
   BuiltinSound('countdown/ticking_short', "Ticking clock", 'sounds/effects/countdown/ticking_short.mp3'),
   BuiltinSound('times_up/game_show_buzzer', "Game-show buzzer", 'sounds/effects/times_up/game_show_buzzer.wav'),
+  BuiltinSound('lock_in/pling', "Pling", 'sounds/effects/lock_in/pling.wav'),
   BuiltinSound('lock_in/pop', "Pop", 'sounds/effects/lock_in/pop.wav'),
   BuiltinSound('lock_in/select', "Select", 'sounds/effects/lock_in/select.mp3'),
   BuiltinSound('next_item/woodblock', "Woodblock", 'sounds/effects/next_item/woodblock.wav'),
@@ -73,6 +74,7 @@ const List<BuiltinSound> builtinSounds = [
   BuiltinSound('applause/bar_short', "Applause, short", 'sounds/effects/applause/bar_short.mp3'),
   BuiltinSound('drumroll/snare', "Drumroll", 'sounds/effects/drumroll/snare.mp3'),
   BuiltinSound('joke/rimshot', "Ba-dum-tss", 'sounds/effects/joke/rimshot.mp3'),
+  BuiltinSound('fail/horn_wah_wah', "Fail (wah wah wah)", 'sounds/effects/fail/horn_wah_wah.mp3'),
   BuiltinSound('announcer/ready', "\"Ready\"", 'sounds/effects/announcer/ready.mp3'),
   BuiltinSound('announcer/set', "\"Set\"", 'sounds/effects/announcer/set.mp3'),
   BuiltinSound('announcer/go', "\"Go!\"", 'sounds/effects/announcer/go.mp3'),
@@ -122,17 +124,24 @@ BuiltinSound? defaultMusicTrack(String slot) => builtinMusicTracks.where((track)
 BuiltinSound? builtinBuzzer(String? key) => builtinBuzzers.where((sound) => sound.key == key).firstOrNull;
 
 /// The ones the gamemaster plays by hand from the Effects sheet.
-const List<String> handSoundMoments = ['applause', 'drumroll', 'joke', 'fanfare', 'countdown', 'times_up', 'announcer'];
+const List<String> handSoundMoments = ['applause', 'drumroll', 'joke', 'fail', 'fanfare', 'countdown', 'times_up', 'announcer'];
 
 /// Made for the last ten seconds of a timer, too long to play by hand.
 const Set<String> timerOnlySounds = {'countdown/alarm_clock_ticking'};
 
-/// The sounds on the Effects sheet.
-Iterable<BuiltinSound> get handSounds =>
-    builtinSounds.where((s) => handSoundMoments.contains(s.id.split('/').first) && !timerOnlySounds.contains(s.id));
+/// Sounds of other moments the gamemaster also wants at hand: the buzzer
+/// and the wrong answer, first on the sheet.
+const List<String> handExtraSounds = ['buzzer/buzzer', 'wrong_answer/bwomp'];
 
+/// The sounds on the Effects sheet.
+Iterable<BuiltinSound> get handSounds => [
+  for (final id in handExtraSounds) ?builtinSound(id),
+  ...builtinSounds.where((s) => handSoundMoments.contains(s.id.split('/').first) && !timerOnlySounds.contains(s.id)),
+];
+
+/// A sound that comes with the app, buzzers included, by key or id.
 BuiltinSound? builtinSound(String key) =>
-    builtinSounds.where((sound) => sound.key == key || sound.id == key).firstOrNull;
+    [...builtinSounds, ...builtinBuzzers].where((sound) => sound.key == key || sound.id == key).firstOrNull;
 
 /// The folder of built-in sounds each moment can choose from.
 const Map<String, String> effectMoments = {
@@ -161,7 +170,7 @@ const Map<String, String> defaultEffectSounds = {
   effectAnswerCorrect: 'right_answer/right_answer',
   effectAnswerWrong: 'wrong_answer/bwomp',
   effectQuestionOpen: 'question_open/brass_stab',
-  effectLockIn: 'lock_in/pop',
+  effectLockIn: 'lock_in/pling',
   effectNextItem: 'next_item/woodblock',
   effectCountdown: 'countdown/alarm_clock_ticking',
   effectTimesUp: 'times_up/game_show_buzzer',

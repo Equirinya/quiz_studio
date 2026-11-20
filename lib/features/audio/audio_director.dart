@@ -14,6 +14,10 @@ abstract class AudioBackend {
   /// 0 to 1, for the music only.
   void setMusicVolume(double volume);
 
+  /// Pauses the music while [hold] is true, keeping its place, and brings
+  /// it back after. The backend also holds it while an effect sounds.
+  void holdMusic(bool hold);
+
   /// Loops the bundled [asset] quietly while nothing else plays; null stops it.
   void setAmbience(String? asset);
 
@@ -24,14 +28,36 @@ abstract class AudioBackend {
   /// the same path follows [playback] (pause keeps the position).
   void setMedia(String? path, MediaPlayback playback);
 
-  /// Plays a file once, on top of everything else.
-  void playFile(String path);
+  /// Moves the question's sound to [position].
+  void seekMedia(Duration position);
 
-  /// Plays a bundled asset once.
-  void playAsset(String asset);
+  /// 0 to 1, for the question's sound only.
+  void setMediaVolume(double volume);
+
+  /// Plays a file once, on top of everything else, to its end however long
+  /// it is. One with an [id] can be stopped by it, a new one with the same
+  /// [id] takes over from it, and [soundEnded] tells when it is over. An
+  /// [effect] plays at the effects' volume, anything else at full volume.
+  void playFile(String path, {String? id, bool effect = true});
+
+  /// Plays a bundled asset once; see [playFile].
+  void playAsset(String asset, {String? id, bool effect = true});
+
+  /// Stops the sound played with [id]; null stops every one with an id.
+  void stopSound(String? id);
+
+  /// 0 to 1, for the effects, also those already sounding.
+  void setEffectsVolume(double volume);
+
+  /// The id of a sound played with one, when it is over: played to its
+  /// end, stopped, or failed to play.
+  Stream<String> get soundEnded;
 
   /// Fires when the question's sound has played to its end.
   Stream<void> get mediaCompleted;
+
+  /// How long the question's sound is, once it is loaded.
+  Stream<Duration> get mediaDurations;
 
   Future<void> dispose();
 }
@@ -63,7 +89,12 @@ class AudioDirector {
       host.effects.listen(_onEffect),
       // Tell everyone the sound is over, so the play button comes back.
       backend.mediaCompleted.listen((_) => host.dispatch(const SetMedia(MediaPlayback.stopped))),
+      backend.mediaDurations.listen((duration) => host.dispatch(MediaLoaded(duration.inMilliseconds))),
+      // The chip lights up while its effect sounds.
+      backend.soundEnded.listen((key) => host.dispatch(EffectEnded(key))),
     ];
+    // Effects still listed from before this device took over play nowhere.
+    if (host.state.effectsPlaying.isNotEmpty) scheduleMicrotask(() => host.dispatch(const EffectEnded()));
     sync();
   }
 
@@ -84,6 +115,10 @@ class AudioDirector {
   String? _ambience;
   double? _ambienceVolume;
   double _volume = 1;
+  bool _musicHeld = false;
+  double _effectsVolume = 1;
+  double _mediaVolume = 1;
+  late int _seek = host.state.mediaSeek;
   MediaPlayback _playback = MediaPlayback.stopped;
 
   MusicConfig get _sounds =>
@@ -118,10 +153,36 @@ class AudioDirector {
         ? null
         : _path(question?.musicAt(state.revealed, state.standing));
     final playback = media == null ? MediaPlayback.stopped : state.media;
-    if (media != _media || playback != _playback) {
+    final mediaVolume = sliderGain(state.mediaVolume);
+    if (mediaVolume != _mediaVolume) {
+      _mediaVolume = mediaVolume;
+      backend.setMediaVolume(mediaVolume);
+    }
+    final fresh = media != _media;
+    if (fresh || playback != _playback) {
       _media = media;
       _playback = playback;
       backend.setMedia(media, playback);
+    }
+    // Moved by the gamemaster: a sound just started begins where it should anyway.
+    if (state.mediaSeek != _seek) {
+      _seek = state.mediaSeek;
+      final clock = state.mediaClock;
+      if (media != null && !fresh && clock != null) backend.seekMedia(Duration(milliseconds: clock.positionMs));
+    }
+
+    // The music waits, and comes back after: while the question's sound or
+    // clip plays, a video card is up, or a team answers.
+    final hold = state.media == MediaPlayback.playing || (state.overlay?.video ?? '').isNotEmpty || state.phase == Phase.buzzered;
+    if (hold != _musicHeld) {
+      _musicHeld = hold;
+      backend.holdMusic(hold);
+    }
+
+    final effectsVolume = sliderGain(state.effectsVolume);
+    if (effectsVolume != _effectsVolume) {
+      _effectsVolume = effectsVolume;
+      backend.setEffectsVolume(effectsVolume);
     }
 
     final volume = sliderGain(state.musicVolume);
@@ -148,37 +209,49 @@ class AudioDirector {
 
   void _onEffect(Effect effect) {
     switch (effect) {
-      case SoundEffect(:final key):
-        final chosen = _sounds.effects[key];
-        if (chosen == silentSound) return;
-        // A built-in sound picked in the editor for this moment.
-        final picked = chosen != null && chosen.startsWith(builtinSoundPrefix) ? builtinSound(chosen) : null;
-        if (picked != null) {
-          backend.playAsset(picked.asset);
-          return;
+      case SoundEffect(:final key, :final held):
+        if (!_playEffect(key, id: held ? key : null) && held) {
+          // Nothing to hear: the chip goes out again.
+          scheduleMicrotask(() => host.dispatch(EffectEnded(key)));
         }
-        final path = _path(chosen);
-        if (path != null) {
-          backend.playFile(path);
-          return;
-        }
-        // One that comes with the app: asked for by name, or the default for
-        // a moment the game has no sound of its own for.
-        final builtin = builtinSound(key) ?? builtinSound(defaultEffectSounds[key] ?? '');
-        if (builtin != null && (key.startsWith(builtinSoundPrefix) || !_sounds.effects.containsKey(key))) {
-          backend.playAsset(builtin.asset);
-        }
+      case StopSound(:final key):
+        backend.stopSound(key);
       case BuzzerSound(:final teamId):
         final builtin = builtinBuzzer(host.state.team(teamId)?.sound);
         if (builtin != null) {
-          backend.playAsset(builtin.asset);
+          backend.playAsset(builtin.asset, effect: false);
           return;
         }
         final own = teamSound?.call(teamId);
-        own == null ? backend.playAsset(buzzerAsset) : backend.playFile(own);
+        own == null ? backend.playAsset(buzzerAsset, effect: false) : backend.playFile(own, effect: false);
       case VisualEffect():
         break; // nothing to hear
     }
+  }
+
+  /// Plays the effect [key] stands for; false when there is nothing to play.
+  bool _playEffect(String key, {String? id}) {
+    final chosen = _sounds.effects[key];
+    if (chosen == silentSound) return false;
+    // A built-in sound picked in the editor for this moment.
+    final picked = chosen != null && chosen.startsWith(builtinSoundPrefix) ? builtinSound(chosen) : null;
+    if (picked != null) {
+      backend.playAsset(picked.asset, id: id);
+      return true;
+    }
+    final path = _path(chosen);
+    if (path != null) {
+      backend.playFile(path, id: id);
+      return true;
+    }
+    // One that comes with the app: asked for by name, or the default for
+    // a moment the game has no sound of its own for.
+    final builtin = builtinSound(key) ?? builtinSound(defaultEffectSounds[key] ?? '');
+    if (builtin != null && (key.startsWith(builtinSoundPrefix) || !_sounds.effects.containsKey(key))) {
+      backend.playAsset(builtin.asset, id: id);
+      return true;
+    }
+    return false;
   }
 
   Future<void> dispose() async {

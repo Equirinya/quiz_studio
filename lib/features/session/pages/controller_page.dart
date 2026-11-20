@@ -11,6 +11,7 @@ import 'package:quiz_show/features/session/pages/session_setup_page.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/features/session/widgets/script_sheet.dart';
+import 'package:quiz_show/features/session/widgets/media_controls.dart';
 import 'package:quiz_show/features/session/widgets/team_colors.dart';
 import 'package:quiz_show/features/session/widgets/score_pop.dart';
 import 'package:quiz_show/game/game.dart';
@@ -75,6 +76,28 @@ class _ControllerViewState extends State<ControllerView> {
     );
   }
 
+  /// The question's sound or clip: where it is, moving it, how loud.
+  void _soundControls() => _sheet((context, state, game) {
+    final question = state.current == null ? null : game?.question(state.current!);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              question?.videoAt(state.revealed, state.standing) != null ? context.l10n.video : context.l10n.questionSound,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            MediaControls(state: state, question: question, send: _send, presenting: _c.isPresenting),
+          ],
+        ),
+      ),
+    );
+  });
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -107,7 +130,13 @@ class _ControllerViewState extends State<ControllerView> {
                         ),
                       ),
                       const Divider(height: 1),
-                      _ActionPad(state: state, game: game, question: question, send: _send),
+                      _ActionPad(
+                        state: state,
+                        game: game,
+                        question: question,
+                        send: _send,
+                        onSoundControls: _soundControls,
+                      ),
                     ],
                   ),
                   if (_tab case final tab?) ...[
@@ -252,7 +281,7 @@ class _ControllerViewState extends State<ControllerView> {
   /// What the panel of [tab] shows, following the live session.
   Widget _tabContent(BuildContext context, _Tab tab, SessionState state, GameContent? game) => switch (tab) {
     _Tab.board => _board(context, state, game),
-    _Tab.effects => _EffectsSheet(state: state, game: game, send: _send),
+    _Tab.effects => _EffectsSheet(state: state, game: game, send: _send, presenting: _c.isPresenting),
     _Tab.answers => _AnswersSheet(state: state, game: game, send: _send),
     _Tab.script => _script(context, state, game),
     _Tab.setup => _setup(context, state, game),
@@ -1613,12 +1642,15 @@ class _SteppingPlan {
 }
 
 class _ActionPad extends StatelessWidget {
-  const _ActionPad({required this.state, required this.game, required this.question, required this.send});
+  const _ActionPad({required this.state, required this.game, required this.question, required this.send, this.onSoundControls});
 
   final SessionState state;
   final GameContent? game;
   final Question? question;
   final void Function(Command) send;
+
+  /// Opens the controls of the question's sound: moving it, its volume.
+  final VoidCallback? onSoundControls;
 
   @override
   Widget build(BuildContext context) {
@@ -1709,33 +1741,53 @@ class _ActionPad extends StatelessWidget {
       message: context.l10n.revealGroupNowText,
       action: context.l10n.reveal,
     );
-    Widget small(String label, IconData icon, Command? command, {Future<bool> Function()? ask}) => Expanded(
+    Widget small(String label, IconData icon, Command? command, {Future<bool> Function()? ask, Widget? corner}) => Expanded(
       child: Padding(
         padding: const EdgeInsets.all(4),
-        child: SizedBox(
-          height: 52,
-          child: FilledButton.tonal(
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        child: Stack(
+          children: [
+            SizedBox(
+              height: 52,
+              width: double.infinity,
+              child: FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: command == null
+                    ? null
+                    : () async {
+                        if (ask != null && !await ask()) return;
+                        send(command);
+                      },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, size: 20),
+                    Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
             ),
-            onPressed: command == null
-                ? null
-                : () async {
-                    if (ask != null && !await ask()) return;
-                    send(command);
-                  },
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 20),
-                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
-              ],
-            ),
-          ),
+            if (corner != null) Positioned(top: 0, right: 0, child: corner),
+          ],
         ),
       ),
     );
+    // The question's sound opens up to its bar and volume.
+    final hasSound = q != null && q.hasMediaAt(state.revealed, state.standing);
+    final soundMore = !hasSound || onSoundControls == null
+        ? null
+        : IconButton(
+            key: const ValueKey('soundControls'),
+            tooltip: context.l10n.soundControls,
+            iconSize: 18,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+            icon: const Icon(Icons.more_horiz),
+            onPressed: onSoundControls,
+          );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
@@ -1776,7 +1828,7 @@ class _ActionPad extends StatelessWidget {
                 next,
                 ask: revealEarly ? askReveal : null,
               ),
-              small(playing ? context.l10n.pause : context.l10n.play, playing ? Icons.pause : Icons.play_arrow, sound),
+              small(playing ? context.l10n.pause : context.l10n.play, playing ? Icons.pause : Icons.play_arrow, sound, corner: soundMore),
               small(queued ? context.l10n.nextTeam : context.l10n.reopen, queued ? Icons.skip_next : Icons.undo, pass),
             ],
           ),
@@ -2354,11 +2406,12 @@ String? _effectName(AppLocalizations l10n, String key) => switch (key) {
 /// Everything for the eyes and ears that is not part of a question: cards
 /// and animations over the screen, music, sound effects.
 class _EffectsSheet extends StatefulWidget {
-  const _EffectsSheet({required this.state, required this.game, required this.send});
+  const _EffectsSheet({required this.state, required this.game, required this.send, this.presenting = false});
 
   final SessionState state;
   final GameContent? game;
   final void Function(Command) send;
+  final bool presenting;
 
   @override
   State<_EffectsSheet> createState() => _EffectsSheetState();
@@ -2384,6 +2437,20 @@ class _EffectsSheetState extends State<_EffectsSheet> {
     super.dispose();
   }
 
+  /// An effect to play; lit while it sounds, and tapped then it stops.
+  Widget _effectChip(String key, String label, IconData icon) {
+    final playing = widget.state.effectsPlaying.contains(key);
+    return FilterChip(
+      key: ValueKey('effect-$key'),
+      showCheckmark: false,
+      selected: playing,
+      avatar: Icon(playing ? Icons.stop : icon, size: 18),
+      label: Text(label),
+      tooltip: playing ? context.l10n.stopEffect : null,
+      onSelected: (_) => widget.send(playing ? StopEffect(key) : PlayEffect(key)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -2392,7 +2459,6 @@ class _EffectsSheetState extends State<_EffectsSheet> {
     final send = widget.send;
     final sounds = game?.soundsFor(ref: state.current, groupId: state.groupId, focus: state.boardFocus) ?? MusicConfig.empty;
     final question = state.current == null ? null : game?.question(state.current!);
-    final listening = state.phase == Phase.question || state.phase == Phase.buzzered;
     final cards = game?.cardsFor(ref: state.current, groupId: state.groupId, focus: state.boardFocus) ?? const <CueCard>[];
     Widget header(String text) => Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 8),
@@ -2635,42 +2701,19 @@ class _EffectsSheetState extends State<_EffectsSheet> {
             runSpacing: 8,
             children: [
               // Come with the app, in every game.
-              for (final sound in handSounds)
-                ActionChip(
-                  avatar: const Icon(Icons.graphic_eq, size: 18),
-                  label: Text(sound.label),
-                  onPressed: () => send(PlayEffect(sound.key)),
-                ),
-              for (final key in sounds.effects.keys)
-                ActionChip(
-                  avatar: const Icon(Icons.volume_up_outlined, size: 18),
-                  label: Text(_effectName(context.l10n, key) ?? key),
-                  onPressed: () => send(PlayEffect(key)),
-                ),
+              for (final sound in handSounds) _effectChip(sound.key, sound.label, Icons.graphic_eq),
+              for (final key in sounds.effects.keys) _effectChip(key, _effectName(context.l10n, key) ?? key, Icons.volume_up_outlined),
             ],
+          ),
+          VolumeSlider(
+            key: const ValueKey('effectsVolume'),
+            value: state.effectsVolume,
+            label: context.l10n.effectsVolume,
+            onChanged: (volume) => send(SetEffectsVolume(volume)),
           ),
           if (question != null && question.hasMediaAt(state.revealed, state.standing)) ...[
             header(context.l10n.questionSound),
-            Wrap(
-              spacing: 8,
-              children: [
-                ActionChip(
-                  avatar: const Icon(Icons.play_arrow, size: 18),
-                  label: Text(context.l10n.play),
-                  onPressed: listening && state.media != MediaPlayback.playing ? () => send(const SetMedia(MediaPlayback.playing)) : null,
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.pause, size: 18),
-                  label: Text(context.l10n.pause),
-                  onPressed: state.media == MediaPlayback.playing ? () => send(const SetMedia(MediaPlayback.paused)) : null,
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.stop, size: 18),
-                  label: Text(context.l10n.stop),
-                  onPressed: state.media != MediaPlayback.stopped ? () => send(const SetMedia(MediaPlayback.stopped)) : null,
-                ),
-              ],
-            ),
+            MediaControls(state: state, question: question, send: send, presenting: widget.presenting),
           ],
         ],
       ),

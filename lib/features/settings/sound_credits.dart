@@ -34,7 +34,7 @@ const List<SoundSource> soundSources = [
     licence: "Part of the app",
     sounds: [
       SoundCredit("Soft noise, White noise"),
-      SoundCredit("Ding ding, Bwomp, Pop, Fanfare, Brass stab"),
+      SoundCredit("Ding ding, Bwomp, Pling, Pop, Fanfare, Brass stab"),
       SoundCredit("Woodblock, Riser, Pop up, Game-show buzzer"),
       SoundCredit("Buzzers: Buzzer, Soft"),
     ],
@@ -80,6 +80,14 @@ const List<SoundSource> soundSources = [
       SoundCredit("Drumroll", original: "Drum roll 1 S", url: "https://bigsoundbank.com/drum-roll-1-s-s2400.html"),
       SoundCredit("Ba-dum-tss", original: "Battery joke #3", url: "https://bigsoundbank.com/battery-joke-3-s2410.html"),
       SoundCredit("Ticking clock; Ticking clock, 10 seconds", original: "Tic Tac Mechanical Alarm Clock #3", url: "https://bigsoundbank.com/tic-tac-mechanical-alarm-clock-3-s2656.html"),
+    ],
+  ),
+  SoundSource(
+    name: "Freesound: TaranP",
+    licence: "CC0 1.0 (public domain)",
+    url: "https://freesound.org/people/TaranP/",
+    sounds: [
+      SoundCredit("Fail (wah wah wah)", original: "horn_fail_wahwah_1", url: "https://freesound.org/people/TaranP/sounds/362206/"),
     ],
   ),
 ];

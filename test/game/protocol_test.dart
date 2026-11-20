@@ -229,7 +229,7 @@ void main() {
       host.states.listen((_) => states++);
       host.effects.listen((_) => effects++);
       expect(host.dispatch(const Judge(correct: true)), isFalse);
-      expect(host.dispatch(const PlayEffect('airhorn')), isTrue);
+      expect(host.dispatch(const ScreenEffect(screenEffectConfetti)), isTrue);
       expect((states, effects), (0, 1));
       await host.dispose();
     });

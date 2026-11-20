@@ -99,6 +99,12 @@ sealed class Command {
       'setAmbience' => SetAmbience(j['slot'] as String?),
       'setMusicVolume' => SetMusicVolume((j['volume'] as num).toInt()),
       'setAmbienceVolume' => SetAmbienceVolume((j['volume'] as num).toInt()),
+      'setEffectsVolume' => SetEffectsVolume((j['volume'] as num).toInt()),
+      'setMediaVolume' => SetMediaVolume((j['volume'] as num).toInt()),
+      'seekMedia' => SeekMedia((j['position'] as num).toInt()),
+      'mediaLoaded' => MediaLoaded((j['duration'] as num).toInt()),
+      'stopEffect' => StopEffect(j['key'] as String?),
+      'effectEnded' => EffectEnded(j['key'] as String?),
       'focusCategory' => FocusCategory(j['categoryId'] as String),
       'playEffect' => PlayEffect(j['key'] as String),
       'adjustPoints' => AdjustPoints(j['teamId'] as String, (j['delta'] as num).toInt()),
@@ -374,6 +380,68 @@ class SetAmbienceVolume extends Command {
   String get type => 'setAmbienceVolume';
   @override
   Map<String, dynamic> get _args => {'volume': volume};
+}
+
+/// How loud the sound effects play, 0 to 100.
+class SetEffectsVolume extends Command {
+  const SetEffectsVolume(this.volume);
+  final int volume;
+  @override
+  String get type => 'setEffectsVolume';
+  @override
+  Map<String, dynamic> get _args => {'volume': volume};
+}
+
+/// How loud the open question's sound or clip plays, 0 to 100.
+class SetMediaVolume extends Command {
+  const SetMediaVolume(this.volume);
+  final int volume;
+  @override
+  String get type => 'setMediaVolume';
+  @override
+  Map<String, dynamic> get _args => {'volume': volume};
+}
+
+/// Moves the question's sound or clip, playing or paused, to [positionMs].
+class SeekMedia extends Command {
+  const SeekMedia(this.positionMs);
+  final int positionMs;
+  @override
+  String get type => 'seekMedia';
+  @override
+  Map<String, dynamic> get _args => {'position': positionMs};
+}
+
+/// From the presenting device: the question's sound or clip is loaded and
+/// lasts [durationMs].
+class MediaLoaded extends Command {
+  const MediaLoaded(this.durationMs);
+  final int durationMs;
+  @override
+  String get type => 'mediaLoaded';
+  @override
+  Map<String, dynamic> get _args => {'duration': durationMs};
+}
+
+/// Stops an effect started by hand while it still sounds; null stops them all.
+class StopEffect extends Command {
+  const StopEffect([this.key]);
+  final String? key;
+  @override
+  String get type => 'stopEffect';
+  @override
+  Map<String, dynamic> get _args => {'key': key};
+}
+
+/// From the presenting device: an effect started by hand has played to its
+/// end (null: none of them sounds any more).
+class EffectEnded extends Command {
+  const EffectEnded([this.key]);
+  final String? key;
+  @override
+  String get type => 'effectEnded';
+  @override
+  Map<String, dynamic> get _args => {'key': key};
 }
 
 /// Turns the board to a category: a map wider than the screen brings it to

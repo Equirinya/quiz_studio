@@ -3798,4 +3798,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pen => 'Pen';
+
+  @override
+  String get effectsVolume => 'Effects volume';
+
+  @override
+  String get mediaVolume => 'Volume';
+
+  @override
+  String get soundControls => 'Sound controls';
+
+  @override
+  String get stopEffect => 'Tap again to stop';
 }

@@ -3819,4 +3819,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get pen => 'Stift';
+
+  @override
+  String get effectsVolume => 'Lautstärke der Effekte';
+
+  @override
+  String get mediaVolume => 'Lautstärke';
+
+  @override
+  String get soundControls => 'Ton steuern';
+
+  @override
+  String get stopEffect => 'Nochmal tippen zum Stoppen';
 }

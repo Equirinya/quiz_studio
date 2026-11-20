@@ -8,7 +8,18 @@ import 'package:quiz_show/game/game.dart';
 
 /// [AudioBackend] on top of the audioplayers plugin.
 class AudioplayersBackend implements AudioBackend {
-  AudioplayersBackend({this.stepLimit = const Duration(seconds: 5)});
+  AudioplayersBackend({this.stepLimit = const Duration(seconds: 5)}) {
+    if (!_mixing) {
+      _mixing = true;
+      // By default every new player takes the audio focus on Android, and
+      // the plugin pauses the one that loses it for good: the first effect
+      // or buzzer would stop the music. The show's sounds mix; who waits for
+      // whom is decided here.
+      _guard(() => AudioPlayer.global.setAudioContext(AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers).build()));
+    }
+  }
+
+  static bool _mixing = false;
 
   AudioPlayer? _music;
   AudioPlayer? _ambience;
@@ -26,10 +37,28 @@ class AudioplayersBackend implements AudioBackend {
   final Duration stepLimit;
 
   final StreamController<void> _completed = StreamController<void>.broadcast();
+  final StreamController<Duration> _durations = StreamController<Duration>.broadcast();
+  final StreamController<String> _ended = StreamController<String>.broadcast();
   bool _disposed = false;
+
+  /// How loud the question's sound plays.
+  double _mediaVolume = 1;
+
+  /// How loud effects play.
+  double _effectsVolume = 1;
+
+  /// The sounds played once that are still sounding: whether each is an
+  /// effect, its id, and how to stop it early.
+  final Map<AudioPlayer, ({bool effect, String? id, Completer<void> stop})> _sounding = {};
 
   @override
   Stream<void> get mediaCompleted => _completed.stream;
+
+  @override
+  Stream<Duration> get mediaDurations => _durations.stream;
+
+  @override
+  Stream<String> get soundEnded => _ended.stream;
 
   /// Done once everything asked of the question's sound so far is through.
   @visibleForTesting
@@ -56,11 +85,86 @@ class AudioplayersBackend implements AudioBackend {
     if (path == null) return;
     final player = AudioPlayer();
     _music = player;
+    // It loops; should a platform still say it ended, it starts over.
+    player.onPlayerComplete.listen((_) {
+      if (!identical(_music, player) || _disposed || _musicPaused) return;
+      _guard(() async {
+        await player.resume();
+        await player.seek(Duration.zero);
+      });
+    });
     _guard(() async {
       await player.setReleaseMode(ReleaseMode.loop);
       await player.setVolume(0);
-      await player.play(path.startsWith('asset:') ? AssetSource(path.substring(6)) : DeviceFileSource(path));
-      await _fadeTo(player, () => identical(_music, player) ? _musicVolume : player.volume, crossfade);
+      await player.setSource(path.startsWith('asset:') ? AssetSource(path.substring(6)) : DeviceFileSource(path));
+      // Held for now: it starts when whatever holds it is over.
+      if (!identical(_music, player) || _musicPaused) return;
+      await player.resume();
+      await _fadeTo(player, () => identical(_music, player) && !_musicPaused ? _musicVolume : 0, crossfade);
+    });
+  }
+
+  /// The show holds the music: the question's sound plays, a team answers.
+  bool _showHolds = false;
+
+  /// Whether the music is paused now, for the show or for an effect.
+  bool _musicPaused = false;
+
+  /// Each pause or return of the music; a fade that is no longer the latest stops.
+  int _hold = 0;
+  Timer? _musicBack;
+
+  /// How long the music waits after the last effect, so a few in a row do
+  /// not each bring it back for a moment.
+  static const Duration musicReturnDelay = Duration(milliseconds: 600);
+
+  bool get _held => _showHolds || _sounding.values.any((sound) => sound.effect);
+
+  @override
+  void holdMusic(bool hold) {
+    _showHolds = hold;
+    _followHold();
+  }
+
+  /// Pauses the music at once when something holds it; brings it back a
+  /// moment after nothing does any more.
+  void _followHold() {
+    if (_disposed) return;
+    _musicBack?.cancel();
+    _musicBack = null;
+    if (_held) {
+      _setMusicPaused(true);
+    } else if (_musicPaused) {
+      _musicBack = Timer(_showHolds ? Duration.zero : musicReturnDelay, () {
+        if (!_held) _setMusicPaused(false);
+      });
+    }
+  }
+
+  void _setMusicPaused(bool paused) {
+    if (paused == _musicPaused) return;
+    _musicPaused = paused;
+    final hold = ++_hold;
+    final player = _music;
+    if (player == null) return;
+    _guard(() async {
+      const steps = 10;
+      if (paused) {
+        final from = player.volume;
+        for (var i = 1; i <= steps; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+          if (hold != _hold || _disposed) return;
+          await player.setVolume(from * (1 - i / steps));
+        }
+        if (hold == _hold && !_disposed) await player.pause();
+      } else {
+        await player.resume();
+        for (var i = 1; i <= steps; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 80));
+          if (hold != _hold || _disposed || !identical(_music, player)) return;
+          await player.setVolume(_musicVolume * i / steps);
+        }
+      }
     });
   }
 
@@ -106,7 +210,12 @@ class AudioplayersBackend implements AudioBackend {
           });
           await player.setReleaseMode(ReleaseMode.stop).timeout(stepLimit);
           await player.setSource(DeviceFileSource(path)).timeout(stepLimit);
-          await player.setVolume(1).timeout(stepLimit);
+          await player.setVolume(_mediaVolume).timeout(stepLimit);
+          // For the bar on the controller; not every file says.
+          final duration = await player.getDuration().timeout(stepLimit, onTimeout: () => null);
+          if (duration != null && duration > Duration.zero && identical(_media, player) && !_durations.isClosed) {
+            _durations.add(duration);
+          }
           if (playback == MediaPlayback.playing) await _play(player);
         } else if (_media case final player?) {
           playback == MediaPlayback.playing ? await _play(player) : await player.pause().timeout(stepLimit);
@@ -117,11 +226,30 @@ class AudioplayersBackend implements AudioBackend {
     });
   }
 
-  /// Starts [player], at full volume once it really plays: the system may
+  /// Starts [player], at its volume once it really plays: the system may
   /// otherwise give a new stream the volume of another of this app's sounds.
   Future<void> _play(AudioPlayer player) async {
     await player.resume().timeout(stepLimit);
-    await player.setVolume(1).timeout(stepLimit);
+    await player.setVolume(_mediaVolume).timeout(stepLimit);
+  }
+
+  @override
+  void seekMedia(Duration position) {
+    _mediaSteps = _mediaSteps.then((_) async {
+      if (_disposed) return;
+      try {
+        await _media?.seek(position).timeout(stepLimit);
+      } catch (error) {
+        if (kDebugMode) print('Audio: $error');
+      }
+    });
+  }
+
+  @override
+  void setMediaVolume(double volume) {
+    _mediaVolume = volume;
+    final player = _media;
+    if (player != null) _guard(() => player.setVolume(volume));
   }
 
   /// Stops the question's sound and lets go of its player.
@@ -142,31 +270,68 @@ class AudioplayersBackend implements AudioBackend {
     }
   }
 
-  /// A sound played once, at full volume, on a player of its own that is
-  /// let go when the sound ends (or after two minutes at the latest), so a
-  /// long show does not pile up players.
-  void _once(Source source) {
+  /// A sound played once on a player of its own, let go when the sound
+  /// ends or is stopped, so a long show does not pile up players. However
+  /// long the sound: only one that never says it ended is let go, a while
+  /// after it should have.
+  void _once(Source source, {String? id, required bool effect}) {
+    if (_disposed) return;
+    // The same effect again starts over.
+    if (id != null) _stop((sound) => sound.id == id);
     final player = AudioPlayer();
+    final stop = Completer<void>();
+    _sounding[player] = (effect: effect, id: id, stop: stop);
+    final volume = effect ? _effectsVolume : 1.0;
+    // The music waits for the effect.
+    if (effect) _followHold();
     _guard(() async {
       try {
+        final done = player.onPlayerComplete.first;
         // Set every time: the system may otherwise start a new sound at the
         // volume of another of this app's sounds, such as the quiet noise.
-        await player.play(source, volume: 1);
-        await player.setVolume(1);
-        await player.onPlayerComplete.first.timeout(const Duration(minutes: 2));
+        await player.play(source, volume: volume);
+        await player.setVolume(_sounding[player]?.effect == true ? _effectsVolume : volume);
+        final length = await player.getDuration().catchError((Object _) => null);
+        await Future.any([done, stop.future]).timeout(
+          length == null || length <= Duration.zero ? const Duration(hours: 1) : length + const Duration(seconds: 30),
+        );
       } on TimeoutException {
-        // Played long enough.
+        // Never told it ended.
       } finally {
+        _sounding.remove(player);
+        if (effect) _followHold();
+        // Another with the same id took over: that one is still sounding.
+        if (id != null && !_sounding.values.any((sound) => sound.id == id) && !_ended.isClosed) _ended.add(id);
         await player.dispose();
       }
     });
+  }
+
+  /// Stops the sounds played once that [which] picks.
+  void _stop(bool Function(({bool effect, String? id, Completer<void> stop}) sound) which) {
+    for (final MapEntry(key: player, value: sound) in _sounding.entries.toList()) {
+      if (!which(sound) || sound.stop.isCompleted) continue;
+      _guard(player.stop);
+      sound.stop.complete();
+    }
+  }
+
+  @override
+  void stopSound(String? id) => _stop((sound) => sound.id != null && (id == null || sound.id == id));
+
+  @override
+  void setEffectsVolume(double volume) {
+    _effectsVolume = volume;
+    for (final MapEntry(key: player, value: sound) in _sounding.entries) {
+      if (sound.effect) _guard(() => player.setVolume(volume));
+    }
   }
 
   @override
   void setMusicVolume(double volume) {
     _musicVolume = volume;
     final player = _music;
-    if (player != null) _guard(() => player.setVolume(volume));
+    if (player != null && !_musicPaused) _guard(() => player.setVolume(volume));
   }
 
   @override
@@ -193,16 +358,24 @@ class AudioplayersBackend implements AudioBackend {
   }
 
   @override
-  void playFile(String path) => _once(DeviceFileSource(path));
+  void playFile(String path, {String? id, bool effect = true}) => _once(DeviceFileSource(path), id: id, effect: effect);
 
   @override
-  void playAsset(String asset) => _once(AssetSource(asset));
+  void playAsset(String asset, {String? id, bool effect = true}) => _once(AssetSource(asset), id: id, effect: effect);
 
   @override
   Future<void> dispose() async {
+    if (_disposed) return;
     _disposed = true;
+    _musicBack?.cancel();
     await _mediaDone?.cancel();
     await _completed.close();
+    await _durations.close();
+    await _ended.close();
+    for (final player in _sounding.keys.toList()) {
+      await player.dispose();
+    }
+    _sounding.clear();
     await _music?.dispose();
     await _ambience?.dispose();
     await _media?.dispose();

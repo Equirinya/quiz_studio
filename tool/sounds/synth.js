@@ -132,8 +132,9 @@ function level(s) {
   return out;
 }
 
-function write(name, s) {
-  const lv = level(s);
+/// [db] below the usual level, for a sound that is only meant to be noticed.
+function write(name, s, db = 0) {
+  const lv = level(s).map((v) => v * Math.pow(10, db / 20));
   const data = Buffer.alloc(lv.length * 2);
   lv.forEach((v, i) => data.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 32767), i * 2));
   const h = Buffer.alloc(44);

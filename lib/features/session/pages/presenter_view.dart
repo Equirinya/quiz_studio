@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:mini_music_visualizer/mini_music_visualizer.dart';
 
+import 'package:quiz_show/features/audio/audio_director.dart';
 import 'package:quiz_show/features/companion/answer_view.dart';
 import 'package:quiz_show/features/companion/connections.dart';
 import 'package:quiz_show/features/games/media_service.dart';
@@ -68,55 +69,61 @@ class PresenterView extends StatelessWidget {
           return file.existsSync() ? file : null;
         }
 
-        return Theme(
-          data: theme,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              _screen(state, game, group, question),
-              // The question's pictures or clip over the whole screen. No
-              // fade: a playing clip moves here in one step, see MediaBox.
-              if (question != null && _fullscreen(state, question))
-                LayoutBuilder(
-                        key: const ValueKey('media-fullscreen'),
-                        builder: (context, box) {
-                          final unit = box.maxHeight / 100;
-                          final pictures = question.picturesNow(state);
-                          final videoName = question.videoAt(state.revealed, state.standing);
-                          return ColoredBox(
-                            color: Colors.black,
-                            child: Padding(
-                              padding: EdgeInsets.all(unit * 2),
-                              child: MediaBox(
-                                images: [for (final name in pictures.images) ?mediaFile(name)],
-                                unit: unit,
-                                videoName: videoName,
-                                video: videoName == null ? null : mediaFile(videoName),
-                                playback: state.media,
-                                onVideoEnd: videoCards ? () => connection.send(const SetMedia(MediaPlayback.stopped)) : null,
-                                shown: pictures.stepsThroughPictures ? state.imageFocus : null,
+        return QuestionMediaScope(
+          volume: sliderGain(state.mediaVolume),
+          seek: state.mediaSeek,
+          clock: state.mediaClock,
+          onDuration: videoCards ? (duration) => connection.send(MediaLoaded(duration)) : null,
+          child: Theme(
+            data: theme,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _screen(state, game, group, question),
+                // The question's pictures or clip over the whole screen. No
+                // fade: a playing clip moves here in one step, see MediaBox.
+                if (question != null && _fullscreen(state, question))
+                  LayoutBuilder(
+                          key: const ValueKey('media-fullscreen'),
+                          builder: (context, box) {
+                            final unit = box.maxHeight / 100;
+                            final pictures = question.picturesNow(state);
+                            final videoName = question.videoAt(state.revealed, state.standing);
+                            return ColoredBox(
+                              color: Colors.black,
+                              child: Padding(
+                                padding: EdgeInsets.all(unit * 2),
+                                child: MediaBox(
+                                  images: [for (final name in pictures.images) ?mediaFile(name)],
+                                  unit: unit,
+                                  videoName: videoName,
+                                  video: videoName == null ? null : mediaFile(videoName),
+                                  playback: state.media,
+                                  onVideoEnd: videoCards ? () => connection.send(const SetMedia(MediaPlayback.stopped)) : null,
+                                  shown: pictures.stepsThroughPictures ? state.imageFocus : null,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-              // Cards and effects lie over whatever is on screen.
-              CardOverlay(
-                card: state.overlay,
-                animation: state.cardAnimation,
-                imageFile: mediaFile,
-                // Only the presenting device plays video, and takes the card
-                // off again when the clip is over.
-                videoBuilder: !videoCards
-                    ? null
-                    : (file) => VideoCard(
-                          key: ValueKey(file.path),
-                          file: file,
-                          onFinished: () => connection.send(const HideCard()),
+                            );
+                          },
                         ),
-              ),
-              ScreenEffectLayer(effects: connection.effects),
-            ],
+                // Cards and effects lie over whatever is on screen.
+                CardOverlay(
+                  card: state.overlay,
+                  animation: state.cardAnimation,
+                  imageFile: mediaFile,
+                  // Only the presenting device plays video, and takes the card
+                  // off again when the clip is over.
+                  videoBuilder: !videoCards
+                      ? null
+                      : (file) => VideoCard(
+                            key: ValueKey(file.path),
+                            file: file,
+                            onFinished: () => connection.send(const HideCard()),
+                          ),
+                ),
+                ScreenEffectLayer(effects: connection.effects),
+              ],
+            ),
           ),
         );
       },

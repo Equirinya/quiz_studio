@@ -9,12 +9,12 @@ VBR quality 2), because Windows cannot play Ogg.
 
 ## Made for Quiz Studio
 
-Synthesised by `tool/sounds/make_effects.js`, `tool/sounds/make_effects2.js` and
-`tool/sounds/make_noise.js`:
+Synthesised by `tool/sounds/make_effects.js`, `tool/sounds/make_effects2.js`,
+`tool/sounds/make_effects4.js` and `tool/sounds/make_noise.js`:
 
 - `ambience/soft_noise.wav`, `ambience/white_noise.wav`
 - `effects/right_answer/ding_ding.wav`, `effects/wrong_answer/bwomp.wav`
-- `effects/lock_in/pop.wav`, `effects/fanfare/brass.wav`
+- `effects/lock_in/pling.wav`, `effects/lock_in/pop.wav`, `effects/fanfare/brass.wav`
 - `effects/question_open/brass_stab.wav`, `effects/next_item/woodblock.wav`
 - `effects/steal/riser.wav`, `effects/reveal/pop_up.wav`
 - `effects/times_up/game_show_buzzer.wav`, `buzzers/buzzer.wav`, `buzzers/soft.wav`
@@ -52,3 +52,9 @@ From "Interface Sounds" (https://opengameart.org/content/interface-sounds):
 - `effects/drumroll/snare.mp3`: "Drum roll 1 S" (#2400)
 - `effects/joke/rimshot.mp3`: "Battery joke #3" (#2410)
 - `effects/countdown/alarm_clock_ticking.mp3`: "Tic Tac Mechanical Alarm Clock #3" (#2656), cut to its first ten seconds; `ticking_short.mp3` is its first three
+
+## Freesound (https://freesound.org), CC0
+
+- `effects/fail/horn_wah_wah.mp3`: "horn_fail_wahwah_1.wav" by TaranP
+  (https://freesound.org/people/TaranP/sounds/362206/), a French horn falling
+  E4, E♭4, D4

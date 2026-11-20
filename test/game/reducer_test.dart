@@ -127,7 +127,7 @@ void main() {
       expect(apply(open, const SetBuzzerTest(true)).accepted, isFalse);
     });
 
-    test('a buzz pauses the question sound and stops the music', () {
+    test('a buzz pauses the question sound; the music is only held, to come back after', () {
       final s = run(fixtureState(), [
         const OpenQuestion(song),
         const SetMusic(musicCalm),
@@ -135,7 +135,7 @@ void main() {
         const Buzz('red'),
       ]);
       expect(s.media, MediaPlayback.paused);
-      expect(s.music, isNull);
+      expect(s.music, musicCalm);
     });
   });
 
@@ -296,18 +296,22 @@ void main() {
       expect(run(s, [const CloseQuestion()]).media, MediaPlayback.stopped);
     });
 
-    test('music and question sound never play together', () {
+    test('the question sound keeps the music chosen, to come back after; picking music pauses the sound', () {
       var s = run(fixtureState(), [const OpenQuestion(song), const SetMusic(musicCalm), const SetMedia(MediaPlayback.playing)]);
-      expect(s.music, isNull);
+      expect(s.music, musicCalm);
       s = run(s, [const SetMusic(musicExciting)]);
       expect(s.media, MediaPlayback.paused);
       expect(apply(s, const SetMusic('polka')).accepted, isFalse);
     });
 
-    test('effects are passed through without touching the state', () {
+    test('an effect played by hand is listed while it sounds; again while it sounds it only starts over', () {
       final result = apply(fixtureState(), const PlayEffect('airhorn'));
-      expect((result.effects.single as SoundEffect).key, 'airhorn');
-      expect(result.state.seq, fixtureState().seq);
+      final effect = result.effects.single as SoundEffect;
+      expect((effect.key, effect.held), ('airhorn', true));
+      expect(result.state.effectsPlaying, ['airhorn']);
+      final again = apply(result.state, const PlayEffect('airhorn'));
+      expect(again.state.seq, result.state.seq);
+      expect(again.effects, hasLength(1));
     });
   });
 
@@ -355,10 +359,10 @@ void main() {
       expect(SessionState.fromJson(s.toJson()).overlay!.video, 'intro.mp4');
     });
 
-    test('a video silences the music and pauses the question sound; other cards do not', () {
+    test('a video holds the music and pauses the question sound; other cards do not', () {
       final playing = run(fixtureState(), [const OpenQuestion(song), const SetMusic(musicBackground)]);
       expect(run(playing, [const ShowCard(OverlayCard(text: 'hello'))]).music, musicBackground);
-      expect(run(playing, [const ShowCard(OverlayCard(video: 'intro.mp4'))]).music, isNull);
+      expect(run(playing, [const ShowCard(OverlayCard(video: 'intro.mp4'))]).music, musicBackground, reason: 'held, not stopped');
 
       final sound = run(fixtureState(), [const OpenQuestion(song), const SetMedia(MediaPlayback.playing)]);
       expect(run(sound, [const ShowCard(OverlayCard(image: 'a.png'))]).media, MediaPlayback.playing);

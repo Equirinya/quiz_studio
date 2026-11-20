@@ -6217,6 +6217,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pen'**
   String get pen;
+
+  /// No description provided for @effectsVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Effects volume'**
+  String get effectsVolume;
+
+  /// No description provided for @mediaVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get mediaVolume;
+
+  /// No description provided for @soundControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound controls'**
+  String get soundControls;
+
+  /// No description provided for @stopEffect.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap again to stop'**
+  String get stopEffect;
 }
 
 class _AppLocalizationsDelegate

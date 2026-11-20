@@ -123,6 +123,7 @@ flutter:
     - assets/sounds/effects/applause/
     - assets/sounds/effects/countdown/
     - assets/sounds/effects/drumroll/
+    - assets/sounds/effects/fail/
     - assets/sounds/effects/fanfare/
     - assets/sounds/effects/joke/
     - assets/sounds/effects/lock_in/

@@ -24,8 +24,18 @@ class BuzzerSound extends Effect {
 
 /// A sound effect by key, resolved against the game's `MusicConfig.effects`.
 class SoundEffect extends Effect {
-  const SoundEffect(this.key);
+  const SoundEffect(this.key, {this.held = false});
   final String key;
+
+  /// Started by hand: listed in `SessionState.effectsPlaying` until it ends,
+  /// and can be stopped.
+  final bool held;
+}
+
+/// Stops an effect started by hand ([SoundEffect.held]); null stops them all.
+class StopSound extends Effect {
+  const StopSound(this.key);
+  final String? key;
 }
 
 /// A one-shot animation over the whole screen; see `screenEffects`.
@@ -116,6 +126,10 @@ String? feudOpponent(SessionState state) {
 Reduction reduce(SessionState s, Command command, GameContent? game, {int? now, Map<String, PlayedRound> stored = const {}}) {
   var result = _reduce(s, command, game, now: now, stored: stored);
   if (!result.accepted) return result;
+  final clocked = _mediaClockFor(s, result.state, game, now);
+  if (!identical(clocked, result.state)) {
+    result = Reduction(clocked, effects: result.effects, rounds: result.rounds, clearRounds: result.clearRounds);
+  }
   // Stamped only on a change: an effect alone (a sound) leaves the state be.
   if (now != null && !identical(result.state, s)) {
     result = Reduction(
@@ -143,6 +157,27 @@ Reduction reduce(SessionState s, Command command, GameContent? game, {int? now, 
     rounds: result.rounds,
     clearRounds: result.clearRounds,
   );
+}
+
+/// Which sound or clip of the open question is playing in [s], if any.
+String? _mediaOf(SessionState s, GameContent? game) {
+  if (s.media == MediaPlayback.stopped || s.current == null) return null;
+  final question = game?.question(s.current!);
+  return '${s.current!.key}|${question?.musicAt(s.revealed, s.standing)}|${question?.videoAt(s.revealed, s.standing)}';
+}
+
+/// [next] with its [SessionState.mediaClock] following what happened to the
+/// question's sound since [s]: started over for another one, held while it
+/// is paused, gone when it stops.
+SessionState _mediaClockFor(SessionState s, SessionState next, GameContent? game, int? now) {
+  final media = _mediaOf(next, game);
+  var clock = media != null && media == _mediaOf(s, game) ? next.mediaClock : null;
+  if (media != null && now != null) {
+    clock ??= const MediaClock();
+    if (next.media == MediaPlayback.playing && !clock.running) clock = clock.startedAt(now);
+    if (next.media == MediaPlayback.paused && clock.running) clock = clock.pausedAt(now);
+  }
+  return clock == next.mediaClock ? next : next.copyWith(mediaClock: clock);
 }
 
 /// A question closed as played keeps what it left behind, replacing what
@@ -329,7 +364,6 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
           phase: Phase.buzzered,
           buzzQueue: [teamId],
           media: s.media == MediaPlayback.playing ? MediaPlayback.paused : null,
-          music: null,
         ),
         sound,
       );
@@ -533,8 +567,9 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
         final listening = (s.phase == Phase.question || s.phase == Phase.buzzered) && !s.waitingForBets;
         if (!listening || !(question?.hasMediaAt(s.revealed, s.standing) ?? false)) return _no(s);
       }
-      // The question's own sound and the background music never overlap.
-      return _ok(s.copyWith(media: playback, music: playback == MediaPlayback.playing ? null : s.music));
+      // The music waits while the question's own sound plays (see
+      // `AudioDirector`), and comes back after.
+      return _ok(s.copyWith(media: playback));
 
     case SetMusic(:final slot):
       if (slot == s.music || (slot != null && !musicSlots.contains(slot))) return _no(s);
@@ -554,6 +589,45 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
       if (clamped == s.ambienceVolume) return _no(s);
       return _ok(s.copyWith(ambienceVolume: clamped));
 
+    case SetEffectsVolume(:final volume):
+      final clamped = volume.clamp(0, 100);
+      if (clamped == s.effectsVolume) return _no(s);
+      return _ok(s.copyWith(effectsVolume: clamped));
+
+    case SetMediaVolume(:final volume):
+      final clamped = volume.clamp(0, 100);
+      if (clamped == s.mediaVolume) return _no(s);
+      return _ok(s.copyWith(mediaVolume: clamped));
+
+    case SeekMedia(:final positionMs):
+      final clock = s.mediaClock;
+      if (s.media == MediaPlayback.stopped || clock == null) return _no(s);
+      final duration = clock.durationMs;
+      final to = positionMs.clamp(0, duration ?? 1 << 40);
+      final running = s.media == MediaPlayback.playing && now != null;
+      return _ok(
+        s.copyWith(
+          mediaClock: MediaClock(positionMs: to, sinceMillis: running ? now : null, durationMs: duration),
+          mediaSeek: s.mediaSeek + 1,
+        ),
+      );
+
+    case MediaLoaded(:final durationMs):
+      final clock = s.mediaClock;
+      if (clock == null || durationMs <= 0 || clock.durationMs == durationMs) return _no(s);
+      return _ok(s.copyWith(mediaClock: clock.withDuration(durationMs)));
+
+    case StopEffect(:final key):
+      if (key == null ? s.effectsPlaying.isEmpty : !s.effectsPlaying.contains(key)) return _no(s);
+      return _ok(
+        s.copyWith(effectsPlaying: key == null ? const [] : [for (final k in s.effectsPlaying) if (k != key) k]),
+        [StopSound(key)],
+      );
+
+    case EffectEnded(:final key):
+      if (key == null ? s.effectsPlaying.isEmpty : !s.effectsPlaying.contains(key)) return _no(s);
+      return _ok(s.copyWith(effectsPlaying: key == null ? const [] : [for (final k in s.effectsPlaying) if (k != key) k]));
+
     case FocusCategory(:final categoryId):
       final group = game?.groupOfCategory(categoryId);
       // A question in play keeps its own category in view.
@@ -561,7 +635,9 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
       return _ok(s.copyWith(boardFocus: categoryId, groupId: group.id));
 
     case PlayEffect(:final key):
-      return Reduction(s, effects: [SoundEffect(key)]);
+      // Played again while it still sounds: it starts over.
+      final effects = [SoundEffect(key, held: true)];
+      return s.effectsPlaying.contains(key) ? Reduction(s, effects: effects) : _ok(s.copyWith(effectsPlaying: [...s.effectsPlaying, key]), effects);
 
     // ── teams and points ─────────────────────────────────────────────────────
     case AdjustPoints(:final teamId, :final delta):
@@ -862,7 +938,6 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
       return _ok(
         s.copyWith(
           overlay: card,
-          music: video ? null : _keepTimer,
           media: video && s.media == MediaPlayback.playing ? MediaPlayback.paused : null,
         ),
       );
@@ -1045,7 +1120,7 @@ SessionState _standingMedia(SessionState s, Question question) {
   final items = question.lastStanding?.items ?? const <RapidItem>[];
   if (!items.any((item) => item.media.hasSound)) return s;
   final sound = question.hasMediaAt(s.revealed, s.standing);
-  return s.copyWith(media: sound ? MediaPlayback.playing : MediaPlayback.stopped, music: sound ? null : _keepTimer);
+  return s.copyWith(media: sound ? MediaPlayback.playing : MediaPlayback.stopped);
 }
 
 /// A Fragenhagel at item [index]: everyone may answer again, the item's sound
@@ -1064,7 +1139,6 @@ SessionState _rapidAt(SessionState s, Question question, int index, int? now) {
     buzzQueue: const [],
     wrongAttempts: 0,
     media: sound ? MediaPlayback.playing : MediaPlayback.stopped,
-    music: sound ? null : _keepTimer,
     answerRound: companion == null || !asking ? null : _newRound(companion, now),
     // Whiteboard ratings are for one item only.
     results: const Results(),
