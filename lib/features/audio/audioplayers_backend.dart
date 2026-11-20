@@ -289,14 +289,23 @@ class AudioplayersBackend implements AudioBackend {
         final done = player.onPlayerComplete.first;
         // Set every time: the system may otherwise start a new sound at the
         // volume of another of this app's sounds, such as the quiet noise.
-        await player.play(source, volume: volume);
-        await player.setVolume(_sounding[player]?.effect == true ? _effectsVolume : volume);
-        final length = await player.getDuration().catchError((Object _) => null);
+        // Each step only so long: a player that does not answer one must
+        // not hold up hearing when the sound ends, or its chip stays lit
+        // and the next tap stops it instead of playing it. A step that
+        // fails outright (a file it cannot open) ends it.
+        Future<T?> step<T>(Future<T> Function() action) =>
+            action().timeout(stepLimit).then<T?>((value) => value, onError: (Object error) => error is TimeoutException ? null : throw error);
+        await step(() => player.play(source, volume: volume));
+        await step(() => player.setVolume(_sounding[player]?.effect == true ? _effectsVolume : volume));
+        final length = await step(player.getDuration).catchError((Object _) => null);
         await Future.any([done, stop.future]).timeout(
           length == null || length <= Duration.zero ? const Duration(hours: 1) : length + const Duration(seconds: 30),
         );
       } on TimeoutException {
-        // Never told it ended.
+        // Never told it ended, or a step did not answer.
+      } catch (error) {
+        // A file the player cannot open: nothing to hear, and over.
+        if (kDebugMode) print('Audio: $error');
       } finally {
         _sounding.remove(player);
         if (effect) _followHold();

@@ -13,6 +13,9 @@ class _FakeAudio implements AudioplayersPlatformInterface, GlobalAudioplayersPla
   final events = <String, StreamController<AudioEvent>>{};
   final hanging = <String>{};
 
+  /// Files whose player never answers how long they are.
+  final noLength = <String>{};
+
   List<String> callsOf(String player) => [for (final c in calls) if (c.$1 == player) c.$3 == null ? c.$2 : '${c.$2} ${c.$3}'];
 
   /// The player a source was set on, in the order they were.
@@ -29,7 +32,10 @@ class _FakeAudio implements AudioplayersPlatformInterface, GlobalAudioplayersPla
         return (events[player] ??= StreamController<AudioEvent>.broadcast()).stream;
       case 'getGlobalEventStream':
         return const Stream<GlobalAudioEvent>.empty();
-      case 'getDuration' || 'getCurrentPosition':
+      case 'getDuration':
+        final source = [for (final c in calls) if (c.$1 == player && c.$2 == 'setSourceUrl') c.$3].lastOrNull;
+        return noLength.contains(source) ? Completer<int?>().future : Future<int?>.value(null);
+      case 'getCurrentPosition':
         return Future<int?>.value(null);
       case 'setSourceUrl':
         calls.add((player, name, (arg as String).split('/').last));
@@ -140,6 +146,19 @@ void main() {
       audio.complete(audio.playersWithSources.last);
       async.flushMicrotasks();
       expect(ended, ['long', 'short']);
+    });
+  });
+
+  test('an effect whose player never says how long it is still tells when it is over', () {
+    fakeAsync((async) {
+      final ended = <String>[];
+      backend.soundEnded.listen(ended.add);
+      audio.noLength.add('fanfare.mp3');
+      backend.playFile('/fx/fanfare.mp3', id: 'fanfare');
+      async.elapse(const Duration(seconds: 1));
+      audio.complete(audio.playersWithSources.single);
+      async.flushMicrotasks();
+      expect(ended, ['fanfare'], reason: 'its chip goes out, so the next tap plays it again');
     });
   });
 
