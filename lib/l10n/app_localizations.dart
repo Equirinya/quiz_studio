@@ -3866,6 +3866,30 @@ abstract class AppLocalizations {
   /// **'Nobody left'**
   String get nobodyLeft;
 
+  /// No description provided for @endTurns.
+  ///
+  /// In en, this message translates to:
+  /// **'End here'**
+  String get endTurns;
+
+  /// No description provided for @endTurnsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Every team still in stood to the end'**
+  String get endTurnsHint;
+
+  /// No description provided for @standingEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended · still in: {teams}'**
+  String standingEnded(String teams);
+
+  /// No description provided for @stoodToTheEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'stood to the end'**
+  String get stoodToTheEnd;
+
   /// No description provided for @noPromptsLeft.
   ///
   /// In en, this message translates to:

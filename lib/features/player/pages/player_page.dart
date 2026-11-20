@@ -217,10 +217,10 @@ class _PlayerViewState extends State<PlayerView> {
         ? l10n.roundForOtherTeams
         : standing != null && view.phase == Phase.question
         // Last team standing: no buzzing, only whose turn it is.
-        ? (standing.winner == team.id
+        ? (standing.winners.contains(team.id)
               ? l10n.youAreLastTeam
-              : standing.winner != null
-              ? l10n.teamWinsShort(nameOf(standing.winner))
+              : standing.winners.isNotEmpty
+              ? l10n.teamWinsShort(standing.winners.map(nameOf).join(", "))
               : standing.out.contains(team.id)
               ? l10n.youAreOut
               : standing.current == team.id

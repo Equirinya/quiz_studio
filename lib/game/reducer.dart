@@ -987,8 +987,34 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
       if (question == null || play == null || play.started) return _no(s);
       return _ok(_standingMedia(s.copyWith(standing: play.withStarted(true)), question));
 
+    case EndTurns():
+      final play = s.standing;
+      if (question == null || play == null || !play.started || play.finished) return _no(s);
+      final ended = play.withEnded(true);
+      var after = _standingMedia(s.copyWith(standing: ended), question);
+      if (!question.standingByPlaces) {
+        var results = after.results;
+        for (final teamId in ended.winners) {
+          results = results.rated(teamId, true);
+        }
+        after = after.copyWith(results: results);
+      }
+      return _ok(_give(after, question), const [SoundEffect(effectFanfare)]);
+
     case UndoTurn():
       final play = s.standing;
+      // Ended by hand: the turns go on, and the points go back.
+      if (question != null && play != null && play.ended) {
+        var back = _standingMedia(s.copyWith(standing: play.withEnded(false)), question);
+        if (!question.standingByPlaces) {
+          var results = back.results;
+          for (final teamId in play.winners) {
+            results = results.rated(teamId, null);
+          }
+          back = back.copyWith(results: results);
+        }
+        return _ok(_give(back, question));
+      }
       // Before the first turn: back to the question alone.
       if (question != null && play != null && play.started && play.turns.isEmpty) {
         return _ok(_standingMedia(s.copyWith(standing: play.withStarted(false)), question));

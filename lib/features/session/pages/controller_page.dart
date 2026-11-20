@@ -1066,6 +1066,7 @@ class _StandingPanel extends StatelessWidget {
     final item = setup.itemAt(play.item);
     final current = play.current == null ? null : state.team(play.current!);
     final winner = play.winner == null ? null : state.team(play.winner!);
+    final standing = [for (final id in play.winners) state.team(id)?.name ?? '?'];
     final out = play.out;
     if (!play.started) {
       return Padding(
@@ -1090,21 +1091,25 @@ class _StandingPanel extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: winner != null ? Colors.green.withValues(alpha: 0.15) : scheme.primaryContainer,
+            color: standing.isNotEmpty ? Colors.green.withValues(alpha: 0.15) : scheme.primaryContainer,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                winner != null ? context.l10n.teamWins(winner.name, question.pointsPlus) : current != null ? context.l10n.teamsTurn(current.name) : context.l10n.nobodyLeft,
+                play.ended
+                    ? context.l10n.standingEnded(standing.join(", "))
+                    : winner != null
+                    ? context.l10n.teamWins(winner.name, question.pointsPlus)
+                    : current != null ? context.l10n.teamsTurn(current.name) : context.l10n.nobodyLeft,
                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
-              if (winner == null && item != null) ...[
+              if (!play.finished && item != null) ...[
                 const SizedBox(height: 6),
                 Text("${play.item + 1}. ${item.question}", style: theme.textTheme.titleMedium),
                 if (item.answer.isNotEmpty) Text(item.answer, style: theme.textTheme.bodyLarge?.copyWith(color: scheme.primary)),
-              ] else if (winner == null && setup.items.isNotEmpty)
+              ] else if (!play.finished && setup.items.isNotEmpty)
                 Text(context.l10n.noPromptsLeft, style: theme.textTheme.bodyMedium?.copyWith(color: scheme.outline)),
             ],
           ),
@@ -1120,8 +1125,19 @@ class _StandingPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
+            // Stopped here: every team still in stood to the end.
+            Tooltip(
+              message: context.l10n.endTurnsHint,
+              child: OutlinedButton.icon(
+                key: const ValueKey('endTurns'),
+                onPressed: play.current == null ? null : () => send(const EndTurns()),
+                icon: const Icon(Icons.flag_outlined),
+                label: Text(context.l10n.endTurns),
+              ),
+            ),
+            const SizedBox(width: 8),
             OutlinedButton.icon(
-              onPressed: play.turns.isEmpty ? null : () => send(const UndoTurn()),
+              onPressed: play.turns.isEmpty && !play.ended ? null : () => send(const UndoTurn()),
               icon: const Icon(Icons.undo),
               label: Text(context.l10n.undo),
             ),
@@ -1137,7 +1153,7 @@ class _StandingPanel extends StatelessWidget {
                 Chip(
                   visualDensity: VisualDensity.compact,
                   avatar: Icon(
-                    out.contains(id) ? Icons.close : (id == play.current ? Icons.play_arrow : (id == play.winner ? Icons.emoji_events : Icons.person_outline)),
+                    out.contains(id) ? Icons.close : (id == play.current ? Icons.play_arrow : (play.winners.contains(id) ? Icons.emoji_events : Icons.person_outline)),
                     size: 18,
                     color: out.contains(id) ? scheme.error : scheme.primary,
                   ),

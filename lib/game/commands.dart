@@ -139,6 +139,7 @@ sealed class Command {
       'givePoints' => const GivePoints(),
       'takeTurn' => TakeTurn(StandingResult.fromName(j['result'])!),
       'undoTurn' => const UndoTurn(),
+      'endTurns' => const EndTurns(),
       'showCard' => ShowCard(OverlayCard.fromJson(Map<String, dynamic>.from(j['card'] as Map))),
       'hideCard' => const HideCard(),
       'screenEffect' => ScreenEffect(j['name'] as String),
@@ -845,6 +846,15 @@ class UndoTurn extends Command {
   const UndoTurn();
   @override
   String get type => 'undoTurn';
+}
+
+/// Last team standing: ends it with the teams still in, who all stood to
+/// the end: by places they share the first, otherwise each gets the
+/// question's points. Undone with [UndoTurn].
+class EndTurns extends Command {
+  const EndTurns();
+  @override
+  String get type => 'endTurns';
 }
 
 class ClearAnswers extends Command {

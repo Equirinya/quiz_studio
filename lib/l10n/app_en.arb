@@ -1305,6 +1305,17 @@
     }
   },
   "nobodyLeft": "Nobody left",
+  "endTurns": "End here",
+  "endTurnsHint": "Every team still in stood to the end",
+  "standingEnded": "Ended · still in: {teams}",
+  "@standingEnded": {
+    "placeholders": {
+      "teams": {
+        "type": "String"
+      }
+    }
+  },
+  "stoodToTheEnd": "stood to the end",
   "noPromptsLeft": "No prompts left",
   "undo": "Undo",
   "rapidNoItems": "This Fragenhagel has no items yet.",

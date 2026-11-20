@@ -147,6 +147,33 @@ void main() {
       expect((points(s, 'green'), points(s, 'blue'), points(s, 'red')), (500, 500, 200));
     });
 
+    test('ended by hand: the teams still in share the first place, the others follow; undo plays on', () {
+      var s = play(const [OpenQuestion(QuestionRef('c', 'byPlaces'))]);
+      // Red out; Blue and Green still in when it is ended.
+      s = play(const [TakeTurn(StandingResult.out), TakeTurn(StandingResult.right), EndTurns()], from: s);
+      expect((s.standing!.ended, s.standing!.finished, s.standing!.current), (true, true, null));
+      expect(s.standing!.winners, ['blue', 'green']);
+      expect(standingPlaces(s), {'blue': 0, 'green': 0, 'red': 2});
+      expect((points(s, 'blue'), points(s, 'green'), points(s, 'red')), (300 + 400, 200 + 400, 100 + 100));
+      expect(reduce(s, const EndTurns(), standingGame()).accepted, isFalse);
+      expect(reduce(s, const TakeTurn(StandingResult.right), standingGame()).accepted, isFalse);
+      expect(SessionState.fromJson(s.toJson()).standing!.ended, isTrue);
+      expect(((publicView(s, standingGame())['question'] as Map)['standing'] as Map)['winners'], ['blue', 'green']);
+      // Undone: the turns go on where they were, nothing given.
+      s = play(const [UndoTurn()], from: s);
+      expect((s.standing!.ended, s.standing!.current), (false, 'green'));
+      expect((points(s, 'blue'), points(s, 'green'), points(s, 'red')), (300, 200, 100));
+    });
+
+    test('ended by hand without places: every team still in gets the points', () {
+      var s = play(const [OpenQuestion(disney), TakeTurn(StandingResult.out), EndTurns()]);
+      expect((points(s, 'red'), points(s, 'blue'), points(s, 'green')), (100, 300 + 200, 200 + 200));
+      s = play(const [UndoTurn()], from: s);
+      expect((points(s, 'red'), points(s, 'blue'), points(s, 'green')), (100, 300, 200));
+      // Not before the turns have started.
+      expect(reduce(play(const [OpenQuestion(disney)], intro: true), const EndTurns(), standingGame()).accepted, isFalse);
+    });
+
     test('without places the winner still takes it all', () {
       var s = play(const [OpenQuestion(disney)]);
       s = play(const [TakeTurn(StandingResult.out), TakeTurn(StandingResult.out)], from: s);

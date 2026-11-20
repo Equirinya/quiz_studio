@@ -2397,6 +2397,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nobodyLeft => 'Nobody left';
 
   @override
+  String get endTurns => 'End here';
+
+  @override
+  String get endTurnsHint => 'Every team still in stood to the end';
+
+  @override
+  String standingEnded(String teams) {
+    return 'Ended · still in: $teams';
+  }
+
+  @override
+  String get stoodToTheEnd => 'stood to the end';
+
+  @override
   String get noPromptsLeft => 'No prompts left';
 
   @override

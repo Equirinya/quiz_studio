@@ -70,12 +70,16 @@ int? timePoints(SessionState state, Question question, String teamId, List<Strin
 }
 
 /// Last team standing by places, once it is decided: each team's place, the
-/// winner 0, then the teams in the reverse order they went out.
+/// winner 0, then the teams in the reverse order they went out. Ended with
+/// several teams still in, they share the first place and the next team
+/// is as many places further down (1st, 1st, 3rd).
 Map<String, int> standingPlaces(SessionState state) {
   final play = state.standing;
   if (play == null || !play.finished) return const {};
+  final winners = play.winners;
   return {
-    for (final (place, teamId) in [?play.winner, ...play.out.reversed].indexed) teamId: place,
+    for (final teamId in winners) teamId: 0,
+    for (final (place, teamId) in play.out.reversed.indexed) teamId: winners.length + place,
   };
 }
 

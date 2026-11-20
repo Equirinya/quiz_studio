@@ -87,7 +87,11 @@ List<String> turnOrder(List<Team> teams, TurnOrder order) {
 /// it opened, and every turn so far. Everything else follows from those, so
 /// taking a turn back is just dropping it.
 class StandingPlay {
-  const StandingPlay({required this.order, this.turns = const [], this.started = true});
+  const StandingPlay({required this.order, this.turns = const [], this.started = true, this.ended = false});
+
+  /// Ended by the gamemaster with several teams still in: they all count
+  /// as having stood to the end.
+  final bool ended;
 
   /// False while only the question is up, to be read out before the first
   /// team and prompt come.
@@ -117,7 +121,11 @@ class StandingPlay {
   /// The one team left, once all the others are out.
   String? get winner => order.length > 1 && inPlay.length == 1 ? inPlay.single : null;
 
-  bool get finished => winner != null || inPlay.isEmpty;
+  /// The teams that stood to the end: the one team left, or every team
+  /// still in when it was ended.
+  List<String> get winners => ended ? inPlay : [?winner];
+
+  bool get finished => winner != null || inPlay.isEmpty || ended;
 
   /// The team whose turn it is; null once it is decided.
   String? get current {
@@ -147,9 +155,12 @@ class StandingPlay {
 
   StandingPlay withStarted(bool started) => StandingPlay(order: order, turns: turns, started: started);
 
+  StandingPlay withEnded(bool ended) => StandingPlay(order: order, turns: turns, ended: ended);
+
   /// Without [teamId], e.g. when the team leaves the session.
   StandingPlay without(String teamId) => StandingPlay(
     started: started,
+    ended: ended,
     order: [...order]..remove(teamId),
     turns: [
       for (final turn in turns)
@@ -159,6 +170,7 @@ class StandingPlay {
 
   Map<String, dynamic> toJson() => {
     if (!started) 'started': false,
+    if (ended) 'ended': true,
     'order': order,
     'turns': [
       for (final (team, result) in turns) {'team': team, 'result': result.name},
@@ -169,6 +181,7 @@ class StandingPlay {
     if (json is! Map) return null;
     return StandingPlay(
       started: json['started'] != false,
+      ended: json['ended'] == true,
       order: [for (final id in json['order'] as List? ?? const []) '$id'],
       turns: [
         for (final turn in json['turns'] as List? ?? const [])

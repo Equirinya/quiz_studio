@@ -245,6 +245,7 @@ Map<String, dynamic> _visibleQuestion(SessionState state, Question question, Gam
           'out': play.out,
           'current': ?play.current,
           'winner': ?play.winner,
+          if (play.ended) 'winners': play.winners,
           // Nothing before the question was read out.
           if (play.started) 'prompt': ?question.lastStanding?.itemAt(play.item)?.question,
         };
@@ -424,13 +425,17 @@ class PublicView {
   bool get phoneBuzzer => json['phoneBuzzer'] != false;
 
   /// Last team standing: whose turn, who is out, who won; null otherwise.
-  ({List<String> out, String? current, String? winner, String? prompt})? get standing {
+  ({List<String> out, String? current, String? winner, List<String> winners, String? prompt})? get standing {
     final standing = question?['standing'];
     if (standing is! Map) return null;
     return (
       out: [for (final id in standing['out'] as List? ?? const []) '$id'],
       current: standing['current'] as String?,
       winner: standing['winner'] as String?,
+      // Several, when it was ended with them still in.
+      winners: [
+        for (final id in standing['winners'] as List? ?? [?standing['winner']]) '$id',
+      ],
       prompt: standing['prompt'] as String?,
     );
   }

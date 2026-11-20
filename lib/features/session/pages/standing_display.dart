@@ -38,9 +38,11 @@ class StandingDisplay extends StatelessWidget {
     final item = question.lastStanding?.itemAt(play.item);
     final current = play.current == null ? null : state.team(play.current!);
     final winner = play.winner == null ? null : state.team(play.winner!);
-    final videoName = winner == null && item != null ? item.video : null;
+    // Ended with several still in: they all stood to the end.
+    final standing = [for (final id in play.winners) ?state.team(id)];
+    final videoName = standing.isEmpty && item != null ? item.video : null;
     final picture = MediaBox(
-      images: [if (winner == null) for (final name in item?.images ?? const <String>[]) ?file(name)],
+      images: [if (standing.isEmpty) for (final name in item?.images ?? const <String>[]) ?file(name)],
       unit: unit,
       videoName: videoName,
       video: file(videoName),
@@ -82,17 +84,20 @@ class StandingDisplay extends StatelessWidget {
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
               child: Column(
-                key: ValueKey('${play.turns.length}/${winner?.id}'),
+                key: ValueKey('${play.turns.length}/${winner?.id}/${play.ended}'),
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (winner != null) ...[
+                  if (standing.isNotEmpty) ...[
                     Icon(Icons.emoji_events, size: unit * 12, color: Colors.amber),
                     Text(
-                      winner.name,
-                      style: TextStyle(fontSize: unit * 9, fontWeight: FontWeight.w800),
+                      standing.map((team) => team.name).join(' · '),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: unit * (standing.length > 2 ? 7 : 9), fontWeight: FontWeight.w800),
                     ),
                     Text(
-                      context.l10n.isLastTeamStanding,
+                      play.ended ? context.l10n.stoodToTheEnd : context.l10n.isLastTeamStanding,
                       style: TextStyle(fontSize: unit * 4, color: scheme.primary),
                     ),
                   ] else ...[
@@ -145,7 +150,7 @@ class StandingDisplay extends StatelessWidget {
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: unit * 2, vertical: unit * 0.8),
                     decoration: BoxDecoration(
-                      color: id == play.current || id == play.winner
+                      color: id == play.current || play.winners.contains(id)
                           ? (teamColor(team) ?? scheme.primaryContainer)
                           : scheme.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(unit * 2),
@@ -155,7 +160,7 @@ class StandingDisplay extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (out.contains(id)) Icon(Icons.close, size: unit * 3, color: scheme.error),
-                        if (id == play.winner) Icon(Icons.emoji_events, size: unit * 3, color: Colors.amber),
+                        if (play.winners.contains(id)) Icon(Icons.emoji_events, size: unit * 3, color: Colors.amber),
                         SizedBox(width: unit * 0.5),
                         Text(
                           team.name,
@@ -163,7 +168,7 @@ class StandingDisplay extends StatelessWidget {
                             fontSize: unit * 3,
                             fontWeight: FontWeight.w600,
                             decoration: out.contains(id) ? TextDecoration.lineThrough : null,
-                            color: (id == play.current || id == play.winner) && teamColor(team) != null
+                            color: (id == play.current || play.winners.contains(id)) && teamColor(team) != null
                                 ? onTeamColor(teamColor(team)!)
                                 : null,
                           ),

@@ -2414,6 +2414,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get nobodyLeft => 'Keiner mehr übrig';
 
   @override
+  String get endTurns => 'Hier beenden';
+
+  @override
+  String get endTurnsHint =>
+      'Alle Teams, die noch dabei sind, sind bis zum Ende dabei geblieben';
+
+  @override
+  String standingEnded(String teams) {
+    return 'Beendet · noch dabei: $teams';
+  }
+
+  @override
+  String get stoodToTheEnd => 'bis zum Ende dabei';
+
+  @override
   String get noPromptsLeft => 'Keine Vorgaben mehr';
 
   @override
