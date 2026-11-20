@@ -85,6 +85,18 @@ class GameScript {
     return title.length > max ? '${title.substring(0, max - 1).trimRight()}…' : title;
   }
 
+  /// The section of the question played last of [played] (in the order
+  /// they were played, as `SessionState.played` keeps them), if the script
+  /// has one for it.
+  static String? lastPlayedKey(GameContent game, Iterable<String> played) {
+    final keys = sections(game).map((s) => s.key).toSet();
+    for (final ref in played.toList().reversed) {
+      final question = QuestionRef.tryParse(ref);
+      if (question != null && keys.contains(questionKey(question.questionId))) return questionKey(question.questionId);
+    }
+    return null;
+  }
+
   /// The section to open the script at: the open question's, else its
   /// category's, else the first category of the board on screen, else the
   /// intro.

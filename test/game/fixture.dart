@@ -62,7 +62,7 @@ GameContent fixtureGame({Map<String, dynamic> extra = const {}}) => GameContent.
             'informationImage': ['1.png', '', '3.png'],
             'informationMusic': ['', '', ''],
             'pointsPlus': 200,
-            'musicEffects': {'musicEffectAnswerWrong': 'question-wrong.mp3'},
+            'musicEffects': {'musicEffectAnswerWrong': 'question-wrong.mp3', 'musicEffectAnswerClosed': 'question-end.mp3'},
           },
         },
         'c3': {

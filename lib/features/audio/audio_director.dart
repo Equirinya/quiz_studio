@@ -121,8 +121,10 @@ class AudioDirector {
   late int _seek = host.state.mediaSeek;
   MediaPlayback _playback = MediaPlayback.stopped;
 
-  MusicConfig get _sounds =>
-      host.game?.soundsFor(ref: host.state.current, groupId: host.state.groupId, focus: host.state.boardFocus) ?? MusicConfig.empty;
+  MusicConfig get _sounds => _soundsOf(host.state.current);
+
+  MusicConfig _soundsOf(QuestionRef? ref) =>
+      host.game?.soundsFor(ref: ref, groupId: host.state.groupId, focus: host.state.boardFocus) ?? MusicConfig.empty;
 
   String? _path(String? name) {
     final game = host.game;
@@ -209,8 +211,8 @@ class AudioDirector {
 
   void _onEffect(Effect effect) {
     switch (effect) {
-      case SoundEffect(:final key, :final held):
-        if (!_playEffect(key, id: held ? key : null) && held) {
+      case SoundEffect(:final key, :final held, :final from):
+        if (!_playEffect(key, id: held ? key : null, sounds: from == null ? null : _soundsOf(from)) && held) {
           // Nothing to hear: the chip goes out again.
           scheduleMicrotask(() => host.dispatch(EffectEnded(key)));
         }
@@ -230,8 +232,9 @@ class AudioDirector {
   }
 
   /// Plays the effect [key] stands for; false when there is nothing to play.
-  bool _playEffect(String key, {String? id}) {
-    final chosen = _sounds.effects[key];
+  bool _playEffect(String key, {String? id, MusicConfig? sounds}) {
+    sounds ??= _sounds;
+    final chosen = sounds.effects[key];
     if (chosen == silentSound) return false;
     // A built-in sound picked in the editor for this moment.
     final picked = chosen != null && chosen.startsWith(builtinSoundPrefix) ? builtinSound(chosen) : null;
@@ -247,7 +250,7 @@ class AudioDirector {
     // One that comes with the app: asked for by name, or the default for
     // a moment the game has no sound of its own for.
     final builtin = builtinSound(key) ?? builtinSound(defaultEffectSounds[key] ?? '');
-    if (builtin != null && (key.startsWith(builtinSoundPrefix) || !_sounds.effects.containsKey(key))) {
+    if (builtin != null && (key.startsWith(builtinSoundPrefix) || !sounds.effects.containsKey(key))) {
       backend.playAsset(builtin.asset, id: id);
       return true;
     }

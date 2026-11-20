@@ -10,13 +10,26 @@ import 'package:quiz_show/l10n/l10n.dart';
 /// The game's script for reading during the show. It opens where it was
 /// left last, kept per game on this device also when the app was closed;
 /// the very first time at the section of the open question (or its
-/// category, or the board on screen). "To current" jumps there.
+/// category, or the board on screen). "To current" jumps there. With no
+/// question open, both go to the end of the question played last, where
+/// what is read next follows.
 class ScriptSheet extends StatefulWidget {
-  const ScriptSheet({super.key, required this.game, this.current, this.groupId, this.lastOffset, this.onScrolled});
+  const ScriptSheet({
+    super.key,
+    required this.game,
+    this.current,
+    this.groupId,
+    this.played = const {},
+    this.lastOffset,
+    this.onScrolled,
+  });
 
   final GameContent game;
   final QuestionRef? current;
   final String? groupId;
+
+  /// The questions played so far, in the order they were played.
+  final Iterable<String> played;
 
   /// Where the script was scrolled to when it was closed last; null at first.
   final double? lastOffset;
@@ -36,7 +49,15 @@ class _ScriptSheetState extends State<ScriptSheet> {
   final _content = GlobalKey();
   final _keys = <String, GlobalKey>{};
 
-  late final String _target = GameScript.targetKey(widget.game, current: widget.current, groupId: widget.groupId);
+  late final (String, bool) _target = _targetNow();
+
+  /// Where "to current" goes: a section, and whether to its end.
+  (String, bool) _targetNow() {
+    if (widget.current == null) {
+      if (GameScript.lastPlayedKey(widget.game, widget.played) case final key?) return (key, true);
+    }
+    return (GameScript.targetKey(widget.game, current: widget.current, groupId: widget.groupId), false);
+  }
 
   @override
   void initState() {
@@ -67,6 +88,9 @@ class _ScriptSheetState extends State<ScriptSheet> {
     super.dispose();
   }
 
+  /// How much of a question is left in sight when going to its end.
+  static const double _endContext = 72;
+
   /// Top and bottom of a section in scroll pixels.
   (double, double)? _extent(String key) {
     final box = _keys[key]?.currentContext?.findRenderObject() as RenderBox?;
@@ -88,14 +112,16 @@ class _ScriptSheetState extends State<ScriptSheet> {
     if (saved != null) {
       _scroll.jumpTo(saved.clamp(0.0, _scroll.position.maxScrollExtent));
     } else {
-      _jumpTo(_target);
+      _jumpTo(_target.$1, end: _target.$2);
     }
   }
 
-  void _jumpTo(String key, {bool animate = false}) {
+  /// Brings section [key] to the top; with [end], its last lines, so what
+  /// follows it fills the rest.
+  void _jumpTo(String key, {bool animate = false, bool end = false}) {
     final extent = _extent(key);
     if (extent == null || !_scroll.hasClients) return;
-    final offset = extent.$1.clamp(0.0, _scroll.position.maxScrollExtent);
+    final offset = (end ? extent.$2 - _endContext : extent.$1).clamp(0.0, _scroll.position.maxScrollExtent);
     if (animate) {
       _scroll.animateTo(offset, duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
     } else {
@@ -110,7 +136,7 @@ class _ScriptSheetState extends State<ScriptSheet> {
     final game = widget.game;
     final script = GameScript.of(game);
     final sections = GameScript.sections(game);
-    final current = GameScript.targetKey(game, current: widget.current, groupId: widget.groupId);
+    final (current, toEnd) = _targetNow();
     return SizedBox(
       height: MediaQuery.sizeOf(context).height * 0.85,
       child: Column(
@@ -121,7 +147,7 @@ class _ScriptSheetState extends State<ScriptSheet> {
               children: [
                 Expanded(child: Text(l10n.script, style: theme.textTheme.titleMedium)),
                 TextButton.icon(
-                  onPressed: () => _jumpTo(current, animate: true),
+                  onPressed: () => _jumpTo(current, animate: true, end: toEnd),
                   icon: const Icon(Icons.my_location, size: 18),
                   label: Text(l10n.scriptToCurrent),
                 ),

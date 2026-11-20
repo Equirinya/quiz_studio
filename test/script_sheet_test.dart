@@ -12,7 +12,7 @@ void main() {
     id: 'g',
     game: {
       'name': 'Show',
-      'script': {'intro': long, 'c_history': long, 'q_h1': 'Ask it slowly.'},
+      'script': {'intro': long, 'c_history': long, 'q_h1': 'Ask it slowly.', 'q_h2': long},
     },
     groups: const {
       'r1': {'name': 'Round 1', 'categoryGroupIndex': 0},
@@ -23,18 +23,19 @@ void main() {
     questions: const {
       'history': {
         'h1': {'type': 'free', 'question': 'When was Rome founded?', 'pointsPlus': 100},
+        'h2': {'type': 'free', 'question': 'Who crossed the Alps?', 'pointsPlus': 200},
       },
     },
   );
 
-  Future<ScrollPosition> open(WidgetTester tester, {QuestionRef? current}) async {
+  Future<ScrollPosition> open(WidgetTester tester, {QuestionRef? current, Set<String> played = const {}}) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: ScriptSheet(key: UniqueKey(), game: game, current: current)),
+      home: Scaffold(body: ScriptSheet(key: UniqueKey(), game: game, current: current, played: played)),
     ));
     await tester.pumpAndSettle();
     // The script's own scroll view, the one around all its sections.
@@ -52,5 +53,20 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     position = await open(tester, current: const QuestionRef('history', 'h1'));
     expect(position.pixels, 120);
+  });
+
+  testWidgets('with no question open, "to current" goes to the end of the question played last', (tester) async {
+    SharedPreferences.setMockInitialValues({'scriptOffset/g': 0.0});
+    final position = await open(tester, played: {'history/h2', 'history/h1'});
+    expect(position.pixels, 0, reason: 'opened where it was left');
+    await tester.tap(find.byIcon(Icons.my_location));
+    await tester.pumpAndSettle();
+    expect(position.pixels, greaterThan(500), reason: 'not the start of the game');
+    // Rome's last lines at the top, and what follows below them.
+    final top = tester.getTopLeft(find.byType(SingleChildScrollView)).dy;
+    final end = tester.getRect(find.text('Ask it slowly.'));
+    expect(end.top, greaterThan(top - end.height));
+    expect(end.bottom, lessThan(top + 100));
+    expect(find.textContaining('Who crossed the Alps?'), findsOneWidget);
   });
 }

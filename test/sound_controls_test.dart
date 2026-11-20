@@ -67,4 +67,19 @@ void main() {
     expect(host.state.media, MediaPlayback.paused);
     expect(find.byKey(const ValueKey('mediaVolume')), findsOneWidget);
   });
+
+  testWidgets('the cards stay where they were scrolled to when the panel is closed and opened again', (tester) async {
+    await pumpController(tester);
+    final effects = find.widgetWithText(TextButton, 'Effects');
+    await tap(tester, effects);
+    final cards = find.byKey(const ValueKey('effect-cards'));
+    ScrollPosition position() => tester.state<ScrollableState>(find.descendant(of: cards, matching: find.byType(Scrollable))).position;
+    expect(position().maxScrollExtent, greaterThan(200), reason: 'more cards than fit');
+    position().jumpTo(200);
+    await tester.pump();
+    await tap(tester, effects);
+    expect(cards, findsNothing, reason: 'closed');
+    await tap(tester, effects);
+    expect(position().pixels, 200);
+  });
 }

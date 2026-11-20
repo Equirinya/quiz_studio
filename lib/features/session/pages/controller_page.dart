@@ -281,7 +281,14 @@ class _ControllerViewState extends State<ControllerView> {
   /// What the panel of [tab] shows, following the live session.
   Widget _tabContent(BuildContext context, _Tab tab, SessionState state, GameContent? game) => switch (tab) {
     _Tab.board => _board(context, state, game),
-    _Tab.effects => _EffectsSheet(state: state, game: game, send: _send, presenting: _c.isPresenting),
+    _Tab.effects => _EffectsSheet(
+      state: state,
+      game: game,
+      send: _send,
+      presenting: _c.isPresenting,
+      cardsOffset: _cardsOffset,
+      onCardsScrolled: (offset) => _cardsOffset = offset,
+    ),
     _Tab.answers => _AnswersSheet(state: state, game: game, send: _send),
     _Tab.script => _script(context, state, game),
     _Tab.setup => _setup(context, state, game),
@@ -290,6 +297,9 @@ class _ControllerViewState extends State<ControllerView> {
   Widget _board(BuildContext context, SessionState state, GameContent? game) => (game == null
         ? SizedBox(height: 120, child: Center(child: Text(context.l10n.sessionHasNoGame)))
         : _BoardSheet(state: state, game: game, send: _send));
+
+  /// Where the Effects panel's cards were scrolled to, for when it opens again.
+  double _cardsOffset = 0;
 
   /// Where the script was left, per game, for [ScriptSheet.lastOffset].
   final _scriptOffsets = <String, double>{};
@@ -301,6 +311,7 @@ class _ControllerViewState extends State<ControllerView> {
             game: game,
             current: state.current,
             groupId: state.groupId,
+            played: state.played,
             lastOffset: _scriptOffsets[game.id],
             onScrolled: (offset) => _scriptOffsets[game.id] = offset,
           ));
@@ -2408,12 +2419,23 @@ String? _effectName(AppLocalizations l10n, String key) => switch (key) {
 /// Everything for the eyes and ears that is not part of a question: cards
 /// and animations over the screen, music, sound effects.
 class _EffectsSheet extends StatefulWidget {
-  const _EffectsSheet({required this.state, required this.game, required this.send, this.presenting = false});
+  const _EffectsSheet({
+    required this.state,
+    required this.game,
+    required this.send,
+    this.presenting = false,
+    this.cardsOffset = 0,
+    this.onCardsScrolled,
+  });
 
   final SessionState state;
   final GameContent? game;
   final void Function(Command) send;
   final bool presenting;
+
+  /// Where the cards were scrolled to when the panel was closed last.
+  final double cardsOffset;
+  final ValueChanged<double>? onCardsScrolled;
 
   @override
   State<_EffectsSheet> createState() => _EffectsSheetState();
@@ -2421,6 +2443,9 @@ class _EffectsSheet extends StatefulWidget {
 
 class _EffectsSheetState extends State<_EffectsSheet> {
   final TextEditingController _text = TextEditingController();
+
+  late final ScrollController _cards = ScrollController(initialScrollOffset: widget.cardsOffset)
+    ..addListener(() => widget.onCardsScrolled?.call(_cards.offset));
 
   /// The music volume while the slider is being dragged.
   int? _volume;
@@ -2436,6 +2461,7 @@ class _EffectsSheetState extends State<_EffectsSheet> {
   @override
   void dispose() {
     _text.dispose();
+    _cards.dispose();
     super.dispose();
   }
 
@@ -2502,6 +2528,8 @@ class _EffectsSheetState extends State<_EffectsSheet> {
             SizedBox(
               height: 76,
               child: ListView(
+                key: const ValueKey('effect-cards'),
+                controller: _cards,
                 scrollDirection: Axis.horizontal,
                 children: [
                   for (final card in cards)

@@ -250,6 +250,17 @@ void main() {
     expect(backend.log.last, 'file /game/question-wrong.mp3');
   });
 
+  test("a question's own closing sound plays as it closes, though it is no longer open by then", () {
+    host
+      ..dispatch(const OpenQuestion(reveal))
+      ..dispatch(const CloseQuestion());
+    expect(backend.log.last, 'file /game/question-end.mp3');
+    host
+      ..dispatch(const OpenQuestion(free))
+      ..dispatch(const CloseQuestion());
+    expect(backend.log.last, isNot('file /game/question-end.mp3'), reason: 'only that question has it');
+  });
+
   test('a file that is not downloaded yet starts once sync is called again', () {
     missing.add('bg.mp3');
     host.dispatch(const SetMusic(musicBackground));

@@ -25,8 +25,12 @@ class BuzzerSound extends Effect {
 
 /// A sound effect by key, resolved against the game's `MusicConfig.effects`.
 class SoundEffect extends Effect {
-  const SoundEffect(this.key, {this.held = false});
+  const SoundEffect(this.key, {this.held = false, this.from});
   final String key;
+
+  /// The question whose sounds it is chosen from, when it has just closed
+  /// and so is no longer the open one.
+  final QuestionRef? from;
 
   /// Started by hand: listed in `SessionState.effectsPlaying` until it ends,
   /// and can be stopped.
@@ -288,7 +292,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
       if (s.current == null) return _no(s);
       return _ok(
         _backToBoard(markPlayed ? _givenBeforeClosing(s, game) : s).copyWith(played: markPlayed ? {...s.played, s.current!.key} : null),
-        [if (markPlayed) const SoundEffect(effectAnswerClosed)],
+        [if (markPlayed) SoundEffect(effectAnswerClosed, from: s.current)],
       );
 
     // ── bets ─────────────────────────────────────────────────────────────────

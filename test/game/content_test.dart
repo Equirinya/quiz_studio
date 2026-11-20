@@ -81,7 +81,7 @@ void main() {
   test('mediaPaths lists every file to cache and skips empty slots', () {
     expect(
       game.mediaPaths,
-      {'bg.mp3', 'wrong.mp3', 'horn.mp3', 'finale.mp3', 'g1.png', 'song.mp3', '1.png', '3.png', 'question-wrong.mp3'},
+      {'bg.mp3', 'wrong.mp3', 'horn.mp3', 'finale.mp3', 'g1.png', 'song.mp3', '1.png', '3.png', 'question-wrong.mp3', 'question-end.mp3'},
     );
   });
 
