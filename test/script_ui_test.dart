@@ -138,6 +138,28 @@ void main() {
       expect(saved.last, {'script.${firstCategory.key}': '# **Welcome** everyone'});
     });
 
+    testWidgets("a category's script shows only its part, and writes into the game's script", (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final saved = <Map<String, dynamic>>[];
+      final game = fixtureGame();
+      final sections = GameScript.sections(game);
+      final category = sections.firstWhere((s) => s.kind == ScriptSectionKind.category);
+      final own = [for (final s in sections) if (s.categoryId == category.categoryId) s];
+      expect(own.length, lessThan(sections.length - 1), reason: 'the fixture has more than one category');
+      await tester.pumpWidget(_app(ScriptEditorView(game: game, categoryId: category.categoryId, save: (update) async => saved.add(update))));
+
+      expect(find.byType(ScriptDivider), findsNWidgets(own.length));
+      expect(find.textContaining(category.title), findsWidgets);
+      await tester.enterText(find.byType(TextField).first, 'On to this one');
+      await tester.pump(const Duration(seconds: 1));
+      // The same section key as in the whole script.
+      expect(saved, [
+        {'script.${category.key}': 'On to this one'},
+      ]);
+    });
+
     test('text controller helpers', () {
       final c = ScriptTextController(text: 'one\ntwo');
       c.selection = const TextSelection.collapsed(offset: 5);

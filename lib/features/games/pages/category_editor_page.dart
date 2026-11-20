@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:quiz_show/core/widgets/dialogs.dart';
 import 'package:quiz_show/features/games/widgets/group_colors_dialog.dart';
 import 'package:quiz_show/features/games/game_repository.dart';
+import 'package:quiz_show/features/games/pages/script_editor_page.dart';
 import 'package:quiz_show/features/games/widgets/cards_dialog.dart';
 import 'package:quiz_show/features/games/widgets/companion_editor.dart';
 import 'package:quiz_show/features/games/widgets/editor_section.dart';
@@ -122,6 +123,12 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
     });
   }
 
+  /// Whether anything is written in the script for this category or its questions.
+  static bool _hasScript(GameContent game, Category category) {
+    final script = GameScript.of(game);
+    return GameScript.sections(game).any((s) => s.categoryId == category.id && script.text(s.key).trim().isNotEmpty);
+  }
+
   /// Who of the limited members sees this category besides its creator.
   static String _sharedSummary(AppLocalizations l10n, Category category) {
     final count = category.data['access'] is List ? (category.data['access'] as List).length : 0;
@@ -190,6 +197,18 @@ class _CategoryEditorPageState extends State<CategoryEditorPage> {
                         save: (cards) => guarded(context, () => _repo.updateCategory(widget.gameId, category.id, {'cards': cards})),
                       ),
                     ),
+                    // This category's part of the game's script, which is
+                    // kept with the game: for those who see all of it.
+                    if (snapshot.data!.role.seesEverything)
+                      SettingTile(
+                        icon: Icons.description_outlined,
+                        title: context.l10n.script,
+                        summary: _hasScript(snapshot.data!.content, category) ? context.l10n.scriptSummary : context.l10n.noneYet,
+                        isSet: _hasScript(snapshot.data!.content, category),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => ScriptEditorPage(gameId: widget.gameId, categoryId: category.id)),
+                        ),
+                      ),
                     SettingTile(
                       icon: Icons.palette_outlined,
                       title: context.l10n.colours,

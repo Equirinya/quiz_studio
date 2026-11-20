@@ -10,11 +10,13 @@ import 'package:quiz_show/features/games/widgets/script_format.dart';
 import 'package:quiz_show/game/game.dart';
 import 'package:quiz_show/l10n/l10n.dart';
 
-/// The gamemaster's script of one game, see [GameScript].
+/// The gamemaster's script of one game, see [GameScript]; with
+/// [categoryId] only that category's part of it.
 class ScriptEditorPage extends StatefulWidget {
-  const ScriptEditorPage({super.key, required this.gameId});
+  const ScriptEditorPage({super.key, required this.gameId, this.categoryId});
 
   final String gameId;
+  final String? categoryId;
 
   @override
   State<ScriptEditorPage> createState() => _ScriptEditorPageState();
@@ -37,6 +39,7 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
         }
         return ScriptEditorView(
           game: data.content,
+          categoryId: widget.categoryId,
           save: (update) => GameRepository.instance.updateGame(widget.gameId, update),
         );
       },
@@ -47,9 +50,13 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
 /// The script as one document: the game's categories and questions as fixed
 /// dividers in playing order, free formatted text between them.
 class ScriptEditorView extends StatefulWidget {
-  const ScriptEditorView({super.key, required this.game, required this.save});
+  const ScriptEditorView({super.key, required this.game, required this.save, this.categoryId});
 
   final GameContent game;
+
+  /// Only this category and its questions: the same sections as in the
+  /// whole script, so what is written here is there too.
+  final String? categoryId;
 
   /// Stores an update of the game document.
   final Future<void> Function(Map<String, dynamic> update) save;
@@ -80,6 +87,13 @@ class _ScriptEditorViewState extends State<ScriptEditorView> {
   int _match = 0;
 
   static const _saveDelay = Duration(milliseconds: 800);
+
+  /// The sections shown: all of the game's, or one category's.
+  List<ScriptSection> get _sections {
+    final all = GameScript.sections(widget.game);
+    final category = widget.categoryId;
+    return category == null ? all : [for (final section in all) if (section.categoryId == category) section];
+  }
 
   ScriptTextController _controller(String key, GameScript script) => _controllers.putIfAbsent(key, () {
     final controller = ScriptTextController(text: script.text(key));
@@ -168,7 +182,7 @@ class _ScriptEditorViewState extends State<ScriptEditorView> {
     final query = _query.text.toLowerCase();
     final found = <({String key, TextRange range})>[];
     if (query.isNotEmpty) {
-      for (final section in GameScript.sections(widget.game)) {
+      for (final section in _sections) {
         final text = (_controllers[section.key]?.text ?? GameScript.of(widget.game).text(section.key)).toLowerCase();
         for (var at = text.indexOf(query); at >= 0; at = text.indexOf(query, at + query.length)) {
           found.add((key: section.key, range: TextRange(start: at, end: at + query.length)));
@@ -185,7 +199,7 @@ class _ScriptEditorViewState extends State<ScriptEditorView> {
 
   void _mark() {
     final script = GameScript.of(widget.game);
-    for (final section in GameScript.sections(widget.game)) {
+    for (final section in _sections) {
       final mine = [
         for (final (i, match) in _matches.indexed)
           if (match.key == section.key) (i, match.range),
@@ -257,7 +271,8 @@ class _ScriptEditorViewState extends State<ScriptEditorView> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final script = GameScript.of(widget.game);
-    final sections = GameScript.sections(widget.game);
+    final sections = _sections;
+    final category = widget.categoryId == null ? null : widget.game.category(widget.categoryId!);
     final searchShortcuts = <ShortcutActivator, VoidCallback>{
       const SingleActivator(LogicalKeyboardKey.keyF, control: true): _openSearch,
       const SingleActivator(LogicalKeyboardKey.keyF, meta: true): _openSearch,
@@ -269,7 +284,9 @@ class _ScriptEditorViewState extends State<ScriptEditorView> {
         autofocus: true,
         child: Scaffold(
           appBar: AppBar(
-            title: _searching ? _searchField(context) : Text(l10n.script),
+            title: _searching
+                ? _searchField(context)
+                : Text(category == null ? l10n.script : '${l10n.script} · ${category.name.isEmpty ? l10n.unnamed : category.name}'),
             actions: [
               if (_searching) ...[
                 Center(
