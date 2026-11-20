@@ -2257,7 +2257,7 @@ class _BoardSheetState extends State<_BoardSheet> {
                               Builder(
                                 builder: (context) {
                                   final turnable = group.type == BoardType.map && state.current == null;
-                                  final focused = group.type == BoardType.map && state.boardFocus == category.id;
+                                  final focused = group.type == BoardType.map && mapFocusOn(group, state.boardFocus) == category.id;
                                   final label = Padding(
                                     padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
                                     child: Text(

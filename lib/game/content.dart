@@ -860,6 +860,12 @@ enum BoardType {
       BoardType.values.firstWhere((e) => e.databaseString == value, orElse: () => BoardType.wheel);
 }
 
+/// The category in focus on the map board [group]: [focus] when it is one of
+/// its own, else its first (a fresh show, a question reset, or a pick made on
+/// another board).
+String? mapFocusOn(CategoryGroup group, String? focus) =>
+    group.categories.any((category) => category.id == focus) ? focus : group.categories.firstOrNull?.id;
+
 class CategoryGroup {
   CategoryGroup({
     required this.id,
@@ -1202,13 +1208,14 @@ class GameContent {
     ]);
   }
 
-  /// The category [focus] when it is on the map board [groupId]: picked
-  /// there, it is played next. Other boards have no such choice.
+  /// The category picked on the map board [groupId] ([focus]): it is played
+  /// next. Until one there is picked, the map's first. Other boards have no
+  /// such choice.
   Category? _mapFocus(String? groupId, String? focus) {
-    if (focus == null) return null;
-    final group = groupOfCategory(focus);
-    if (group == null || group.id != groupId || group.type != BoardType.map) return null;
-    return category(focus);
+    final group = this.group(groupId);
+    if (group == null || group.type != BoardType.map) return null;
+    final id = mapFocusOn(group, focus);
+    return id == null ? null : category(id);
   }
 
   /// Every media file the game needs, for caching ahead of the show.

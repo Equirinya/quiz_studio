@@ -129,7 +129,8 @@ class SessionRepository {
       'name': name,
       'gameId': gameId,
       'createdAt': FieldValue.serverTimestamp(),
-      'state': SessionState(gameId: gameId).toJson(),
+      // The board music plays from the start; the controller can stop it.
+      'state': SessionState(gameId: gameId, music: musicBackground).toJson(),
     });
     return ref.id;
   }

@@ -36,10 +36,22 @@ void main() {
 
   test('the category picked on the map counts without an open question', () {
     final g = game();
-    expect(g.soundsFor(groupId: 'map').slots['musicBackground'], 'game.mp3');
     expect(g.soundsFor(groupId: 'map', focus: 'forest').slots['musicBackground'], 'forest.mp3');
     expect(g.cardsFor(groupId: 'map', focus: 'forest').map((card) => card.title), contains('Owl'));
-    expect(g.cardsFor(groupId: 'map').map((card) => card.title), isNot(contains('Owl')));
+  });
+
+  test("until one is picked there, the map's first category is in focus", () {
+    final g = game();
+    expect(g.soundsFor(groupId: 'map').slots['musicBackground'], 'forest.mp3');
+    expect(g.cardsFor(groupId: 'map', focus: 'sea').map((card) => card.title), contains('Owl'));
+  });
+
+  test('resetting a question or the whole show puts every map back on its first category', () {
+    final g = game();
+    const start = SessionState(gameId: 'game', groupId: 'map', played: {'sea/q'}, boardFocus: 'sea');
+    final unmarked = reduce(start, const UnmarkPlayed(QuestionRef('sea', 'q')), g).state;
+    expect(unmarked.boardFocus, isNull);
+    expect(reduce(start, const ClearSessionData(), g).state.boardFocus, isNull);
   });
 
   test('only on a map, and only for the board shown', () {

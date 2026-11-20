@@ -400,7 +400,8 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
 
     case UnmarkPlayed(:final ref):
       if (!s.played.contains(ref.key)) return _no(s);
-      return _ok(s.copyWith(played: {...s.played}..remove(ref.key)));
+      // Every map board starts over at its first category.
+      return _ok(s.copyWith(played: {...s.played}..remove(ref.key), boardFocus: null));
 
     case ClearSessionData():
       return Reduction(
@@ -411,6 +412,7 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
             storedRounds: const {},
             scoreLog: const [],
             overlay: null,
+            boardFocus: null,
           ),
         ).state,
         clearRounds: true,

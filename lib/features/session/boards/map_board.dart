@@ -50,9 +50,9 @@ class _MapBoardScrollState extends State<MapBoard> {
 
   void _follow(MapLayout map, double canvasWidth, double viewportWidth) {
     if (!mounted || !_scroll.hasClients) return;
-    // The question in play, else the category last opened or picked: the
-    // window stays there after the question closes.
-    final wanted = widget.state.current?.categoryId ?? widget.state.boardFocus;
+    // The question in play, else the category last opened or picked (the
+    // window stays there after the question closes), else the first.
+    final wanted = widget.state.current?.categoryId ?? mapFocusOn(widget.group, widget.state.boardFocus);
     final focus = wanted != null && map.nodes.containsKey(wanted) ? wanted : null;
     if (_placed && focus == _focus) return;
     final first = !_placed;

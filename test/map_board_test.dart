@@ -81,7 +81,7 @@ void main() {
       await tester.pumpAndSettle();
       final at = offset(tester);
       expect(at, greaterThan(0));
-      await pumpBoard(tester, const SessionState(played: {'c5/q'}));
+      await pumpBoard(tester, const SessionState(played: {'c5/q'}, boardFocus: 'c5'));
       await tester.pumpAndSettle();
       expect(offset(tester), at);
     });
