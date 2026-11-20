@@ -530,7 +530,9 @@ class _NowPanel extends StatelessWidget {
             padding: const EdgeInsets.only(top: 8),
             child: Text(l10n.betQuestionShown(q.amountBet!.prompt), style: theme.textTheme.bodyMedium),
           ),
-        if (state.betting != null) _BetsPanel(state: state, question: q, send: send),
+        // How many a team bet it can name sits beside its name on its answer, once the bets are in.
+        if (state.betting case final betting? when betting.open || q.amountBet == null || round == null)
+          _BetsPanel(state: state, question: q, send: send),
         // The question's own clock, when the devices have none.
         if (state.timer case final timer? when timer.running && round == null)
           Padding(
@@ -3197,7 +3199,7 @@ class _AnswersPanel extends StatelessWidget {
                               color: scheme.outline,
                             ),
                           const SizedBox(width: 6),
-                          Expanded(
+                          Flexible(
                             child: Text(
                               "${team.name}${shown ? " · ${context.l10n.onScreen}" : ""}"
                               "${took == null ? "" : " · ${took.toStringAsFixed(1)} s"}",
@@ -3210,6 +3212,22 @@ class _AnswersPanel extends StatelessWidget {
                           const SizedBox(width: 8),
                           // What rating automatically would make of it.
                           if (verdict == null && place != null)
+                          if (state.betting?.bets[team.id] case final bet? when question.amountBet != null)
+                            Padding(
+                              key: ValueKey('bet-${team.id}'),
+                              padding: const EdgeInsets.only(left: 8),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(color: scheme.tertiaryContainer, borderRadius: BorderRadius.circular(8)),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  child: Text(
+                                    context.l10n.goal(bet),
+                                    style: theme.textTheme.labelLarge?.copyWith(color: scheme.onTertiaryContainer),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          const Spacer(),
                             Text(context.l10n.placeN(context.l10n.ordinal(place + 1)), style: theme.textTheme.labelMedium?.copyWith(color: scheme.outline)),
                           if (verdict == null && (partial != null || suggestion != null))
                             Text(

@@ -420,6 +420,9 @@ class BettingDisplay extends StatelessWidget {
     final card = unit * (count <= 5 ? 1.0 : (count <= 12 ? 0.85 : 0.6));
     // Even rows: twelve teams are two rows of six, not eleven and one.
     final perRow = count <= 7 ? count : (count / (count / 7).ceil()).ceil();
+    // Wide enough for the longest bet on one line: 1500 points as well as 7.
+    final digits = [for (final bet in bets.values) '$bet'.length].fold(1, max);
+    final cardWidth = card * max(24.0, 6.6 * digits + 4);
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(unit * 3),
@@ -451,7 +454,7 @@ class BettingDisplay extends StatelessWidget {
           SizedBox(height: unit * 3),
           if (shown)
             ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: perRow * card * 24 + (perRow - 1) * card * 2.5 + 1),
+              constraints: BoxConstraints(maxWidth: perRow * cardWidth + (perRow - 1) * card * 2.5 + 1),
               child: Wrap(
               alignment: WrapAlignment.center,
               spacing: card * 2.5,
@@ -468,7 +471,7 @@ class BettingDisplay extends StatelessWidget {
                       child: Transform.scale(scale: 0.6 + 0.4 * t, child: child),
                     ),
                     child: Container(
-                      width: card * 24,
+                      width: cardWidth,
                       padding: EdgeInsets.symmetric(vertical: card * 2, horizontal: card),
                       decoration: BoxDecoration(
                         color: teamColor(team) ?? scheme.primaryContainer,
@@ -485,12 +488,18 @@ class BettingDisplay extends StatelessWidget {
                               color: teamColor(team) == null ? scheme.onPrimaryContainer : onTeamColor(teamColor(team)!),
                             ),
                           ),
-                          Text(
-                            "${bets[team.id] ?? 0}",
-                            style: TextStyle(
-                              fontSize: card * 10,
-                              fontWeight: FontWeight.w800,
-                              color: teamColor(team) == null ? scheme.onPrimaryContainer : onTeamColor(teamColor(team)!),
+                          // Never on two lines: smaller, if it must.
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              "${bets[team.id] ?? 0}",
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                fontSize: card * 10,
+                                fontWeight: FontWeight.w800,
+                                color: teamColor(team) == null ? scheme.onPrimaryContainer : onTeamColor(teamColor(team)!),
+                              ),
                             ),
                           ),
                         ],
