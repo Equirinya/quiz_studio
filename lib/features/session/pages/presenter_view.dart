@@ -245,11 +245,11 @@ class _Scores extends StatelessWidget {
       popOrder.insert(0, change.teamId);
     }
     return LayoutBuilder(builder: (context, constraints) {
-    // More teams than fit on one line: flatter boxes, name and points side
-    // by side, so the rows take less of the screen.
+    // More teams than fit on one line: narrower, flatter boxes, so ten
+    // fit next to each other on a wide screen and the rows take less of it.
     final count = state.teams.length;
     final compact = count > ((constraints.maxWidth + unit) / (unit * 23)).floor();
-    final width = unit * (compact ? 18 : 22);
+    final width = unit * (compact ? 16 : 22);
     // Even rows: sixteen teams are two rows of eight, not seven, seven and two.
     final fits = max(1, ((constraints.maxWidth + unit) / (width + unit)).floor());
     final perRow = (count / (count / fits).ceil()).ceil();
@@ -276,49 +276,38 @@ class _Scores extends StatelessWidget {
               final box = AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: width,
-                height: unit * (compact ? (bets == null ? 6.5 : 9) : (bets == null ? 12 : 14)),
+                height: unit * (compact ? (bets == null ? 9.75 : 12.5) : (bets == null ? 12 : 14)),
                 decoration: BoxDecoration(
                   color: color,
                   borderRadius: BorderRadius.circular(unit * 2),
                   border: own != null && position == 0 ? Border.all(color: scheme.onSurface, width: unit * 0.5) : null,
                 ),
                 alignment: Alignment.center,
-                padding: compact ? EdgeInsets.symmetric(horizontal: unit * 1.5) : null,
+                padding: EdgeInsets.symmetric(horizontal: unit * (compact ? 1 : 1.5)),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (compact)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              team.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: unit * 2.2, color: text),
-                            ),
-                          ),
-                          SizedBox(width: unit),
-                          Text(
-                            team.points.toString(),
-                            style: TextStyle(fontSize: unit * 3.6, fontWeight: FontWeight.w600, color: text),
-                          ),
-                        ],
-                      )
-                    else ...[
-                      Text(
-                        team.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: unit * 2.2, color: text),
-                      ),
-                      Text(
+                    // The name on top, the points below it.
+                    Text(
+                      team.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: unit * 2.2, color: text),
+                    ),
+                    // Never on two lines: smaller, if a score gets long.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
                         team.points.toString(),
-                        style: TextStyle(fontSize: unit * 4.5, fontWeight: FontWeight.w600, color: text),
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(fontSize: unit * (compact ? 4 : 4.5), fontWeight: FontWeight.w600, color: text),
                       ),
-                    ],
+                    ),
                     if (bets != null)
-                      Row(
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
@@ -336,6 +325,7 @@ class _Scores extends StatelessWidget {
                               ),
                             ),
                         ],
+                        ),
                       ),
                   ],
                 ),

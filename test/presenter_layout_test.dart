@@ -6,6 +6,7 @@ import 'package:quiz_show/features/session/pages/round_display.dart';
 import 'package:quiz_show/features/session/session_connection.dart';
 import 'package:quiz_show/game/game.dart';
 
+import 'game/betting_fixture.dart' show bettingGame, bettingState, picked;
 import 'game/fixture.dart';
 import 'game/top_answers_fixture.dart';
 
@@ -85,6 +86,57 @@ void main() {
     // Two rows of score boxes, flat ones.
     final red = tester.getRect(find.text('Red').first);
     expect(red.top, lessThan(40));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('ten teams in one row, each name above its points, half again as high as the flat boxes were', (tester) async {
+    await pumpScreen(tester, teams: 10, (host) {
+      host
+        ..dispatch(const SetQueueBuzzers(true))
+        ..dispatch(const AdjustPoints('red', 12500))
+        ..dispatch(const OpenQuestion(free))
+        ..dispatch(const Buzz('blue'))
+        ..dispatch(const Buzz('red'));
+    });
+    Rect box(String name) => tester.getRect(find.ancestor(of: find.text(name), matching: find.byType(AnimatedContainer)).first);
+    final boxes = [box('Red'), box('Blue'), for (var i = 3; i <= 10; i++) box('Team $i')];
+    expect({for (final b in boxes) b.top}, hasLength(1), reason: 'one row');
+    expect(boxes.first.height, moreOrLessEquals(9 * 9.75, epsilon: 1));
+    expect(boxes.last.right, lessThanOrEqualTo(1600));
+    // The name above the points.
+    final name = tester.getRect(find.text('Red'));
+    final points = tester.getRect(find.text('12500'));
+    expect(points.top, greaterThan(name.bottom - 1));
+    expect(points.center.dx, moreOrLessEquals(name.center.dx, epsilon: 1));
+    // Waiting second in the queue: its badge.
+    expect(find.descendant(of: find.byType(Stack), matching: find.text('2')), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the boxes grow for the bets and keep them on one line', (tester) async {
+    tester.view
+      ..physicalSize = const Size(1600, 900)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final game = bettingGame();
+    host = SessionHost(initial: bettingState(), game: game);
+    addTearDown(host.dispose);
+    for (var i = 4; i <= 10; i++) {
+      host.dispatch(AddTeam('t$i', 'Team $i'));
+    }
+    host
+      ..dispatch(const AdjustPoints('red', 2000))
+      ..dispatch(const OpenQuestion(picked))
+      ..dispatch(const PlaceBet('red', 1500))
+      ..dispatch(const CloseBets())
+      ..dispatch(const StartQuestion());
+    final connection = SessionConnection.local(host, game: game);
+    addTearDown(connection.dispose);
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: PresenterView(connection: connection))));
+    await tester.pump(const Duration(milliseconds: 500));
+    final red = tester.getRect(find.ancestor(of: find.text('Red'), matching: find.byType(AnimatedContainer)).first);
+    expect(red.height, moreOrLessEquals(9 * 12.5, epsilon: 1));
+    expect(find.textContaining('1500'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
