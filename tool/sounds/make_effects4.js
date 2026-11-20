@@ -7,11 +7,12 @@ const { buf, note, fmBell, brass, sine, reverb, write, setDir } = require("./syn
 setDir(process.argv[2]);
 
 // ── lock in: a short glassy pling, a little below the other effects ──────
+// (first at -6 dB, which was too quiet to notice during a show)
 {
   const o = buf(0.9);
   fmBell(o, 0, note(88), 1, 0.22, 3.5, 0.5);
   fmBell(o, 0, note(100), 0.18, 0.12, 2, 0.3);
-  write("pling", reverb(o, 0.2), -6);
+  write("pling", reverb(o, 0.2), -1);
 }
 
 // ── fail: three brass notes, each lower, the last held and fading ────────
