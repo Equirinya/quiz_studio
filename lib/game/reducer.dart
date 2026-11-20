@@ -80,6 +80,10 @@ bool canLockIn(SessionState state, GameContent? game) {
   return question?.ranked == true || round.kind == CompanionKind.connections;
 }
 
+/// A buzzer Fragenhagel's item on screen has been answered right: it stays
+/// up until the gamemaster moves on, and nobody buzzes for it any more.
+bool rapidAnswered(SessionState state) => state.rapidSteps[state.revealed]?.picks.containsValue(0) ?? false;
+
 bool buzzersOpen(SessionState state, GameContent? game) {
   if (state.phase == Phase.buzzerTest) return true;
   // Bets come first.
@@ -90,6 +94,8 @@ bool buzzersOpen(SessionState state, GameContent? game) {
   // A Fragenhagel buzzes for its items: not while only the question itself
   // is up, and not once the last item is done.
   if (question.type == QuestionType.rapidFire && (state.revealed < 0 || state.revealed >= question.maxReveal)) return false;
+  // Nor for an item a team has already got right.
+  if (question.type == QuestionType.rapidFire && rapidAnswered(state)) return false;
   return state.phase == Phase.question || (state.phase == Phase.buzzered && state.queueBuzzers);
 }
 
@@ -406,12 +412,19 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
       if (correct && question.type == QuestionType.topAnswers) return _no(s);
       final team = s.buzzQueue.first;
       if (correct && question.type == QuestionType.rapidFire) {
-        // Right: the points, and straight on to the next item.
-        final finished = s.revealed + 1 >= question.maxReveal;
-        return _ok(_rapidAt(_rapidScore(s, team, question.pointsPlus), question, s.revealed + 1, now), [
-          const SoundEffect(effectAnswerCorrect),
-          if (finished) const SoundEffect(effectFanfare),
-        ]);
+        // Right: the points, and the item stays up, answered, until the
+        // gamemaster moves on.
+        final scored = _rapidScore(s, team, question.pointsPlus);
+        final step = scored.rapidSteps[s.revealed]!.withPick(team, 0);
+        return _ok(
+          scored.copyWith(
+            phase: Phase.question,
+            buzzQueue: const [],
+            wrongAttempts: 0,
+            rapidSteps: {...scored.rapidSteps, s.revealed: step},
+          ),
+          const [SoundEffect(effectAnswerCorrect)],
+        );
       }
       if (correct) {
         return _ok(

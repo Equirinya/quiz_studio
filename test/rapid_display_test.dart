@@ -59,4 +59,38 @@ void main() {
     ));
     expect(find.text('Draw it'), findsOneWidget);
   });
+
+  testWidgets('an item with only a picture shows no text beside it: the picture gets the whole card', (tester) async {
+    final dir = Directory.systemTemp.createTempSync('rapid');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final picture = File('${dir.path}/dog.png')
+      ..writeAsBytesSync(base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=='));
+    final game = rapidGame();
+    final state = run(fixtureState(), const [OpenQuestion(boardRound), Reveal(1), Reveal(1), Reveal(1)], game, 1000);
+    tester.view
+      ..physicalSize = const Size(1600, 900)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.runAsync(() async {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        home: Scaffold(
+          body: RapidFireDisplay(
+            state: state,
+            question: game.question(boardRound)!,
+            unit: 10,
+            file: (name) => name == 'dog.png' ? picture : null,
+          ),
+        ),
+      ));
+      await precacheImage(FileImage(picture), tester.element(find.byType(RapidFireDisplay)));
+    });
+    await tester.pump();
+    // The question small above, once; nothing beside the picture.
+    final heading = find.text('Draw it');
+    expect(heading, findsOneWidget);
+    final drawn = tester.getRect(find.byType(ClipRRect).first);
+    expect(drawn.top, greaterThan(tester.getRect(heading).bottom));
+    expect(drawn.height, greaterThan(500), reason: 'as big as the card lets it be');
+  });
 }

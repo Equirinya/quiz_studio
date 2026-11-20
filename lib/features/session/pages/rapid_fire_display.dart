@@ -55,15 +55,17 @@ class RapidFireDisplay extends StatelessWidget {
     // Before the first item only the question itself is up, to be read out.
     final intro = state.revealed < 0;
     final heading = question.text.trim();
-    // An item without text of its own is read out: the question itself
-    // stays in its place, with the item's picture if it has one.
     final own = item != null && item.question.trim().isNotEmpty;
-    final text = own ? item.question : heading;
+    // An item with only a picture shows the picture alone, as big as the
+    // card, the question small above it. One with nothing at all is read
+    // out: the question itself stays in its place.
+    final pictureOnly = item != null && !own && image;
+    final text = own ? item.question : (pictureOnly ? '' : heading);
 
     final Key itemKey = intro ? const ValueKey('intro') : item == null ? const ValueKey('done') : ValueKey('item-$done');
     final card = Container(
       width: double.infinity,
-      padding: EdgeInsets.all(unit * 3),
+      padding: EdgeInsets.all(unit * (pictureOnly ? 1.5 : 3)),
       decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(unit * 3)),
       // Each item comes in from the right while the one before leaves to
       // the left. The leaving one runs its animation backwards, so it
@@ -198,7 +200,7 @@ class RapidFireDisplay extends StatelessWidget {
     return Column(
       children: [
         // The question itself stays above its items.
-        if (!intro && own && heading.isNotEmpty)
+        if (!intro && (own || pictureOnly) && heading.isNotEmpty)
           Padding(
             padding: EdgeInsets.only(bottom: unit * 2),
             child: Text(

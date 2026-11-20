@@ -24,7 +24,9 @@ void main() {
     expect(sounds(r), [effectNextItem]);
     r = reduce(r.state, const Buzz('red'), game);
     r = reduce(r.state, const Judge(correct: true), game);
-    expect(sounds(r), [effectAnswerCorrect]);
+    expect(sounds(r), [effectAnswerCorrect], reason: 'and it stays up');
+    r = reduce(r.state, const Reveal(1), game);
+    expect(sounds(r), [effectNextItem]);
     r = reduce(r.state, const Reveal(1), game);
     expect(sounds(r), [effectFanfare], reason: 'that was the last item');
     s = r.state;

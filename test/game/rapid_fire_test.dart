@@ -42,10 +42,14 @@ void main() {
       expect(buzzersOpen(s, game), isTrue);
     });
 
-    test('a right answer scores and moves straight on; a wrong one costs and reopens', () {
+    test('a right answer scores and the item stays up until next; a wrong one costs and reopens', () {
       var s = play(const [OpenQuestion(buzzerRound), Reveal(1), Buzz('red'), Judge(correct: true)]);
-      expect((points(s, 'red'), s.revealed, s.phase), (10, 1, Phase.question));
+      expect((points(s, 'red'), s.revealed, s.phase), (10, 0, Phase.question));
       expect(s.buzzQueue, isEmpty);
+      expect(buzzersOpen(s, game), isFalse, reason: 'answered: nobody buzzes for it again');
+      expect(apply(s, const Buzz('blue')).accepted, isFalse);
+      s = run(s, const [Reveal(1)], game);
+      expect((s.revealed, buzzersOpen(s, game)), (1, true));
       // The second item has no sound of its own.
       expect(s.media, MediaPlayback.stopped);
       s = run(s, const [Buzz('blue'), Judge(correct: false)], game);
@@ -56,6 +60,8 @@ void main() {
       var s = play(const [OpenQuestion(buzzerRound), Reveal(1), Reveal(1), Reveal(1)]);
       expect(s.revealed, 2);
       s = run(s, const [Buzz('red'), Judge(correct: true)], game);
+      expect((s.revealed, s.phase, points(s, 'red')), (2, Phase.question, 10), reason: 'the last item stays up too');
+      s = run(s, const [Reveal(1)], game);
       expect((s.revealed, s.phase, points(s, 'red')), (3, Phase.answerRevealed, 10));
       expect(buzzersOpen(s, game), isFalse);
       expect(apply(s, const Buzz('blue')).accepted, isFalse);
@@ -66,7 +72,7 @@ void main() {
     });
 
     test('going back takes back what was scored on the items left, and stops at the question', () {
-      var s = play(const [OpenQuestion(buzzerRound), Reveal(1), Buzz('blue'), Judge(correct: false), Buzz('red'), Judge(correct: true)]);
+      var s = play(const [OpenQuestion(buzzerRound), Reveal(1), Buzz('blue'), Judge(correct: false), Buzz('red'), Judge(correct: true), Reveal(1)]);
       expect((points(s, 'red'), points(s, 'blue'), s.revealed), (10, -5, 1));
       s = run(s, const [Buzz('blue'), Judge(correct: false)], game);
       expect(points(s, 'blue'), -10);
