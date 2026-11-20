@@ -142,7 +142,7 @@ class _ScriptSheetState extends State<ScriptSheet> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 8, 0),
+            padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
             child: Row(
               children: [
                 Expanded(child: Text(l10n.script, style: theme.textTheme.titleMedium)),

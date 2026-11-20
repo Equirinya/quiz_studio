@@ -2023,7 +2023,7 @@ class _TabPanelState extends State<_TabPanel> {
   /// How far the panel is pulled down by its handle.
   double _pulled = 0;
 
-  static const double _handleHeight = 24;
+  static const double _handleHeight = 34;
 
   void _drag(DragUpdateDetails details) => setState(() => _pulled = (_pulled + details.delta.dy).clamp(0, double.infinity));
 
@@ -2202,7 +2202,7 @@ class _BoardSheetState extends State<_BoardSheet> {
     final kept = selected != null && !open && state.storedRounds.contains(selected.key);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2516,7 +2516,7 @@ class _EffectsSheetState extends State<_EffectsSheet> {
       child: Text(text, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
     );
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2954,7 +2954,7 @@ class _AnswersSheetState extends State<_AnswersSheet> {
     final unlimited = round != null && round.open && round.endsAtMillis == null;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
