@@ -41,6 +41,7 @@ void main() {
     expect(tester.widget<FilterChip>(buzzer).selected, isTrue);
     await tap(tester, buzzer);
     expect(host.state.effectsPlaying, isEmpty);
+    expect(find.byType(MediaControls), findsNothing, reason: 'the question sound is on the play button only');
     expect(find.byKey(const ValueKey('effectsVolume')), findsOneWidget);
   });
 
@@ -52,6 +53,12 @@ void main() {
       ..dispatch(const SetMedia(MediaPlayback.playing))
       ..dispatch(const MediaLoaded(200000));
     await tester.pump();
+    // The right quarter of the play button opens them.
+    final more = tester.getRect(find.byKey(const ValueKey('soundControls')));
+    final play = tester.getRect(find.ancestor(of: find.byKey(const ValueKey('soundControls')), matching: find.byType(Stack)).first);
+    expect(more.width, moreOrLessEquals(play.width / 4, epsilon: 1));
+    expect(more.right, moreOrLessEquals(play.right, epsilon: 1));
+    expect(more.height, greaterThan(40), reason: 'the whole height of the button');
     await tap(tester, find.byKey(const ValueKey('soundControls')));
     expect(find.byType(MediaControls), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 300));

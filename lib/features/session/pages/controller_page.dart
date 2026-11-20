@@ -1773,14 +1773,16 @@ class _ActionPad extends StatelessWidget {
     Widget small(String label, IconData icon, Command? command, {Future<bool> Function()? ask, Widget? corner}) => Expanded(
       child: Padding(
         padding: const EdgeInsets.all(4),
-        child: Stack(
+        child: LayoutBuilder(
+          builder: (context, box) => Stack(
           children: [
             SizedBox(
               height: 52,
               width: double.infinity,
               child: FilledButton.tonal(
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  // With a corner its quarter on the right is the corner's.
+                  padding: EdgeInsets.only(left: 2, right: corner == null ? 2 : box.maxWidth / 4),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 onPressed: command == null
@@ -1798,8 +1800,9 @@ class _ActionPad extends StatelessWidget {
                 ),
               ),
             ),
-            if (corner != null) Positioned(top: 0, right: 0, child: corner),
+            if (corner != null) Positioned(top: 0, bottom: 0, right: 0, width: box.maxWidth / 4, child: corner),
           ],
+          ),
         ),
       ),
     );
@@ -1807,15 +1810,18 @@ class _ActionPad extends StatelessWidget {
     final hasSound = q != null && q.hasMediaAt(state.revealed, state.standing);
     final soundMore = !hasSound || onSoundControls == null
         ? null
-        : IconButton(
-            key: const ValueKey('soundControls'),
-            tooltip: context.l10n.soundControls,
-            iconSize: 18,
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 30, height: 30),
-            icon: const Icon(Icons.more_horiz),
-            onPressed: onSoundControls,
+        // The right quarter of the play button, all of it to tap.
+        : Tooltip(
+            message: context.l10n.soundControls,
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                key: const ValueKey('soundControls'),
+                borderRadius: const BorderRadius.horizontal(right: Radius.circular(14)),
+                onTap: onSoundControls,
+                child: const Center(child: Icon(Icons.more_vert, size: 28)),
+              ),
+            ),
           );
 
     return Padding(
@@ -2504,7 +2510,6 @@ class _EffectsSheetState extends State<_EffectsSheet> {
     final game = widget.game;
     final send = widget.send;
     final sounds = game?.soundsFor(ref: state.current, groupId: state.groupId, focus: state.boardFocus) ?? MusicConfig.empty;
-    final question = state.current == null ? null : game?.question(state.current!);
     final cards = game?.cardsFor(ref: state.current, groupId: state.groupId, focus: state.boardFocus) ?? const <CueCard>[];
     Widget header(String text) => Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 8),
@@ -2759,10 +2764,6 @@ class _EffectsSheetState extends State<_EffectsSheet> {
             label: context.l10n.effectsVolume,
             onChanged: (volume) => send(SetEffectsVolume(volume)),
           ),
-          if (question != null && question.hasMediaAt(state.revealed, state.standing)) ...[
-            header(context.l10n.questionSound),
-            MediaControls(state: state, question: question, send: send, presenting: widget.presenting),
-          ],
         ],
       ),
     );
