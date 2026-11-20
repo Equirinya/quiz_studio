@@ -112,5 +112,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('verdict-0')), findsOneWidget);
     expect(find.byIcon(question.rapidFire!.items.first.isTrue ? Icons.check : Icons.close), findsOneWidget);
+    // Text stored as its answer (the editor has no field for it here) stays off screen.
+    expect(find.textContaining('yellow dwarf'), findsNothing);
   });
 }

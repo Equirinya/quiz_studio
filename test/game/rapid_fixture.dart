@@ -39,7 +39,7 @@ GameContent rapidGame() => GameContent.assemble(
             'rapidFire': {
               'mode': 'devices',
               'items': [
-                {'question': 'The sun is a star', 'true': true},
+                {'question': 'The sun is a star', 'true': true, 'answer': 'Background: a yellow dwarf'},
                 {'question': 'Bats are birds', 'true': false},
               ],
             },

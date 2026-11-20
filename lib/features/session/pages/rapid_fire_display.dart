@@ -213,8 +213,11 @@ class RapidFireDisplay extends StatelessWidget {
                 SizedBox(width: unit * 3),
                 Flexible(
                   child: Text(
-                    [item.isTrue ? context.l10n.rapidRight : context.l10n.rapidWrong, if (item.answer.trim().isNotEmpty) item.answer.trim()].join(' · '),
-                    maxLines: 2,
+                    // Only the verdict: a right-or-wrong item has no answer of
+                    // its own in the editor, so any text stored there stays
+                    // off screen.
+                    item.isTrue ? context.l10n.rapidRight : context.l10n.rapidWrong,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: unit * 7, fontWeight: FontWeight.w800, color: item.isTrue ? Colors.white : scheme.onError),
                   ),
