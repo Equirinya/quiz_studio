@@ -41,11 +41,12 @@ void main() {
       ], game);
 
   group('ABCD', () {
-    test('closing answering rates every pick right or wrong, as if the gamemaster had tapped it', () {
+    test('every pick is rated right or wrong as it comes in, as if the gamemaster had tapped it', () {
       final game = abcdGame();
       var state = answered(game, const {'red': PlayerAnswer(choice: 1), 'blue': PlayerAnswer(choice: 2)});
-      // Still open: nothing is final, nothing rated.
-      expect(state.results.verdicts, isEmpty);
+      // Still open: marked already, so the gamemaster sees who is right.
+      expect(state.results.verdicts, {'red': true, 'blue': false});
+      expect(state.team('red')!.points, 0, reason: 'no points before they are given');
       state = run(state, const [LockAnswers()], game);
       expect(state.results.verdicts, {'red': true, 'blue': false});
       // Points as usual: given with "Give points", into the score log.
@@ -53,6 +54,18 @@ void main() {
       expect(state.team('red')!.points, 100);
       expect(state.team('blue')!.points, -100);
       expect([for (final change in state.scoreLog) change.delta], unorderedEquals([100, -100]));
+    });
+
+    test('a team changing its pick changes its mark; one the gamemaster set stays', () {
+      final game = abcdGame();
+      var state = answered(game, const {'red': PlayerAnswer(choice: 2), 'blue': PlayerAnswer(choice: 2)});
+      expect(state.results.verdicts, {'red': false, 'blue': false});
+      // Blue rated by hand.
+      state = run(state, const [RateAnswer('blue', correct: true)], game);
+      state = run(state, const [SubmitAnswer('red', PlayerAnswer(choice: 1)), SubmitAnswer('blue', PlayerAnswer(choice: 3))], game);
+      expect(state.results.verdicts, {'red': true, 'blue': true});
+      state = run(state, const [SubmitAnswer('red', PlayerAnswer(choice: 0))], game);
+      expect(state.results.verdicts['red'], isFalse);
     });
 
     test('a team that sent nothing is left for the gamemaster', () {

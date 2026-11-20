@@ -45,6 +45,17 @@ List<Command> ratingByItself(SessionState state, AnswerRound round, Question que
   ];
 }
 
+/// Whether [teamId]'s rating in [state] is the one rating by itself gives
+/// its answer in [round]: not one the gamemaster chose.
+bool ratedByItself(SessionState state, AnswerRound round, Question question, String teamId) {
+  final automatic = _candidates(state, round, question).where((command) => _teamOf(command) == teamId).firstOrNull;
+  return switch (automatic) {
+    RateAnswer(:final correct) => state.results.verdicts[teamId] == correct && !state.results.points.containsKey(teamId),
+    AwardAnswer(:final points) => state.results.points[teamId] == points,
+    _ => false,
+  };
+}
+
 bool _rated(SessionState state, String teamId) =>
     state.results.verdicts.containsKey(teamId) || state.results.points.containsKey(teamId);
 
