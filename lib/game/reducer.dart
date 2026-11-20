@@ -80,6 +80,22 @@ bool canLockIn(SessionState state, GameContent? game) {
   return question?.ranked == true || round.kind == CompanionKind.connections;
 }
 
+/// A Fragenhagel on the devices whose item on screen is still being
+/// answered: "next" settles it first.
+bool rapidToSettle(SessionState state, Question question) =>
+    question.rapidFire?.mode == RapidMode.devices &&
+    state.revealed >= 0 &&
+    state.revealed < question.maxReveal &&
+    state.phase != Phase.answerRevealed;
+
+/// A Fragenhagel on the devices whose item on screen is settled: locked,
+/// scored, its answer up.
+bool rapidSettled(SessionState state, Question question) =>
+    question.rapidFire?.mode == RapidMode.devices &&
+    state.revealed >= 0 &&
+    state.revealed < question.maxReveal &&
+    state.phase == Phase.answerRevealed;
+
 /// A buzzer Fragenhagel's item on screen has been answered right: it stays
 /// up until the gamemaster moves on, and nobody buzzes for it any more.
 bool rapidAnswered(SessionState state) => state.rapidSteps[state.revealed]?.picks.containsValue(0) ?? false;
@@ -471,9 +487,22 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
       // A Fragenhagel goes back as far as the question itself (-1).
       if (revealed < (rapid ? -1 : 0) || revealed > question.maxReveal) return _no(s);
       if (rapid) {
-        if (delta < 0) return _ok(_rapidBack(s, question, revealed, now));
-        // On the devices an item is scored as the gamemaster moves on.
-        final scored = _scoreRapidItem(s, question);
+        // On the devices "next" first ends the item: every team is locked,
+        // the picks are scored and the answer goes up; only then on.
+        final settled = rapidSettled(s, question);
+        if (delta < 0) return _ok(_rapidBack(s, question, settled ? s.revealed : revealed, now));
+        if (rapidToSettle(s, question)) {
+          final round = s.answerRound;
+          return _ok(
+            _scoreRapidItem(s, question).copyWith(
+              phase: Phase.answerRevealed,
+              answerRound: round?.copyWith(open: false, endsAtMillis: null),
+            ),
+            const [SoundEffect(effectReveal)],
+          );
+        }
+        // Scored as it was settled; on the whiteboard as the gamemaster moves on.
+        final scored = settled ? s : _scoreRapidItem(s, question);
         final finished = revealed >= question.maxReveal;
         return _ok(_rapidAt(scored, question, revealed, now), [SoundEffect(finished ? effectFanfare : effectNextItem)]);
       }

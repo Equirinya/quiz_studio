@@ -1824,6 +1824,8 @@ class _ActionPad extends StatelessWidget {
                     ? context.l10n.lockAll
                     : answerSteps
                     ? context.l10n.showAnswer
+                    : rapid && rapidToSettle(state, q!)
+                    ? context.l10n.showAnswer
                     : rapid
                     ? (state.revealed < 0
                           ? context.l10n.firstItem

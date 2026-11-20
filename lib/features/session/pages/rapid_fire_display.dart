@@ -197,6 +197,33 @@ class RapidFireDisplay extends StatelessWidget {
             ),
           );
 
+    // On the devices, once "next" has locked the teams: right or wrong, big.
+    final verdict = item != null && rapidSettled(state, question)
+        ? Container(
+            key: ValueKey('verdict-${state.revealed}'),
+            padding: EdgeInsets.symmetric(horizontal: unit * 5, vertical: unit * 2),
+            decoration: BoxDecoration(
+              color: item.isTrue ? Colors.green.shade700 : scheme.error,
+              borderRadius: BorderRadius.circular(unit * 3),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(item.isTrue ? Icons.check : Icons.close, size: unit * 9, color: item.isTrue ? Colors.white : scheme.onError),
+                SizedBox(width: unit * 3),
+                Flexible(
+                  child: Text(
+                    [item.isTrue ? context.l10n.rapidRight : context.l10n.rapidWrong, if (item.answer.trim().isNotEmpty) item.answer.trim()].join(' · '),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: unit * 7, fontWeight: FontWeight.w800, color: item.isTrue ? Colors.white : scheme.onError),
+                  ),
+                ),
+              ],
+            ),
+          )
+        : null;
+
     return Column(
       children: [
         // The question itself stays above its items.
@@ -230,7 +257,7 @@ class RapidFireDisplay extends StatelessWidget {
                             scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
                             child: child,
                           ),
-                          child: banner ?? const SizedBox(key: ValueKey('no-buzz')),
+                          child: banner ?? verdict ?? const SizedBox(key: ValueKey('no-buzz')),
                         ),
                       ),
                     ),

@@ -103,7 +103,7 @@ void main() {
       expect(apply(s, const Judge(correct: true)).accepted, isFalse);
     });
 
-    test('moving on scores the picks; no pick, no points', () {
+    test('next first locks every team, scores the picks and shows the answer; next again moves on', () {
       var s = play(const [
         OpenQuestion(devicesRound),
         Reveal(1),
@@ -112,8 +112,15 @@ void main() {
         Reveal(1),
       ]);
       expect((points(s, 'red'), points(s, 'blue')), (10, 0));
+      expect((s.revealed, s.phase, s.answerRound!.open), (0, Phase.answerRevealed, false), reason: 'settled, still on the item');
+      expect(rapidSettled(s, game.question(devicesRound)!), isTrue);
+      expect(apply(s, const SubmitAnswer('blue', PlayerAnswer(choice: 0))).state.answerRound!.answers['blue']!.choice, 1,
+          reason: 'locked');
+      s = run(s, const [Reveal(1)], game);
+      expect((points(s, 'red'), points(s, 'blue')), (10, 0), reason: 'not scored twice');
+      expect((s.revealed, s.phase), (1, Phase.question));
       expect(s.answerRound!.answers, isEmpty, reason: 'a fresh round for the next item');
-      s = run(s, const [SubmitAnswer('blue', PlayerAnswer(choice: 1)), Reveal(1)], game);
+      s = run(s, const [SubmitAnswer('blue', PlayerAnswer(choice: 1)), Reveal(1), Reveal(1)], game);
       expect((points(s, 'red'), points(s, 'blue')), (10, 10));
       expect((s.phase, s.answerRound), (Phase.answerRevealed, null));
     });
@@ -131,7 +138,7 @@ void main() {
     });
 
     test('the statement goes to the devices, whether it is right does not', () {
-      final s = play(const [OpenQuestion(devicesRound), Reveal(1), Reveal(1)]);
+      final s = play(const [OpenQuestion(devicesRound), Reveal(1), Reveal(1), Reveal(1)]);
       final view = publicView(s, game, teamId: 'red');
       expect((view['question'] as Map)['text'], 'Bats are birds');
       expect(view.toString(), isNot(contains('true: false')));

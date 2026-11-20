@@ -93,4 +93,24 @@ void main() {
     expect(drawn.top, greaterThan(tester.getRect(heading).bottom));
     expect(drawn.height, greaterThan(500), reason: 'as big as the card lets it be');
   });
+
+  testWidgets('on the devices, once next has locked the teams, right or wrong is up big', (tester) async {
+    final game = rapidGame();
+    final question = game.question(devicesRound)!;
+    Future<void> show(SessionState state) => tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: Scaffold(body: RapidFireDisplay(state: state, question: question, unit: 10, file: (_) => null)),
+        ));
+    tester.view
+      ..physicalSize = const Size(1600, 900)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final asking = run(fixtureState(), const [OpenQuestion(devicesRound), Reveal(1)], game, 1000);
+    await show(asking);
+    expect(find.byKey(const ValueKey('verdict-0')), findsNothing);
+    await show(run(asking, const [Reveal(1)], game, 2000));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('verdict-0')), findsOneWidget);
+    expect(find.byIcon(question.rapidFire!.items.first.isTrue ? Icons.check : Icons.close), findsOneWidget);
+  });
 }
