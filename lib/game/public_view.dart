@@ -65,6 +65,8 @@ Map<String, dynamic> publicView(SessionState state, GameContent? game, {String? 
             if (round.teams.isNotEmpty) 'teams': round.teams,
             'openedAt': round.openedAtMillis,
             'endsAt': round.endsAtMillis,
+            if (round.pausedAtMillis != null) 'pausedAt': round.pausedAtMillis,
+            if (round.heldMillis != 0) 'held': round.heldMillis,
             'submitted': [
               for (final entry in round.answers.entries)
                 if (!entry.value.isEmpty) entry.key,
@@ -294,6 +296,13 @@ class PublicView {
 
   int? get answersEndAt => (_round?['endsAt'] as num?)?.toInt();
 
+  /// Host clock: when the gamemaster paused the round's timer; null while it
+  /// runs.
+  int? get answersPausedAt => (_round?['pausedAt'] as num?)?.toInt();
+
+  /// How long the round's timer was paused before, in all.
+  int get answersHeld => (_round?['held'] as num?)?.toInt() ?? 0;
+
   /// Whether [teamId] answers in this round; the gamemaster may have chosen
   /// only some teams.
   bool takesPart(String teamId) {
@@ -404,11 +413,19 @@ class PublicView {
   /// Amount bets: whether [teamId] reached its number, once judged.
   bool? betVerdict(String teamId) => (_betting['verdicts'] as Map?)?[teamId] as bool?;
 
-  /// The question's own clock, when it has one: host times, and whether it
-  /// still runs.
-  ({int? openedAt, int endsAt, bool running})? get questionTimer {
+  /// The question's own clock, when it has one: host times, whether it
+  /// still runs, and when it was paused (and how long before, in all).
+  ({int? openedAt, int endsAt, bool running, int? pausedAt, int held})? get questionTimer {
     final timer = QuestionTimer.fromJson(json['timer']);
-    return timer == null ? null : (openedAt: timer.openedAtMillis, endsAt: timer.endsAtMillis, running: timer.running);
+    return timer == null
+        ? null
+        : (
+            openedAt: timer.openedAtMillis,
+            endsAt: timer.endsAtMillis,
+            running: timer.running,
+            pausedAt: timer.paused ? timer.pausedAtMillis : null,
+            held: timer.heldMillis,
+          );
   }
 
   /// This team's own bet; null before it placed one.

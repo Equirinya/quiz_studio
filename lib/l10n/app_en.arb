@@ -2089,5 +2089,7 @@
   "matchesAnswer": "matches {answer}",
   "@matchesAnswer": {"placeholders": {"answer": {"type": "String"}}},
   "podium": "Podium",
-  "podiumOnBigScreen": "The podium is on the big screen: the top three on their steps, the other teams below with their places and points."
+  "podiumOnBigScreen": "The podium is on the big screen: the top three on their steps, the other teams below with their places and points.",
+  "pauseTimer": "Pause",
+  "resumeTimer": "Resume"
 }

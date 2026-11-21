@@ -84,6 +84,7 @@ sealed class Command {
       'timeUp' => const TimeUp(),
       'startTurns' => const StartTurns(),
       'setTimer' => SetTimer((j['seconds'] as num?)?.toInt()),
+      'pauseTimer' => PauseTimer(paused: j['paused'] == true),
       'reopenQuestion' => const ReopenQuestion(),
       'reveal' => Reveal((j['delta'] as num).toInt()),
       'imageFocus' => ImageFocus((j['delta'] as num).toInt()),
@@ -614,6 +615,19 @@ class SetTimer extends Command {
   Map<String, dynamic> get _args => {'seconds': seconds};
 }
 
+/// Holds the clock that is running, or lets it run on: the devices' answer
+/// round when it has a deadline, else the question's own clock (or an
+/// information screen's). Paused, no time passes on it and the time is
+/// not up; more or less time can still be given.
+class PauseTimer extends Command {
+  const PauseTimer({required this.paused});
+  final bool paused;
+  @override
+  String get type => 'pauseTimer';
+  @override
+  Map<String, dynamic> get _args => {'paused': paused};
+}
+
 /// Last team standing: after the question was read out, the first team's
 /// turn and prompt come up.
 class StartTurns extends Command {
@@ -750,7 +764,9 @@ class UnlockAnswers extends Command {
 
 /// More time for the answer round: [seconds] more (from now, if the time
 /// is already up, which opens the round again), or null for no time limit.
-/// Answers already locked in stay locked.
+/// Answers already locked in stay locked. Negative [seconds] take time off
+/// a deadline still ahead, never into the past: at nothing left the time
+/// is up as usual.
 class ExtendAnswers extends Command {
   const ExtendAnswers(this.seconds);
   final int? seconds;

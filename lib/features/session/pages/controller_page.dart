@@ -558,23 +558,20 @@ class _NowPanel extends StatelessWidget {
         if (state.timer case final timer? when timer.running && round == null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: RoundCountdown(openedAt: timer.openedAtMillis, endsAt: timer.endsAtMillis, hostClock: hostClock),
+            child: RoundCountdown(
+              openedAt: timer.openedAtMillis,
+              endsAt: timer.endsAtMillis,
+              hostClock: hostClock,
+              pausedAt: timer.paused ? timer.pausedAtMillis : null,
+              held: timer.heldMillis,
+            ),
           ),
-        // A clock for any question, set up with one or not; the devices'
-        // rounds have their own buttons for more time.
-        if (round == null && !state.waitingForBets)
+        // A clock for any question, set up with one or not, or the devices'
+        // round's: the same buttons as on the answers panel.
+        if (!state.waitingForBets)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                ActionChip(avatar: const Icon(Icons.more_time, size: 18), label: const Text("+30 s"), onPressed: () => send(const SetTimer(30))),
-                ActionChip(avatar: const Icon(Icons.more_time, size: 18), label: const Text("+1 min"), onPressed: () => send(const SetTimer(60))),
-                if (state.timer != null)
-                  ActionChip(avatar: const Icon(Icons.timer_off_outlined, size: 18), label: Text(l10n.stopTimer), onPressed: () => send(const SetTimer(null))),
-              ],
-            ),
+            child: TimerControls(state: state, send: send),
           ),
         const SizedBox(height: 8),
         Text(q.text, style: theme.textTheme.titleMedium),
@@ -2149,7 +2146,13 @@ class _InfoScreenPanel extends StatelessWidget {
         ],
         if (timer case final timer? when timer.running) ...[
           const SizedBox(height: 12),
-          RoundCountdown(openedAt: timer.openedAtMillis, endsAt: timer.endsAtMillis, hostClock: hostClock),
+          RoundCountdown(
+            openedAt: timer.openedAtMillis,
+            endsAt: timer.endsAtMillis,
+            hostClock: hostClock,
+            pausedAt: timer.paused ? timer.pausedAtMillis : null,
+            held: timer.heldMillis,
+          ),
         ] else if (timer != null) ...[
           const SizedBox(height: 12),
           Text(l10n.timeIsUp, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.error)),
@@ -2162,6 +2165,13 @@ class _InfoScreenPanel extends StatelessWidget {
             // Shown again: its clock starts from the beginning.
             if (group.timerSeconds != null)
               ActionChip(avatar: const Icon(Icons.restart_alt, size: 18), label: Text(l10n.startTimerAgain), onPressed: () => send(SelectGroup(group.id))),
+            if (timer case final timer? when timer.running)
+              ActionChip(
+                key: const ValueKey('pauseTimer'),
+                avatar: Icon(timer.paused ? Icons.play_arrow : Icons.pause, size: 18),
+                label: Text(timer.paused ? l10n.resumeTimer : l10n.pauseTimer),
+                onPressed: () => send(PauseTimer(paused: !timer.paused)),
+              ),
             if (timer != null)
               ActionChip(avatar: const Icon(Icons.timer_off_outlined, size: 18), label: Text(l10n.stopTimer), onPressed: () => send(const SetTimer(null))),
           ],
@@ -2973,7 +2983,6 @@ class _AnswersSheetState extends State<_AnswersSheet> {
     final automatic = round == null || question == null ? const <Command>[] : autoRating(state, round, question);
     final estimates = round == null || question == null || round.spec.solution == null ? const <EstimateScoring>[] : EstimateScoring.values;
     final answering = state.roundTeams;
-    final unlimited = round != null && round.open && round.endsAtMillis == null;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -3036,21 +3045,10 @@ class _AnswersSheetState extends State<_AnswersSheet> {
                 action(l10n.discard, Icons.delete_outline, () => send(const ClearAnswers())),
               ],
             ),
-            // More time, also after it ran out: that opens the round again.
-            heading(l10n.moreTime),
-            Wrap(
-              children: [
-                // Always on: without a limit (say after letting them edit
-                // again) it puts a fresh clock on the round from now.
-                action("+30 s", Icons.more_time, () => send(const ExtendAnswers(30))),
-                action("+1 min", Icons.more_time, () => send(const ExtendAnswers(60))),
-                action(
-                  l10n.noTimeLimit,
-                  Icons.all_inclusive,
-                  unlimited ? null : () => send(const ExtendAnswers(null)),
-                ),
-              ],
-            ),
+            // More or less time, also after it ran out (that opens the round
+            // again), or a pause: the same buttons as on the main panel.
+            heading(l10n.timer),
+            TimerControls(state: state, send: send),
             heading(l10n.whoAnswers),
             teamChips(
               (team) => round.takesPart(team.id),
@@ -3213,7 +3211,13 @@ class _AnswersPanel extends StatelessWidget {
         if (round.open && round.endsAtMillis != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: RoundCountdown(openedAt: round.openedAtMillis, endsAt: round.endsAtMillis!, hostClock: hostClock),
+            child: RoundCountdown(
+              openedAt: round.openedAtMillis,
+              endsAt: round.endsAtMillis!,
+              hostClock: hostClock,
+              pausedAt: round.timerPaused ? round.pausedAtMillis : null,
+              held: round.heldMillis,
+            ),
           ),
         if (solution != null)
           Padding(
@@ -3422,6 +3426,51 @@ class _AnswersPanel extends StatelessWidget {
               ),
             ),
           ),
+      ],
+    );
+  }
+}
+
+/// The buttons for the clock of the open question, on the main panel and the
+/// answers panel alike: less and more time, a pause, and none at all. With a
+/// round on the devices they act on its timer (more time on a round that
+/// ran out opens it again), else on the question's own clock, which more
+/// time puts up when it has none.
+class TimerControls extends StatelessWidget {
+  const TimerControls({super.key, required this.state, required this.send});
+
+  final SessionState state;
+  final void Function(Command) send;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final round = state.answerRound;
+    final timer = state.timer;
+    // Whether there is a deadline ahead to take time off or to hold; the
+    // host checks it against its own clock.
+    final ticking = round != null ? round.open && round.endsAtMillis != null : timer != null && timer.running;
+    final paused = round != null ? round.timerPaused : timer?.paused ?? false;
+    Widget chip(String key, IconData icon, String label, VoidCallback? onPressed) =>
+        ActionChip(key: ValueKey(key), avatar: Icon(icon, size: 18), label: Text(label), onPressed: onPressed);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        chip('timerLess', Icons.remove, "−30 s", !ticking ? null : () => send(round != null ? const ExtendAnswers(-30) : const SetTimer(-30))),
+        chip('timerMore30', Icons.more_time, "+30 s", () => send(round != null ? const ExtendAnswers(30) : const SetTimer(30))),
+        chip('timerMore60', Icons.more_time, "+1 min", () => send(round != null ? const ExtendAnswers(60) : const SetTimer(60))),
+        chip(
+          'pauseTimer',
+          paused ? Icons.play_arrow : Icons.pause,
+          paused ? l10n.resumeTimer : l10n.pauseTimer,
+          !ticking ? null : () => send(PauseTimer(paused: !paused)),
+        ),
+        if (round != null)
+          // A round running without a limit has all the time already.
+          chip('noTimeLimit', Icons.all_inclusive, l10n.noTimeLimit, round.open && round.endsAtMillis == null ? null : () => send(const ExtendAnswers(null)))
+        else if (timer != null)
+          chip('stopTimer', Icons.timer_off_outlined, l10n.stopTimer, () => send(const SetTimer(null))),
       ],
     );
   }

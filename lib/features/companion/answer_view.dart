@@ -144,14 +144,30 @@ class AnswerView extends StatelessWidget {
 /// The deadline is on the host's clock. The presenting device compares it
 /// with its own time ([hostClock] true); any other device corrects for how
 /// far its clock is off ([HostClock]), or, before it knows that, counts from
-/// the moment it first saw the round.
+/// the moment it first saw the round. Paused ([pausedAt]), it stands still
+/// at the time left then.
 class RoundCountdown extends StatefulWidget {
-  const RoundCountdown({super.key, required this.openedAt, required this.endsAt, this.hostClock = false, this.height = 8});
+  const RoundCountdown({
+    super.key,
+    required this.openedAt,
+    required this.endsAt,
+    this.hostClock = false,
+    this.height = 8,
+    this.pausedAt,
+    this.held = 0,
+  });
 
   final int? openedAt;
   final int endsAt;
   final bool hostClock;
   final double height;
+
+  /// Host clock: when the timer was paused; null while it runs.
+  final int? pausedAt;
+
+  /// How long it was paused before, in all: not part of the time it was
+  /// set for.
+  final int held;
 
   @override
   State<RoundCountdown> createState() => _RoundCountdownState();
@@ -220,11 +236,17 @@ class _RoundCountdownState extends State<RoundCountdown> {
     return RepaintBoundary(
       child: LayoutBuilder(
         builder: (context, box) {
-          final total = widget.openedAt == null ? null : widget.endsAt - widget.openedAt!;
+          final total = widget.openedAt == null ? null : widget.endsAt - widget.openedAt! - widget.held;
           // Read on every redraw: a closer measurement may have come in since.
           final offset = widget.hostClock ? 0 : (HostClock.offset ?? _offset);
-          final left = (widget.endsAt - (_now() - offset)).clamp(0, total ?? 1 << 31);
-          _schedule(left, total, box.maxWidth.isFinite ? box.maxWidth : 1000);
+          final paused = widget.pausedAt;
+          final left = (widget.endsAt - (paused ?? (_now() - offset))).clamp(0, total == null || total < 0 ? 1 << 31 : total);
+          if (paused == null) {
+            _schedule(left, total, box.maxWidth.isFinite ? box.maxWidth : 1000);
+          } else {
+            // Nothing changes until it runs on, which brings a new widget.
+            _tick?.cancel();
+          }
           final seconds = (left / 1000).ceil();
           final urgent = seconds <= 5;
           return Row(
@@ -238,6 +260,10 @@ class _RoundCountdownState extends State<RoundCountdown> {
                 ),
               ),
               SizedBox(width: widget.height * 1.5),
+              if (paused != null) ...[
+                Icon(Icons.pause_circle_outline, size: widget.height * 2.4, color: scheme.outline),
+                SizedBox(width: widget.height * 0.5),
+              ],
               Text(
                 "$seconds s",
                 style: TextStyle(

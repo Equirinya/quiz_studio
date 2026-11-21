@@ -165,6 +165,8 @@ class PresenterView extends StatelessWidget {
                         endsAt: timer.endsAtMillis,
                         hostClock: true,
                         height: unit * 1.6,
+                        pausedAt: timer.paused ? timer.pausedAtMillis : null,
+                        held: timer.heldMillis,
                       ),
                     ),
                   SizedBox(height: unit * 2),
@@ -1222,7 +1224,7 @@ class _ConnectionsDisplay extends StatelessWidget {
         if (round != null && round.open && round.endsAtMillis != null)
           Padding(
             padding: EdgeInsets.only(bottom: unit * 1.2),
-            child: RoundCountdown(openedAt: round.openedAtMillis, endsAt: round.endsAtMillis!, hostClock: true, height: unit * 1.4),
+            child: RoundCountdown(openedAt: round.openedAtMillis, endsAt: round.endsAtMillis!, hostClock: true, height: unit * 1.4, pausedAt: round.timerPaused ? round.pausedAtMillis : null, held: round.heldMillis),
           ),
         Expanded(
           child: Center(

@@ -3878,4 +3878,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get podiumOnBigScreen =>
       'The podium is on the big screen: the top three on their steps, the other teams below with their places and points.';
+
+  @override
+  String get pauseTimer => 'Pause';
+
+  @override
+  String get resumeTimer => 'Resume';
 }

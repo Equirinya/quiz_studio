@@ -374,26 +374,60 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
       final info = question == null && s.current == null && game?.group(s.groupId)?.isInfo == true;
       if ((question == null && !info) || now == null || seconds == 0) return _no(s);
       if (seconds == null) return timer == null ? _no(s) : _ok(s.copyWith(timer: null));
-      // Running: the time goes on top. Up or none yet: a fresh clock.
-      final running = timer != null && timer.running && timer.endsAtMillis > now;
+      // Running (or paused): the time goes on top. Up or none yet: a fresh
+      // clock.
+      final running = timer != null && timer.counting(now);
       // Less time: only off a running clock, and never into the past; at
-      // nothing left the time is up as usual.
+      // nothing left the time is up as usual. A paused clock stays paused.
       if (seconds < 0) {
         if (!running) return _no(s);
         final ends = timer.endsAtMillis + seconds * 1000;
-        return _ok(s.copyWith(timer: QuestionTimer(openedAtMillis: timer.openedAtMillis, endsAtMillis: ends < now ? now : ends)));
+        final floor = timer.paused ? timer.pausedAtMillis! : now;
+        return _ok(s.copyWith(timer: timer.endingAt(ends < floor ? floor : ends)));
       }
       return _ok(
         s.copyWith(
           timer: running
-              ? QuestionTimer(openedAtMillis: timer.openedAtMillis, endsAtMillis: timer.endsAtMillis + seconds * 1000)
+              ? timer.endingAt(timer.endsAtMillis + seconds * 1000)
               : QuestionTimer(openedAtMillis: now, endsAtMillis: now + seconds * 1000),
+        ),
+      );
+
+    case PauseTimer(:final paused):
+      if (now == null) return _no(s);
+      // The devices' round when it has a deadline: that is the clock the
+      // host runs (see `SessionHost`), else the question's own.
+      final round = s.answerRound;
+      if (round != null && round.open && round.endsAtMillis != null) {
+        if (round.timerPaused == paused) return _no(s);
+        if (paused) return round.endsAtMillis! <= now ? _no(s) : _ok(s.copyWith(answerRound: round.copyWith(pausedAtMillis: now)));
+        final held = now - round.pausedAtMillis!;
+        return _ok(
+          s.copyWith(
+            answerRound: round.copyWith(endsAtMillis: round.endsAtMillis! + held, pausedAtMillis: null, heldMillis: round.heldMillis + held),
+          ),
+        );
+      }
+      final timer = s.timer;
+      if (timer == null || !timer.running || timer.paused == paused) return _no(s);
+      if (paused) {
+        if (timer.endsAtMillis <= now) return _no(s);
+        return _ok(
+          s.copyWith(
+            timer: QuestionTimer(openedAtMillis: timer.openedAtMillis, endsAtMillis: timer.endsAtMillis, pausedAtMillis: now, heldMillis: timer.heldMillis),
+          ),
+        );
+      }
+      final held = now - timer.pausedAtMillis!;
+      return _ok(
+        s.copyWith(
+          timer: QuestionTimer(openedAtMillis: timer.openedAtMillis, endsAtMillis: timer.endsAtMillis + held, heldMillis: timer.heldMillis + held),
         ),
       );
 
     case TimeUp():
       final timer = s.timer;
-      if (timer == null || !timer.running) return _no(s);
+      if (timer == null || !timer.running || timer.paused) return _no(s);
       return _ok(
         s.copyWith(
           timer: QuestionTimer(openedAtMillis: timer.openedAtMillis, endsAtMillis: timer.endsAtMillis, running: false),
@@ -889,10 +923,27 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
 
     case ExtendAnswers(:final seconds):
       final round = s.answerRound;
-      if (round == null || now == null || (seconds != null && seconds <= 0)) return _no(s);
+      if (round == null || now == null || seconds == 0) return _no(s);
       if (seconds == null && round.open && round.endsAtMillis == null) return _no(s);
-      final from = round.open && round.endsAtMillis != null && round.endsAtMillis! > now ? round.endsAtMillis! : now;
-      return _ok(s.copyWith(answerRound: round.copyWith(open: true, endsAtMillis: seconds == null ? null : from + seconds * 1000)));
+      // Paused: the deadline moves and the timer stays on hold.
+      final held = round.open && round.timerPaused;
+      final ahead = round.open && round.endsAtMillis != null && (held || round.endsAtMillis! > now);
+      if (seconds != null && seconds < 0) {
+        if (!ahead) return _no(s);
+        final floor = held ? round.pausedAtMillis! : now;
+        final ends = round.endsAtMillis! + seconds * 1000;
+        return _ok(s.copyWith(answerRound: round.copyWith(endsAtMillis: ends < floor ? floor : ends, pausedAtMillis: held ? round.pausedAtMillis : null)));
+      }
+      final from = ahead ? round.endsAtMillis! : now;
+      return _ok(
+        s.copyWith(
+          answerRound: round.copyWith(
+            open: true,
+            endsAtMillis: seconds == null ? null : from + seconds * 1000,
+            pausedAtMillis: held && seconds != null ? round.pausedAtMillis : null,
+          ),
+        ),
+      );
 
     case UnlockAnswer(:final teamId):
       if (!canUnlockAnswer(s, teamId)) return _no(s);

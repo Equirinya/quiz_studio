@@ -175,7 +175,7 @@ int maxBet(Team team, Question question) {
 /// The clock of a question that runs for a set time without a screen on the
 /// teams' devices (those have their own, see `AnswerRound`). Host clock.
 class QuestionTimer {
-  const QuestionTimer({this.openedAtMillis, required this.endsAtMillis, this.running = true});
+  const QuestionTimer({this.openedAtMillis, required this.endsAtMillis, this.running = true, this.pausedAtMillis, this.heldMillis = 0});
 
   final int? openedAtMillis;
   final int endsAtMillis;
@@ -183,7 +183,32 @@ class QuestionTimer {
   /// False once the time is up.
   final bool running;
 
-  Map<String, dynamic> toJson() => {'openedAt': openedAtMillis, 'endsAt': endsAtMillis, 'running': running};
+  /// Host clock: when the gamemaster paused it; null while it counts down.
+  /// Paused, the time left is what it was then ([endsAtMillis] minus this),
+  /// and the time is not up.
+  final int? pausedAtMillis;
+
+  bool get paused => running && pausedAtMillis != null;
+
+  /// How long it was paused, in all, before it ran on: the time it was set
+  /// for is the deadline less [openedAtMillis] less this.
+  final int heldMillis;
+
+  /// Whether time is left on it at [now] (host clock): running, and paused
+  /// or not yet at its end.
+  bool counting(int now) => running && (paused || endsAtMillis > now);
+
+  /// The same clock with its deadline moved, still paused if it was.
+  QuestionTimer endingAt(int endsAtMillis) =>
+      QuestionTimer(openedAtMillis: openedAtMillis, endsAtMillis: endsAtMillis, pausedAtMillis: pausedAtMillis, heldMillis: heldMillis);
+
+  Map<String, dynamic> toJson() => {
+    'openedAt': openedAtMillis,
+    'endsAt': endsAtMillis,
+    'running': running,
+    if (pausedAtMillis != null) 'pausedAt': pausedAtMillis,
+    if (heldMillis != 0) 'held': heldMillis,
+  };
 
   static QuestionTimer? fromJson(Object? json) {
     if (json is! Map || json['endsAt'] is! num) return null;
@@ -191,6 +216,8 @@ class QuestionTimer {
       openedAtMillis: (json['openedAt'] as num?)?.toInt(),
       endsAtMillis: (json['endsAt'] as num).toInt(),
       running: json['running'] != false,
+      pausedAtMillis: (json['pausedAt'] as num?)?.toInt(),
+      heldMillis: (json['held'] as num?)?.toInt() ?? 0,
     );
   }
 }

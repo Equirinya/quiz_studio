@@ -118,12 +118,15 @@ class SessionHost {
 
   /// Keeps one timer running for the answer round that has a deadline, or
   /// else for the question's own clock. Also covers a show resumed after a
-  /// restart: a deadline already passed locks the round at once.
+  /// restart: a deadline already passed locks the round at once. A paused
+  /// clock has none running; it is set again when it runs on.
   void _armTimer() {
     final round = _state.answerRound;
     final clock = _state.timer;
     final roundEnds = round != null && round.open ? round.endsAtMillis : null;
-    final endsAt = roundEnds ?? (clock != null && clock.running ? clock.endsAtMillis : null);
+    final endsAt = roundEnds != null
+        ? (round!.timerPaused ? null : roundEnds)
+        : (clock != null && clock.running && !clock.paused ? clock.endsAtMillis : null);
     if (endsAt == _armedFor) return;
     _roundTimer?.cancel();
     _countdownTimer?.cancel();

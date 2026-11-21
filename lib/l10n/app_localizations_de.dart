@@ -3901,4 +3901,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get podiumOnBigScreen =>
       'Das Podest ist auf dem großen Bildschirm: die besten drei auf ihren Stufen, die anderen Teams darunter mit Platz und Punkten.';
+
+  @override
+  String get pauseTimer => 'Pausieren';
+
+  @override
+  String get resumeTimer => 'Weiter';
 }

@@ -48,7 +48,7 @@ class RoundStatusStrip extends StatelessWidget {
         if (round.open && round.endsAtMillis != null)
           Padding(
             padding: EdgeInsets.only(bottom: unit),
-            child: RoundCountdown(openedAt: round.openedAtMillis, endsAt: round.endsAtMillis!, hostClock: true, height: unit * 1.4),
+            child: RoundCountdown(openedAt: round.openedAtMillis, endsAt: round.endsAtMillis!, hostClock: true, height: unit * 1.4, pausedAt: round.timerPaused ? round.pausedAtMillis : null, held: round.heldMillis),
           ),
         OneRow(
           spacing: unit,

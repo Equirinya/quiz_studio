@@ -521,14 +521,14 @@ class _PlayerViewState extends State<PlayerView> {
     if (view.answerKind == null && clock != null && clock.running) {
       return Padding(
         padding: EdgeInsets.only(top: top),
-        child: RoundCountdown(openedAt: clock.openedAt, endsAt: clock.endsAt),
+        child: RoundCountdown(openedAt: clock.openedAt, endsAt: clock.endsAt, pausedAt: clock.pausedAt, held: clock.held),
       );
     }
     final endsAt = view.answersEndAt;
     if (!view.answersOpen || endsAt == null) return null;
     return Padding(
       padding: EdgeInsets.only(top: top),
-      child: RoundCountdown(openedAt: view.answersOpenedAt, endsAt: endsAt),
+      child: RoundCountdown(openedAt: view.answersOpenedAt, endsAt: endsAt, pausedAt: view.answersPausedAt, held: view.answersHeld),
     );
   }
 

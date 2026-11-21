@@ -606,6 +606,8 @@ class AnswerRound {
     this.open = true,
     this.openedAtMillis,
     this.endsAtMillis,
+    this.pausedAtMillis,
+    this.heldMillis = 0,
     this.answers = const {},
     this.revealed = const [],
     this.found = const {},
@@ -629,6 +631,18 @@ class AnswerRound {
   /// When the timer locks the round; null without a timer.
   final int? endsAtMillis;
 
+  /// Host clock: when the gamemaster paused the timer; null while it runs.
+  /// Paused, the time left is what it was then ([endsAtMillis] minus this),
+  /// and nothing locks the round.
+  final int? pausedAtMillis;
+
+  /// Whether the round has a timer that is on hold.
+  bool get timerPaused => pausedAtMillis != null && endsAtMillis != null;
+
+  /// How long the timer was paused, in all, before it ran on: the time it
+  /// was set for is the deadline less [openedAtMillis] less this.
+  final int heldMillis;
+
   /// By team id.
   final Map<String, PlayerAnswer> answers;
 
@@ -647,6 +661,10 @@ class AnswerRound {
     /// An int sets the timer, null clears it; leave out (or pass any other
     /// object) to keep it as it is.
     Object? endsAtMillis = _keep,
+    /// Like [endsAtMillis]. Left out, a new deadline (or none) also ends a
+    /// pause: a timer set again runs.
+    Object? pausedAtMillis = _keep,
+    int? heldMillis,
     Map<String, PlayerAnswer>? answers,
     List<String>? revealed,
     Map<String, List<int>>? found,
@@ -655,6 +673,8 @@ class AnswerRound {
     open: open ?? this.open,
     openedAtMillis: openedAtMillis ?? this.openedAtMillis,
     endsAtMillis: endsAtMillis is int? ? endsAtMillis : this.endsAtMillis,
+    pausedAtMillis: pausedAtMillis is int? ? pausedAtMillis : (endsAtMillis is int? ? null : this.pausedAtMillis),
+    heldMillis: heldMillis ?? this.heldMillis,
     answers: answers ?? this.answers,
     revealed: revealed ?? this.revealed,
     found: found ?? this.found,
@@ -667,6 +687,8 @@ class AnswerRound {
     open: open,
     openedAtMillis: openedAtMillis,
     endsAtMillis: endsAtMillis,
+    pausedAtMillis: pausedAtMillis,
+    heldMillis: heldMillis,
     answers: answers,
     revealed: revealed,
     found: found,
@@ -678,6 +700,8 @@ class AnswerRound {
     'open': open,
     'openedAt': openedAtMillis,
     'endsAt': endsAtMillis,
+    if (pausedAtMillis != null) 'pausedAt': pausedAtMillis,
+    if (heldMillis != 0) 'held': heldMillis,
     'answers': {for (final entry in answers.entries) entry.key: entry.value.toJson()},
     'revealed': revealed,
     if (found.isNotEmpty) 'found': found,
@@ -689,6 +713,8 @@ class AnswerRound {
     open: json['open'] == true,
     openedAtMillis: (json['openedAt'] as num?)?.toInt(),
     endsAtMillis: (json['endsAt'] as num?)?.toInt(),
+    pausedAtMillis: (json['pausedAt'] as num?)?.toInt(),
+    heldMillis: (json['held'] as num?)?.toInt() ?? 0,
     answers: {
       for (final entry in (json['answers'] as Map? ?? const {}).entries)
         entry.key as String: PlayerAnswer.fromJson(Map<String, dynamic>.from(entry.value as Map)),

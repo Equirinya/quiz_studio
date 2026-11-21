@@ -6331,6 +6331,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The podium is on the big screen: the top three on their steps, the other teams below with their places and points.'**
   String get podiumOnBigScreen;
+
+  /// No description provided for @pauseTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get pauseTimer;
+
+  /// No description provided for @resumeTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get resumeTimer;
 }
 
 class _AppLocalizationsDelegate

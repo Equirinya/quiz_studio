@@ -95,7 +95,9 @@ class _ClockState extends State<_Clock> {
     final scheme = Theme.of(context).colorScheme;
     final timer = widget.timer;
     // This is the host's screen: its own clock is the one the timer uses.
-    final left = timer.running ? ((timer.endsAtMillis - DateTime.now().millisecondsSinceEpoch) / 1000).ceil().clamp(0, 1 << 30) : 0;
+    // Paused, it stands at the time left then.
+    final at = timer.paused ? timer.pausedAtMillis! : DateTime.now().millisecondsSinceEpoch;
+    final left = timer.running ? ((timer.endsAtMillis - at) / 1000).ceil().clamp(0, 1 << 30) : 0;
     final text = left >= 3600
         ? '${left ~/ 3600}:${(left % 3600 ~/ 60).toString().padLeft(2, '0')}:${(left % 60).toString().padLeft(2, '0')}'
         : '${left ~/ 60}:${(left % 60).toString().padLeft(2, '0')}';
