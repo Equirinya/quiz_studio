@@ -116,6 +116,11 @@ jobs:
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
           security create-keychain -p "$KEYCHAIN_PASSWORD" $RUNNER_TEMP/app-signing.keychain-db
+          # A new keychain locks itself after 5 minutes without use. Once the
+          # archive runs past that, codesign waits for a password dialog no one
+          # can answer and the build hangs until the timeout. Keep it unlocked
+          # for 6 hours instead.
+          security set-keychain-settings -lut 21600 $RUNNER_TEMP/app-signing.keychain-db
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $RUNNER_TEMP/app-signing.keychain-db
           security list-keychain -d user -s $RUNNER_TEMP/app-signing.keychain-db
 
@@ -169,6 +174,12 @@ jobs:
       # where it stopped.
       - name: Build IPA
         run: |
+          # Flutter shows no Xcode output until the archive ends, so every two
+          # minutes print what is still running: a stuck codesign shows up here.
+          (while sleep 120; do
+            echo "--- still building at $(date -u +%H:%M:%S):"
+            ps -Ao etime,comm | grep -E 'codesign|swift-frontend|clang|ld$|xcodebuild' | grep -v grep | head -15
+          done) &
           flutter build ipa \
             --verbose \
             --release \
