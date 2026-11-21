@@ -1037,5 +1037,7 @@
   "podium": "Podest",
   "podiumOnBigScreen": "Das Podest ist auf dem großen Bildschirm: die besten drei auf ihren Stufen, die anderen Teams darunter mit Platz und Punkten.",
   "pauseTimer": "Pausieren",
-  "resumeTimer": "Weiter"
+  "resumeTimer": "Weiter",
+  "fullscreen": "Vollbild",
+  "exitFullscreen": "Vollbild beenden"
 }

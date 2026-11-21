@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'package:quiz_show/core/fullscreen/fullscreen_button.dart';
 import 'package:quiz_show/core/version_gate.dart';
 import 'package:quiz_show/features/companion/answer_inputs.dart';
 import 'package:quiz_show/features/companion/connections.dart';
@@ -302,6 +303,8 @@ class _PlayerViewState extends State<PlayerView> {
         // What the team just got, for a moment.
         ScorePop(teamId: team.id, log: view.scoreLog, size: 20),
         if (widget.link != null) LinkStatusIcon(widget.link!),
+        // Only in the web app, where the browser's bars take room.
+        const FullscreenButton(),
       ],
     );
     final highlighted = position == 0 && view.phase == Phase.buzzered;

@@ -2088,5 +2088,7 @@
   "podium": "Podium",
   "podiumOnBigScreen": "The podium is on the big screen: the top three on their steps, the other teams below with their places and points.",
   "pauseTimer": "Pause",
-  "resumeTimer": "Resume"
+  "resumeTimer": "Resume",
+  "fullscreen": "Full screen",
+  "exitFullscreen": "Leave full screen"
 }

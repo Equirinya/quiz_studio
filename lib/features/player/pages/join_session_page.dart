@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:quiz_show/core/fullscreen/fullscreen_button.dart';
 import 'package:quiz_show/features/player/pages/player_page.dart';
 import 'package:quiz_show/features/player/recent_sessions.dart';
 import 'package:quiz_show/features/player/widgets/scanner_overlay.dart';
@@ -192,7 +193,7 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
       ),
     );
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.joinASession)),
+      appBar: AppBar(title: Text(context.l10n.joinASession), actions: const [FullscreenButton()]),
       // Without a camera there is nothing to scan: the link is the way in.
       body: _scanner == null
           ? Center(

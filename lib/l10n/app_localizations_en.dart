@@ -2085,7 +2085,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Open in a new window, to drag onto another screen';
 
   @override
-  String get fullscreen => 'Fullscreen';
+  String get fullscreen => 'Full screen';
 
   @override
   String get controls => 'Controls';
@@ -3402,7 +3402,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get showFullscreen => 'Fullscreen on the big screen';
 
   @override
-  String get exitFullscreen => 'Back from fullscreen';
+  String get exitFullscreen => 'Leave full screen';
 
   @override
   String get onTheBigScreen => 'On the big screen';

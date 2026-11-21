@@ -3353,7 +3353,7 @@ abstract class AppLocalizations {
   /// No description provided for @fullscreen.
   ///
   /// In en, this message translates to:
-  /// **'Fullscreen'**
+  /// **'Full screen'**
   String get fullscreen;
 
   /// No description provided for @controls.
@@ -5591,7 +5591,7 @@ abstract class AppLocalizations {
   /// No description provided for @exitFullscreen.
   ///
   /// In en, this message translates to:
-  /// **'Back from fullscreen'**
+  /// **'Leave full screen'**
   String get exitFullscreen;
 
   /// No description provided for @onTheBigScreen.
