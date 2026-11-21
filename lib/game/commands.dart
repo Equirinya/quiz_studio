@@ -85,6 +85,7 @@ sealed class Command {
       'startTurns' => const StartTurns(),
       'setTimer' => SetTimer((j['seconds'] as num?)?.toInt()),
       'pauseTimer' => PauseTimer(paused: j['paused'] == true),
+      'revealPodium' => RevealPodium((j['shown'] as num).toInt()),
       'reopenQuestion' => const ReopenQuestion(),
       'reveal' => Reveal((j['delta'] as num).toInt()),
       'imageFocus' => ImageFocus((j['delta'] as num).toInt()),
@@ -613,6 +614,18 @@ class SetTimer extends Command {
   String get type => 'setTimer';
   @override
   Map<String, dynamic> get _args => {'seconds': seconds};
+}
+
+/// The podium: shows [shown] teams, counted from the last place up (one
+/// more to unveil the next place, every team for all at once, fewer to take
+/// some away again).
+class RevealPodium extends Command {
+  const RevealPodium(this.shown);
+  final int shown;
+  @override
+  String get type => 'revealPodium';
+  @override
+  Map<String, dynamic> get _args => {'shown': shown};
 }
 
 /// Holds the clock that is running, or lets it run on: the devices' answer

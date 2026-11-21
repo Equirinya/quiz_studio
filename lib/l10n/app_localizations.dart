@@ -6337,6 +6337,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Board music'**
   String get likeBoardMusic;
+
+  /// No description provided for @podiumShownCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{shown} of {all} teams shown'**
+  String podiumShownCount(int shown, int all);
+
+  /// No description provided for @unveilPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Unveil {place} place'**
+  String unveilPlace(String place);
+
+  /// No description provided for @unveilAllPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Unveil all'**
+  String get unveilAllPlaces;
+
+  /// No description provided for @allPlacesShown.
+  ///
+  /// In en, this message translates to:
+  /// **'All places shown'**
+  String get allPlacesShown;
 }
 
 class _AppLocalizationsDelegate

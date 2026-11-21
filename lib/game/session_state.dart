@@ -304,6 +304,7 @@ class SessionState {
     this.mediaSeek = 0,
     this.effectsPlaying = const [],
     this.boardFocus,
+    this.podiumShown = 0,
     this.answerRound,
     this.betting,
     this.timer,
@@ -408,6 +409,10 @@ class SessionState {
   /// opened, or one the gamemaster picked. A map wider than the screen keeps
   /// it in the middle.
   final String? boardFocus;
+
+  /// The podium: how many teams are shown, counted from the last place up;
+  /// none as it comes up, every team once all are revealed.
+  final int podiumShown;
   final AnswerRound? answerRound;
 
   /// The bets of the open question, when it is played with bets.
@@ -491,6 +496,7 @@ class SessionState {
     int? mediaSeek,
     List<String>? effectsPlaying,
     Object? boardFocus = _unset,
+    int? podiumShown,
     Object? answerRound = _unset,
     Object? betting = _unset,
     Object? timer = _unset,
@@ -531,6 +537,7 @@ class SessionState {
     mediaSeek: mediaSeek ?? this.mediaSeek,
     effectsPlaying: effectsPlaying ?? this.effectsPlaying,
     boardFocus: identical(boardFocus, _unset) ? this.boardFocus : boardFocus as String?,
+    podiumShown: podiumShown ?? this.podiumShown,
     answerRound: identical(answerRound, _unset) ? this.answerRound : answerRound as AnswerRound?,
     betting: identical(betting, _unset) ? this.betting : betting as Betting?,
     timer: identical(timer, _unset) ? this.timer : timer as QuestionTimer?,
@@ -573,6 +580,7 @@ class SessionState {
     if (mediaSeek != 0) 'mediaSeek': mediaSeek,
     if (effectsPlaying.isNotEmpty) 'effectsPlaying': effectsPlaying,
     'boardFocus': boardFocus,
+    if (podiumShown != 0) 'podiumShown': podiumShown,
     'answerRound': answerRound?.toJson(),
     if (betting != null) 'betting': betting!.toJson(),
     if (timer != null) 'timer': timer!.toJson(),
@@ -619,6 +627,7 @@ class SessionState {
     mediaSeek: (json['mediaSeek'] as num?)?.toInt() ?? 0,
     effectsPlaying: [for (final key in json['effectsPlaying'] as List? ?? const []) '$key'],
     boardFocus: json['boardFocus'] as String?,
+    podiumShown: (json['podiumShown'] as num?)?.toInt() ?? 0,
     answerRound: json['answerRound'] == null ? null : AnswerRound.fromJson(Map<String, dynamic>.from(json['answerRound'] as Map)),
     betting: json['betting'] is Map ? Betting.fromJson(Map<String, dynamic>.from(json['betting'] as Map)) : null,
     timer: QuestionTimer.fromJson(json['timer']),

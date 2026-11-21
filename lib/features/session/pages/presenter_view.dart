@@ -193,7 +193,7 @@ class PresenterView extends StatelessWidget {
                                 : null,
                           )
                         : podium
-                        ? PodiumBoard(teams: state.teams, unit: unit)
+                        ? PodiumBoard(teams: state.teams, unit: unit, shown: state.podiumShown)
                         : group == null
                         ? const SizedBox()
                         : group.isInfo

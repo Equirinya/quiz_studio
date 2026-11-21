@@ -1041,5 +1041,9 @@
   "fullscreen": "Vollbild",
   "exitFullscreen": "Vollbild beenden",
   "podiumMusic": "Podest-Musik",
-  "likeBoardMusic": "Board-Musik"
+  "likeBoardMusic": "Board-Musik",
+  "podiumShownCount": "{shown} von {all} Teams gezeigt",
+  "unveilPlace": "{place} Platz zeigen",
+  "unveilAllPlaces": "Alle zeigen",
+  "allPlacesShown": "Alle Plätze gezeigt"
 }

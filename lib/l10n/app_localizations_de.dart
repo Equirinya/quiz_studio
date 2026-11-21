@@ -3902,4 +3902,20 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get likeBoardMusic => 'Board-Musik';
+
+  @override
+  String podiumShownCount(int shown, int all) {
+    return '$shown von $all Teams gezeigt';
+  }
+
+  @override
+  String unveilPlace(String place) {
+    return '$place Platz zeigen';
+  }
+
+  @override
+  String get unveilAllPlaces => 'Alle zeigen';
+
+  @override
+  String get allPlacesShown => 'Alle Plätze gezeigt';
 }

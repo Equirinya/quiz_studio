@@ -240,7 +240,8 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
     case SelectGroup(:final groupId):
       if (s.current != null) return _no(s);
       // The podium is every game's last board, without a group of its own.
-      if (groupId == podiumBoardId) return groupId == s.groupId ? _no(s) : _ok(s.copyWith(groupId: groupId, timer: null));
+      // It comes up with no place shown yet.
+      if (groupId == podiumBoardId) return groupId == s.groupId ? _no(s) : _ok(s.copyWith(groupId: groupId, timer: null, podiumShown: 0));
       if (game != null && game.group(groupId) == null) return _no(s);
       // An information screen starts its clock as it is shown (again); a
       // board has none.
@@ -351,6 +352,14 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
               : QuestionTimer(openedAtMillis: now, endsAtMillis: now + seconds * 1000),
         ),
       );
+
+    case RevealPodium(:final shown):
+      if (s.groupId != podiumBoardId || s.current != null) return _no(s);
+      final next = shown.clamp(0, s.teams.length);
+      if (next == s.podiumShown) return _no(s);
+      // Each place with the unveiling sound; the winner with the fanfare.
+      final sound = next < s.podiumShown ? null : (next == s.teams.length ? effectFanfare : effectReveal);
+      return _ok(s.copyWith(podiumShown: next), [if (sound != null) SoundEffect(sound)]);
 
     case PauseTimer(:final paused):
       if (now == null) return _no(s);

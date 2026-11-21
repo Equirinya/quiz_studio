@@ -2092,5 +2092,11 @@
   "fullscreen": "Full screen",
   "exitFullscreen": "Leave full screen",
   "podiumMusic": "Podium music",
-  "likeBoardMusic": "Board music"
+  "likeBoardMusic": "Board music",
+  "podiumShownCount": "{shown} of {all} teams shown",
+  "unveilPlace": "Unveil {place} place",
+  "unveilAllPlaces": "Unveil all",
+  "allPlacesShown": "All places shown",
+  "@podiumShownCount": {"placeholders": {"shown": {"type": "int"}, "all": {"type": "int"}}},
+  "@unveilPlace": {"placeholders": {"place": {"type": "String"}}}
 }

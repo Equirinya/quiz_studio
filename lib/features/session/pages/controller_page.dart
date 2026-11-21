@@ -497,6 +497,8 @@ class _NowPanel extends StatelessWidget {
             status,
             const SizedBox(height: 24),
             Center(child: Text(l10n.podiumOnBigScreen, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge)),
+            const SizedBox(height: 16),
+            _PodiumReveal(state: state, send: send),
           ],
         );
       }
@@ -3475,6 +3477,59 @@ class TimerControls extends StatelessWidget {
           chip('noTimeLimit', Icons.all_inclusive, l10n.noTimeLimit, round.open && round.endsAtMillis == null ? null : () => send(const ExtendAnswers(null)))
         else if (timer != null)
           chip('stopTimer', Icons.timer_off_outlined, l10n.stopTimer, () => send(const SetTimer(null))),
+      ],
+    );
+  }
+}
+
+/// Unveils the podium on the big screen: one place at a time from the last
+/// up, or all at once; and back again.
+class _PodiumReveal extends StatelessWidget {
+  const _PodiumReveal({required this.state, required this.send});
+
+  final SessionState state;
+  final void Function(Command) send;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final places = podiumPlaces(state.teams);
+    final shown = state.podiumShown.clamp(0, places.length);
+    // The place that comes up next: the lowest one still hidden.
+    final next = shown < places.length ? places[places.length - 1 - shown].$1 : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(l10n.podiumShownCount(shown, places.length), textAlign: TextAlign.center, style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          key: const ValueKey('podiumNext'),
+          icon: const Icon(Icons.emoji_events_outlined),
+          label: Text(next == null ? l10n.allPlacesShown : l10n.unveilPlace(l10n.ordinal(next))),
+          onPressed: next == null ? null : () => send(RevealPodium(shown + 1)),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                key: const ValueKey('podiumBack'),
+                icon: const Icon(Icons.undo),
+                label: Text(l10n.undo),
+                onPressed: shown == 0 ? null : () => send(RevealPodium(shown - 1)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                key: const ValueKey('podiumAll'),
+                icon: const Icon(Icons.done_all),
+                label: Text(l10n.unveilAllPlaces),
+                onPressed: next == null ? null : () => send(RevealPodium(places.length)),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
