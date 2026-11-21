@@ -26,6 +26,12 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: ControllerView(connection: connection))));
     await tester.pump();
 
+    // Missed, end here and undo side by side, as wide as each other.
+    final widths = {
+      for (final icon in [Icons.replay, Icons.flag_outlined, Icons.undo]) tester.getSize(find.widgetWithIcon(OutlinedButton, icon)).width,
+    };
+    expect(widths, hasLength(1));
+
     final end = find.byKey(const ValueKey('endTurns'));
     await tester.ensureVisible(end);
     await tester.tap(end);

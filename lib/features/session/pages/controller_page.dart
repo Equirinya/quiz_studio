@@ -1135,21 +1135,26 @@ class _StandingPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            // Stopped here: every team still in stood to the end.
-            Tooltip(
-              message: context.l10n.endTurnsHint,
-              child: OutlinedButton.icon(
-                key: const ValueKey('endTurns'),
-                onPressed: play.current == null ? null : () => send(const EndTurns()),
-                icon: const Icon(Icons.flag_outlined),
-                label: Text(context.l10n.endTurns),
+            // Stopped here: every team still in stood to the end. All three
+            // as wide as each other.
+            Expanded(
+              child: Tooltip(
+                message: context.l10n.endTurnsHint,
+                child: OutlinedButton.icon(
+                  key: const ValueKey('endTurns'),
+                  onPressed: play.current == null ? null : () => send(const EndTurns()),
+                  icon: const Icon(Icons.flag_outlined),
+                  label: Text(context.l10n.endTurns),
+                ),
               ),
             ),
             const SizedBox(width: 8),
-            OutlinedButton.icon(
-              onPressed: play.turns.isEmpty && !play.ended ? null : () => send(const UndoTurn()),
-              icon: const Icon(Icons.undo),
-              label: Text(context.l10n.undo),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: play.turns.isEmpty && !play.ended ? null : () => send(const UndoTurn()),
+                icon: const Icon(Icons.undo),
+                label: Text(context.l10n.undo),
+              ),
             ),
           ],
         ),
