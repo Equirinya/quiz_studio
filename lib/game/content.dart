@@ -58,8 +58,6 @@ const List<BuiltinSound> builtinSounds = [
   BuiltinSound('fanfare/fanfare', "Fanfare", 'sounds/effects/fanfare/fanfare.mp3'),
   BuiltinSound('fanfare/brass', "Brass fanfare", 'sounds/effects/fanfare/brass.wav'),
   BuiltinSound('fanfare/voice_congratulations', "\"Congratulations!\"", 'sounds/effects/fanfare/voice_congratulations.mp3'),
-  BuiltinSound('fanfare/feud_fanfare', "Feud fanfare", 'sounds/effects/fanfare/feud_fanfare.mp3'),
-  BuiltinSound('fanfare/feud_imposter_fanfare', "Feud imposter fanfare", 'sounds/effects/fanfare/feud_imposter_fanfare.mp3'),
   BuiltinSound('question_open/brass_stab', "Brass stab", 'sounds/effects/question_open/brass_stab.wav'),
   // The same file as the lock-in pling, which is what unveils by default.
   BuiltinSound('reveal/pling', "Pling", 'sounds/effects/lock_in/pling.wav'),
