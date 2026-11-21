@@ -66,11 +66,15 @@ class AnswerView extends StatelessWidget {
       case CompanionKind.text:
         return Text(answer.text ?? "", style: style);
       case CompanionKind.list:
+        // Up to the last line the team filled in: of 20 lines with the 15th
+        // the last written, 1 to 15. Empty lines before it stay, as "–".
+        final items = answer.items ?? const <String>[];
+        final used = items.take(items.lastIndexWhere((item) => item.trim().isNotEmpty) + 1);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final (i, item) in (answer.items ?? const <String>[]).indexed)
+            for (final (i, item) in used.indexed)
               if (matches.elementAtOrNull(i) case final match?)
                 Row(
                   mainAxisSize: MainAxisSize.min,
