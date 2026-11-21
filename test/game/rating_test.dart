@@ -102,15 +102,14 @@ void main() {
     });
   });
 
-  test('rate automatically only offers what is final and would change something', () {
+  test('rate automatically rates the answers as they are when tapped, and only what would change something', () {
     const pick = CompanionSpec(kind: CompanionKind.order, options: ['a', 'b'], timerSeconds: 60);
-    // Scored fastest first, so teams lock in.
     var state = run(fixtureState(), const [OpenQuestion(race)]);
     state = reduce(state, const OpenAnswers(pick), fixtureGame(), now: 0).state;
-    state = reduce(state, const SubmitAnswer('red', PlayerAnswer(order: [0, 1])), fixtureGame()).state;
-    // Still being changed: nothing to rate yet.
+    // Nothing sent yet: nothing to rate.
     expect(autoRating(state, state.answerRound!, question), isEmpty);
-    state = reduce(state, const LockAnswer('red'), fixtureGame()).state;
+    // Sent, still open and not locked in: the gamemaster decides when.
+    state = reduce(state, const SubmitAnswer('red', PlayerAnswer(order: [0, 1])), fixtureGame()).state;
     final commands = autoRating(state, state.answerRound!, question);
     expect(commands, hasLength(1));
     state = rated(state, commands);

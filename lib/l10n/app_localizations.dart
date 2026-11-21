@@ -6266,24 +6266,6 @@ abstract class AppLocalizations {
   /// **'Tap again to stop'**
   String get stopEffect;
 
-  /// No description provided for @autoRate.
-  ///
-  /// In en, this message translates to:
-  /// **'Rate by itself'**
-  String get autoRate;
-
-  /// No description provided for @autoRateText.
-  ///
-  /// In en, this message translates to:
-  /// **'Final answers are rated right or wrong at once, as if you had tapped it. You can still change any rating.'**
-  String get autoRateText;
-
-  /// No description provided for @autoRateTopText.
-  ///
-  /// In en, this message translates to:
-  /// **'Typed answers are matched with the list as soon as they are final, typos and all. You can still change what was found.'**
-  String get autoRateTopText;
-
   /// No description provided for @multipleScoringLabel.
   ///
   /// In en, this message translates to:

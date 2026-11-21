@@ -4,8 +4,9 @@ import 'package:quiz_show/features/games/widgets/companion_editor.dart';
 import 'package:quiz_show/game/game.dart';
 import 'package:quiz_show/l10n/app_localizations.dart';
 
-/// The editor's settings for rating answers by themselves, and the right
-/// answers of an answer list, saved with the question.
+/// The editor's settings for rating answers ("Rate automatically" on the
+/// controller), and the right answers of an answer list, saved with the
+/// question.
 void main() {
   Future<List<Map<String, dynamic>>> pump(WidgetTester tester, Question question) async {
     final saved = <Map<String, dynamic>>[];
@@ -20,28 +21,16 @@ void main() {
     return saved;
   }
 
-  testWidgets('ABCD on the devices rates by itself unless switched off, and the question keeps it', (tester) async {
+  testWidgets('ABCD on the devices has no rating by itself any more; how several picks count is kept', (tester) async {
     final question = Question.fromMap('q', const {
       'type': 'abcd',
       'answers': ['a', 'b', 'c', 'd'],
       'companion': {'kind': 'choice', 'multiple': true},
     });
-    final saved = await pump(tester, question);
-    final toggle = find.widgetWithText(SwitchListTile, 'Rate by itself');
-    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+    await pump(tester, question);
+    expect(find.text('Rate by itself'), findsNothing);
     // Several picks: how they count, all of them as before by default.
     expect(find.text('All right ones'), findsWidgets);
-
-    await tester.tap(toggle);
-    await tester.pump();
-    expect(saved.last['autoRating'], {'off': true});
-    expect(Question.fromMap('q', {...question.data, ...saved.last}).autoRating.on, isFalse);
-
-    // Back on: the defaults again, which store nothing.
-    await tester.tap(toggle);
-    await tester.pump();
-    expect(saved.last.containsKey('autoRating'), isTrue);
-    expect(saved.last['autoRating'], isNull);
   });
 
   testWidgets('an answer list takes right answers, one per line', (tester) async {

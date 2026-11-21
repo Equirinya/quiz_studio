@@ -14,59 +14,27 @@ import 'top_answers.dart';
 /// something, one command per team:
 ///   * top answers typed in: the answers on the list the team's lines match
 ///   * put in order, match pairs: points for every item in the right place
-///   * pick one, numbers with a solution: right or wrong
-/// Only answers that are final count: locked in, or the round is closed.
-/// Empty when there is nothing the button would do, so it is not shown.
+///   * pick one or several, numbers with a solution: right or wrong
+/// What "Rate automatically" sends: the answers as they are when the
+/// gamemaster taps it, final or not. Nothing is rated without the tap.
+/// Empty when it would change nothing.
 List<Command> autoRating(SessionState state, AnswerRound round, Question question) => [
   for (final command in _candidates(state, round, question))
-    if (_final(round, command) && _changes(state, round, command, question)) command,
+    if (_changes(state, round, command, question)) command,
 ];
 
-/// Whether [question] has its teams' answers rated as soon as they are
-/// final, without the button: ABCD picked on the devices, and top answers
-/// typed in, unless the editor switched it off.
-bool ratesItself(Question question, AnswerRound round) =>
-    question.autoRating.on &&
-    switch (question.type) {
-      QuestionType.abcd => round.kind == CompanionKind.choice,
-      QuestionType.topAnswers => round.kind == CompanionKind.list,
-      _ => false,
-    };
-
-/// The ratings for [teams] whose answers just became final, as the
-/// gamemaster would have tapped them. A team the gamemaster has rated
-/// already keeps that rating. Empty unless [ratesItself].
-List<Command> ratingByItself(SessionState state, AnswerRound round, Question question, Iterable<String> teams) {
-  if (!ratesItself(question, round)) return const [];
-  final ids = teams.toSet();
-  return [
-    for (final command in _candidates(state, round, question))
-      if (_teamOf(command) case final teamId? when ids.contains(teamId) && !_rated(state, teamId)) command,
-  ];
-}
-
-/// Whether [teamId]'s rating in [state] is the one rating by itself gives
-/// its answer in [round]: not one the gamemaster chose.
-bool ratedByItself(SessionState state, AnswerRound round, Question question, String teamId) {
-  final automatic = _candidates(state, round, question).where((command) => _teamOf(command) == teamId).firstOrNull;
-  return switch (automatic) {
-    RateAnswer(:final correct) => state.results.verdicts[teamId] == correct && !state.results.points.containsKey(teamId),
-    AwardAnswer(:final points) => state.results.points[teamId] == points,
+/// Whether "Rate automatically" can work out anything for [question] at
+/// all: shown then, if only greyed out until there is something to rate.
+bool canAutoRate(SessionState state, AnswerRound round, Question question) {
+  if (question.amountBet != null || question.byCloseness || round.kind == CompanionKind.connections) return false;
+  if (question.type == QuestionType.topAnswers) return question.topAnswers != null && round.kind == CompanionKind.list;
+  final known = switch (round.kind) {
+    CompanionKind.choice => question.answersCorrect.contains(true),
+    CompanionKind.order || CompanionKind.match => true,
+    CompanionKind.number || CompanionKind.slider => round.spec.solution != null,
     _ => false,
   };
-}
-
-bool _rated(SessionState state, String teamId) =>
-    state.results.verdicts.containsKey(teamId) || state.results.points.containsKey(teamId);
-
-String? _teamOf(Command command) => switch (command) {
-  RateAnswer(:final teamId) || AwardAnswer(:final teamId) || MarkTopAnswers(:final teamId) => teamId,
-  _ => null,
-};
-
-bool _final(AnswerRound round, Command command) {
-  final teamId = _teamOf(command);
-  return teamId != null && (!round.open || round.answers[teamId]?.locked == true);
+  return known || _candidates(state, round, question).isNotEmpty;
 }
 
 /// Several picks on an ABCD question, scored as [scoring] says: how much of

@@ -3825,17 +3825,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stopEffect => 'Tap again to stop';
 
   @override
-  String get autoRate => 'Rate by itself';
-
-  @override
-  String get autoRateText =>
-      'Final answers are rated right or wrong at once, as if you had tapped it. You can still change any rating.';
-
-  @override
-  String get autoRateTopText =>
-      'Typed answers are matched with the list as soon as they are final, typos and all. You can still change what was found.';
-
-  @override
   String get multipleScoringLabel => 'With several right options';
 
   @override

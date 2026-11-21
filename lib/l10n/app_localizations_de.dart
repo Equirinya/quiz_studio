@@ -3847,17 +3847,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get stopEffect => 'Nochmal tippen zum Stoppen';
 
   @override
-  String get autoRate => 'Selbst bewerten';
-
-  @override
-  String get autoRateText =>
-      'Fertige Antworten werden sofort richtig oder falsch bewertet, als hättest du getippt. Jede Bewertung lässt sich noch ändern.';
-
-  @override
-  String get autoRateTopText =>
-      'Getippte Antworten werden mit der Liste abgeglichen, sobald sie fertig sind, auch mit Tippfehlern. Was gefunden wurde, lässt sich noch ändern.';
-
-  @override
   String get multipleScoringLabel => 'Bei mehreren richtigen Antworten';
 
   @override

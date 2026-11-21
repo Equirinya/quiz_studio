@@ -4,8 +4,10 @@ import 'package:quiz_show/game/game.dart';
 import 'fixture.dart';
 import 'top_answers_fixture.dart';
 
-/// Answers on the teams' devices rated by themselves as soon as they are
-/// final: ABCD from the options picked, top answers from the list.
+/// Answers on the teams' devices are rated only when the gamemaster taps
+/// "Rate automatically": ABCD from the options picked, top answers from the
+/// list. Until then the controller shows what it would give (looks right,
+/// looks wrong).
 void main() {
   const ref = QuestionRef('c2', 'abcd');
 
@@ -40,88 +42,46 @@ void main() {
         for (final MapEntry(key: team, value: answer) in answers.entries) SubmitAnswer(team, answer),
       ], game);
 
+  /// What tapping "Rate automatically" now does.
+  SessionState tapAutoRate(SessionState state, GameContent game, QuestionRef ref) =>
+      run(state, autoRating(state, state.answerRound!, game.question(ref)!), game);
+
   group('ABCD', () {
-    test('every pick is rated right or wrong as it comes in, as if the gamemaster had tapped it', () {
+    test('nothing is rated as picks come in, nor when answering closes', () {
       final game = abcdGame();
       var state = answered(game, const {'red': PlayerAnswer(choice: 1), 'blue': PlayerAnswer(choice: 2)});
-      // Still open: marked already, so the gamemaster sees who is right.
-      expect(state.results.verdicts, {'red': true, 'blue': false});
-      expect(state.team('red')!.points, 0, reason: 'no points before they are given');
+      expect(state.results.isEmpty, isTrue);
       state = run(state, const [LockAnswers()], game);
+      expect(state.results.isEmpty, isTrue);
+      expect(canAutoRate(state, state.answerRound!, game.question(ref)!), isTrue);
+    });
+
+    test('the button rates the picks as they are, open or closed; points wait for "Give points"', () {
+      final game = abcdGame();
+      var state = answered(game, const {'red': PlayerAnswer(choice: 1), 'blue': PlayerAnswer(choice: 2)});
+      state = tapAutoRate(state, game, ref);
       expect(state.results.verdicts, {'red': true, 'blue': false});
-      // Points as usual: given with "Give points", into the score log.
+      expect(state.team('red')!.points, 0);
+      expect(autoRating(state, state.answerRound!, game.question(ref)!), isEmpty, reason: 'nothing left to change: greyed out');
       state = run(state, const [GivePoints()], game);
       expect(state.team('red')!.points, 100);
       expect(state.team('blue')!.points, -100);
-      expect([for (final change in state.scoreLog) change.delta], unorderedEquals([100, -100]));
-    });
-
-    test('a team changing its pick changes its mark; one the gamemaster set stays', () {
-      final game = abcdGame();
-      var state = answered(game, const {'red': PlayerAnswer(choice: 2), 'blue': PlayerAnswer(choice: 2)});
-      expect(state.results.verdicts, {'red': false, 'blue': false});
-      // Blue rated by hand.
-      state = run(state, const [RateAnswer('blue', correct: true)], game);
-      state = run(state, const [SubmitAnswer('red', PlayerAnswer(choice: 1)), SubmitAnswer('blue', PlayerAnswer(choice: 3))], game);
-      expect(state.results.verdicts, {'red': true, 'blue': true});
-      state = run(state, const [SubmitAnswer('red', PlayerAnswer(choice: 0))], game);
-      expect(state.results.verdicts['red'], isFalse);
     });
 
     test('a team that sent nothing is left for the gamemaster', () {
       final game = abcdGame();
-      final state = run(answered(game, const {'red': PlayerAnswer(choice: 1)}), const [LockAnswers()], game);
+      final state = tapAutoRate(answered(game, const {'red': PlayerAnswer(choice: 1)}), game, ref);
       expect(state.results.verdicts, {'red': true});
     });
 
-    test('the gamemaster can change a rating, and it stays', () {
+    test('a changed pick is not followed: tapping again rates it anew', () {
       final game = abcdGame();
-      var state = run(answered(game, const {'red': PlayerAnswer(choice: 2)}), const [LockAnswers()], game);
+      var state = tapAutoRate(answered(game, const {'red': PlayerAnswer(choice: 2)}), game, ref);
       expect(state.results.verdicts['red'], isFalse);
-      state = run(state, const [RateAnswer('red', correct: true)], game);
-      // Letting them edit again and closing again leaves it as the gamemaster said.
-      state = run(state, const [UnlockAnswers(), LockAnswers()], game);
+      state = run(state, const [SubmitAnswer('red', PlayerAnswer(choice: 1))], game);
+      expect(state.results.verdicts['red'], isFalse);
+      state = tapAutoRate(state, game, ref);
       expect(state.results.verdicts['red'], isTrue);
-    });
-
-    test('a team rated before answering closed keeps that rating', () {
-      final game = abcdGame();
-      final state = run(answered(game, const {'red': PlayerAnswer(choice: 2)}), const [
-        RateAnswer('red', correct: true),
-        LockAnswers(),
-      ], game);
-      expect(state.results.verdicts['red'], isTrue);
-    });
-
-    test('with the answer already on the big screen its points go up at once', () {
-      final game = abcdGame();
-      final result = reduce(answered(game, const {'red': PlayerAnswer(choice: 1)}), const RevealAnswer('red', show: true), game);
-      // Showing it ends the time to change it: final, rated, given.
-      expect(result.state.results.verdicts['red'], isTrue);
-      expect(result.state.team('red')!.points, 100);
-      expect([for (final effect in result.effects) if (effect is SoundEffect) effect.key], [effectAnswerCorrect]);
-    });
-
-    test('switched off in the editor, nothing is rated, but the button still is there', () {
-      final game = abcdGame(autoRating: const {'off': true});
-      final state = run(answered(game, const {'red': PlayerAnswer(choice: 1)}), const [LockAnswers()], game);
-      expect(state.results.verdicts, isEmpty);
-      final button = autoRating(state, state.answerRound!, game.question(ref)!);
-      expect([for (final command in button) command.toJson()], [const RateAnswer('red', correct: true).toJson()]);
-    });
-
-    test('the played round keeps the ratings, and opened again it comes back as it was left', () {
-      final game = abcdGame();
-      var state = run(answered(game, const {'red': PlayerAnswer(choice: 1), 'blue': PlayerAnswer(choice: 3)}), const [
-        LockAnswers(),
-        // The gamemaster disagrees with one.
-        RateAnswer('blue', correct: true),
-      ], game);
-      final closed = reduce(state, const CloseQuestion(), game);
-      final kept = closed.rounds[ref.key]!;
-      expect(kept.results.verdicts, {'red': true, 'blue': true});
-      state = reduce(closed.state, const OpenQuestion(ref, restore: true), game, stored: {ref.key: kept}).state;
-      expect(state.results.verdicts, {'red': true, 'blue': true});
     });
 
     group('several picks', () {
@@ -141,6 +101,7 @@ void main() {
           for (final MapEntry(key: team, value: answer) in answers.entries) SubmitAnswer(team, answer),
           const LockAnswers(),
         ], game);
+        state = tapAutoRate(state, game, ref);
         state = run(state, const [GivePoints()], game);
         return state;
       }
@@ -181,7 +142,7 @@ void main() {
   });
 
   group('top answers', () {
-    test('typed answers are matched with the list once answering closes, typos and all', () {
+    test('typed answers are matched with the list only by the button, typos and all', () {
       final game = topAnswersGame(mode: TopAnswersMode.typed);
       var state = run(topTeams, const [
         OpenQuestion(films),
@@ -189,35 +150,13 @@ void main() {
         SubmitAnswer('blue', PlayerAnswer(items: ['Frozen', '', '', '', ''])),
         LockAnswers(),
       ], game);
-      expect(state.answerRound!.found, {'red': [0, 2], 'blue': <int>[]});
-      expect(state.results.points, {'red': 400, 'blue': 0});
-      expect(state.results.verdicts, {'red': true, 'blue': false});
-      state = run(state, const [GivePoints()], game);
-      expect(state.team('red')!.points, 400);
-      // The gamemaster ticks one more: the points follow.
-      state = run(state, const [MarkTopAnswers('blue', [4])], game);
-      expect(state.results.points['blue'], 100);
-    });
-
-    test('switched off, the gamemaster ticks them by hand', () {
-      final base = topAnswersGame(mode: TopAnswersMode.typed);
-      final data = {...base.question(films)!.data, 'autoRating': const AutoRating(on: false).toMap()};
-      final game = GameContent.assemble(
-        id: 'tg',
-        game: const {'name': 'Top answers'},
-        groups: const {'g': {'name': 'Round', 'categoryGroupType': 'category_wheel', 'categoryGroupIndex': 0}},
-        categories: const {'tc': {'name': 'Films', 'categoryGroup': 'g', 'categoryIndex': 0, 'active': true}},
-        questions: {
-          'tc': {'films': data},
-        },
-      );
-      final state = run(topTeams, const [
-        OpenQuestion(films),
-        SubmitAnswer('red', PlayerAnswer(items: ['Titanic', '', '', '', ''])),
-        LockAnswers(),
-      ], game);
       expect(state.answerRound!.found, isEmpty);
       expect(state.results.isEmpty, isTrue);
+      state = tapAutoRate(state, game, films);
+      expect(state.answerRound!.found['red'], [0, 2]);
+      expect(state.results.points['red'], 400);
+      state = run(state, const [GivePoints()], game);
+      expect(state.team('red')!.points, 400);
     });
   });
 

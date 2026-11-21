@@ -3180,21 +3180,25 @@ class _AnswersPanel extends StatelessWidget {
     final connections = spec.kind == CompanionKind.connections;
     final top = question.type == QuestionType.topAnswers ? question.topAnswers : null;
     final automatic = autoRating(state, round, question);
+    // Nothing is rated without it: always in sight above the answers, greyed
+    // out while there is nothing it would change.
+    final rateable = canAutoRate(state, round, question);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (automatic.isNotEmpty || (spec.solution != null && !question.byCloseness))
+        if (rateable || (spec.solution != null && !question.byCloseness))
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Wrap(
               spacing: 8,
               runSpacing: 4,
               children: [
-                if (automatic.isNotEmpty)
-                  ActionChip(
-                    avatar: const Icon(Icons.auto_fix_high, size: 18),
+                if (rateable)
+                  FilledButton.tonalIcon(
+                    key: const ValueKey('autoRate'),
+                    icon: const Icon(Icons.auto_fix_high, size: 18),
                     label: Text(context.l10n.rateAutomatically),
-                    onPressed: () => automatic.forEach(send),
+                    onPressed: automatic.isEmpty ? null : () => automatic.forEach(send),
                   ),
                 // By closeness the places give the points already.
                 if (spec.solution != null && !question.byCloseness)

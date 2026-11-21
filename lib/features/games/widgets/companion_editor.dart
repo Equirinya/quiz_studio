@@ -48,7 +48,7 @@ class CompanionEditorState extends State<CompanionEditor> {
   /// Choice: teams may pick several answers.
   late bool _multiple;
 
-  /// ABCD: whether picks are rated by themselves, and how several count.
+  /// ABCD: how several picks count, for "Rate automatically".
   late AutoRating _autoRating;
 
   /// Answer list: the right answers, one per line.
@@ -121,7 +121,7 @@ class CompanionEditorState extends State<CompanionEditor> {
 
   bool get _hasRange => _kind == CompanionKind.number || _kind == CompanionKind.slider;
 
-  /// ABCD picked on the devices: rated by itself, unless switched off.
+  /// ABCD picked on the devices: has the setting how several picks count.
   bool get _ratesChoices => widget.question.type == QuestionType.abcd && _kind == CompanionKind.choice;
 
   void _write() {
@@ -346,14 +346,6 @@ class CompanionEditorState extends State<CompanionEditor> {
           const SizedBox(height: 4),
           Text(context.l10n.multipleScoringText(_autoRating.multiple.name), style: theme.textTheme.bodySmall),
         ],
-        if (_ratesChoices)
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(context.l10n.autoRate),
-            subtitle: Text(context.l10n.autoRateText),
-            value: _autoRating.on,
-            onChanged: (value) => _change(() => _autoRating = _autoRating.copyWith(on: value)),
-          ),
         if (kind == CompanionKind.list) ...[
           const SizedBox(height: 12),
           TextField(
