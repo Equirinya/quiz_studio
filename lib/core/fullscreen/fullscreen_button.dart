@@ -4,6 +4,10 @@ import 'package:quiz_show/l10n/l10n.dart';
 
 import 'fullscreen_stub.dart' if (dart.library.js_interop) 'fullscreen_web.dart' as fullscreen;
 
+/// The web app's page behind it takes [color], so the edges a browser leaves
+/// in full screen are not white. Does nothing outside a browser.
+void matchPageBackground(Color color) => fullscreen.setPageBackground(color.toARGB32());
+
 /// In the web app: takes the whole screen, without the browser's bars, or
 /// gives it back. Shows nothing where that is not possible (in the installed
 /// apps, or Safari on an iPhone).

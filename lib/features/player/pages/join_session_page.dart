@@ -20,7 +20,8 @@ class JoinSessionPage extends StatefulWidget {
   const JoinSessionPage({super.key, this.initialLink, this.asGuest = false});
 
   /// Whether this device can scan a join code with its camera.
-  static final bool hasScanner = !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
+  /// The web app scans too, with the browser's camera (it asks first).
+  static final bool hasScanner = kIsWeb || Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
 
   /// The page that runs a session as its controller, set by the full app.
   /// The web app for teams' devices has none: it only joins as a team.
@@ -39,9 +40,15 @@ class JoinSessionPage extends StatefulWidget {
 }
 
 class _JoinSessionPageState extends State<JoinSessionPage> {
-  static final bool _hasScanner = JoinSessionPage.hasScanner;
+  MobileScannerController? _scanner;
 
-  final MobileScannerController? _scanner = _hasScanner ? MobileScannerController(detectionSpeed: DetectionSpeed.noDuplicates) : null;
+  /// Turns the camera on for scanning a code. In a browser not while a link
+  /// the page was opened with is being joined: the browser would ask for the
+  /// camera only for the page to move on to the game.
+  void _startCamera() {
+    if (_scanner != null || !JoinSessionPage.hasScanner) return;
+    _scanner = MobileScannerController(detectionSpeed: DetectionSpeed.noDuplicates);
+  }
   final TextEditingController _link = TextEditingController();
   bool _busy = false;
   String? _error;
@@ -57,6 +64,7 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
       _link.text = widget.initialLink!;
       WidgetsBinding.instance.addPostFrameCallback((_) => _join(widget.initialLink!));
     }
+    if (!kIsWeb || widget.initialLink == null) _startCamera();
   }
 
   @override
@@ -72,7 +80,10 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
     if (invite != null) return _acceptInvite(invite);
     final link = SessionJoinLink.tryParse(raw);
     if (link == null || (link.role != Role.player && JoinSessionPage.controlPage == null)) {
-      setState(() => _error = context.l10n.notASessionCode);
+      setState(() {
+        _error = context.l10n.notASessionCode;
+        _startCamera();
+      });
       return;
     }
     setState(() {
@@ -89,6 +100,8 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
           setState(() {
             _busy = false;
             _error = context.l10n.couldNotJoinSession;
+            // Staying here after all: now the camera may scan another code.
+            _startCamera();
           });
         }
         return;

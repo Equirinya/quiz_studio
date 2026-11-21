@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
+import 'core/fullscreen/fullscreen_button.dart';
 import 'core/theme.dart';
 import 'features/player/pages/join_session_page.dart';
 import 'firebase_options.dart';
@@ -41,6 +42,11 @@ class CompanionWebApp extends StatelessWidget {
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) {
+          // Light or dark as the device is: the page behind follows.
+          matchPageBackground(Theme.of(context).colorScheme.surface);
+          return child ?? const SizedBox();
+        },
         home: JoinSessionPage(initialLink: initialLink, asGuest: true),
       ),
     );
