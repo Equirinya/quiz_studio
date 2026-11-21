@@ -27,6 +27,14 @@ Made in FL Studio (2024–2025):
 - `effects/right_answer/right_answer.mp3`, `effects/fanfare/fanfare.mp3`
 - `buzzers/power.mp3`, `buzzers/light.mp3`
 
+## From the Filmstudio Feud! show (Gala 2025)
+
+Trimmed with ffmpeg (the lock-in sound also 6 dB louder):
+
+- `effects/lock_in/feud_correct.mp3` (Correct Answer)
+- `effects/fanfare/feud_fanfare.mp3` (Komplette Frage richtig)
+- `effects/fanfare/feud_imposter_fanfare.mp3` (Frage nicht komplett richtig)
+
 ## Kenney (www.kenney.nl), CC0
 
 From "Voiceover Pack" (https://opengameart.org/content/voiceover-pack-40-lines):

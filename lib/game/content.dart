@@ -58,7 +58,11 @@ const List<BuiltinSound> builtinSounds = [
   BuiltinSound('fanfare/fanfare', "Fanfare", 'sounds/effects/fanfare/fanfare.mp3'),
   BuiltinSound('fanfare/brass', "Brass fanfare", 'sounds/effects/fanfare/brass.wav'),
   BuiltinSound('fanfare/voice_congratulations', "\"Congratulations!\"", 'sounds/effects/fanfare/voice_congratulations.mp3'),
+  BuiltinSound('fanfare/feud_fanfare', "Feud fanfare", 'sounds/effects/fanfare/feud_fanfare.mp3'),
+  BuiltinSound('fanfare/feud_imposter_fanfare', "Feud imposter fanfare", 'sounds/effects/fanfare/feud_imposter_fanfare.mp3'),
   BuiltinSound('question_open/brass_stab', "Brass stab", 'sounds/effects/question_open/brass_stab.wav'),
+  // The same file as the lock-in pling, which is what unveils by default.
+  BuiltinSound('reveal/pling', "Pling", 'sounds/effects/lock_in/pling.wav'),
   BuiltinSound('reveal/pluck', "Pluck", 'sounds/effects/reveal/pluck.mp3'),
   BuiltinSound('reveal/rise_high', "Rise", 'sounds/effects/reveal/rise_high.mp3'),
   BuiltinSound('reveal/pop_up', "Pop up", 'sounds/effects/reveal/pop_up.wav'),
@@ -66,6 +70,7 @@ const List<BuiltinSound> builtinSounds = [
   BuiltinSound('countdown/alarm_clock_ticking', "Ticking clock, 10 seconds", 'sounds/effects/countdown/alarm_clock_ticking.mp3'),
   BuiltinSound('countdown/ticking_short', "Ticking clock", 'sounds/effects/countdown/ticking_short.mp3'),
   BuiltinSound('times_up/game_show_buzzer', "Game-show buzzer", 'sounds/effects/times_up/game_show_buzzer.wav'),
+  BuiltinSound('lock_in/feud_correct', "Feud correct", 'sounds/effects/lock_in/feud_correct.mp3'),
   BuiltinSound('lock_in/pling', "Pling", 'sounds/effects/lock_in/pling.wav'),
   BuiltinSound('lock_in/pop', "Pop", 'sounds/effects/lock_in/pop.wav'),
   BuiltinSound('lock_in/select', "Select", 'sounds/effects/lock_in/select.mp3'),
@@ -167,11 +172,11 @@ const String silentSound = 'off';
 
 /// What plays for a built-in moment when the game set nothing for it.
 const Map<String, String> defaultEffectSounds = {
-  effectReveal: 'reveal/pluck',
+  effectReveal: 'reveal/pling',
   effectAnswerCorrect: 'right_answer/right_answer',
   effectAnswerWrong: 'wrong_answer/bwomp',
   effectQuestionOpen: 'question_open/brass_stab',
-  effectLockIn: 'lock_in/pling',
+  effectLockIn: 'lock_in/feud_correct',
   effectNextItem: 'next_item/woodblock',
   effectCountdown: 'countdown/alarm_clock_ticking',
   effectTimesUp: 'times_up/game_show_buzzer',

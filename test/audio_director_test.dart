@@ -137,7 +137,7 @@ void main() {
       ..dispatch(const OpenQuestion(feud))
       ..dispatch(const Buzz('red'))
       ..dispatch(const FeudToggle(0));
-    expect(backend.log.last, 'asset sounds/effects/reveal/pluck.mp3');
+    expect(backend.log.last, 'asset sounds/effects/lock_in/pling.wav');
   });
 
   test('a team can have one of the buzzers that come with the app', () {
