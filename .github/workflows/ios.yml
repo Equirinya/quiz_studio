@@ -174,12 +174,6 @@ jobs:
       # where it stopped.
       - name: Build IPA
         run: |
-          # Flutter shows no Xcode output until the archive ends, so every two
-          # minutes print what is still running: a stuck codesign shows up here.
-          (while sleep 120; do
-            echo "--- still building at $(date -u +%H:%M:%S):"
-            ps -Ao etime,comm | grep -E 'codesign|swift-frontend|clang|ld$|xcodebuild' | grep -v grep | head -15
-          done) &
           flutter build ipa \
             --verbose \
             --release \
