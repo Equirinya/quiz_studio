@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,7 +8,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:quiz_show/features/player/pages/player_page.dart';
 import 'package:quiz_show/features/player/recent_sessions.dart';
 import 'package:quiz_show/features/player/widgets/scanner_overlay.dart';
-import 'package:quiz_show/features/session/pages/sessions_page.dart';
 import 'package:quiz_show/features/session/session_links.dart';
 import 'package:quiz_show/features/session/session_repository.dart';
 import 'package:quiz_show/game/game.dart';
@@ -19,7 +19,11 @@ class JoinSessionPage extends StatefulWidget {
   const JoinSessionPage({super.key, this.initialLink, this.asGuest = false});
 
   /// Whether this device can scan a join code with its camera.
-  static final bool hasScanner = Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
+  static final bool hasScanner = !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
+
+  /// The page that runs a session as its controller, set by the full app.
+  /// The web app for teams' devices has none: it only joins as a team.
+  static Widget Function({required String sessionId, required String title, required SessionJoinLink joinLink})? controlPage;
 
   /// A code the system handed over, scanned with the camera app: joined
   /// right away.
@@ -66,7 +70,7 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
     final invite = SessionInviteLink.tryParse(raw);
     if (invite != null) return _acceptInvite(invite);
     final link = SessionJoinLink.tryParse(raw);
-    if (link == null) {
+    if (link == null || (link.role != Role.player && JoinSessionPage.controlPage == null)) {
       setState(() => _error = context.l10n.notASessionCode);
       return;
     }
@@ -94,7 +98,9 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) =>
-            link.role == Role.player ? PlayerPage(link: link) : ControlPage(sessionId: link.sessionId, title: context.l10n.session, joinLink: link),
+            link.role == Role.player
+            ? PlayerPage(link: link)
+            : JoinSessionPage.controlPage!(sessionId: link.sessionId, title: context.l10n.session, joinLink: link),
       ),
     );
   }
@@ -102,6 +108,11 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
   /// An invite to help run someone's show: joins as a controller and puts the
   /// session in this user's list.
   Future<void> _acceptInvite(SessionInviteLink invite) async {
+    final control = JoinSessionPage.controlPage;
+    if (control == null) {
+      setState(() => _error = context.l10n.notASessionCode);
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -121,7 +132,7 @@ class _JoinSessionPageState extends State<JoinSessionPage> {
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => ControlPage(sessionId: invite.sessionId, title: context.l10n.session, joinLink: invite.joinLink),
+        builder: (_) => control(sessionId: invite.sessionId, title: context.l10n.session, joinLink: invite.joinLink),
       ),
     );
   }

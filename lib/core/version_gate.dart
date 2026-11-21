@@ -9,6 +9,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:quiz_show/l10n/l10n.dart';
 
+/// The system this runs on, as `Platform.operatingSystem` names it; "web" in
+/// a browser, where `Platform` is not available.
+String get _operatingSystem => kIsWeb ? 'web' : Platform.operatingSystem;
+
 /// Fallback store link, used when `config/app` doesn't provide one.
 const String _kAndroidPackage = 'de.equirinya.quizStudio';
 
@@ -89,7 +93,7 @@ class _VersionGateState extends State<VersionGate> {
       final data = snapshot.data() ?? const <String, dynamic>{};
       final min = data['minRequiredVersion'];
       // androidStoreUrl, iosStoreUrl, windowsStoreUrl, macosStoreUrl
-      final url = data['${Platform.operatingSystem}StoreUrl'];
+      final url = data['${_operatingSystem}StoreUrl'];
       setState(() {
         _minRequiredVersion = min is String && min.trim().isNotEmpty ? min : null;
         _storeUrlOverride = url is String && url.trim().isNotEmpty ? url : null;
@@ -144,7 +148,7 @@ class UpdateRequiredPage extends StatelessWidget {
   String? get _resolvedStoreUrl {
     final override = storeUrl;
     if (override != null && override.isNotEmpty) return override;
-    if (Platform.isAndroid) return 'https://play.google.com/store/apps/details?id=$_kAndroidPackage';
+    if (!kIsWeb && Platform.isAndroid) return 'https://play.google.com/store/apps/details?id=$_kAndroidPackage';
     return null;
   }
 
@@ -166,7 +170,7 @@ class UpdateRequiredPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final storeUrl = _resolvedStoreUrl;
-    final storeName = switch (Platform.operatingSystem) {
+    final storeName = switch (_operatingSystem) {
       'android' => 'Play Store',
       'ios' || 'macos' => 'App Store',
       'windows' => 'Microsoft Store',

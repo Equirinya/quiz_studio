@@ -165,7 +165,9 @@ class SessionClient implements CommandSink {
     if (cloudPictures != null) {
       _subs.add(cloudPictures!.listen((pictures) => pictures.forEach(_onPicture), onError: (Object _) {}));
     }
-    _lanLoop();
+    // A browser cannot open sockets: the web app for teams' devices goes
+    // through the internet only.
+    if (!kIsWeb) _lanLoop();
   }
 
   // A message can still be on its way when the client is disposed; it is

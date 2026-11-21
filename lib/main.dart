@@ -47,6 +47,7 @@ void main(List<String> args) async {
   }
   await MediaService.instance.init();
   await AppLanguage.load();
+  JoinSessionPage.controlPage = ControlPage.new;
   runApp(const MyApp());
 }
 

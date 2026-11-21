@@ -300,7 +300,8 @@ GoogleService-Info.plist
 /lib/test.dart
 
 /macos
-/web
+# web/ is the web app for teams' devices (lib/main_web.dart), published to
+# GitHub Pages under /app/ by .github/workflows/pages.yml.
 
 # Golden-test diffs written when a screenshot test fails
 /tool/failures/

@@ -1,20 +1,23 @@
 # Publishes docs/ (terms, privacy, account deletion and the open.html page
-# behind QR codes and invites) to GitHub Pages. Same as couple_planner's.
+# behind QR codes and invites) to GitHub Pages, and under app/ the web app
+# for teams' devices (lib/main_web.dart): joining a show and playing along
+# in a browser, e.g. drawing with an Apple Pencil on an iPad.
 #
-# Runs only when something in docs/ changes, or by hand. It checks out
-# without submodules: the firebase submodule is private, and GitHub's
-# built-in Pages build fails trying to clone it. Settings -> Pages ->
-# Source must be "GitHub Actions" for this workflow to be used.
-#
-# docs/open.html only exists on v2 so far; switch the branch to master once
-# v2 is merged there.
+# Runs when docs/, the app or this workflow change on master, or by hand. It
+# checks out without submodules: the firebase submodule is private, and
+# GitHub's built-in Pages build fails trying to clone it. Settings -> Pages
+# -> Source must be "GitHub Actions" for this workflow to be used.
 name: Deploy Pages
 
 on:
   push:
-    branches: [v2]
+    branches: [master]
     paths:
       - 'docs/**'
+      - 'lib/**'
+      - 'web/**'
+      - 'assets/**'
+      - 'pubspec.*'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -47,6 +50,24 @@ jobs:
         with:
           source: docs/
           destination: ./_site
+
+      # Jekyll writes _site as root inside its container.
+      - name: Make the site writable
+        run: sudo chown -R "$(id -u):$(id -g)" _site
+
+      - name: Set up Flutter SDK
+        uses: flutter-actions/setup-flutter@v4
+        env:
+          FLUTTER_VERSION: ${{ vars.FLUTTER_VERSION }}
+        with:
+          channel: stable
+          version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Build the web app for teams' devices
+        run: |
+          flutter pub get
+          flutter build web --release -t lib/main_web.dart --base-href /${{ github.event.repository.name }}/app/
+          cp -r build/web _site/app
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

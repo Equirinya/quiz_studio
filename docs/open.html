@@ -102,6 +102,7 @@
     <p id="status">Already have the app? Tap below to open it.</p>
 
     <a id="openApp" class="btn btn-primary" href="#">Open in the app</a>
+    <a id="openWeb" class="btn btn-store" href="#" style="display: none">Play in the browser</a>
 
     <p class="divider">
       <span class="stores-label">Don’t have the app yet?</span><br/>
@@ -148,6 +149,14 @@
 
       var appUrl = 'quiz-studio://' + path;
       document.getElementById('openApp').setAttribute('href', appUrl);
+
+      // A team's code also works in the web app, without installing anything
+      // (e.g. on an iPad, to draw with the pencil).
+      if (/^session\/[^\/]+\/player\//.test(path)) {
+        var web = document.getElementById('openWeb');
+        web.setAttribute('href', './app/?join=' + encodeURIComponent(path));
+        web.style.display = 'block';
+      }
 
       // Try to open the app right away.
       window.location.href = appUrl;
