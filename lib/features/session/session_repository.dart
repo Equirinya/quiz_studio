@@ -390,6 +390,20 @@ class SessionRepository {
         return data == null ? null : PublicView(data);
       });
 
+  /// The full state as the server has it now, past any listener that missed
+  /// a change.
+  Future<SessionState?> readState(String sessionId) async {
+    final state = (await session(sessionId).get(const GetOptions(source: Source.server))).data()?['state'];
+    return state is Map ? SessionState.fromJson(Map<String, dynamic>.from(state)) : null;
+  }
+
+  /// What [watchPublicState] shows, as the server has it now.
+  Future<PublicView?> readPublicState(String sessionId, {String? teamId}) async {
+    final doc = await session(sessionId).collection('public').doc(teamId == null ? 'state' : 'team_$teamId').get(const GetOptions(source: Source.server));
+    final data = doc.data();
+    return data == null ? null : PublicView(data);
+  }
+
   /// Puts a command into the presenting device's inbox.
   Future<void> sendCommand(String sessionId, Command command, {required Role role, String? teamId}) =>
       session(sessionId).collection('commands').add({
@@ -472,8 +486,29 @@ class FirestoreHostLink {
   bool _stopped = false;
   Timer? _alive;
 
+  /// Reads the inbox every few seconds past the listener, which can miss a
+  /// command until the next one comes (a "wrong" left the buzzers locked
+  /// until the gamemaster did something else).
+  Timer? _inboxCheck;
+
+  /// Commands applied, by document id, so the listener and the check never
+  /// apply one twice while its deletion is on its way.
+  final Set<String> _applied = {};
+
+  /// How often the inbox is read past the listener.
+  static const Duration inboxCheckEvery = Duration(seconds: 4);
+
   /// How often a quiet presenter says it is still there.
   static const Duration heartbeat = Duration(seconds: 45);
+
+  /// How long a write may take before it counts as lost and the newest
+  /// state is written again: one that never answers must not hold back every
+  /// later one.
+  static const Duration writeLimit = Duration(seconds: 8);
+
+  /// How long to wait before writing again after a write failed, by how many
+  /// failed in a row: soon at first, then every few seconds.
+  static Duration retryAfter(int failures) => Duration(milliseconds: min(5000, 500 * (1 << min(failures - 1, 4))));
 
   DocumentReference<Map<String, dynamic>> get _ref => SessionRepository.instance.session(sessionId);
 
@@ -527,10 +562,41 @@ class FirestoreHostLink {
       _backlogDropped = true;
       for (final change in snapshot.docChanges) {
         if (change.type != DocumentChangeType.added) continue;
-        if (!drop) _apply(change.doc.data() ?? const {});
-        change.doc.reference.delete();
+        _take(change.doc, apply: !drop);
       }
     });
+    _inboxCheck = Timer.periodic(inboxCheckEvery, (_) => _checkInbox());
+  }
+
+  /// Applies a command from the inbox once, and deletes it.
+  void _take(DocumentSnapshot<Map<String, dynamic>> doc, {bool apply = true}) {
+    if (!_applied.add(doc.id)) return;
+    // Ids only matter while their deletion may still be under way.
+    if (_applied.length > 500) _applied.remove(_applied.first);
+    if (apply) _apply(doc.data() ?? const {});
+    doc.reference.delete().catchError((Object _) {});
+  }
+
+  bool _checking = false;
+
+  Future<void> _checkInbox() async {
+    if (_stopped || displaced.value || !_backlogDropped || _checking) return;
+    _checking = true;
+    try {
+      final snapshot = await _ref
+          .collection('commands')
+          .orderBy('createdAt')
+          .get(const GetOptions(source: Source.server))
+          .timeout(inboxCheckEvery);
+      if (_stopped || displaced.value) return;
+      for (final doc in snapshot.docs) {
+        _take(doc);
+      }
+    } catch (_) {
+      // Offline: the listener and the next check carry on.
+    } finally {
+      _checking = false;
+    }
   }
 
   void _apply(Map<String, dynamic> data) {
@@ -545,7 +611,10 @@ class FirestoreHostLink {
   }
 
   /// Writes the latest state. While a write is under way newer states are
-  /// not queued one by one; only the newest goes out next.
+  /// not queued one by one; only the newest goes out next. A write that
+  /// fails or takes too long is tried again with the newest state, until one
+  /// gets through: the devices on the internet must not stay on an old
+  /// screen until something else changes.
   Future<void> _publish() async {
     if (_stopped || displaced.value) return;
     if (_writing) {
@@ -553,6 +622,7 @@ class FirestoreHostLink {
       return;
     }
     _writing = true;
+    var failures = 0;
     do {
       _dirty = false;
       final state = host.state;
@@ -573,20 +643,27 @@ class FirestoreHostLink {
           written[team.id] = encoded;
           if (_teamViews[team.id] != encoded) batch.set(_ref.collection('public').doc('team_${team.id}'), view);
         }
-        await batch.commit();
+        await batch.commit().timeout(writeLimit);
+        failures = 0;
         _teamViews
           ..clear()
           ..addAll(written);
       } catch (error) {
         if (kDebugMode) print('Session: could not publish state: $error');
+        // Not known what arrived: every team's copy goes out again.
+        _teamViews.clear();
+        _dirty = true;
+        failures++;
+        await Future<void>.delayed(retryAfter(failures));
       }
-    } while (_dirty && !_stopped);
+    } while (_dirty && !_stopped && !displaced.value);
     _writing = false;
   }
 
   Future<void> stop() async {
     _stopped = true;
     _alive?.cancel();
+    _inboxCheck?.cancel();
     // Nobody presents any more, unless another device took over.
     if (!displaced.value) _ref.update({'hostDevice': null}).catchError((Object _) {});
     await _commands?.cancel();

@@ -202,6 +202,64 @@ void main() {
     c.start();
     await until(() => c.link.value == LinkStatus.lan);
   });
+
+  group('a change the cloud listener missed', () {
+    test('a player picks it up by reading the cloud, and never goes back to an older one', () async {
+      // The listener only ever brings the first view; the second is lost.
+      final listened = StreamController<PublicView?>();
+      addTearDown(listened.close);
+      var stored = PublicView({...host.publicState, 'seq': 1});
+      final c = SessionClient(
+        role: Role.player,
+        teamId: 'red',
+        cloudViews: listened.stream,
+        cloudReadView: () async => stored,
+        refreshEvery: fast,
+      );
+      addTearDown(c.dispose);
+      c.start();
+      listened.add(PublicView({...host.publicState, 'seq': 1}));
+      await until(() => c.view.value?.seq == 1);
+      stored = PublicView({...host.publicState, 'seq': 4});
+      await until(() => c.view.value?.seq == 4);
+      // An older copy read later changes nothing.
+      stored = PublicView({...host.publicState, 'seq': 2});
+      await Future<void>.delayed(fast * 3);
+      expect(c.view.value?.seq, 4);
+    });
+
+    test('a controller too, through the full state', () async {
+      final listened = StreamController<SessionState?>();
+      addTearDown(listened.close);
+      var stored = fixtureState().copyWith(seq: 7);
+      final c = SessionClient(role: Role.controller, cloudStates: listened.stream, cloudReadState: () async => stored, refreshEvery: fast);
+      addTearDown(c.dispose);
+      c.start();
+      await until(() => c.state.value?.seq == 7);
+      stored = fixtureState().copyWith(seq: 9);
+      await until(() => c.state.value?.seq == 9);
+    });
+
+    test('a read that fails or hangs changes nothing and is tried again', () async {
+      var calls = 0;
+      final c = SessionClient(
+        role: Role.player,
+        teamId: 'red',
+        cloudViews: const Stream.empty(),
+        cloudReadView: () {
+          calls++;
+          if (calls == 1) return Completer<PublicView?>().future; // never answers
+          if (calls == 2) throw StateError('offline');
+          return Future.value(PublicView({...host.publicState, 'seq': 3}));
+        },
+        refreshEvery: fast,
+      );
+      addTearDown(c.dispose);
+      c.start();
+      await until(() => c.view.value?.seq == 3);
+      expect(calls, greaterThanOrEqualTo(3));
+    });
+  });
 }
 
 /// A beacon bound to port 0 has to be asked which port it got.

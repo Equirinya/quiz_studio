@@ -41,6 +41,9 @@ class SessionClient implements CommandSink {
     this.cloudSend,
     this.onSendError,
     this.discover,
+    this.cloudReadState,
+    this.cloudReadView,
+    this.refreshEvery = const Duration(seconds: 5),
     LanConnector? connect,
     this.retryDelay = const Duration(seconds: 2),
   })  : _token = token,
@@ -68,6 +71,8 @@ class SessionClient implements CommandSink {
       cloudBackground: repo.watchBackground(sessionId),
       cloudPictures: repo.watchPictures(sessionId),
       cloudSend: (command) => repo.sendCommand(sessionId, command, role: role, teamId: teamId),
+      cloudReadState: role == Role.player ? null : () => repo.readState(sessionId),
+      cloudReadView: role == Role.player ? () => repo.readPublicState(sessionId, teamId: teamId) : null,
       onSendError: onSendError,
       discover: () => discoverPresenter(sessionId),
     );
@@ -96,6 +101,17 @@ class SessionClient implements CommandSink {
   /// Asks the local network where the presenter is; used when none of the
   /// known addresses answers, e.g. after the presenter got a new one.
   final Future<String?> Function()? discover;
+
+  /// The state or view as the cloud has it right now, read every
+  /// [refreshEvery] while there is no local connection: a listener that
+  /// missed a change (it happens) would leave the device on an old screen
+  /// until the next one. Only something newer than what is shown is taken.
+  final Future<SessionState?> Function()? cloudReadState;
+  final Future<PublicView?> Function()? cloudReadView;
+  final Duration refreshEvery;
+  Timer? _refresh;
+  bool _refreshing = false;
+
   final Duration retryDelay;
   final LanConnector _connect;
 
@@ -168,6 +184,30 @@ class SessionClient implements CommandSink {
     // A browser cannot open sockets: the web app for teams' devices goes
     // through the internet only.
     if (!kIsWeb) _lanLoop();
+    if (cloudReadState != null || cloudReadView != null) {
+      _refresh = Timer.periodic(refreshEvery, (_) => _readCloud());
+    }
+  }
+
+  /// One read past the listeners; see [cloudReadState].
+  Future<void> _readCloud() async {
+    if (_disposed || _refreshing || link.value == LinkStatus.lan) return;
+    _refreshing = true;
+    try {
+      final limit = refreshEvery;
+      if (cloudReadState case final read?) {
+        final next = await read().timeout(limit);
+        if (next != null && next.seq > _seq) _onState(next);
+      }
+      if (cloudReadView case final read?) {
+        final next = await read().timeout(limit);
+        if (next != null && next.seq > _seq) _onView(next);
+      }
+    } catch (_) {
+      // Offline or refused: the listeners say so; try again next time.
+    } finally {
+      _refreshing = false;
+    }
   }
 
   // A message can still be on its way when the client is disposed; it is
@@ -274,6 +314,7 @@ class SessionClient implements CommandSink {
 
   Future<void> dispose() async {
     _disposed = true;
+    _refresh?.cancel();
     _wake?.complete();
     for (final sub in _subs) {
       await sub.cancel();
