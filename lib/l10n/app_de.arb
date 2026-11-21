@@ -1036,5 +1036,7 @@
   "multipleScoringText": "{rule, select, any{Richtig mit mindestens einer richtigen und keiner falschen Antwort.} partial{Ein Teil der Punkte für jede richtige Antwort, einer weniger für jede falsche.} other{Richtig nur mit genau den richtigen Antworten, nicht mehr und nicht weniger.}}",
   "listSolutions": "Richtige Antworten",
   "listSolutionsText": "Eine pro Zeile. Beim Bewerten werden die Zeilen der Teams markiert, die zu einer passen, auch mit kleinen Tippfehlern. Punkte gibt es dafür nicht von selbst.",
-  "matchesAnswer": "passt zu {answer}"
+  "matchesAnswer": "passt zu {answer}",
+  "podium": "Podest",
+  "podiumOnBigScreen": "Das Podest ist auf dem großen Bildschirm: die besten drei auf ihren Stufen, die anderen Teams darunter mit Platz und Punkten."
 }

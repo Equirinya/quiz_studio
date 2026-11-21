@@ -2087,5 +2087,7 @@
   "listSolutions": "Right answers",
   "listSolutionsText": "One per line. While you rate, the lines of the teams that match one are marked, small typos too. No points are given by themselves.",
   "matchesAnswer": "matches {answer}",
-  "@matchesAnswer": {"placeholders": {"answer": {"type": "String"}}}
+  "@matchesAnswer": {"placeholders": {"answer": {"type": "String"}}},
+  "podium": "Podium",
+  "podiumOnBigScreen": "The podium is on the big screen: the top three on their steps, the other teams below with their places and points."
 }

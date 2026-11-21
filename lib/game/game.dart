@@ -15,6 +15,7 @@ export 'matching.dart';
 export 'media_set.dart';
 export 'ordering.dart';
 export 'played_round.dart';
+export 'podium.dart';
 export 'public_view.dart';
 export 'last_standing.dart';
 export 'rapid_fire.dart';

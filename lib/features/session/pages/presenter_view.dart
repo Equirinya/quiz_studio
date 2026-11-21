@@ -11,6 +11,7 @@ import 'package:quiz_show/features/companion/connections.dart';
 import 'package:quiz_show/features/games/media_service.dart';
 import 'package:quiz_show/features/session/boards/info_board.dart';
 import 'package:quiz_show/features/session/boards/map_board.dart';
+import 'package:quiz_show/features/session/boards/podium_board.dart';
 import 'package:quiz_show/features/session/boards/wheel_board.dart';
 import 'package:quiz_show/features/session/pages/media_box.dart';
 import 'package:quiz_show/features/session/pages/ordering_display.dart';
@@ -48,7 +49,8 @@ class PresenterView extends StatelessWidget {
         if (game == null) {
           return Center(child: Text(context.l10n.waitingForGame, style: Theme.of(context).textTheme.headlineSmall));
         }
-        final group = game.group(state.groupId) ?? game.groups.firstOrNull;
+        // On the podium no group is shown, nor its colours.
+        final group = state.groupId == podiumBoardId ? null : game.group(state.groupId) ?? game.groups.firstOrNull;
         final base = Theme.of(context);
         // A group may bring its own colours, and a category its own while one
         // of its questions is open; the whole screen follows them.
@@ -146,11 +148,13 @@ class PresenterView extends StatelessWidget {
             // A map scrolls sideways: it runs to the screen's edges, or its
             // bubbles would be cut off a little way in from them.
             final map = question == null && !state.waitingForBets && group != null && !group.isInfo && group.type == BoardType.map;
+            final podium = question == null && state.groupId == podiumBoardId;
             return Padding(
               padding: EdgeInsets.symmetric(vertical: unit * 2),
               child: Column(
                 children: [
-                  Padding(padding: side, child: _Scores(state: state, unit: unit, question: question)),
+                  // The podium shows the scores itself.
+                  if (!podium) Padding(padding: side, child: _Scores(state: state, unit: unit, question: question)),
                   // The question's own clock, when the devices have none. An
                   // information screen shows its own, large.
                   if (state.timer case final timer? when timer.running && state.answerRound == null && state.current != null)
@@ -186,6 +190,8 @@ class PresenterView extends StatelessWidget {
                                 ? () => connection.send(const SetMedia(MediaPlayback.stopped))
                                 : null,
                           )
+                        : podium
+                        ? PodiumBoard(teams: state.teams, unit: unit)
                         : group == null
                         ? const SizedBox()
                         : group.isInfo

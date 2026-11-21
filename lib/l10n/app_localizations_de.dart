@@ -3894,4 +3894,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String matchesAnswer(String answer) {
     return 'passt zu $answer';
   }
+
+  @override
+  String get podium => 'Podest';
+
+  @override
+  String get podiumOnBigScreen =>
+      'Das Podest ist auf dem großen Bildschirm: die besten drei auf ihren Stufen, die anderen Teams darunter mit Platz und Punkten.';
 }

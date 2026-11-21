@@ -490,6 +490,16 @@ class _NowPanel extends StatelessWidget {
       );
     }
     if (q == null) {
+      if (state.groupId == podiumBoardId) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            status,
+            const SizedBox(height: 24),
+            Center(child: Text(l10n.podiumOnBigScreen, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge)),
+          ],
+        );
+      }
       final group = game!.group(state.groupId) ?? game!.groups.firstOrNull;
       final all = [
         for (final c in group?.categories ?? const <Category>[])
@@ -2193,7 +2203,8 @@ class _BoardSheetState extends State<_BoardSheet> {
     final scheme = theme.colorScheme;
     final state = widget.state;
     final game = widget.game;
-    final group = game.group(state.groupId) ?? game.groups.firstOrNull;
+    final podium = state.groupId == podiumBoardId;
+    final group = podium ? null : game.group(state.groupId) ?? game.groups.firstOrNull;
     final selected = _selected;
     final question = selected == null ? null : game.question(selected);
     final played = selected != null && state.played.contains(selected.key);
@@ -2207,27 +2218,33 @@ class _BoardSheetState extends State<_BoardSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (game.groups.length > 1)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SegmentedButton<String>(
-                segments: [
-                  for (final g in game.groups)
-                    ButtonSegment(value: g.id, icon: Icon(g.type.icon), label: Text(g.isUngrouped ? context.l10n.ungrouped : g.name)),
-                ],
-                selected: {?group?.id},
-                emptySelectionAllowed: true,
-                // The board cannot change under an open question.
-                onSelectionChanged: state.current != null
-                    ? null
-                    : (ids) {
-                        setState(() => _selected = null);
-                        if (ids.isNotEmpty) widget.send(SelectGroup(ids.first));
-                      },
-              ),
+          // Every game has the podium as its last board.
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SegmentedButton<String>(
+              segments: [
+                for (final g in game.groups)
+                  ButtonSegment(value: g.id, icon: Icon(g.type.icon), label: Text(g.isUngrouped ? context.l10n.ungrouped : g.name)),
+                ButtonSegment(value: podiumBoardId, icon: const Icon(Icons.emoji_events_outlined), label: Text(context.l10n.podium)),
+              ],
+              selected: {if (podium) podiumBoardId else ?group?.id},
+              emptySelectionAllowed: true,
+              // The board cannot change under an open question.
+              onSelectionChanged: state.current != null
+                  ? null
+                  : (ids) {
+                      setState(() => _selected = null);
+                      if (ids.isNotEmpty) widget.send(SelectGroup(ids.first));
+                    },
             ),
+          ),
           const SizedBox(height: 8),
-          if (group != null && group.isInfo)
+          if (podium)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(child: Text(context.l10n.podiumOnBigScreen, textAlign: TextAlign.center)),
+            )
+          else if (group != null && group.isInfo)
             Padding(
               padding: const EdgeInsets.all(24),
               child: Center(child: Text(context.l10n.infoScreenOnBigScreen, textAlign: TextAlign.center)),

@@ -7,6 +7,7 @@ import 'companion.dart';
 import 'content.dart';
 import 'last_standing.dart';
 import 'played_round.dart';
+import 'podium.dart';
 import 'rapid_fire.dart';
 import 'rating.dart';
 import 'scoring.dart';
@@ -279,6 +280,8 @@ Reduction _reduce(SessionState s, Command command, GameContent? game, {int? now,
 
     case SelectGroup(:final groupId):
       if (s.current != null) return _no(s);
+      // The podium is every game's last board, without a group of its own.
+      if (groupId == podiumBoardId) return groupId == s.groupId ? _no(s) : _ok(s.copyWith(groupId: groupId, timer: null));
       if (game != null && game.group(groupId) == null) return _no(s);
       // An information screen starts its clock as it is shown (again); a
       // board has none.

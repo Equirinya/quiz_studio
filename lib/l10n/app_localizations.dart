@@ -6319,6 +6319,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'matches {answer}'**
   String matchesAnswer(String answer);
+
+  /// No description provided for @podium.
+  ///
+  /// In en, this message translates to:
+  /// **'Podium'**
+  String get podium;
+
+  /// No description provided for @podiumOnBigScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'The podium is on the big screen: the top three on their steps, the other teams below with their places and points.'**
+  String get podiumOnBigScreen;
 }
 
 class _AppLocalizationsDelegate
