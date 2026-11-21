@@ -510,6 +510,13 @@ class FirestoreHostLink {
   /// failed in a row: soon at first, then every few seconds.
   static Duration retryAfter(int failures) => Duration(milliseconds: min(5000, 500 * (1 << min(failures - 1, 4))));
 
+  /// Writes sent but not answered yet. Offline, Firestore keeps them and
+  /// sends them all once it is back, so they are capped: with [maxHanging]
+  /// unanswered, the next waits up to [hangingWait] for one of them.
+  final Set<Future<void>> _hanging = {};
+  static const int maxHanging = 2;
+  static const Duration hangingWait = Duration(seconds: 30);
+
   DocumentReference<Map<String, dynamic>> get _ref => SessionRepository.instance.session(sessionId);
 
   /// The state the session was left in, to resume a show after a restart.
@@ -570,7 +577,12 @@ class FirestoreHostLink {
 
   /// Applies a command from the inbox once, and deletes it.
   void _take(DocumentSnapshot<Map<String, dynamic>> doc, {bool apply = true}) {
-    if (!_applied.add(doc.id)) return;
+    if (!_applied.add(doc.id)) {
+      // Still in the inbox though applied: its deletion failed. Delete it
+      // again, so it is not read on every check (and never applied twice).
+      doc.reference.delete().catchError((Object _) {});
+      return;
+    }
     // Ids only matter while their deletion may still be under way.
     if (_applied.length > 500) _applied.remove(_applied.first);
     if (apply) _apply(doc.data() ?? const {});
@@ -624,6 +636,11 @@ class FirestoreHostLink {
     _writing = true;
     var failures = 0;
     do {
+      if (_hanging.length >= maxHanging) {
+        // Each one only carries an older state; wait for the line to clear.
+        await Future.any(_hanging).then((_) {}, onError: (Object _) {}).timeout(hangingWait, onTimeout: () {});
+        if (_stopped || displaced.value) break;
+      }
       _dirty = false;
       final state = host.state;
       try {
@@ -643,7 +660,10 @@ class FirestoreHostLink {
           written[team.id] = encoded;
           if (_teamViews[team.id] != encoded) batch.set(_ref.collection('public').doc('team_${team.id}'), view);
         }
-        await batch.commit().timeout(writeLimit);
+        final commit = batch.commit();
+        _hanging.add(commit);
+        commit.then((_) {}, onError: (Object _) {}).whenComplete(() => _hanging.remove(commit));
+        await commit.timeout(writeLimit);
         failures = 0;
         _teamViews
           ..clear()
