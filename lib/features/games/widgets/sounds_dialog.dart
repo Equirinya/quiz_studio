@@ -8,6 +8,7 @@ import 'package:quiz_show/l10n/l10n.dart';
 
 String _slotLabel(AppLocalizations l10n, String slot) => switch (slot) {
   musicBackground => l10n.boardMusic,
+  musicPodium => l10n.podiumMusic,
   musicCalm => l10n.calmMusic,
   _ => l10n.thrillingMusic,
 };
@@ -148,10 +149,12 @@ class _SoundsDialogState extends State<SoundsDialog> {
     required List<BuiltinSound> builtins,
     required BuiltinSound? fallback,
     required ValueChanged<String?> set,
+    String? unsetLabel,
   }) {
     final isOwn = value != null && value != silentSound && !value.startsWith(builtinSoundPrefix);
     final picked = value == null ? null : builtins.where((sound) => sound.key == value).firstOrNull;
-    final fallbackLabel = widget.isGame ? (fallback == null ? context.l10n.nothing : context.l10n.appDefault(fallback.label)) : context.l10n.asSetAbove;
+    final fallbackLabel = unsetLabel ??
+        (widget.isGame ? (fallback == null ? context.l10n.nothing : context.l10n.appDefault(fallback.label)) : context.l10n.asSetAbove);
     // What the listen button plays: the choice, or what the default is here.
     final asset = picked?.asset ?? (value == null && widget.isGame ? fallback?.asset : null);
     final canListen = asset != null;
@@ -223,6 +226,8 @@ class _SoundsDialogState extends State<SoundsDialog> {
     value: _slots[slot],
     builtins: builtinMusicTracks,
     fallback: defaultMusicTrack(slot),
+    // Unset, the podium keeps the board music playing.
+    unsetLabel: slot == musicPodium ? context.l10n.likeBoardMusic : null,
     set: (next) {
       void apply() => next == null ? _slots.remove(slot) : _slots[slot] = next;
       mounted ? setState(apply) : apply();
@@ -257,6 +262,8 @@ class _SoundsDialogState extends State<SoundsDialog> {
               ),
               header(context.l10n.music),
               for (final slot in musicSlots) _musicRow(slot),
+              // Only the game has a podium; groups and categories do not.
+              if (widget.isGame) _musicRow(musicPodium),
               header(context.l10n.soundsAtMoments),
               for (final key in builtInEffects) _effectRow(key),
               header(context.l10n.ownEffects),

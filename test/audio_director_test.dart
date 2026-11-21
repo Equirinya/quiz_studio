@@ -104,6 +104,28 @@ void main() {
     expect(backend.log.last, 'music null');
   });
 
+  test('the podium plays the game\'s podium music instead of the board music, and only that', () {
+    host.setGame(fixtureGame(extra: const {'musicPodium': 'podium.mp3'}));
+    host.dispatch(const SetMusic(musicBackground));
+    expect(backend.log.last, 'music /game/bg.mp3');
+    host.dispatch(const SelectGroup(podiumBoardId));
+    expect(backend.log.last, 'music /game/podium.mp3');
+    // Calm or thrilling music picked by hand stays.
+    host.dispatch(const SetMusic(musicCalm));
+    expect(backend.log.last, 'music asset:sounds/music/chill.mp3');
+    host.dispatch(const SetMusic(musicBackground));
+    expect(backend.log.last, 'music /game/podium.mp3');
+    // Back on a board, the board music again.
+    host.dispatch(const SelectGroup('g1'));
+    expect(backend.log.last, 'music /game/bg.mp3');
+  });
+
+  test('without podium music the board music plays on at the podium', () {
+    host.dispatch(const SetMusic(musicBackground));
+    host.dispatch(const SelectGroup(podiumBoardId));
+    expect(backend.log, ['music /game/bg.mp3']);
+  });
+
   test('nothing is sent again while nothing changes', () {
     host.dispatch(const SetMusic(musicBackground));
     host.dispatch(const AdjustPoints('red', 100));

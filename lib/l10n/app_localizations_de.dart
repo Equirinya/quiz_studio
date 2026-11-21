@@ -3896,4 +3896,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get resumeTimer => 'Weiter';
+
+  @override
+  String get podiumMusic => 'Podest-Musik';
+
+  @override
+  String get likeBoardMusic => 'Board-Musik';
 }

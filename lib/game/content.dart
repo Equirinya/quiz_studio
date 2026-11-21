@@ -22,6 +22,11 @@ const String musicCalm = 'musicCalm';
 const String musicExciting = 'musicExciting';
 const List<String> musicSlots = [musicBackground, musicCalm, musicExciting];
 
+/// The game's music for the podium, played there instead of the board music.
+/// Set only on the game, not per group or category, and not a slot the
+/// controller picks: the podium picks it.
+const String musicPodium = 'musicPodium';
+
 // Quiet loops that come with the app and keep the speakers from switching
 // themselves off when no music should play. Played like music, but never set
 // up per game: the slot names the bundled asset.
@@ -247,7 +252,7 @@ class MusicConfig {
 
   factory MusicConfig.fromMap(Map<String, dynamic> data) {
     final slots = <String, String>{
-      for (final slot in musicSlots)
+      for (final slot in [...musicSlots, musicPodium])
         if (_str(data[slot]) != null) slot: data[slot] as String,
     };
     final effects = <String, String>{

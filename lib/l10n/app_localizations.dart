@@ -6325,6 +6325,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resume'**
   String get resumeTimer;
+
+  /// No description provided for @podiumMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Podium music'**
+  String get podiumMusic;
+
+  /// No description provided for @likeBoardMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Board music'**
+  String get likeBoardMusic;
 }
 
 class _AppLocalizationsDelegate

@@ -1039,5 +1039,7 @@
   "pauseTimer": "Pausieren",
   "resumeTimer": "Weiter",
   "fullscreen": "Vollbild",
-  "exitFullscreen": "Vollbild beenden"
+  "exitFullscreen": "Vollbild beenden",
+  "podiumMusic": "Podest-Musik",
+  "likeBoardMusic": "Board-Musik"
 }

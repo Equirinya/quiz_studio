@@ -135,9 +135,16 @@ class AudioDirector {
   /// state, and by the owner when media files finish downloading.
   void sync() {
     final state = host.state;
+    // On the podium the board music gives way to the game's podium music,
+    // when it has one; without, the board music plays on.
+    final podium = state.music == musicBackground &&
+        state.current == null &&
+        state.groupId == podiumBoardId &&
+        _sounds.slots[musicPodium] != null;
+    final playing = podium ? musicPodium : state.music;
     // The game's own music for the slot, or the one that comes with the app.
-    final stored = state.music == null ? null : _sounds.slots[state.music];
-    final slot = state.music == null ? null : musicAssetFor(state.music!, stored);
+    final stored = playing == null ? null : _sounds.slots[playing];
+    final slot = playing == null ? null : musicAssetFor(playing, stored);
     // A built-in track, the app's own for an unset slot, or the game's file.
     final music = slot == null || slot.silent
         ? null

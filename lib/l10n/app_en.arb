@@ -2090,5 +2090,7 @@
   "pauseTimer": "Pause",
   "resumeTimer": "Resume",
   "fullscreen": "Full screen",
-  "exitFullscreen": "Leave full screen"
+  "exitFullscreen": "Leave full screen",
+  "podiumMusic": "Podium music",
+  "likeBoardMusic": "Board music"
 }
